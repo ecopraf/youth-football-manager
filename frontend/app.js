@@ -3,7 +3,7 @@
 // ============================================
 
 // Configurazione
-const API_BASE = '/api';
+const API_BASE = "https://youth-football-manager.vercel.app/api";
 const WS_ID = '11111111-1111-1111-1111-111111111111';
 const STAGIONE_ID = '22222222-2222-2222-2222-222222222222';
 const SQUADRA_ID = '33333333-3333-3333-3333-333333333333';
