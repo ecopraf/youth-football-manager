@@ -250,6 +250,31 @@ function showConvocationPreview(match,convocatiList){
 
 async function openDistinta(mid,staffOverrides){const content='<div id="distintaInner"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>';const footer='<button class="btn btn-secondary" onclick="window._closeModal()">Chiudi</button><button class="btn btn-secondary" id="staffBtn">👥 Staff</button><button class="btn btn-primary" id="printBtn">🖨️ Stampa</button>';createModal('📄 Distinta Gara',content,footer,'980px');let curStaff=null;try{const data=await apiFetch('/partite/'+mid+'/distinta');curStaff=staffOverrides||data.staff||{};renderDistinta(data,curStaff);}catch(e){document.getElementById('distintaInner').innerHTML='<div class="error-box">Formazione non disponibile</div>';}document.getElementById('printBtn').addEventListener('click',()=>{const el=document.getElementById('distintaInner');if(el){const w=window.open('','_blank','width=1000,height=800');w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Distinta</title><style>@page{margin:6mm;size:A4 portrait}body{font-family:Courier New,monospace;font-size:9px;margin:0;padding:6mm}.center{text-align:center}.distinta-table{width:100%;border-collapse:collapse;margin:8px 0}.distinta-table th,.distinta-table td{border:1px solid #333;padding:2px 4px;text-align:center;font-size:8px}th{background:#f0f0f0}.capitano{background:#FFF9C4}.vice{background:#E8F5E9}.staff-section td{font-size:7px}.firme{margin-top:12px;display:flex;justify-content:space-between;font-size:9px}.note-finali{font-size:6px;margin-top:4px;text-align:center}@media print{body{padding:0}}</style></head><body>'+el.innerHTML+'<script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)}<\/script></body></html>');w.document.close();}});document.getElementById('staffBtn').addEventListener('click',()=>openStaffForm(mid,curStaff));}
 
+
+function renderDistinta(d,staff){
+  const c=document.getElementById('distintaInner');
+  if(!c)return;
+  const t=(d.formazione||[]).sort((a,b)=>(a.cognome||'').localeCompare(b.cognome||''));
+  const dt=new Date(d.partita.dataOra);
+  const s=staff||{};
+  const righe=[];
+  for(let i=0;i<24;i++){
+    if(i<t.length){
+      const f=t[i];
+      righe.push('<tr class="'+(f.capitano?'capitano':f.viceCapitano?'vice':'')+'"><td style="border:none;font-size:7px;">'+(i+1)+'</td><td>'+(f.numeroMaglia||'-')+'</td><td>'+(f.dataNascita?formatDateShort(f.dataNascita):'-')+'</td><td style="text-align:left;">'+(f.cognome||'').toUpperCase()+' '+(f.nome||'')+'</td><td>'+(f.capitano?'CAP':f.viceCapitano?'V.CAP':'')+'</td><td>'+(f.matricolaFigc||'-')+'</td><td>'+(f.tipoDocumento||'-')+'</td><td>'+(f.numeroDocumento||'-')+'</td><td>'+(f.rilasciatoDa||'-')+'</td><td></td><td></td></tr>');
+    }else{
+      righe.push('<tr><td style="border:none;font-size:7px;">'+(i+1)+'</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
+    }
+  }
+  c.innerHTML=
+    '<div class="center"><strong>F.I.G.C. - LEGA NAZIONALE DILETTANTI</strong><br><strong>'+d.societa+'</strong></div>'+
+    '<div style="border:1px solid #333;padding:8px;margin:8px 0;text-align:left;"><strong>Distinta dei giuocatori partecipanti alla gara</strong><br><strong>'+d.societa+' - '+d.partita.avversario+'</strong><br>del campionato <strong>'+d.partita.competizione+'</strong><br>da disputare il <strong>'+dt.toLocaleDateString('it-IT')+' alle ore '+dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+(d.partita.giornata?' (Giornata '+d.partita.giornata+')':'')+'</strong><br>presso <strong>'+(d.partita.luogo==='Casa'?'Campo di Casa':'Campo Trasferta')+'</strong></div>'+
+    '<table class="distinta-table"><thead><tr><th></th><th>N.</th><th>Data Nascita</th><th>Cognome e Nome</th><th>Cap/V.Cap</th><th>Matricola FIGC</th><th colspan="3">Documento Identificazione</th><th>Esp.</th><th>Amm.</th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th>Tipo</th><th>Numero</th><th>Rilasciato</th><th></th><th></th></tr></thead><tbody>'+righe.join('')+'<tr><td></td><td colspan="2" style="text-align:left;font-weight:bold;">ASSISTENTE DELL\'ARBITRO</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>'+
+    '<table class="distinta-table staff-section" style="text-align:left;"><tbody><tr><td colspan="11" style="text-align:left;font-weight:bold;background:#f0f0f0;">STAFF</td></tr>'+buildStaffRows(s)+'<tr><td colspan="11"> </td></tr><tr><td colspan="11">NOTE .......................................................................................</td></tr></tbody></table>'+
+    '<div style="font-size:7px;text-align:left;margin-top:4px;">*obbligatorio per gare nazionali, facoltativo per gare organizzate in ambito regionale e dal settore per l&#39;attività Giovanile e Scolastica. Le persone qui sopra elencate possono essere ammessi solo se munite delle prescritte tessere valide per l&#39;annata in corso.</div>'+
+    '<div style="font-size:7px;margin-top:4px;text-align:justify;">Il sottoscritto Dirigente dichiara che i giocatori sopraindicati sono regolarmente tesserati e partecipano alla gara sotto la responsabilità della Società di appartenenza.</div>'+
+    '<div class="firme"><div>L\'ARBITRO<br><br>___________________</div><div>IL DIRIGENTE ACCOMPAGNATORE UFFICIALE<br><br>___________________</div></div>';
+}
 function buildStaffRows(s){
   let rows = '';
   if(s.dirigente) rows += '<tr><td colspan="7" style="text-align:left;">Dirigente accompagnatore: '+s.dirigente+'</td><td colspan="4" style="text-align:right;">'+(s.matricola_dirigente||'')+(s.tessera_lnd_dirigente ? (s.matricola_dirigente ? ' - ':'')+'Tessera LND '+s.tessera_lnd_dirigente : '')+'</td></tr>';
@@ -263,6 +288,31 @@ function buildStaffRows(s){
   return rows;
 }
 
+
+function renderDistinta(d,staff){
+  const c=document.getElementById('distintaInner');
+  if(!c)return;
+  const t=(d.formazione||[]).sort((a,b)=>(a.cognome||'').localeCompare(b.cognome||''));
+  const dt=new Date(d.partita.dataOra);
+  const s=staff||{};
+  const righe=[];
+  for(let i=0;i<24;i++){
+    if(i<t.length){
+      const f=t[i];
+      righe.push('<tr class="'+(f.capitano?'capitano':f.viceCapitano?'vice':'')+'"><td style="border:none;font-size:7px;">'+(i+1)+'</td><td>'+(f.numeroMaglia||'-')+'</td><td>'+(f.dataNascita?formatDateShort(f.dataNascita):'-')+'</td><td style="text-align:left;">'+(f.cognome||'').toUpperCase()+' '+(f.nome||'')+'</td><td>'+(f.capitano?'CAP':f.viceCapitano?'V.CAP':'')+'</td><td>'+(f.matricolaFigc||'-')+'</td><td>'+(f.tipoDocumento||'-')+'</td><td>'+(f.numeroDocumento||'-')+'</td><td>'+(f.rilasciatoDa||'-')+'</td><td></td><td></td></tr>');
+    }else{
+      righe.push('<tr><td style="border:none;font-size:7px;">'+(i+1)+'</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
+    }
+  }
+  c.innerHTML=
+    '<div class="center"><strong>F.I.G.C. - LEGA NAZIONALE DILETTANTI</strong><br><strong>'+d.societa+'</strong></div>'+
+    '<div style="border:1px solid #333;padding:8px;margin:8px 0;text-align:left;"><strong>Distinta dei giuocatori partecipanti alla gara</strong><br><strong>'+d.societa+' - '+d.partita.avversario+'</strong><br>del campionato <strong>'+d.partita.competizione+'</strong><br>da disputare il <strong>'+dt.toLocaleDateString('it-IT')+' alle ore '+dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+(d.partita.giornata?' (Giornata '+d.partita.giornata+')':'')+'</strong><br>presso <strong>'+(d.partita.luogo==='Casa'?'Campo di Casa':'Campo Trasferta')+'</strong></div>'+
+    '<table class="distinta-table"><thead><tr><th></th><th>N.</th><th>Data Nascita</th><th>Cognome e Nome</th><th>Cap/V.Cap</th><th>Matricola FIGC</th><th colspan="3">Documento Identificazione</th><th>Esp.</th><th>Amm.</th></tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th>Tipo</th><th>Numero</th><th>Rilasciato</th><th></th><th></th></tr></thead><tbody>'+righe.join('')+'<tr><td></td><td colspan="2" style="text-align:left;font-weight:bold;">ASSISTENTE DELL\'ARBITRO</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>'+
+    '<table class="distinta-table staff-section" style="text-align:left;"><tbody><tr><td colspan="11" style="text-align:left;font-weight:bold;background:#f0f0f0;">STAFF</td></tr>'+buildStaffRows(s)+'<tr><td colspan="11"> </td></tr><tr><td colspan="11">NOTE .......................................................................................</td></tr></tbody></table>'+
+    '<div style="font-size:7px;text-align:left;margin-top:4px;">*obbligatorio per gare nazionali, facoltativo per gare organizzate in ambito regionale e dal settore per l&#39;attività Giovanile e Scolastica. Le persone qui sopra elencate possono essere ammessi solo se munite delle prescritte tessere valide per l&#39;annata in corso.</div>'+
+    '<div style="font-size:7px;margin-top:4px;text-align:justify;">Il sottoscritto Dirigente dichiara che i giocatori sopraindicati sono regolarmente tesserati e partecipano alla gara sotto la responsabilità della Società di appartenenza.</div>'+
+    '<div class="firme"><div>L\'ARBITRO<br><br>___________________</div><div>IL DIRIGENTE ACCOMPAGNATORE UFFICIALE<br><br>___________________</div></div>';
+}
 function buildStaffRows(s){
   let rows = '';
   rows += '<tr><td colspan="7" style="text-align:left;">Dirigente accompagnatore: '+(s.dirigente||'')+'</td><td colspan="4" style="text-align:right;">'+(s.matricola_dirigente ? 'Matr. N° '+s.matricola_dirigente : '')+(s.tessera_lnd_dirigente ? (s.matricola_dirigente ? ' - ':'')+'Tessera LND N° '+s.tessera_lnd_dirigente : '')+'</td></tr>';
