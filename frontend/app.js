@@ -68,7 +68,20 @@ async function openMatchDetail(mid){
     // Recupera la formazione (solo se non è una partita futura)
     if(!isFuture) {
       try {
-        const form = await apiFetch('/partite/'+mid+'/formazione');
+        let form = await apiFetch('/partite/'+mid+'/formazione');
+        // Arricchisci con nomi da allPlayers se necessario (fallback)
+        if (allPlayers.length > 0) {
+          form = (form||[]).map(f => {
+            if (!f.nome || !f.cognome) {
+              const p = allPlayers.find(x => x.id === f.calciatoreId);
+              if (p) {
+                f.nome = p.nome;
+                f.cognome = p.cognome;
+              }
+            }
+            return f;
+          });
+        }
         if(form && form.length > 0) {
           const titolari = form.filter(f => f.posizione === 'Titolare');
           const panchina = form.filter(f => f.posizione === 'Panchina');
@@ -76,16 +89,16 @@ async function openMatchDetail(mid){
           if(titolari.length > 0) {
             html+='<div style="font-weight:600;margin-top:8px;">Titolari ('+titolari.length+')</div>';
             html+='<div style="display:flex;flex-wrap:wrap;gap:4px 12px;">';
-            titolari.sort((a,b)=>a.cognome.localeCompare(b.cognome)).forEach(f=>{
-              html+='<span>'+f.cognome+' '+f.nome+' ('+f.numeroMaglia+')</span>';
+            titolari.sort((a,b)=>(a.cognome||'').localeCompare(b.cognome||'')).forEach(f=>{
+              html+='<span>'+(f.cognome||'')+' '+(f.nome||'')+' ('+f.numeroMaglia+')</span>';
             });
             html+='</div>';
           }
           if(panchina.length > 0) {
             html+='<div style="font-weight:600;margin-top:8px;">Panchina ('+panchina.length+')</div>';
             html+='<div style="display:flex;flex-wrap:wrap;gap:4px 12px;">';
-            panchina.sort((a,b)=>a.cognome.localeCompare(b.cognome)).forEach(f=>{
-              html+='<span>'+f.cognome+' '+f.nome+' ('+f.numeroMaglia+')</span>';
+            panchina.sort((a,b)=>(a.cognome||'').localeCompare(b.cognome||'')).forEach(f=>{
+              html+='<span>'+(f.cognome||'')+' '+(f.nome||'')+' ('+f.numeroMaglia+')</span>';
             });
             html+='</div>';
           }
@@ -116,55 +129,19 @@ async function openFormazioneForm(mid){
   });
   const formMap={};
   (formazioneEsistente||[]).forEach(f=>{formMap[f.calciatoreId]=f;});
-  let html='<p style="margin-bottom:12px;"><strong>Formazione - '+getSocietaName()+' vs '+match.avversario+'</strong></p>';
-  // Campo da calcio
-  html+='<div style="background:linear-gradient(180deg, #2ECC71 0%, #27AE60 100%);border-radius:12px;padding:20px;margin-bottom:16px;min-height:350px;position:relative;border:3px solid #1a7a3a;">';
-  // Linee del campo
-  html+='<div style="position:absolute;top:50%;left:5%;right:5%;border-top:2px solid rgba(255,255,255,0.5);"></div>';
-  html+='<div style="position:absolute;top:20%;left:50%;width:80px;height:80px;border:2px solid rgba(255,255,255,0.5);border-radius:50%;transform:translate(-50%,-50%);"></div>';
-  html+='<div style="position:absolute;top:10%;left:10%;right:10%;display:flex;justify-content:space-between;"><span style="font-size:10px;color:rgba(255,255,255,0.7);">'+getSocietaName()+'</span><span style="font-size:10px;color:rgba(255,255,255,0.7);">'+match.avversario+'</span></div>';
-  
-  // Raggruppa giocatori per visualizzazione campo: 4-3-3 di default
-  const titolariIds = new Set();
-  document.querySelectorAll('#currentModal .form-check-tit:checked').forEach(cb => titolariIds.add(cb.dataset.pid));
-  const titolari = giocatoriConvocati.filter(g => titolariIds.has(g.id));
-  const portiere = titolari.find(g => g.ruolo === 'Portiere');
-  const difensori = titolari.filter(g => g.ruolo === 'Difensore').slice(0,4);
-  const centrocampisti = titolari.filter(g => g.ruolo === 'Centrocampista').slice(0,3);
-  const attaccanti = titolari.filter(g => g.ruolo === 'Attaccante').slice(0,3);
-  
-  // Portiere
-  if(portiere) html+='<div style="position:absolute;bottom:5%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:white;padding:4px 8px;border-radius:6px;font-size:11px;text-align:center;">'+portiere.cognome+' ('+portiere.numeroMaglia+')</div>';
-  // Difensori
-  difensori.forEach((d,i)=>{
-    const left = 15 + i * 23;
-    html+='<div style="position:absolute;bottom:22%;left:'+left+'%;background:rgba(0,0,0,0.6);color:white;padding:3px 6px;border-radius:6px;font-size:10px;text-align:center;">'+d.cognome+' ('+d.numeroMaglia+')</div>';
-  });
-  // Centrocampisti
-  centrocampisti.forEach((c,i)=>{
-    const left = 20 + i * 30;
-    html+='<div style="position:absolute;bottom:45%;left:'+left+'%;background:rgba(0,0,0,0.6);color:white;padding:3px 6px;border-radius:6px;font-size:10px;text-align:center;">'+c.cognome+' ('+c.numeroMaglia+')</div>';
-  });
-  // Attaccanti
-  attaccanti.forEach((a,i)=>{
-    const left = 20 + i * 30;
-    html+='<div style="position:absolute;top:15%;left:'+left+'%;background:rgba(0,0,0,0.6);color:white;padding:3px 6px;border-radius:6px;font-size:10px;text-align:center;">'+a.cognome+' ('+a.numeroMaglia+')</div>';
-  });
-  html+='</div>';
-  
-  // Selezione rapida sotto il campo
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
-  html+='<div><h4 style="margin-bottom:6px;">Titolari <span id="cntTitolari" style="font-size:12px;color:var(--gray);"></span></h4>';
+  let html='<p style="margin-bottom:16px;"><strong>Formazione - '+getSocietaName()+' vs '+match.avversario+'</strong></p>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">';
+  html+='<div><h4 style="margin-bottom:8px;">Titolari <span id="cntTitolari" style="font-size:12px;color:var(--gray);"></span></h4>';
   giocatoriConvocati.forEach(g=>{
     const f=formMap[g.id];
     const checked=f&&f.posizione==='Titolare'?' checked':'';
-    html+='<div style="display:flex;align-items:center;gap:6px;padding:3px 0;"><input type="checkbox"'+checked+' data-pid="'+g.id+'" class="form-check-tit" style="accent-color:var(--green);"><span style="flex:1;font-size:13px;">'+g.nome+' '+g.cognome+' <span style="color:var(--gray);font-size:11px;">('+g.ruolo+')</span></span><input type="number" value="'+(f?f.numeroMaglia:g.numeroMaglia)+'" data-pid="'+g.id+'" class="form-num-tit" style="width:45px;padding:3px;" placeholder="N."></div>';
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><input type="checkbox"'+checked+' data-pid="'+g.id+'" class="form-check-tit" style="accent-color:var(--green);"><span style="flex:1;">'+g.nome+' '+g.cognome+' <span style="color:var(--gray);font-size:12px;">('+g.ruolo+')</span></span><input type="number" value="'+(f?f.numeroMaglia:g.numeroMaglia)+'" data-pid="'+g.id+'" class="form-num-tit" style="width:50px;padding:4px;" placeholder="N."></div>';
   });
-  html+='</div><div><h4 style="margin-bottom:6px;">Panchina <span id="cntRiserve" style="font-size:12px;color:var(--gray);"></span></h4>';
+  html+='</div><div><h4 style="margin-bottom:8px;">Panchina <span id="cntRiserve" style="font-size:12px;color:var(--gray);"></span></h4>';
   giocatoriConvocati.forEach(g=>{
     const f=formMap[g.id];
     const checked=f&&f.posizione==='Panchina'?' checked':'';
-    html+='<div style="display:flex;align-items:center;gap:6px;padding:3px 0;"><input type="checkbox"'+checked+' data-pid="'+g.id+'" class="form-check-pan" style="accent-color:var(--orange);"><span style="flex:1;font-size:13px;">'+g.nome+' '+g.cognome+' <span style="color:var(--gray);font-size:11px;">('+g.ruolo+')</span></span><input type="number" value="'+(f?f.numeroMaglia:g.numeroMaglia)+'" data-pid="'+g.id+'" class="form-num-pan" style="width:45px;padding:3px;" placeholder="N."></div>';
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><input type="checkbox"'+checked+' data-pid="'+g.id+'" class="form-check-pan" style="accent-color:var(--orange);"><span style="flex:1;">'+g.nome+' '+g.cognome+' <span style="color:var(--gray);font-size:12px;">('+g.ruolo+')</span></span><input type="number" value="'+(f?f.numeroMaglia:g.numeroMaglia)+'" data-pid="'+g.id+'" class="form-num-pan" style="width:50px;padding:4px;" placeholder="N."></div>';
   });
   html+='</div></div>';
   const footer='<button class="btn btn-secondary" onclick="window._closeModal()">Annulla</button><button class="btn btn-primary" id="saveFormBtn">💾 Salva Formazione</button>';
