@@ -76,7 +76,13 @@ async function openFormazioneForm(mid){
     apiFetch('/squadre/'+squadraId+'/calciatori').catch(()=>[])
   ]);
   const convocatiIds=convocazioni.filter(c=>c.presente===true).map(c=>c.calciatoreId);
-  const giocatoriConvocati=giocatori.filter(g=>convocatiIds.includes(g.id)).sort((a,b)=>a.cognome.localeCompare(b.cognome));
+  // Ordina per ruolo e poi per cognome
+  const ruoloOrder=['Portiere','Difensore','Centrocampista','Attaccante'];
+  const giocatoriConvocati=giocatori.filter(g=>convocatiIds.includes(g.id)).sort((a,b)=>{
+    const ra=ruoloOrder.indexOf(a.ruolo),rb=ruoloOrder.indexOf(b.ruolo);
+    if(ra!==rb)return ra-rb;
+    return a.cognome.localeCompare(b.cognome);
+  });
   const formMap={};
   (formazioneEsistente||[]).forEach(f=>{formMap[f.calciatoreId]=f;});
   let html='<p style="margin-bottom:16px;"><strong>Formazione - '+getSocietaName()+' vs '+match.avversario+'</strong></p>';
@@ -85,13 +91,13 @@ async function openFormazioneForm(mid){
   giocatoriConvocati.forEach(g=>{
     const f=formMap[g.id];
     const checked=f&&f.posizione==='Titolare'?' checked':'';
-    html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><input type="checkbox"'+checked+' data-pid="'+g.id+'" class="form-check-tit" style="accent-color:var(--green);"><span style="flex:1;">'+g.nome+' '+g.cognome+'</span><input type="number" value="'+(f?f.numeroMaglia:g.numeroMaglia)+'" data-pid="'+g.id+'" class="form-num-tit" style="width:50px;padding:4px;" placeholder="N."></div>';
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><input type="checkbox"'+checked+' data-pid="'+g.id+'" class="form-check-tit" style="accent-color:var(--green);"><span style="flex:1;">'+g.nome+' '+g.cognome+' <span style="color:var(--gray);font-size:12px;">('+g.ruolo+')</span></span><input type="number" value="'+(f?f.numeroMaglia:g.numeroMaglia)+'" data-pid="'+g.id+'" class="form-num-tit" style="width:50px;padding:4px;" placeholder="N."></div>';
   });
   html+='</div><div><h4 style="margin-bottom:8px;">Panchina</h4>';
   giocatoriConvocati.forEach(g=>{
     const f=formMap[g.id];
     const checked=f&&f.posizione==='Panchina'?' checked':'';
-    html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><input type="checkbox"'+checked+' data-pid="'+g.id+'" class="form-check-pan" style="accent-color:var(--orange);"><span style="flex:1;">'+g.nome+' '+g.cognome+'</span><input type="number" value="'+(f?f.numeroMaglia:g.numeroMaglia)+'" data-pid="'+g.id+'" class="form-num-pan" style="width:50px;padding:4px;" placeholder="N."></div>';
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><input type="checkbox"'+checked+' data-pid="'+g.id+'" class="form-check-pan" style="accent-color:var(--orange);"><span style="flex:1;">'+g.nome+' '+g.cognome+' <span style="color:var(--gray);font-size:12px;">('+g.ruolo+')</span></span><input type="number" value="'+(f?f.numeroMaglia:g.numeroMaglia)+'" data-pid="'+g.id+'" class="form-num-pan" style="width:50px;padding:4px;" placeholder="N."></div>';
   });
   html+='</div></div>';
   const footer='<button class="btn btn-secondary" onclick="window._closeModal()">Annulla</button><button class="btn btn-primary" id="saveFormBtn">💾 Salva Formazione</button>';
