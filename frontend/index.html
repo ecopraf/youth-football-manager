@@ -279,23 +279,16 @@
     }
     @media print {
       @page { margin: 8mm; size: A4 portrait; }
-      html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: white; }
-      body > * { display: none; }
-      body > .modal-overlay { display: flex !important; position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; padding: 0 !important; margin: 0 !important; background: white !important; z-index: 99999 !important; align-items: flex-start !important; justify-content: center !important; }
-      .modal-overlay * { display: block; visibility: visible; }
-      .modal-overlay .modal-content { box-shadow: none !important; border-radius: 0 !important; max-height: none !important; overflow: visible !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 8mm !important; }
-      .modal-overlay .modal-header { border-radius: 0 !important; border-bottom: 2px solid #000 !important; padding: 0 0 8px 0 !important; margin-bottom: 12px !important; }
-      .modal-overlay .modal-header h2 { font-size: 16px !important; }
-      .modal-overlay .modal-header button,
-      .modal-overlay .modal-footer { display: none !important; }
-      .modal-overlay .modal-body { padding: 0 !important; overflow: visible !important; }
-      .modal-overlay .distinta-header h2 { font-size: 14px !important; margin: 0 0 4px 0 !important; }
-      .modal-overlay .distinta-header h3 { font-size: 12px !important; margin: 4px 0 !important; }
-      .modal-overlay .distinta-header p { font-size: 10px !important; margin: 2px 0 !important; }
-      .modal-overlay .distinta-table { font-size: 8px !important; width: 100% !important; page-break-inside: avoid; }
-      .modal-overlay .distinta-table th,
-      .modal-overlay .distinta-table td { padding: 3px 5px !important; font-size: 8px !important; }
-      .modal-overlay .distinta { font-size: 10px !important; }
+      body { background: white !important; }
+      .sidebar, .header, #menuBtn, .content > * { display: none !important; }
+      .modal-overlay { position: static !important; display: block !important; background: white !important; padding: 0 !important; margin: 0 !important; }
+      .modal-overlay .modal-content { box-shadow: none !important; border: none !important; max-height: none !important; width: 100% !important; max-width: 100% !important; }
+      .modal-overlay .modal-close-btn, .modal-overlay .modal-footer { display: none !important; }
+      .modal-overlay .modal-body { padding: 0 !important; }
+      .distinta-header h2 { font-size: 14px; }
+      .distinta-header h3 { font-size: 12px; }
+      .distinta-table { font-size: 8px; }
+      .distinta-table th, .distinta-table td { padding: 2px 4px; }
     }
   </style>
 </head>
