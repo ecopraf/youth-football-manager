@@ -8,53 +8,65 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 app.use(cors());
 app.use(express.json());
 
-// Health
 app.get('/api/health', async (req, res) => {
-  const { error } = await supabase.from('workspace').select('count', { count: 'exact', head: true });
-  if (error) return res.status(500).json({ status: 'error' });
-  res.json({ status: 'ok', version: '2.5' });
+  res.json({ status: 'ok', version: '2.6' });
 });
 
-// Workspaces
 app.get('/api/workspaces', async (req, res) => {
   const { data, error } = await supabase.from('workspace').select('*');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-// Stagioni
 app.get('/api/workspaces/:wsId/stagioni', async (req, res) => {
   const { data, error } = await supabase.from('stagione').select('*').eq('workspace_id', req.params.wsId);
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
-// ── SQUADRE (MULTI-CATEGORIA) ──
+// ── SQUADRE ──
 app.get('/api/stagioni/:stagioneId/squadre', async (req, res) => {
   const { data, error } = await supabase.from('squadra')
-    .select('id, nome, categoria, allenatore, dirigente, note_staff')
-    .eq('stagione_id', req.params.stagioneId)
-    .order('nome', { ascending: true });
+    .select('*').eq('stagione_id', req.params.stagioneId).order('nome', { ascending: true });
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 
 app.post('/api/stagioni/:stagioneId/squadre', async (req, res) => {
-  const { nome, categoria, allenatore, dirigente } = req.body;
+  const { nome, categoria, allenatore, dirigente, preparatore_atletico, allenatore_portieri } = req.body;
   const { data, error } = await supabase.from('squadra').insert({
-    stagione_id: req.params.stagioneId, nome, categoria, allenatore, dirigente
+    stagione_id: req.params.stagioneId, nome, categoria, allenatore, dirigente,
+    preparatore_atletico, allenatore_portieri
   }).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.status(201).json(data);
 });
 
 app.put('/api/squadre/:id', async (req, res) => {
-  const { nome, categoria, allenatore, dirigente, note_staff } = req.body;
+  const { nome, categoria, allenatore, dirigente, preparatore_atletico, allenatore_portieri, note_staff } = req.body;
   const { data, error } = await supabase.from('squadra').update({
-    nome, categoria, allenatore, dirigente, note_staff
+    nome, categoria, allenatore, dirigente, preparatore_atletico, allenatore_portieri, note_staff
   }).eq('id', req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
+});
+
+app.delete('/api/squadre/:id', async (req, res) => {
+  try {
+    await supabase.from('presenza_allenamento').delete().eq('squadra_id', req.params.id);
+    await supabase.from('configurazione_allenamento').delete().eq('squadra_id', req.params.id);
+    await supabase.from('formazione_partita').delete().eq('partita_id', req.params.id);
+    await supabase.from('convocazione').delete().eq('partita_id', req.params.id);
+    const { data: partite } = await supabase.from('partita').select('id').eq('squadra_id', req.params.id);
+    for (const p of (partite || [])) {
+      await supabase.from('formazione_partita').delete().eq('partita_id', p.id);
+      await supabase.from('convocazione').delete().eq('partita_id', p.id);
+    }
+    await supabase.from('partita').delete().eq('squadra_id', req.params.id);
+    await supabase.from('rosa').delete().eq('squadra_id', req.params.id);
+    await supabase.from('squadra').delete().eq('id', req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
 // ── CALCIATORI ──
@@ -80,13 +92,11 @@ app.get('/api/squadre/:squadraId/calciatori', async (req, res) => {
 app.post('/api/squadre/:squadraId/calciatori', async (req, res) => {
   try {
     const c = req.body;
-    const { data: calciatore, error: err1 } = await supabase.from('calciatore').insert({
+    const { data: calciatore } = await supabase.from('calciatore').insert({
       workspace_id: '11111111-1111-1111-1111-111111111111', nome: c.nome, cognome: c.cognome,
-      data_nascita: c.dataNascita, luogo_nascita: c.luogoNascita,
-      matricola_figc: c.matricolaFigc, tipo_documento: c.tipoDocumento,
-      numero_documento: c.numeroDocumento, rilasciato_da: c.rilasciatoDa
+      data_nascita: c.dataNascita, luogo_nascita: c.luogoNascita, matricola_figc: c.matricolaFigc,
+      tipo_documento: c.tipoDocumento, numero_documento: c.numeroDocumento, rilasciato_da: c.rilasciatoDa
     }).select().single();
-    if (err1) throw err1;
     await supabase.from('rosa').insert({
       squadra_id: req.params.squadraId, calciatore_id: calciatore.id,
       numero_maglia: c.numeroMaglia, ruolo: c.ruolo, stato: 'Attivo'
@@ -101,8 +111,7 @@ app.put('/api/calciatori/:id', async (req, res) => {
     await supabase.from('calciatore').update({
       nome: c.nome, cognome: c.cognome, data_nascita: c.dataNascita,
       luogo_nascita: c.luogoNascita, matricola_figc: c.matricolaFigc,
-      tipo_documento: c.tipoDocumento, numero_documento: c.numeroDocumento,
-      rilasciato_da: c.rilasciatoDa
+      tipo_documento: c.tipoDocumento, numero_documento: c.numeroDocumento, rilasciato_da: c.rilasciatoDa
     }).eq('id', req.params.id);
     if (c.numeroMaglia || c.ruolo) {
       const update = {};
@@ -154,8 +163,7 @@ app.delete('/api/partite/:id', async (req, res) => {
 // ── CONVOCAZIONI ──
 app.get('/api/partite/:partitaId/convocazioni', async (req, res) => {
   const { data, error } = await supabase.from('convocazione')
-    .select('id, presente, calciatore:calciatore_id(id, nome, cognome)')
-    .eq('partita_id', req.params.partitaId);
+    .select('id, presente, calciatore:calciatore_id(id, nome, cognome)').eq('partita_id', req.params.partitaId);
   if (error) return res.status(500).json({ error: error.message });
   res.json(data.map(c => ({ id: c.id, calciatoreId: c.calciatore.id, nome: c.calciatore.nome, cognome: c.calciatore.cognome, presente: c.presente })));
 });
@@ -201,7 +209,7 @@ app.get('/api/partite/:partitaId/distinta', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ── ALLENAMENTI: CONFIGURAZIONE ──
+// ── ALLENAMENTI: CONFIG ──
 app.get('/api/squadre/:squadraId/allenamenti/config', async (req, res) => {
   const { data, error } = await supabase.from('configurazione_allenamento')
     .select('*').eq('squadra_id', req.params.squadraId).order('giorno_settimana', { ascending: true });
@@ -225,17 +233,14 @@ app.delete('/api/allenamenti/config/:id', async (req, res) => {
 
 // ── ALLENAMENTI: PRESENZE ──
 app.get('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
-  try {
-    const { data: presenze, error } = await supabase.from('presenza_allenamento')
-      .select('id, data, presente, note, calciatore:calciatore_id(id, nome, cognome)')
-      .eq('squadra_id', req.params.squadraId)
-      .order('data', { ascending: false });
-    if (error) throw error;
-    res.json(presenze.map(p => ({
-      id: p.id, data: p.data, presente: p.presente, note: p.note,
-      calciatoreId: p.calciatore.id, nome: p.calciatore.nome, cognome: p.calciatore.cognome
-    })));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  const { data, error } = await supabase.from('presenza_allenamento')
+    .select('id, data, presente, note, calciatore:calciatore_id(id, nome, cognome)')
+    .eq('squadra_id', req.params.squadraId).order('data', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data.map(p => ({
+    id: p.id, data: p.data, presente: p.presente, note: p.note,
+    calciatoreId: p.calciatore.id, nome: p.calciatore.nome, cognome: p.calciatore.cognome
+  })));
 });
 
 app.post('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
@@ -249,23 +254,59 @@ app.post('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// ── STATISTICHE PRESENZE ALLENAMENTI ──
-app.get('/api/squadre/:squadraId/allenamenti/statistiche', async (req, res) => {
+// ── ALLENAMENTI: SUMMARY (TOTALE + SETTIMANALE) ──
+app.get('/api/squadre/:squadraId/allenamenti/summary', async (req, res) => {
   try {
-    const { data, error } = await supabase.rpc('conta_presenze_allenamento', { sq_id: req.params.squadraId });
-    if (error) {
-      // Fallback: query diretta
-      const { data: presenze } = await supabase.from('presenza_allenamento')
-        .select('calciatore_id, presente').eq('squadra_id', req.params.squadraId);
-      const stats = {};
-      (presenze || []).forEach(p => {
-        if (!stats[p.calciatore_id]) stats[p.calciatore_id] = { totali: 0, presenti: 0 };
-        stats[p.calciatore_id].totali++;
-        if (p.presente) stats[p.calciatore_id].presenti++;
-      });
-      return res.json(stats);
-    }
-    res.json(data);
+    // Tutte le presenze della squadra
+    const { data: presenze, error } = await supabase.from('presenza_allenamento')
+      .select('calciatore_id, presente, data')
+      .eq('squadra_id', req.params.squadraId);
+    if (error) throw error;
+
+    // Calciatori della squadra
+    const { data: rosa } = await supabase.from('rosa')
+      .select('calciatore:calciatore_id(id, nome, cognome)')
+      .eq('squadra_id', req.params.squadraId);
+
+    // Data inizio settimana corrente (lunedì)
+    const oggi = new Date();
+    const giornoSettimana = oggi.getDay();
+    const lunedi = new Date(oggi);
+    lunedi.setDate(oggi.getDate() - ((giornoSettimana + 6) % 7));
+    const lunediStr = lunedi.toISOString().split('T')[0];
+
+    const summary = {};
+    
+    // Inizializza per ogni calciatore
+    (rosa || []).forEach(r => {
+      summary[r.calciatore.id] = {
+        nome: r.calciatore.nome,
+        cognome: r.calciatore.cognome,
+        totali: 0,
+        presenti: 0,
+        assenti: 0,
+        settimanali: 0,
+        presentiSett: 0,
+        assentiSett: 0
+      };
+    });
+
+    // Conta presenze
+    (presenze || []).forEach(p => {
+      if (summary[p.calciatore_id]) {
+        summary[p.calciatore_id].totali++;
+        if (p.presente) summary[p.calciatore_id].presenti++;
+        else summary[p.calciatore_id].assenti++;
+        
+        if (p.data >= lunediStr) {
+          summary[p.calciatore_id].settimanali++;
+          if (p.presente) summary[p.calciatore_id].presentiSett++;
+          else summary[p.calciatore_id].assentiSett++;
+        }
+      }
+    });
+
+    res.json(summary);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
