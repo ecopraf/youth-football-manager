@@ -113,7 +113,7 @@ app.get('/api/partite/:partitaId/convocazioni-pdf', async (req, res) => {
 
 // DISTINTA
 app.get('/api/partite/:partitaId/distinta', async (req, res) => {
-  const { data: partita } = await supabase.from('partita').select('*, squadra:squadra_id(*)').eq('id', req.params.partitaId).single();
+  const { data: partita } = await supabase.from('partita').select('*, squadra:squadra_id(*, stagione:stagione_id(*, workspace:workspace_id(nome)))').eq('id', req.params.partitaId).single();
   if(!partita) return res.status(404).json({ error:'Partita non trovata' });
   const { data: formazione } = await supabase.from('formazione_partita').select('numero_maglia, capitano, vice_capitano, calciatore:calciatore_id(nome, cognome, data_nascita, matricola_figc, tipo_documento, numero_documento, rilasciato_da)').eq('partita_id', req.params.partitaId).order('numero_maglia');
   res.json({
