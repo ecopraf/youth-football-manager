@@ -1,8 +1,8 @@
 // ============================================
-// YOUTH FOOTBALL MANAGER - Frontend App v2.0
+// YOUTH FOOTBALL MANAGER - Frontend App v2.1
 // ============================================
 
-const API_BASE = "https://youth-football-manager.vercel.app/api";
+const API_BASE = 'https://youth-football-manager.vercel.app/api';
 const WS_ID = '11111111-1111-1111-1111-111111111111';
 const STAGIONE_ID = '22222222-2222-2222-2222-222222222222';
 const SQUADRA_ID = '33333333-3333-3333-3333-333333333333';
@@ -34,11 +34,15 @@ function setupNavigation() {
 }
 
 function setupMobileMenu() {
-  document.getElementById('menuBtn').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+  document.getElementById('menuBtn').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('open');
+  });
   document.addEventListener('click', (e) => {
     const sidebar = document.getElementById('sidebar');
     const menuBtn = document.getElementById('menuBtn');
-    if (!sidebar.contains(e.target) && e.target !== menuBtn) sidebar.classList.remove('open');
+    if (!sidebar.contains(e.target) && e.target !== menuBtn) {
+      sidebar.classList.remove('open');
+    }
   });
 }
 
@@ -63,7 +67,7 @@ async function apiFetch(endpoint, options = {}) {
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
@@ -73,7 +77,9 @@ async function apiFetch(endpoint, options = {}) {
 async function loadWorkspaceInfo() {
   try {
     const workspaces = await apiFetch('/workspaces');
-    if (workspaces?.length > 0) document.getElementById('workspaceName').textContent = workspaces[0].nome;
+    if (workspaces && workspaces.length > 0) {
+      document.getElementById('workspaceName').textContent = workspaces[0].nome;
+    }
   } catch (err) {
     document.getElementById('workspaceName').textContent = 'ASD Albalonga';
   }
@@ -101,7 +107,7 @@ async function loadDashboard() {
           <h1 class="page-title">Dashboard</h1>
           <p class="page-subtitle">Benvenuto! Ecco il riepilogo della stagione.</p>
         </div>
-        <button class="btn btn-primary" onclick="navigateTo('calendar')">+ Nuova Partita</button>
+        <button class="btn btn-primary" id="btnNewMatch">+ Nuova Partita</button>
       </div>
       
       <div class="widgets">
@@ -116,13 +122,10 @@ async function loadDashboard() {
           <h3 class="section-title">⚽ Prossima Partita</h3>
           ${nextMatch ? `
             <div style="background:#F8F9FA;border-radius:8px;padding:20px;">
-              <div style="font-size:14px;color:var(--gray);">${new Date(nextMatch.data_ora).toLocaleDateString('it-IT', {weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+              <div style="font-size:14px;color:var(--gray);">${formatDate(nextMatch.data_ora)}</div>
               <div style="font-size:22px;font-weight:bold;color:var(--blue);margin:4px 0;">vs ${nextMatch.avversario}</div>
               <span class="badge ${nextMatch.luogo === 'Casa' ? 'badge-green' : 'badge-blue'}">${nextMatch.luogo}</span>
               <span style="font-size:13px;color:var(--gray);margin-left:8px;">${nextMatch.competizione}</span>
-              <div style="margin-top:12px;">
-                <button class="btn btn-primary btn-small" onclick="openConvocation('${nextMatch.id}')">📋 Convocazioni</button>
-              </div>
             </div>
           ` : '<p style="color:var(--gray);text-align:center;padding:20px;">Nessuna partita in programma</p>'}
         </div>
@@ -145,6 +148,9 @@ async function loadDashboard() {
         </div>
       </div>
     `;
+    
+    // Event listener per pulsante Nuova Partita
+    document.getElementById('btnNewMatch').addEventListener('click', () => openMatchForm());
   } catch (err) {
     container.innerHTML = `<div class="error-box">Errore: ${err.message}</div>`;
   }
@@ -168,27 +174,35 @@ function renderRoster(container, players) {
   container.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
       <div><h1 class="page-title">Rosa Calciatori</h1><p class="page-subtitle">Under 14 Provinciale · ${players.length} calciatori</p></div>
-      <button class="btn btn-primary" onclick="openPlayerForm()">+ Aggiungi</button>
+      <button class="btn btn-primary" id="btnAddPlayer">+ Aggiungi</button>
     </div>
     <div class="roster-toolbar">
-      <input type="text" class="search-bar" placeholder="Cerca giocatore..." id="searchInput" oninput="filterRoster()">
-      <select class="filter-select" id="ruoloFilter" onchange="filterRoster()">
+      <input type="text" class="search-bar" placeholder="Cerca giocatore..." id="searchInput">
+      <select class="filter-select" id="ruoloFilter">
         <option value="">Tutti i ruoli</option>
         <option value="Portiere">Portiere</option><option value="Difensore">Difensore</option>
         <option value="Centrocampista">Centrocampista</option><option value="Attaccante">Attaccante</option>
       </select>
-      <select class="filter-select" id="statoFilter" onchange="filterRoster()">
+      <select class="filter-select" id="statoFilter">
         <option value="">Tutti gli stati</option>
         <option value="Attivo">Attivo</option><option value="Infortunato">Infortunato</option>
       </select>
     </div>
     <div class="roster-grid" id="rosterGrid">${renderPlayerCards(players)}</div>
   `;
+  
+  document.getElementById('btnAddPlayer').addEventListener('click', () => openPlayerForm());
+  document.getElementById('searchInput').addEventListener('input', filterRoster);
+  document.getElementById('ruoloFilter').addEventListener('change', filterRoster);
+  document.getElementById('statoFilter').addEventListener('change', filterRoster);
 }
 
 function renderPlayerCards(players) {
+  if (players.length === 0) {
+    return '<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-title">Nessun calciatore</div><button class="btn btn-primary" id="btnAddPlayerEmpty">+ Aggiungi Calciatore</button></div>';
+  }
   return players.map(p => `
-    <div class="card player-card card-clickable" onclick="openPlayerForm('${p.id}')">
+    <div class="card player-card card-clickable" data-player-id="${p.id}">
       <div class="player-avatar" style="background:${getAvatarColor(p.nome)}">${p.nome.charAt(0)}${p.cognome.charAt(0)}</div>
       <div class="player-info">
         <div class="player-name">${p.nome} ${p.cognome}</div>
@@ -208,6 +222,13 @@ function filterRoster() {
   if (ruolo) filtered = filtered.filter(p => p.ruolo === ruolo);
   if (stato) filtered = filtered.filter(p => p.stato === stato);
   document.getElementById('rosterGrid').innerHTML = renderPlayerCards(filtered);
+  
+  // Riattacca event listener
+  document.querySelectorAll('.player-card').forEach(card => {
+    card.addEventListener('click', () => openPlayerForm(card.dataset.playerId));
+  });
+  const emptyBtn = document.getElementById('btnAddPlayerEmpty');
+  if (emptyBtn) emptyBtn.addEventListener('click', () => openPlayerForm());
 }
 
 function openPlayerForm(playerId = null) {
@@ -220,7 +241,7 @@ function openPlayerForm(playerId = null) {
     <div class="modal-content" style="max-width:600px;">
       <div class="modal-header">
         <h2>${title}</h2>
-        <button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
+        <button class="modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
       </div>
       <div class="modal-body">
         <div class="form-grid">
@@ -237,7 +258,7 @@ function openPlayerForm(playerId = null) {
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Annulla</button>
+        <button class="btn btn-secondary modal-close">Annulla</button>
         <button class="btn btn-primary" id="savePlayerBtn">Salva</button>
       </div>
     </div>
@@ -247,6 +268,15 @@ function openPlayerForm(playerId = null) {
   
   if (player) document.getElementById('pfRuolo').value = player.ruolo;
   
+  // Chiudi modale
+  modal.querySelectorAll('.modal-close').forEach(btn => {
+    btn.addEventListener('click', () => modal.remove());
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+  
+  // Salva
   document.getElementById('savePlayerBtn').addEventListener('click', async () => {
     const data = {
       nome: document.getElementById('pfNome').value,
@@ -283,37 +313,55 @@ async function loadCalendar() {
   try {
     const matches = await apiFetch(`/squadre/${SQUADRA_ID}/partite`);
     allMatches = matches;
-    
-    container.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
-        <div><h1 class="page-title">Calendario</h1><p class="page-subtitle">Partite e allenamenti della stagione</p></div>
-        <button class="btn btn-primary" onclick="openMatchForm()">+ Nuova Partita</button>
-      </div>
-      <div id="matchList">
-        ${matches.map(m => renderMatchCard(m)).join('')}
-        ${matches.length === 0 ? '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-title">Nessuna partita</div><button class="btn btn-primary" onclick="openMatchForm()">+ Nuova Partita</button></div>' : ''}
-      </div>
-    `;
+    renderCalendar(container, matches);
   } catch (err) {
     container.innerHTML = `<div class="error-box">Errore: ${err.message}</div>`;
   }
 }
 
+function renderCalendar(container, matches) {
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+      <div><h1 class="page-title">Calendario</h1><p class="page-subtitle">Partite della stagione</p></div>
+      <button class="btn btn-primary" id="btnAddMatch">+ Nuova Partita</button>
+    </div>
+    <div id="matchList">
+      ${matches.length > 0 ? matches.map(m => renderMatchCard(m)).join('') : '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-title">Nessuna partita</div><button class="btn btn-primary" id="btnAddMatchEmpty">+ Nuova Partita</button></div>'}
+    </div>
+  `;
+  
+  document.getElementById('btnAddMatch')?.addEventListener('click', () => openMatchForm());
+  document.getElementById('btnAddMatchEmpty')?.addEventListener('click', () => openMatchForm());
+  
+  // Attacca event listener ai pulsanti delle partite
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const matchId = btn.dataset.matchId;
+      const action = btn.dataset.action;
+      if (action === 'edit') openMatchForm(matchId);
+      if (action === 'convocation') openConvocation(matchId);
+      if (action === 'distinta') openDistinta(matchId);
+      if (action === 'delete') deleteMatch(matchId);
+    });
+  });
+}
+
 function renderMatchCard(m) {
   const d = new Date(m.data_ora);
   return `
-    <div class="match-card" style="margin-bottom:12px;">
-      <div>
-        <div class="match-date">${d.toLocaleDateString('it-IT', {weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
-        <div class="match-teams">ASD Albalonga vs ${m.avversario}</div>
-        <div class="match-info">${m.competizione}</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span class="badge ${m.luogo === 'Casa' ? 'badge-green' : 'badge-blue'}">${m.luogo}</span>
-        <button class="btn btn-secondary btn-small" onclick="openConvocation('${m.id}')">📋 Convocazioni</button>
-        <button class="btn btn-secondary btn-small" onclick="openDistinta('${m.id}')">📄 Distinta</button>
-        <button class="btn btn-secondary btn-small" onclick="openMatchForm('${m.id}')">✏️</button>
-        <button class="btn btn-secondary btn-small" style="color:#E74C3C;" onclick="deleteMatch('${m.id}')">🗑️</button>
+    <div class="card" style="margin-bottom:12px;padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div style="flex:1;min-width:200px;">
+          <div class="match-date">${formatDate(m.data_ora)}</div>
+          <div class="match-teams">ASD Albalonga vs ${m.avversario}</div>
+          <div class="match-info">${m.competizione} · ${m.luogo}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-small" data-action="convocation" data-match-id="${m.id}">📋 Convoca</button>
+          <button class="btn btn-secondary btn-small" data-action="distinta" data-match-id="${m.id}">📄 Distinta</button>
+          <button class="btn btn-secondary btn-small" data-action="edit" data-match-id="${m.id}">✏️</button>
+          <button class="btn btn-secondary btn-small" data-action="delete" data-match-id="${m.id}" style="color:#E74C3C;">🗑️</button>
+        </div>
       </div>
     </div>
   `;
@@ -321,28 +369,37 @@ function renderMatchCard(m) {
 
 function openMatchForm(matchId = null) {
   const match = matchId ? allMatches.find(m => m.id === matchId) : null;
+  
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.innerHTML = `
     <div class="modal-content" style="max-width:500px;">
       <div class="modal-header">
         <h2>${match ? 'Modifica' : 'Nuova'} Partita</h2>
-        <button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
+        <button class="modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
       </div>
       <div class="modal-body">
-        <div class="form-group"><label>Data e Ora</label><input id="mfDataOra" type="datetime-local" value="${match ? new Date(match.data_ora).toISOString().slice(0,16) : ''}"></div>
-        <div class="form-group"><label>Avversario *</label><input id="mfAvversario" value="${match?.avversario || ''}"></div>
-        <div class="form-group"><label>Luogo</label><select id="mfLuogo"><option ${match?.luogo === 'Casa' ? 'selected' : ''}>Casa</option><option ${match?.luogo === 'Trasferta' ? 'selected' : ''}>Trasferta</option></select></div>
-        <div class="form-group"><label>Competizione</label><input id="mfCompetizione" value="${match?.competizione || ''}" placeholder="es. Campionato Provinciale"></div>
-        <div class="form-group"><label>Note</label><textarea id="mfNote" rows="2">${match?.note || ''}</textarea></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Data e Ora</label><input id="mfDataOra" type="datetime-local" value="${match ? new Date(match.data_ora).toISOString().slice(0,16) : ''}"></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Avversario *</label><input id="mfAvversario" value="${match?.avversario || ''}"></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Luogo</label><select id="mfLuogo"><option ${match?.luogo === 'Casa' ? 'selected' : ''}>Casa</option><option ${match?.luogo === 'Trasferta' ? 'selected' : ''}>Trasferta</option></select></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Competizione</label><input id="mfCompetizione" value="${match?.competizione || ''}" placeholder="es. Campionato Provinciale"></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Note</label><textarea id="mfNote" rows="2">${match?.note || ''}</textarea></div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Annulla</button>
+        <button class="btn btn-secondary modal-close">Annulla</button>
         <button class="btn btn-primary" id="saveMatchBtn">Salva</button>
       </div>
     </div>
   `;
+  
   document.body.appendChild(modal);
+  
+  modal.querySelectorAll('.modal-close').forEach(btn => {
+    btn.addEventListener('click', () => modal.remove());
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
   
   document.getElementById('saveMatchBtn').addEventListener('click', async () => {
     const data = {
@@ -366,8 +423,10 @@ function openMatchForm(matchId = null) {
 
 async function deleteMatch(id) {
   if (confirm('Eliminare questa partita?')) {
-    await apiFetch(`/partite/${id}`, { method: 'DELETE' });
-    loadCalendar();
+    try {
+      await apiFetch(`/partite/${id}`, { method: 'DELETE' });
+      loadCalendar();
+    } catch (err) { alert('Errore: ' + err.message); }
   }
 }
 
@@ -387,40 +446,48 @@ async function openConvocation(matchId) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.innerHTML = `
-    <div class="modal-content" style="max-width:700px;">
+    <div class="modal-content" style="max-width:600px;">
       <div class="modal-header">
         <h2>📋 Convocazioni - vs ${match.avversario || '...'}</h2>
-        <button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
+        <button class="modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
       </div>
       <div class="modal-body">
-        <p style="margin-bottom:16px;color:var(--gray);">${new Date(match.data_ora).toLocaleDateString('it-IT', {weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${match.competizione || ''}</p>
-        <p style="margin-bottom:8px;font-weight:600;">Seleziona i giocatori convocati:</p>
+        <p style="margin-bottom:16px;color:var(--gray);">${formatDate(match.data_ora)} · ${match.competizione || ''}</p>
+        <p style="margin-bottom:12px;font-weight:600;">Seleziona i giocatori convocati:</p>
         <div id="convocationList">
           ${giocatori.map(g => `
-            <div class="convocation-item" style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:8px;margin-bottom:4px;">
-              <input type="checkbox" ${convocatiIds.includes(g.id) ? 'checked' : ''} data-player-id="${g.id}" style="width:18px;height:18px;">
+            <div class="convocation-item">
+              <input type="checkbox" ${convocatiIds.includes(g.id) ? 'checked' : ''} data-player-id="${g.id}" style="width:20px;height:20px;cursor:pointer;accent-color:var(--green);">
               <div class="player-avatar" style="width:32px;height:32px;font-size:12px;background:${getAvatarColor(g.nome)};">${g.nome.charAt(0)}${g.cognome.charAt(0)}</div>
-              <span style="flex:1;">${g.nome} ${g.cognome} <span style="color:var(--gray);font-size:13px;">· ${g.ruolo} · #${g.numeroMaglia}</span></span>
+              <span style="flex:1;">${g.nome} ${g.cognome}</span>
+              <span style="color:var(--gray);font-size:13px;">${g.ruolo} · #${g.numeroMaglia}</span>
             </div>
           `).join('')}
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Chiudi</button>
+        <button class="btn btn-secondary modal-close">Chiudi</button>
         <button class="btn btn-primary" id="saveConvocationBtn">💾 Salva Convocazioni</button>
       </div>
     </div>
   `;
+  
   document.body.appendChild(modal);
+  
+  modal.querySelectorAll('.modal-close').forEach(btn => {
+    btn.addEventListener('click', () => modal.remove());
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
   
   document.getElementById('saveConvocationBtn').addEventListener('click', async () => {
     const checkboxes = document.querySelectorAll('#convocationList input[type=checkbox]');
     for (const cb of checkboxes) {
       const calciatoreId = cb.dataset.playerId;
-      const presente = cb.checked;
       await apiFetch(`/partite/${matchId}/convocazioni`, {
         method: 'POST',
-        body: JSON.stringify({ calciatoreId, presente, note: null })
+        body: JSON.stringify({ calciatoreId, presente: cb.checked, note: null })
       }).catch(() => {});
     }
     modal.remove();
@@ -432,57 +499,67 @@ async function openConvocation(matchId) {
 // DISTINTA GARA
 // ============================================
 async function openDistinta(matchId) {
+  const match = allMatches.find(m => m.id === matchId) || {};
+  
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.innerHTML = `
-    <div class="modal-content" style="max-width:900px;">
+    <div class="modal-content" style="max-width:950px;">
       <div class="modal-header">
         <h2>📄 Distinta Gara</h2>
-        <button onclick="this.closest('.modal-overlay').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
+        <button class="modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button>
       </div>
       <div class="modal-body" id="distintaContent">
         <div class="loading"><div class="spinner"></div>Caricamento distinta...</div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Chiudi</button>
-        <button class="btn btn-primary" onclick="printDistinta()">🖨️ Stampa</button>
+        <button class="btn btn-secondary modal-close">Chiudi</button>
+        <button class="btn btn-primary" id="printDistintaBtn">🖨️ Stampa</button>
       </div>
     </div>
   `;
+  
   document.body.appendChild(modal);
+  
+  modal.querySelectorAll('.modal-close').forEach(btn => {
+    btn.addEventListener('click', () => modal.remove());
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+  
+  document.getElementById('printDistintaBtn').addEventListener('click', () => window.print());
   
   try {
     const distinta = await apiFetch(`/partite/${matchId}/distinta`);
-    renderDistinta(distinta);
+    renderDistinta(distinta, match);
   } catch (err) {
-    document.getElementById('distintaContent').innerHTML = `<div class="error-box">Errore: ${err.message}.<br>Salva prima la formazione per questa partita.</div>`;
+    document.getElementById('distintaContent').innerHTML = `
+      <div class="error-box">
+        <p><strong>Nessuna formazione disponibile</strong></p>
+        <p>Per generare la distinta, devi prima salvare la formazione della partita.</p>
+        <p style="font-size:13px;margin-top:8px;">Errore: ${err.message}</p>
+      </div>`;
   }
 }
 
-function renderDistinta(data) {
+function renderDistinta(data, match) {
   const d = new Date(data.partita.dataOra);
-  const titolari = data.formazione.filter(f => f.posizione === 'Titolare');
-  const panchina = data.formazione.filter(f => f.posizione === 'Panchina');
+  const titolari = (data.formazione || []).filter(f => f.posizione === 'Titolare');
+  const panchina = (data.formazione || []).filter(f => f.posizione === 'Panchina');
+  const tutti = [...titolari, ...panchina];
+  
+  if (tutti.length === 0) {
+    document.getElementById('distintaContent').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <div class="empty-state-title">Nessun giocatore in formazione</div>
+        <div class="empty-state-text">Aggiungi giocatori alla formazione per generare la distinta.</div>
+      </div>`;
+    return;
+  }
   
   document.getElementById('distintaContent').innerHTML = `
-    <style>
-      .distinta { font-family: 'Courier New', monospace; font-size: 12px; }
-      .distinta-header { text-align: center; margin-bottom: 20px; }
-      .distinta-header h2 { font-size: 16px; margin-bottom: 4px; }
-      .distinta-header h3 { font-size: 14px; margin: 8px 0; }
-      .distinta-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-      .distinta-table th, .distinta-table td { border: 1px solid #333; padding: 6px 8px; text-align: center; }
-      .distinta-table th { background: #f0f0f0; font-weight: bold; font-size: 11px; }
-      .distinta-table td { font-size: 11px; }
-      .capitano { background: #FFF9C4; }
-      .vice { background: #E8F5E9; }
-      @media print {
-        body * { visibility: hidden; }
-        .modal-content, .modal-content * { visibility: visible; }
-        .modal-content { position: absolute; left: 0; top: 0; width: 100%; }
-        .modal-footer, .modal-header button { display: none; }
-      }
-    </style>
     <div class="distinta">
       <div class="distinta-header">
         <h2>DISTINTA DEI PARTECIPANTI ALLA GARA</h2>
@@ -511,24 +588,11 @@ function renderDistinta(data) {
           </tr>
         </thead>
         <tbody>
-          ${titolari.map((f, i) => `
+          ${tutti.map(f => `
             <tr class="${f.capitano ? 'capitano' : f.viceCapitano ? 'vice' : ''}">
-              <td>${f.numeroMaglia}</td>
-              <td>${new Date(f.dataNascita).toLocaleDateString('it-IT')}</td>
-              <td style="text-align:left;">${f.cognome} ${f.nome}</td>
-              <td>${f.capitano ? 'CAP' : f.viceCapitano ? 'V.CAP' : ''}</td>
-              <td>${f.matricolaFigc || '-'}</td>
-              <td>${f.tipoDocumento || '-'}</td>
-              <td>${f.numeroDocumento || '-'}</td>
-              <td>${f.rilasciatoDa || '-'}</td>
-              <td></td><td></td>
-            </tr>
-          `).join('')}
-          ${panchina.map((f, i) => `
-            <tr>
-              <td>${f.numeroMaglia}</td>
-              <td>${new Date(f.dataNascita).toLocaleDateString('it-IT')}</td>
-              <td style="text-align:left;">${f.cognome} ${f.nome}</td>
+              <td>${f.numeroMaglia || '-'}</td>
+              <td>${f.dataNascita ? new Date(f.dataNascita).toLocaleDateString('it-IT') : '-'}</td>
+              <td style="text-align:left;">${f.cognome || ''} ${f.nome || ''}</td>
               <td>${f.capitano ? 'CAP' : f.viceCapitano ? 'V.CAP' : ''}</td>
               <td>${f.matricolaFigc || '-'}</td>
               <td>${f.tipoDocumento || '-'}</td>
@@ -541,30 +605,30 @@ function renderDistinta(data) {
       </table>
       
       <p style="font-size:10px;margin-top:8px;">Legenda: CAP = Capitano, V.CAP = Vice Capitano, Esp. = Espulsi, Amm. = Ammoniti</p>
+      <p style="font-size:10px;margin-top:16px;color:var(--gray);">📝 Per modificare la formazione, usa la funzione dedicata nella Pagina Partita.</p>
     </div>
   `;
-}
-
-function printDistinta() {
-  window.print();
 }
 
 // ============================================
 // REPORT
 // ============================================
 function loadReports() {
-  document.getElementById('pageContent').innerHTML = `
+  const container = document.getElementById('pageContent');
+  container.innerHTML = `
     <h1 class="page-title">Report</h1>
     <p class="page-subtitle">Genera e scarica report della stagione</p>
     <div class="grid-2">
       <div class="card" style="text-align:center;padding:40px 20px;">
         <div style="font-size:48px;margin-bottom:16px;">📄</div>
-        <h3>Report Stagionale</h3><p style="color:var(--gray);margin-bottom:20px;">Classifica marcatori, assist, presenze.</p>
+        <h3>Report Stagionale</h3>
+        <p style="color:var(--gray);margin-bottom:20px;">Classifica marcatori, assist, presenze.</p>
         <button class="btn btn-primary">Scarica PDF</button>
       </div>
       <div class="card" style="text-align:center;padding:40px 20px;">
         <div style="font-size:48px;margin-bottom:16px;">👤</div>
-        <h3>Report Giocatore</h3><p style="color:var(--gray);margin-bottom:20px;">Scheda personale con statistiche.</p>
+        <h3>Report Giocatore</h3>
+        <p style="color:var(--gray);margin-bottom:20px;">Scheda personale con statistiche.</p>
         <select class="filter-select" style="margin-bottom:12px;"><option>Seleziona giocatore...</option></select><br>
         <button class="btn btn-primary">Scarica PDF</button>
       </div>
@@ -576,7 +640,8 @@ function loadReports() {
 // IMPOSTAZIONI
 // ============================================
 function loadSettings() {
-  document.getElementById('pageContent').innerHTML = `
+  const container = document.getElementById('pageContent');
+  container.innerHTML = `
     <h1 class="page-title">Impostazioni</h1>
     <p class="page-subtitle">Configura il workspace</p>
     <div class="card" style="margin-bottom:20px;">
@@ -599,6 +664,20 @@ function loadSettings() {
 function getAvatarColor(name) {
   const colors = ['#1A365D','#2ECC71','#E74C3C','#F39C12','#2980B9','#8E44AD','#16A085','#D35400'];
   let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length];
 }
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+
+// Riattacca event listener alle card giocatore (chiamato dopo il render)
+document.addEventListener('click', (e) => {
+  const card = e.target.closest('.player-card');
+  if (card && card.dataset.playerId) {
+    openPlayerForm(card.dataset.playerId);
+  }
+});
