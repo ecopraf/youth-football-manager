@@ -85,7 +85,10 @@ async function openMatchDetail(mid){
         if(form && form.length > 0) {
           const titolari = form.filter(f => f.posizione === 'Titolare');
           const panchina = form.filter(f => f.posizione === 'Panchina');
-          html+='<div style="margin-top:20px;"><strong>Formazione</strong></div>';
+          if (titolari.length === 0 && panchina.length === 0) {
+            // Non mostrare nulla se non ci sono né titolari né panchina
+          } else {
+            html+='<div style="margin-top:20px;"><strong>Formazione</strong></div>';
           if(titolari.length > 0) {
             html+='<div style="font-weight:600;margin-top:8px;">Titolari ('+titolari.length+')</div>';
             html+='<div style="display:flex;flex-wrap:wrap;gap:4px 12px;">';
@@ -102,6 +105,7 @@ async function openMatchDetail(mid){
             });
             html+='</div>';
           }
+          } // chiude else (formazione presente)
         }
       } catch(e) {
         // formazione non disponibile, ignora
