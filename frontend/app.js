@@ -20,6 +20,32 @@ async function loadWorkspaceInfo(){try{const w=await apiFetch('/workspaces');if(
 function getSquadraName(){const s=allSquadre.find(x=>x.id===squadraId);return s?s.nome:'Squadra';}
 function getSquadra(){return allSquadre.find(x=>x.id===squadraId)||{};}
 function getSocietaName(){return workspaceInfo?workspaceInfo.nome:'ASD Albalonga';}
+function showConvocationPreview(match, convocatiList){
+  convocatiList.sort((a,b)=>a.cognome.localeCompare(b.cognome));
+  const dt=new Date(match.data_ora);
+  const ritrovo=new Date(dt.getTime()-75*60000);
+  const giorni=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+  const catYear=dt.getFullYear()-14;
+  let html='<div class="t1">CONVOCAZIONE</div><div class="t2">'+getSocietaName()+' - '+catYear+'</div><div class="t3">'+(match.giornata?'Giornata '+match.giornata+' - ':'')+(match.competizione||'')+'</div><div class="info">Partita: <strong>'+getSocietaName()+' - '+match.avversario+'</strong><br>Campo: '+(match.luogo||'')+'<br>Alle ore: '+dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+' del giorno: <strong>'+giorni[dt.getDay()]+' '+dt.toLocaleDateString('it-IT')+'</strong><br>Ritrovo alle ore: <strong>'+ritrovo.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})+'</strong> al Campo di Giuoco</div><table class="list-table" style="border:2px solid #000;border-collapse:collapse;width:100%;"><thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000;padding:5px 8px;width:35px;">N.</th><th style="border:1px solid #000;padding:5px 8px;">Cognome</th><th style="border:1px solid #000;padding:5px 8px;">Nome</th><th style="border:1px solid #000;padding:5px 8px;width:25px;">P</th></tr></thead><tbody>';
+  for(let i=0;i<25;i++){
+    if(i<convocatiList.length){
+      html+='<tr><td style="border:1px solid #000;padding:4px 6px;text-align:center;font-weight:bold;">'+(i+1)+'</td><td style="border:1px solid #000;padding:4px 6px;">'+convocatiList[i].cognome.toUpperCase()+'</td><td style="border:1px solid #000;padding:4px 6px;">'+convocatiList[i].nome+'</td><td style="border:1px solid #000;padding:4px 6px;text-align:center;">'+(convocatiList[i].ruolo==='Portiere'?'P':'')+'</td></tr>';
+    } else {
+      html+='<tr><td style="border:1px solid #000;padding:4px 6px;text-align:center;">'+(i+1)+'</td><td style="border:1px solid #000;padding:4px 6px;"></td><td style="border:1px solid #000;padding:4px 6px;"></td><td style="border:1px solid #000;padding:4px 6px;"></td></tr>';
+    }
+  }
+  html+='</tbody></table><div class="note">Eventuali assenze vanno comunicate tempestivamente. Si raccomanda il rispetto dell\'orario di convocazione.</div><div class="firma">Il Mister</div>';
+  createModal('📄 Convocazione - '+getSocietaName()+' vs '+match.avversario, '<div id="convPreviewInner">'+html+'</div>', '<button class="btn btn-secondary" onclick="window._closeModal()">Chiudi</button><button class="btn btn-primary" id="printFromPreview">🖨️ Stampa</button>', '900px');
+  document.getElementById('printFromPreview').addEventListener('click',()=>{
+    const el=document.getElementById('convPreviewInner');
+    if(el){
+      const w=window.open('','_blank','width=800,height=600');
+      w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Convocazione</title><style>@page{margin:10mm;size:A4 portrait}body{font-family:Arial,sans-serif;margin:0;padding:8mm;}.t1{text-align:center;font-size:18px;font-weight:bold;margin-bottom:2mm;}.t2{text-align:center;font-size:15px;font-weight:bold;margin-bottom:1mm;}.t3{text-align:center;font-size:14px;font-weight:bold;margin-bottom:4mm;}.info{font-size:13px;margin-bottom:6mm;line-height:1.6;}.list-table{width:100%;border-collapse:collapse;margin-bottom:6mm;}.list-table td{padding:3px 5px;font-size:13px;border:1px solid #000;}.num{width:25px;text-align:center;font-weight:bold;}.note{font-weight:bold;font-size:13px;margin-top:4mm;}.firma{margin-top:10mm;text-align:right;font-size:14px;font-weight:bold;}@media print{body{padding:6mm;}}</style></head><body>'+el.innerHTML+'<script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)}<\/script></body></html>');
+      w.document.close();
+    }
+  });
+}
+
 function updateLogo(){const url=prompt('URL logo:','https://');if(url){apiFetch('/workspaces/'+(workspaceInfo?workspaceInfo.id:'11111111-1111-1111-1111-111111111111')+'/logo',{method:'PUT',body:JSON.stringify({logo_url:url})}).then(()=>loadWorkspaceInfo()).catch(e=>alert('Errore: '+e.message));}}
 
 // ── DASHBOARD ──
@@ -77,23 +103,36 @@ async function openConvocation(mid,readOnly){
   
   const content='<p style="margin-bottom:8px;color:var(--gray);">'+formatDate(match.data_ora)+'</p>'+(readOnly?'<p style="margin-bottom:12px;font-weight:600;">Convocazioni archiviate (visualizzazione)</p>':'<div style="display:flex;gap:8px;margin-bottom:12px;"><button class="btn btn-secondary btn-small" id="btnSelAll">✅ Tutti</button><button class="btn btn-secondary btn-small" id="btnDeselAll">❌ Nessuno</button><span style="font-size:12px;color:var(--gray);" id="convCount">'+ids.length+' convocati</span><span id="convWarning" style="color:#E74C3C;font-weight:600;font-size:12px;display:none;"></span></div>')+sorted.map(g=>'<div class="convocation-item"><input type="checkbox"'+(ids.includes(g.id)?' checked':'')+' data-pid="'+g.id+'" class="conv-check" style="width:20px;height:20px;cursor:pointer;accent-color:var(--green);"'+(readOnly?' disabled':'')+'><div class="player-avatar" style="width:32px;height:32px;font-size:12px;background:'+getAvatarColor(g.nome)+';">'+g.nome[0]+g.cognome[0]+'</div><span style="flex:1;">'+g.nome+' '+g.cognome+'</span><span style="color:var(--gray);font-size:13px;">'+g.ruolo+' · #'+g.numeroMaglia+'</span></div>').join('');
   
-  const footer='<button class="btn btn-secondary" onclick="window._closeModal()">Chiudi</button>'+(readOnly?'':'<button class="btn btn-primary" id="saveBtn">💾 Salva</button>')+'<button class="btn btn-primary" id="previewBtn" style="background:#0A1C3A;">📄 Vedi Convocazione</button>';
+  if(readOnly){
+    // Mostra direttamente l'anteprima per le convocazioni archiviate
+    const convocatiList = conv.filter(c=>c.presente===true).map(c=>({nome:c.nome, cognome:c.cognome, ruolo:gioc.find(g=>g.id===c.calciatoreId)?.ruolo||''}));
+    showConvocationPreview(match, convocatiList);
+    return;
+  }
+  const footer='<button class="btn btn-secondary" onclick="window._closeModal()">Chiudi</button><button class="btn btn-primary" id="saveBtn">💾 Salva</button><button class="btn btn-primary" id="previewBtn" style="background:#0A1C3A;">📄 Vedi Convocazione</button>';
   const{closeModal}=createModal('📋 Convocazioni - vs '+(match.avversario||'...'),content,footer,'650px');
   
   document.getElementById('previewBtn').addEventListener('click',()=>{
-    const html=buildPdfContent();
-    if(!html){alert('Nessun convocato selezionato.');return;}
-    // Mostra preview in una modale con pulsante Stampa
-    const previewModal=createModal('📄 Anteprima Convocazione', '<div id="convPreviewInner">'+html+'</div>', '<button class="btn btn-secondary" onclick="window._closeModal()">Chiudi</button><button class="btn btn-primary" id="printFromPreview">🖨️ Stampa</button>', '900px');
-    document.getElementById('printFromPreview').addEventListener('click',()=>{
-      const el=document.getElementById('convPreviewInner');
-      if(el){
-        const w=window.open('','_blank','width=800,height=600');
-    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Convocazione</title><style>@page{margin:10mm;size:A4 portrait}body{font-family:Arial,sans-serif;margin:0;padding:8mm;}.t1{text-align:center;font-size:18px;font-weight:bold;margin-bottom:2mm;}.t2{text-align:center;font-size:15px;font-weight:bold;margin-bottom:1mm;}.t3{text-align:center;font-size:14px;font-weight:bold;margin-bottom:4mm;}.info{font-size:13px;margin-bottom:6mm;line-height:1.6;}.list-table{width:100%;border-collapse:collapse;margin-bottom:6mm;}.list-table td{padding:3px 5px;font-size:13px;border:1px solid #000;}.num{width:25px;text-align:center;font-weight:bold;}.note{font-weight:bold;font-size:13px;margin-top:4mm;}.firma{margin-top:10mm;text-align:right;font-size:14px;font-weight:bold;}@media print{body{padding:6mm;}}</style></head><body>'+html+'<script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)}<\/script></body></html>');
-    w.document.close();
+    const checks=document.querySelectorAll('#currentModal .conv-check:checked');
+    const convocatiList=[];
+    checks.forEach(cb=>{
+      const row=cb.closest('.convocation-item');
+      if(row){
+        const spans=row.querySelectorAll('span');
+        const nc=spans[0]?spans[0].textContent.trim():'';
+        const rm=spans[1]?spans[1].textContent.trim():'';
+        const parti=nc.split(' ');
+        const nome=parti[0]||'';
+        const cognome=parti.slice(1).join(' ')||'';
+        const ruolo=rm.split(' · ')[0]||'';
+        convocatiList.push({nome,cognome,ruolo});
       }
     });
+    if(convocatiList.length===0){alert('Nessun convocato selezionato.');return;}
+    showConvocationPreview(match, convocatiList);
   });
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Convocazione</title><style>@page{margin:10mm;size:A4 portrait}body{font-family:Arial,sans-serif;margin:0;padding:8mm;}.t1{text-align:center;font-size:18px;font-weight:bold;margin-bottom:2mm;}.t2{text-align:center;font-size:15px;font-weight:bold;margin-bottom:1mm;}.t3{text-align:center;font-size:14px;font-weight:bold;margin-bottom:4mm;}.info{font-size:13px;margin-bottom:6mm;line-height:1.6;}.list-table{width:100%;border-collapse:collapse;margin-bottom:6mm;}.list-table td{padding:3px 5px;font-size:13px;border:1px solid #000;}.num{width:25px;text-align:center;font-weight:bold;}.note{font-weight:bold;font-size:13px;margin-top:4mm;}.firma{margin-top:10mm;text-align:right;font-size:14px;font-weight:bold;}@media print{body{padding:6mm;}}</style></head><body>'+html+'<script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)}<\/script></body></html>');
+    
   
   if(!readOnly){
     function upd(){const checks=document.querySelectorAll('#currentModal .conv-check:checked');const c=checks.length;document.getElementById('convCount').textContent=c+' convocati';const w=document.getElementById('convWarning'),s=document.getElementById('saveBtn');w.style.display='none';s.disabled=false;s.style.opacity='1';if(c>20){w.textContent='⚠️ Max 20!';w.style.display='inline';s.disabled=true;s.style.opacity='0.5';}else if(c<11){w.textContent='⚠️ Minimo 11!';w.style.display='inline';s.disabled=true;s.style.opacity='0.5';}else if(c<16){w.textContent='⚠️ Solo '+c;w.style.display='inline';}}
