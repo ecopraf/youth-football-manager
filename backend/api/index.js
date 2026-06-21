@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
@@ -97,4 +98,6 @@ app.get('/api/squadre/:squadraId/allenamenti/summary', async (req, res) => { try
 // Import CSV
 app.post('/api/squadre/:squadraId/importa-calendario', async (req, res) => { try { const { csvData } = req.body; if (!csvData || !Array.isArray(csvData)) return res.status(400).json({ error: 'Dati CSV non validi' }); let inserite = 0; for (const row of csvData) { if (row.length < 5) continue; const [data, ora, avversario, luogo, competizione, giornata] = row; const dataOra = data + 'T' + (ora || '10:00:00'); await supabase.from('partita').insert({ squadra_id: req.params.squadraId, data_ora: new Date(dataOra).toISOString(), avversario: avversario.trim(), luogo: luogo.trim(), competizione: competizione.trim(), giornata: giornata ? parseInt(giornata) : null }); inserite++; } res.json({ success: true, inserite }); } catch (err) { res.status(400).json({ error: err.message }); } });
 
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log("Backend YFM in ascolto su http://localhost:" + PORT));
 module.exports = app;
