@@ -56,3 +56,41 @@ window.YFM.openPlayerDetail = function(playerId) {
   }
   loadPlayerDetail(c, playerId);
 };
+
+
+// Adatta il titolo pagina per mobile: split tra sezione e nome squadra
+window.YFM = window.YFM || {};
+window.YFM.adjustPageTitleForMobile = function() {
+  try {
+    const titleEl = document.querySelector('.page-title');
+    if (!titleEl) return;
+
+    const getSquadraName = window.YFM && typeof window.YFM.getSquadraName === 'function'
+      ? window.YFM.getSquadraName
+      : null;
+    if (!getSquadraName) return;
+
+    const squadraName = getSquadraName();
+    if (!squadraName) return;
+
+    const rawText = titleEl.textContent.trim();
+    if (!rawText.endsWith(squadraName)) return;
+
+    // Evita di processare due volte
+    if (titleEl.dataset.splitForMobile === '1') return;
+
+    const mainPart = rawText.slice(0, rawText.length - squadraName.length).trim();
+    // Esempio: "Allenamenti Under 14 Regionale"
+    // mainPart -> "Allenamenti Under 14", squadraName -> "Regionale"
+    // oppure "Allenamenti" / "Under 14 Regionale": comunque la seconda riga è chiara
+
+    titleEl.innerHTML =
+      mainPart + ' ' +
+      '<span class="desktop-only-squadra">' + squadraName + '</span>' +
+      '<span class="mobile-only-line">' + squadraName + '</span>';
+
+    titleEl.dataset.splitForMobile = '1';
+  } catch (e) {
+    console.warn('adjustPageTitleForMobile error', e);
+  }
+};

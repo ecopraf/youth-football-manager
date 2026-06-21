@@ -280,3 +280,31 @@ body {
   cursor: pointer !important;
   accent-color: #E74C3C !important;
 }
+
+/* Overlay per sidebar aperta su mobile */
+body.sidebar-open::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 90;
+}
+
+/* Page title: split sezione/squadra tra desktop e mobile */
+.desktop-only-squadra {
+  display: inline;
+}
+.mobile-only-line {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-only-squadra {
+    display: none;
+  }
+  .mobile-only-line {
+    display: block;
+    font-size: 16px;
+    font-weight: 500;
+  }
+}

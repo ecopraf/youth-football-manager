@@ -24,6 +24,10 @@ export function initRouter() {
       if (module.default) {
         await module.default();
       }
+      // Adatta il titolo per mobile dopo il render della pagina
+      if (window.YFM && typeof window.YFM.adjustPageTitleForMobile === 'function') {
+        window.YFM.adjustPageTitleForMobile();
+      }
     } catch (error) {
       container.innerHTML = `<div class="error-box">Errore nel caricamento di ${page}: ${error.message}</div>`;
     }

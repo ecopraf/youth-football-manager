@@ -46,11 +46,48 @@ export function setupLayout() {
     </div>
   `;
 
-  // Configura la navigazione del menu
+  const sidebar = document.getElementById('sidebar');
+  const menuBtn = document.getElementById('menuBtn');
+
+  // Navigazione dal menu laterale
   document.querySelectorAll('.sidebar-nav a').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      window.YFM.navigateTo(link.dataset.page);
+      if (window.YFM && typeof window.YFM.navigateTo === 'function') {
+        window.YFM.navigateTo(link.dataset.page);
+      }
+      // Su mobile chiudi la sidebar dopo il click
+      if (window.innerWidth <= 768 && sidebar) {
+        sidebar.classList.remove('open');
+        document.body.classList.remove('sidebar-open');
+      }
     });
+  });
+
+  // Toggle sidebar su mobile tramite hamburger
+  if (menuBtn && sidebar) {
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = sidebar.classList.toggle('open');
+      if (isOpen) {
+        document.body.classList.add('sidebar-open');
+      } else {
+        document.body.classList.remove('sidebar-open');
+      }
+    });
+  }
+
+  // Chiudi sidebar cliccando fuori (solo mobile)
+  document.addEventListener('click', (e) => {
+    if (!sidebar || window.innerWidth > 768) return;
+    if (!sidebar.classList.contains('open')) return;
+
+    const target = e.target;
+    if (sidebar.contains(target) || (menuBtn && menuBtn.contains(target))) {
+      return;
+    }
+
+    sidebar.classList.remove('open');
+    document.body.classList.remove('sidebar-open');
   });
 }
