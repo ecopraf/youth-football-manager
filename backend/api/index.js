@@ -192,4 +192,68 @@ app.delete('/api/allenamenti/materiale/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+
+// ── SCHEDA GIOCATORE ───────────────────────────────────────
+
+// Dettaglio anagrafico giocatore
+app.get('/api/calciatori/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('calciatore')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || null);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Statistiche stagione corrente per un giocatore
+app.get('/api/calciatori/:id/stats-current', async (req, res) => {
+  try {
+    const stagioneId = req.query.stagioneId || null;
+    const { data, error } = await supabase
+      .rpc('calciatore_stats_stagione_corrente', {
+        p_calciatore_id: req.params.id,
+        p_stagione_id: stagioneId,
+      });
+    if (error) return res.status(500).json({ error: error.message });
+    if (Array.isArray(data)) return res.json(data[0] || {});
+    res.json(data || {});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Storico carriera: una riga per stagione
+app.get('/api/calciatori/:id/career', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .rpc('calciatore_career_by_season', {
+        p_calciatore_id: req.params.id,
+      });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Ultime partite del giocatore con statistiche base
+app.get('/api/calciatori/:id/last-matches', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || '10', 10);
+    const { data, error } = await supabase
+      .rpc('calciatore_last_matches', {
+        p_calciatore_id: req.params.id,
+        p_limit: limit,
+      });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 module.exports = app;

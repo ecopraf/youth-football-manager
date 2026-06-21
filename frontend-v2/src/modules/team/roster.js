@@ -66,7 +66,7 @@ function renderRoster(c, players, scadenze) {
   document.getElementById('fRuolo').addEventListener('change', filterRoster);
   document.getElementById('fStato').addEventListener('change', filterRoster);
   document.querySelectorAll('.roster-grid .player-card').forEach(card => {
-    card.addEventListener('click', () => openPlayerForm(card.dataset.pid));
+    card.addEventListener('click', () => window.YFM && typeof window.YFM.openPlayerDetail === 'function' ? window.YFM.openPlayerDetail(card.dataset.pid) : openPlayerForm(card.dataset.pid));
   });
 }
 
@@ -100,7 +100,7 @@ function filterRoster() {
       const filtered = f.filter(p => p.ruolo === ruolo).sort((a, b) => a.cognome.localeCompare(b.cognome));
       grid.innerHTML = renderPlayerCards(filtered);
       grid.querySelectorAll('.player-card').forEach(card => {
-        card.addEventListener('click', () => openPlayerForm(card.dataset.pid));
+        card.addEventListener('click', () => window.YFM && typeof window.YFM.openPlayerDetail === 'function' ? window.YFM.openPlayerDetail(card.dataset.pid) : openPlayerForm(card.dataset.pid));
       });
     }
   });
@@ -178,4 +178,15 @@ function openPlayerForm(pid) {
       hideLoading();
     }
   });
+}
+
+
+// Espone la funzione di modifica giocatore sulla namespace globale YFM
+try {
+  window.YFM = window.YFM || {};
+  if (typeof openPlayerForm === 'function') {
+    window.YFM.openPlayerForm = openPlayerForm;
+  }
+} catch (e) {
+  console.warn('Impossibile esporre openPlayerForm su window.YFM', e);
 }

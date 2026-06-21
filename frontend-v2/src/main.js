@@ -42,3 +42,17 @@ window.YFM.openMatchDetail = async (mid) => {
   const m = await import('./modules/team/matchDetail.js')
   m.openMatchDetail(mid)
 }
+
+
+// Scheda giocatore: funzione globale di comodo
+import { loadPlayerDetail } from './modules/team/playerDetail.js';
+
+window.YFM = window.YFM || {};
+window.YFM.openPlayerDetail = function(playerId) {
+  var c = document.getElementById('pageContent');
+  if (!c) {
+    console.error('pageContent non trovato');
+    return;
+  }
+  loadPlayerDetail(c, playerId);
+};
