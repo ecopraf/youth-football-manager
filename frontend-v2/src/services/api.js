@@ -1,0 +1,29 @@
+// Rilevamento automatico dell'ambiente
+export const API_BASE = (() => {
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3001/api';
+  if (host.includes('app.github.dev')) return window.location.origin.replace(/-8080\./, '-3001.') + '/api';
+  return 'https://yfm-backend.vercel.app/api';
+})();
+
+// Funzione per chiamate API con timeout e gestione errori
+export async function apiFetch(endpoint, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    clearTimeout(timeout);
+    if (error.name === 'AbortError') throw new Error('Timeout del server');
+    throw error;
+  }
+}
