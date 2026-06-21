@@ -50,7 +50,7 @@ app.get('/api/partite/:partitaId/formazione', async (req, res) => {
 
 app.put('/api/partite/:partitaId/formazione', async (req, res) => {
   try {
-    const { formazione } = req.body; // array di {calciatoreId, numeroMaglia, posizione, capitano, viceCapitano}
+    const { formazione } = req.body;
     if (!formazione || !Array.isArray(formazione)) return res.status(400).json({ error: 'Formato non valido' });
     await supabase.from('formazione_partita').delete().eq('partita_id', req.params.partitaId);
     if (formazione.length > 0) {
@@ -71,7 +71,7 @@ app.put('/api/partite/:partitaId/formazione', async (req, res) => {
 // ── ALLENAMENTI: BATCH PRESENZE ──
 app.post('/api/squadre/:squadraId/allenamenti/presenze/batch', async (req, res) => {
   try {
-    const { presenze } = req.body; // array di {calciatoreId, data, presente, note}
+    const { presenze } = req.body;
     if (!presenze || !Array.isArray(presenze)) return res.status(400).json({ error: 'Formato non valido' });
     for (const p of presenze) {
       await supabase.from('presenza_allenamento').upsert({
@@ -92,7 +92,47 @@ app.post('/api/squadre/:squadraId/allenamenti/config', async (req, res) => { con
 app.put('/api/allenamenti/config/:id', async (req, res) => { const { giorno_settimana, ora_inizio, ora_fine, luogo } = req.body; await supabase.from('configurazione_allenamento').update({ giorno_settimana, ora_inizio, ora_fine, luogo }).eq('id', req.params.id); res.json({ success: true }); });
 app.delete('/api/allenamenti/config/:id', async (req, res) => { await supabase.from('configurazione_allenamento').delete().eq('id', req.params.id); res.json({ success:true }); });
 app.get('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => { const q = supabase.from('presenza_allenamento').select('id, data, presente, note, calciatore:calciatore_id(id, nome, cognome)').eq('squadra_id', req.params.squadraId).order('data', { ascending: false }); const { data } = await q; res.json((data||[]).map(p => ({ id: p.id, data: p.data, presente: p.presente, note: p.note, calciatoreId: p.calciatore.id, nome: p.calciatore.nome, cognome: p.calciatore.cognome }))); });
-app.post('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => { const { calciatoreId, data, presente, note } = req.body; const { data: result } = await supabase.from('presenza_allenamento').upsert({ squadra_id: req.params.squadraId, calciatore_id: calciatoreId, data, presente, note }).select().single(); res.status(201).json(result); });
+
+// ── ROUTE SINGOLA CON LOG E ONCONFLICT ──
+app.post('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
+  console.log('🔵 POST /api/squadre/:squadraId/allenamenti/presenze');
+  console.log('📦 req.params.squadraId:', req.params.squadraId);
+  console.log('📦 req.body:', req.body);
+
+  const { calciatoreId, data, presente, note } = req.body;
+  console.log('🔍 Dati da salvare:', { calciatoreId, data, presente, note });
+
+  if (!calciatoreId || !data) {
+    console.error('❌ Dati mancanti');
+    return res.status(400).json({ error: 'calciatoreId e data sono obbligatori' });
+  }
+
+  try {
+    const { data: result, error } = await supabase
+      .from('presenza_allenamento')
+      .upsert({
+        squadra_id: req.params.squadraId,
+        calciatore_id: calciatoreId,
+        data: data,
+        presente: presente !== undefined ? presente : true,
+        note: note || null
+      }, { onConflict: 'squadra_id, calciatore_id, data' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ ERRORE Supabase:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    console.log('✅ Salvataggio riuscito per calciatore:', calciatoreId);
+    res.status(201).json(result);
+  } catch (err) {
+    console.error('❌ Eccezione:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/squadre/:squadraId/allenamenti/summary', async (req, res) => { try { const { data: presenze } = await supabase.from('presenza_allenamento').select('calciatore_id, presente, data').eq('squadra_id', req.params.squadraId); const { data: rosa } = await supabase.from('rosa').select('calciatore:calciatore_id(id, nome, cognome)').eq('squadra_id', req.params.squadraId); const oggi = new Date(); const lunedi = new Date(oggi); lunedi.setDate(oggi.getDate()-((oggi.getDay()+6)%7)); const lunediStr = lunedi.toISOString().split('T')[0]; const domenica = new Date(lunedi); domenica.setDate(lunedi.getDate()+6); const domStr = domenica.toISOString().split('T')[0]; const summary = {}; (rosa||[]).forEach(r => { summary[r.calciatore.id] = { nome:r.calciatore.nome, cognome:r.calciatore.cognome, totali:0, presenti:0, assenti:0, settimanali:0, presentiSett:0, assentiSett:0 }; }); (presenze||[]).forEach(p => { if(summary[p.calciatore_id]) { summary[p.calciatore_id].totali++; if(p.presente) summary[p.calciatore_id].presenti++; else summary[p.calciatore_id].assenti++; if(p.data >= lunediStr && p.data <= domStr) { summary[p.calciatore_id].settimanali++; if(p.presente) summary[p.calciatore_id].presentiSett++; else summary[p.calciatore_id].assentiSett++; } } }); res.json({ summary, settimana: { da: lunediStr, a: domStr } }); } catch(err) { res.status(500).json({ error:err.message }); } });
 
 // Import CSV
@@ -100,4 +140,56 @@ app.post('/api/squadre/:squadraId/importa-calendario', async (req, res) => { try
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log("Backend YFM in ascolto su http://localhost:" + PORT));
+
+app.get('/api/squadre/:squadraId/disciplina', async (req, res) => {
+  try {
+    const { data: partite } = await supabase.from('partita').select('id').eq('squadra_id', req.params.squadraId);
+    const ids = (partite||[]).map(p => p.id);
+    if(ids.length===0) return res.json([]);
+    const { data: eventi } = await supabase.from('evento_partita')
+      .select('tipo_evento_codice, calciatore_principale_id, calciatore:calciatore_principale_id(nome, cognome)')
+      .in('partita_id', ids).in('tipo_evento_codice', ['YELLOW','RED']);
+    const stats = {};
+    (eventi||[]).forEach(e => {
+      if(!stats[e.calciatore_principale_id]) stats[e.calciatore_principale_id] = { nome: e.calciatore?.nome, cognome: e.calciatore?.cognome, ammonizioni: 0, espulsioni: 0 };
+      if(e.tipo_evento_codice==='YELLOW') stats[e.calciatore_principale_id].ammonizioni++;
+      if(e.tipo_evento_codice==='RED') stats[e.calciatore_principale_id].espulsioni++;
+    });
+    const result = Object.entries(stats).map(([id, s]) => ({
+      id, nome: s.nome || '', cognome: s.cognome || '',
+      ammonizioni: s.ammonizioni, espulsioni: s.espulsioni,
+      squalifiche: Math.floor(s.ammonizioni / 4) + s.espulsioni
+    })).sort((a,b) => (b.ammonizioni+b.espulsioni) - (a.ammonizioni+a.espulsioni));
+    res.json(result);
+  } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+
+// ── MATERIALE ALLENAMENTO ──
+app.get('/api/squadre/:squadraId/allenamenti/materiale', async (req, res) => {
+  const { data, error } = await supabase.from('materiale_allenamento')
+    .select('*')
+    .eq('squadra_id', req.params.squadraId)
+    .order('data_caricamento', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+app.post('/api/squadre/:squadraId/allenamenti/materiale', async (req, res) => {
+  const { titolo, descrizione, tipo, url } = req.body;
+  if (!titolo || !url) return res.status(400).json({ error: 'Titolo e URL obbligatori' });
+  const { data, error } = await supabase.from('materiale_allenamento').insert({
+    squadra_id: req.params.squadraId,
+    giorno_settimana: req.body.giorno_settimana || 0,
+    titolo, descrizione, tipo: tipo || 'file', url
+  }).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(201).json(data);
+});
+
+app.delete('/api/allenamenti/materiale/:id', async (req, res) => {
+  await supabase.from('materiale_allenamento').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
+
 module.exports = app;
