@@ -1,5 +1,12 @@
 // YFM v3.9
-const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001/api' : 'https://youth-football-manager.vercel.app/api';
+const API_BASE = (function() {
+  var host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3001/api';
+  if (host.includes('app.github.dev')) {
+    return window.location.origin.replace(/-8080\./, '-3001.') + '/api';
+  }
+  return 'https://youth-football-manager.vercel.app/api';
+})();
 const STAGIONE_ID='22222222-2222-2222-2222-222222222222';
 let squadraId='33333333-3333-3333-3333-333333333333',allSquadre=[],currentPage='dashboard',allPlayers=[],allMatches=[],workspaceInfo=null;
 
