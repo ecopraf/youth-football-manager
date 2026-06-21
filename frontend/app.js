@@ -290,35 +290,7 @@ function showConvocationPreview(match,convocatiList){
 }
 
 
-async function openNoteAvversario(mid){
-  const match = allMatches.find(m=>m.id===mid)||{};
-  var inherited = getNoteAvversario(match); var note = match.note_avversario || inherited.text || '';
-  const content = '<p style="margin-bottom:8px;"><strong>'+getSocietaName()+' vs '+match.avversario+'</strong></p>'+(inherited.source ? '<p style="color:var(--gray);font-size:12px;margin-bottom:8px;">📋 Note ereditate'+inherited.source+'</p>' : '')+'
-    '<textarea id="noteAvvText" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;min-height:150px;font-size:14px;">'+note+'</textarea>';
-  const footer = '<button class="btn btn-secondary" onclick="window._closeModal()">Chiudi</button><button class="btn btn-primary" id="saveNoteBtn">💾 Salva Note</button>';
-  const {closeModal} = createModal('📝 Note Avversario', content, footer, '600px');
-  document.getElementById('saveNoteBtn').addEventListener('click', async ()=>{
-    const newNote = document.getElementById('noteAvvText').value;
-    showLoading();
-    try {
-      await apiFetch('/partite/'+mid, {method:'PUT', body:JSON.stringify({
-        dataOra: match.data_ora,
-        avversario: match.avversario,
-        luogo: match.luogo,
-        competizione: match.competizione,
-        giornata: match.giornata,
-        noteAvversario: newNote
-      })});
-      match.note_avversario = newNote;
-      hideLoading();
-      closeModal();
-      alert('✅ Note salvate!');
-    } catch(e) {
-      hideLoading();
-      alert('Errore: '+e.message);
-    }
-  });
-}
+
 
 async function openDistinta(mid,staffOverrides){const content='<div id="distintaInner"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>';const footer='<button class="btn btn-secondary" onclick="window._closeModal()">Chiudi</button><button class="btn btn-secondary" id="staffBtn">👥 Staff</button><button class="btn btn-primary" id="printBtn">🖨️ Stampa</button>';createModal('📄 Distinta Gara',content,footer,'980px');let curStaff=null;try{const data=await apiFetch('/partite/'+mid+'/distinta');curStaff=staffOverrides||data.staff||{};renderDistinta(data,curStaff);}catch(e){document.getElementById('distintaInner').innerHTML='<div class="error-box">Formazione non disponibile</div>';}document.getElementById('printBtn').addEventListener('click',()=>{const el=document.getElementById('distintaInner');if(el){const w=window.open('','_blank','width=1000,height=800');w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Distinta</title><style>@page{margin:6mm;size:A4 portrait}body{font-family:Courier New,monospace;font-size:9px;margin:0;padding:6mm}.center{text-align:center}.distinta-table{width:100%;border-collapse:collapse;margin:8px 0}.distinta-table th,.distinta-table td{border:1px solid #333;padding:2px 4px;text-align:center;font-size:8px}th{background:#f0f0f0}.capitano{background:#FFF9C4}.vice{background:#E8F5E9}.staff-section td{font-size:7px}.firme{margin-top:12px;display:flex;justify-content:space-between;font-size:9px}.note-finali{font-size:6px;margin-top:4px;text-align:center}@media print{body{padding:0}}</style></head><body>'+el.innerHTML+'<script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)}<\/script></body></html>');w.document.close();}});document.getElementById('staffBtn').addEventListener('click',()=>openStaffForm(mid,curStaff));}
 
@@ -388,3 +360,4 @@ function openImportCSV(){const content='<p style="margin-bottom:12px;">Incolla i
 function loadReports(){document.getElementById('pageContent').innerHTML='<h1 class="page-title">Report '+getSquadraName()+'</h1><p>In sviluppo</p>';}
 async function loadSettings(){const c=document.getElementById('pageContent');const s=getSquadra();c.innerHTML='<h1 class="page-title">Impostazioni '+getSquadraName()+'</h1><div class="card" style="margin-bottom:20px;"><h3>⚙️ Modifica</h3><div class="form-grid"><div class="form-group"><label>Nome</label><input id="sN" value="'+(s.nome||'')+'"></div><div class="form-group"><label>Categoria</label><input id="sC" value="'+(s.categoria||'')+'"></div><div class="form-group"><label>Allenatore</label><input id="sA" value="'+(s.allenatore||'')+'"></div><div class="form-group"><label>1° Dirigente</label><input id="sD" value="'+(s.dirigente||'')+'"></div><div class="form-group"><label>2° Dirigente</label><input id="sD2" value="'+(s.dirigente2||'')+'"></div><div class="form-group"><label>Prep. Atletico</label><input id="sP" value="'+(s.preparatore_atletico||'')+'"></div><div class="form-group"><label>All. Portieri</label><input id="sAP" value="'+(s.allenatore_portieri||'')+'"></div></div><div style="display:flex;gap:12px;margin-top:16px;"><button class="btn btn-primary" id="btnSave">💾 Salva</button><button class="btn btn-danger" id="btnDel" style="background:#E74C3C;color:white;">🗑️ Elimina</button></div></div><div class="card"><h3>➕ Nuova</h3><div class="form-grid"><div class="form-group"><label>Nome</label><input id="nN"></div><div class="form-group"><label>Categoria</label><input id="nC"></div><div class="form-group"><label>Allenatore</label><input id="nA"></div><div class="form-group"><label>1° Dirigente</label><input id="nD"></div><div class="form-group"><label>2° Dirigente</label><input id="nD2"></div><div class="form-group"><label>Prep. Atletico</label><input id="nP"></div><div class="form-group"><label>All. Portieri</label><input id="nAP"></div></div><button class="btn btn-primary" id="btnNew" style="margin-top:16px;">➕ Crea</button></div>';document.getElementById('btnSave').addEventListener('click',async()=>{showLoading();await apiFetch('/squadre/'+squadraId,{method:'PUT',body:JSON.stringify({nome:document.getElementById('sN').value,categoria:document.getElementById('sC').value,allenatore:document.getElementById('sA').value,dirigente:document.getElementById('sD').value,dirigente2:document.getElementById('sD2').value,preparatore_atletico:document.getElementById('sP').value,allenatore_portieri:document.getElementById('sAP').value})});await loadSquadre();hideLoading();alert('✅ Aggiornato!');loadSettings();});document.getElementById('btnDel').addEventListener('click',async()=>{if(!confirm('⚠️ Eliminare?'))return;await apiFetch('/squadre/'+squadraId,{method:'DELETE'});await loadSquadre();if(allSquadre.length>0){squadraId=allSquadre[0].id;navigateTo('dashboard');}});document.getElementById('btnNew').addEventListener('click',async()=>{showLoading();await apiFetch('/stagioni/'+STAGIONE_ID+'/squadre',{method:'POST',body:JSON.stringify({nome:document.getElementById('nN').value,categoria:document.getElementById('nC').value,allenatore:document.getElementById('nA').value,dirigente:document.getElementById('nD').value,dirigente2:document.getElementById('nD2').value,preparatore_atletico:document.getElementById('nP').value,allenatore_portieri:document.getElementById('nAP').value})});await loadSquadre();hideLoading();alert('✅ Creata!');loadSettings();});}
 // force refresh Sat Jun 20 23:32:35 UTC 2026
+// note avversario ereditate Sun Jun 21 00:39:12 UTC 2026
