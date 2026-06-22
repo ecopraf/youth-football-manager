@@ -310,12 +310,21 @@ function printReport() {
       <meta charset="UTF-8">
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f0f0f0; }
-        h1, h2, h3 { margin: 0; }
-        @media print { body { padding: 0; } }
+        body { font-family: Arial, sans-serif; padding: 15px; color: #333; font-size: 11px; }
+        h1 { font-size: 18px; margin: 0 0 8px 0; }
+        h2 { font-size: 16px; margin: 12px 0 6px 0; }
+        h3 { font-size: 12px; margin: 10px 0 6px 0; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 10px; }
+        th, td { padding: 4px 6px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f5f5f5; font-weight: 600; }
+        .score { font-size: 28px; font-weight: bold; }
+        .stats-row { margin-bottom: 8px; }
+        .event-item { padding: 4px 6px; margin: 2px 0; background: #f8f8f8; border-radius: 4px; font-size: 10px; }
+        .event-item span { margin-right: 8px; }
+        @media print { 
+          body { padding: 10px; }
+          @page { size: A4; margin: 10mm; }
+        }
       </style>
     </head>
     <body>
@@ -529,7 +538,7 @@ function renderSeasonalReport(report) {
                 <tr style="background:${i === 0 ? '#e6f3ff' : 'white'};">
                   <td style="padding:8px;font-weight:bold;">${i + 1}</td>
                   <td style="padding:8px;">${p.cognome || p.nome} ${p.nome}</td>
-                  <td style="padding:8px;text-align:center;font-weight:bold;">${p.presenze}</td>
+                  <td style="padding:8px;text-align:center;font-weight:bold;">${p.presenze} <span style="font-weight:normal;color:#666;font-size:11px;">(${p.minuti}')</span></td>
                 </tr>
               `).join('')}
               ${report.topPresenze.length === 0 ? '<tr><td colspan="3" style="padding:12px;text-align:center;color:#666;">-</td></tr>' : ''}
@@ -544,21 +553,25 @@ function renderSeasonalReport(report) {
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr style="background:#f8f9fa;">
-              <th style="padding:8px;text-align:left;border-bottom:2px solid #dee2e6;font-size:13px;">Data</th>
-              <th style="padding:8px;text-align:left;border-bottom:2px solid #dee2e6;font-size:13px;">Avversario</th>
-              <th style="padding:8px;text-align:left;border-bottom:2px solid #dee2e6;font-size:13px;">Luogo</th>
-              <th style="padding:8px;text-align:center;border-bottom:2px solid #dee2e6;font-size:13px;">Campionato</th>
+              <th style="padding:6px;text-align:left;border-bottom:2px solid #dee2e6;font-size:12px;">Data</th>
+              <th style="padding:6px;text-align:left;border-bottom:2px solid #dee2e6;font-size:12px;">Avversario</th>
+              <th style="padding:6px;text-align:center;border-bottom:2px solid #dee2e6;font-size:12px;">Ris.</th>
+              <th style="padding:6px;text-align:left;border-bottom:2px solid #dee2e6;font-size:12px;">Luogo</th>
             </tr>
           </thead>
           <tbody>
-            ${report.partite.map((p, i) => `
+            ${report.partite.map((p, i) => {
+              const risColor = p.risultato === 'V' ? '#28a745' : p.risultato === 'S' ? '#dc3545' : '#ffc107';
+              return `
               <tr style="background:${i % 2 === 0 ? 'white' : '#f8f9fa'};">
-                <td style="padding:8px;font-size:13px;">${formatDateShort(p.data)}</td>
-                <td style="padding:8px;">${p.avversario}</td>
-                <td style="padding:8px;font-size:13px;color:#666;">${p.luogo || '-'}</td>
-                <td style="padding:8px;text-align:center;font-size:13px;color:#666;">${p.competizione}${p.giornata ? ' - G.' + p.giornata : ''}</td>
-              </tr>
-            `).join('')}
+                <td style="padding:6px;font-size:11px;">${formatDateShort(p.data)}</td>
+                <td style="padding:6px;font-size:12px;">${p.avversario}</td>
+                <td style="padding:6px;text-align:center;">
+                  <span style="background:${risColor};color:white;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:bold;">${p.golCasa} - ${p.golOspiti}</span>
+                </td>
+                <td style="padding:6px;font-size:10px;color:#666;">${p.luogo || '-'}</td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>
@@ -570,7 +583,29 @@ function printSeasonalReport() {
   const printArea = document.getElementById('seasonalPrintArea');
   if (!printArea) return;
   const printWindow = window.open('', '_blank');
-  printWindow.document.write(`<!DOCTYPE html><html><head><title>Report Stagionale</title><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:20px;color:#333}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:8px;text-align:left;border-bottom:1px solid #eee}th{background:#f0f0f0}@media print{body{padding:0}}</style></head><body>${printArea.innerHTML}</body></html>`);
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Report Stagionale</title>
+      <meta charset="UTF-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 10px; color: #333; font-size: 10px; }
+        h1 { font-size: 16px; margin: 0 0 4px 0; }
+        h2 { font-size: 14px; margin: 8px 0 4px 0; }
+        h3 { font-size: 11px; margin: 8px 0 4px 0; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9px; }
+        th, td { padding: 3px 5px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f5f5f5; font-weight: 600; }
+        .stats-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
+        .rankings-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+        @media print { body { padding: 5px; } @page { size: A4; margin: 8mm; } }
+      </style>
+    </head>
+    <body>${printArea.innerHTML}</body>
+    </html>
+  `);
   printWindow.document.close();
   printWindow.focus();
   setTimeout(() => { printWindow.print(); printWindow.close(); }, 250);
@@ -599,79 +634,61 @@ function renderPlayerReport(report) {
   
   const avgGolPerPartita = report.stats.partiteGiocate > 0 
     ? (report.stats.gol / report.stats.partiteGiocate).toFixed(2) : 0;
-  
-  // Calcola minuti totali (simulato: 90 minuti per partita giocata)
   const minutiTotali = report.stats.partiteGiocate * 90;
   
   container.innerHTML = `
     <div id="playerPrintArea" style="background:white;padding:24px;">
       <!-- Header -->
-      <div style="text-align:center;border-bottom:2px solid #333;padding-bottom:16px;margin-bottom:24px;">
-        <h1 style="margin:0;font-size:28px;">${report.giocatore.cognome || ''} ${report.giocatore.nome}</h1>
-        <p style="margin:8px 0 0 0;color:#666;">
+      <div style="text-align:center;border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:16px;">
+        <h1 style="margin:0;font-size:24px;">${report.giocatore.cognome || ''} ${report.giocatore.nome}</h1>
+        <p style="margin:4px 0 0 0;color:#666;font-size:13px;">
           ${report.giocatore.data_nascita ? 'Nato: ' + formatDate(report.giocatore.data_nascita) : ''}
           ${report.giocatore.nazionalita ? ' | ' + report.giocatore.nazionalita : ''}
         </p>
       </div>
       
-      <!-- Stats Grid -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:12px;margin-bottom:24px;">
-        <div style="background:#cce5ff;padding:16px;border-radius:12px;text-align:center;">
-          <div style="font-size:28px;font-weight:bold;color:#004085;">${report.stats.partiteGiocate}</div>
-          <div style="color:#666;font-size:12px;">Partite</div>
+      <!-- Stats Grid - Una riga -->
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;justify-content:center;">
+        <div style="background:#cce5ff;padding:12px 16px;border-radius:10px;text-align:center;min-width:70px;">
+          <div style="font-size:22px;font-weight:bold;color:#004085;">${report.stats.partiteGiocate}</div>
+          <div style="color:#666;font-size:11px;">Partite</div>
         </div>
-        <div style="background:#667eea;padding:16px;border-radius:12px;text-align:center;color:white;">
-          <div style="font-size:28px;font-weight:bold;">${minutiTotali}</div>
-          <div style="font-size:12px;opacity:0.9;">Min. Giocati</div>
+        <div style="background:#667eea;padding:12px 16px;border-radius:10px;text-align:center;color:white;min-width:90px;">
+          <div style="font-size:22px;font-weight:bold;">${minutiTotali}'</div>
+          <div style="font-size:11px;opacity:0.9;">Min. Giocati</div>
         </div>
-        <div style="background:#d4edda;padding:16px;border-radius:12px;text-align:center;">
-          <div style="font-size:28px;font-weight:bold;color:#28a745;">${report.stats.gol}</div>
-          <div style="color:#666;font-size:12px;">Gol</div>
+        <div style="background:#d4edda;padding:12px 16px;border-radius:10px;text-align:center;min-width:70px;">
+          <div style="font-size:22px;font-weight:bold;color:#28a745;">${report.stats.gol}</div>
+          <div style="color:#666;font-size:11px;">Gol</div>
         </div>
-        <div style="background:#e2e3e5;padding:16px;border-radius:12px;text-align:center;">
-          <div style="font-size:28px;font-weight:bold;color:#495057;">${avgGolPerPartita}</div>
-          <div style="color:#666;font-size:12px;">Gol/Partita</div>
+        <div style="background:#e2e3e5;padding:12px 16px;border-radius:10px;text-align:center;min-width:70px;">
+          <div style="font-size:22px;font-weight:bold;color:#495057;">${avgGolPerPartita}</div>
+          <div style="color:#666;font-size:11px;">Gol/P</div>
         </div>
-        <div style="background:#fff3cd;padding:16px;border-radius:12px;text-align:center;">
-          <div style="font-size:28px;font-weight:bold;color:#856404;">${report.stats.assist}</div>
-          <div style="color:#666;font-size:12px;">Assist</div>
+        <div style="background:#fff3cd;padding:12px 16px;border-radius:10px;text-align:center;min-width:70px;">
+          <div style="font-size:22px;font-weight:bold;color:#856404;">${report.stats.assist}</div>
+          <div style="color:#666;font-size:11px;">Assist</div>
         </div>
-        <div style="background:#fff3cd;padding:16px;border-radius:12px;text-align:center;">
-          <div style="font-size:28px;font-weight:bold;color:#856404;">${report.stats.ammonizioni}</div>
-          <div style="color:#666;font-size:12px;">Ammonizioni</div>
-        </div>
-        <div style="background:#f8d7da;padding:16px;border-radius:12px;text-align:center;">
-          <div style="font-size:28px;font-weight:bold;color:#dc3545;">${report.stats.espulsioni}</div>
-          <div style="color:#666;font-size:12px;">Espulsioni</div>
+        <div style="background:#ffe6e6;padding:12px 16px;border-radius:10px;text-align:center;min-width:70px;">
+          <div style="font-size:22px;font-weight:bold;color:#dc3545;">${report.stats.ammonizioni + report.stats.espulsioni}</div>
+          <div style="color:#666;font-size:11px;">Cartellini</div>
         </div>
       </div>
       
-      <!-- Storico Eventi -->
+      <!-- Storico Eventi Compact -->
       <div>
-        <h3 style="margin:0 0 12px 0;">📋 Storico Presenze</h3>
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="background:#f8f9fa;">
-              <th style="padding:10px;text-align:left;border-bottom:2px solid #dee2e6;">Data</th>
-              <th style="padding:10px;text-align:left;border-bottom:2px solid #dee2e6;">Partita</th>
-              <th style="padding:10px;text-align:center;border-bottom:2px solid #dee2e6;">Min.</th>
-              <th style="padding:10px;text-align:center;border-bottom:2px solid #dee2e6;">Evento</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${report.storico.map((e, i) => `
-              <tr style="background:${i % 2 === 0 ? 'white' : '#f8f9fa'};">
-                <td style="padding:10px;border-bottom:1px solid #eee;font-size:13px;">${e.data ? formatDateShort(e.data) : '-'}</td>
-                <td style="padding:10px;border-bottom:1px solid #eee;">${e.partita}</td>
-                <td style="padding:10px;text-align:center;border-bottom:1px solid #eee;">${e.minuto}'</td>
-                <td style="padding:10px;text-align:center;border-bottom:1px solid #eee;">
-                  ${getEventIcon(e.tipo)} ${getEventLabel(e.tipo)}
-                </td>
-              </tr>
-            `).join('')}
-            ${report.storico.length === 0 ? '<tr><td colspan="4" style="padding:20px;text-align:center;color:#666;">Nessun evento registrato</td></tr>' : ''}
-          </tbody>
-        </table>
+        <h3 style="margin:0 0 8px 0;font-size:14px;border-bottom:1px solid #ddd;padding-bottom:6px;">📋 Storico Eventi</h3>
+        ${report.storico.length > 0 ? `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${report.storico.map(e => `
+            <div style="background:#f5f5f5;padding:6px 10px;border-radius:6px;font-size:12px;display:flex;align-items:center;gap:6px;">
+              <span style="font-weight:bold;color:#666;">${e.minuto}'</span>
+              <span>${getEventIcon(e.tipo)}</span>
+              <span>${e.partita || 'Evento'}</span>
+            </div>
+          `).join('')}
+        </div>
+        ` : '<p style="color:#666;font-size:13px;text-align:center;padding:20px;">Nessun evento registrato</p>'}
       </div>
     </div>
   `;
@@ -691,7 +708,27 @@ function printPlayerReport() {
   const printArea = document.getElementById('playerPrintArea');
   if (!printArea) return;
   const printWindow = window.open('', '_blank');
-  printWindow.document.write(`<!DOCTYPE html><html><head><title>Report Giocatore</title><meta charset="UTF-8"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:20px;color:#333}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:8px;text-align:left;border-bottom:1px solid #eee}th{background:#f0f0f0}@media print{body{padding:0}}</style></head><body>${printArea.innerHTML}</body></html>`);
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Report Giocatore</title>
+      <meta charset="UTF-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 10px; color: #333; font-size: 10px; }
+        h1 { font-size: 16px; margin: 0 0 4px 0; }
+        .stats-row { display: flex; gap: 6px; margin-bottom: 8px; }
+        .stat-box { padding: 6px 10px; border-radius: 4px; text-align: center; min-width: 50px; }
+        .stat-value { font-size: 14px; font-weight: bold; }
+        .stat-label { font-size: 8px; }
+        .event-chip { display: inline-block; background: #f5f5f5; padding: 3px 6px; border-radius: 3px; margin: 2px; font-size: 9px; }
+        @media print { body { padding: 5px; } @page { size: A5; margin: 5mm; } }
+      </style>
+    </head>
+    <body>${printArea.innerHTML}</body>
+    </html>
+  `);
   printWindow.document.close();
   printWindow.focus();
   setTimeout(() => { printWindow.print(); printWindow.close(); }, 250);

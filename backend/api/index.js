@@ -488,25 +488,47 @@ app.get('/api/squadre/:squadraId/report-stagionale', async (req, res) => {
     // Tutte le partite della squadra
     const { data: partite } = await supabase
       .from('partita')
-      .select('id, data_ora, avversario, luogo, competizione, giornata')
+      .select('id, data_ora, avversario, luogo, competizione, giornata, gol_casa, gol_ospiti')
       .eq('squadra_id', squadraId)
       .order('data_ora');
 
     // Calcola statistiche aggregate
-    let golFatti = 0;
+    let golFatti = 0, golSubiti = 0;
+    let vittorie = 0, pareggi = 0, sconfitte = 0;
     const marcatoriMap = {};
     const assistMap = {};
     const presenzeMap = {};
+    const partiteResults = [];
 
     for (const p of (partite || [])) {
+      // Calcola risultato
+      const golCasa = p.gol_casa || 0;
+      const golOspiti = p.gol_ospiti || 0;
+      golFatti += golCasa;
+      golSubiti += golOspiti;
+      
+      if (golCasa > golOspiti) vittorie++;
+      else if (golCasa === golOspiti && golCasa > 0) pareggi++;
+      else if (golCasa < golOspiti && golOspiti > 0) sconfitte++;
+      
+      // Risultato partita per lista
+      partiteResults.push({
+        id: p.id,
+        data: p.data_ora,
+        avversario: p.avversario,
+        luogo: p.luogo,
+        competizione: p.competizione,
+        giornata: p.giornata,
+        golCasa,
+        golOspiti,
+        risultato: golCasa > golOspiti ? 'V' : golCasa < golOspiti ? 'S' : 'P'
+      });
+      
+      // Eventi per marcatori/assist
       const { data: eventi } = await supabase
         .from('evento_partita')
         .select('tipo_evento_codice, calciatore_principale_id, calciatore_secondario_id')
         .eq('partita_id', p.id);
-      
-      // Gol
-      const golCasa = (eventi || []).filter(e => e.tipo_evento_codice === 'GOAL').length;
-      golFatti += golCasa;
       
       // Marcatori
       (eventi || []).filter(e => e.tipo_evento_codice === 'GOAL').forEach(e => {
@@ -528,12 +550,7 @@ app.get('/api/squadre/:squadraId/report-stagionale', async (req, res) => {
       });
     }
 
-    // Vittorie/Pareggi/Sconfitte (da implementare con risultati reali)
     const partiteGiocate = (partite || []).length;
-    const vittorie = 0; // TODO: da calcolare dai risultati
-    const pareggi = 0;
-    const sconfitte = 0;
-    const golSubiti = 0;
 
     // Top marcatori (recupera nomi)
     const marcatoriIds = Object.entries(marcatoriMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -542,12 +559,7 @@ app.get('/api/squadre/:squadraId/report-stagionale', async (req, res) => {
       const { data: calciatore } = await supabase
         .from('calciatore').select('nome, cognome').eq('id', id).single();
       if (calciatore) {
-        topMarcatori.push({
-          id,
-          nome: calciatore.nome,
-          cognome: calciatore.cognome,
-          gol
-        });
+        topMarcatori.push({ id, nome: calciatore.nome, cognome: calciatore.cognome, gol });
       }
     }
 
@@ -558,27 +570,23 @@ app.get('/api/squadre/:squadraId/report-stagionale', async (req, res) => {
       const { data: calciatore } = await supabase
         .from('calciatore').select('nome, cognome').eq('id', id).single();
       if (calciatore) {
-        topAssist.push({
-          id,
-          nome: calciatore.nome,
-          cognome: calciatore.cognome,
-          assist
-        });
+        topAssist.push({ id, nome: calciatore.nome, cognome: calciatore.cognome, assist });
       }
     }
 
-    // Top presenze (recupera nomi)
+    // Top presenze (recupera nomi e minuti)
     const presenzeEntries = Object.entries(presenzeMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
     const topPresenze = [];
     for (const [id, presenze] of presenzeEntries) {
       const { data: calciatore } = await supabase
         .from('calciatore').select('nome, cognome').eq('id', id).single();
       if (calciatore) {
-        topPresenze.push({
-          id,
-          nome: calciatore.nome,
-          cognome: calciatore.cognome,
-          presenze
+        topPresenze.push({ 
+          id, 
+          nome: calciatore.nome, 
+          cognome: calciatore.cognome, 
+          presenze,
+          minuti: presenze * 90
         });
       }
     }
@@ -590,14 +598,7 @@ app.get('/api/squadre/:squadraId/report-stagionale', async (req, res) => {
       partiteGiocate,
       vittorie, pareggi, sconfitte,
       golFatti, golSubiti,
-      partite: (partite || []).map(p => ({
-        id: p.id,
-        data: p.data_ora,
-        avversario: p.avversario,
-        luogo: p.luogo,
-        competizione: p.competizione,
-        giornata: p.giornata
-      })),
+      partite: partiteResults,
       topMarcatori,
       topAssist,
       topPresenze
