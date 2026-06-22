@@ -651,10 +651,10 @@ app.get('/api/calciatori/:calciatoreId/report', async (req, res) => {
       .from('calciatore').select('*').eq('id', calciatoreId).single();
     if (!giocatore) return res.status(404).json({ error: 'Giocatore non trovato' });
 
-    // Tutti gli eventi del giocatore
+    // Tutti gli eventi del giocatore con join a partita
     const { data: eventi } = await supabase
       .from('evento_partita')
-      .select('*, partita:partita_id(data_ora, avversario, competizione)')
+      .select('*, partita:partita_id(data_ora, avversario, competizione, giornata)')
       .eq('calciatore_principale_id', calciatoreId)
       .order('minuto');
 
@@ -670,13 +670,14 @@ app.get('/api/calciatori/:calciatoreId/report', async (req, res) => {
       partiteGiocate: partiteIds.length
     };
 
-    // Storico eventi
+    // Storico eventi con giornata
     const storico = (eventi || []).map(e => ({
       minuto: e.minuto,
       tipo: e.tipo_evento_codice,
       partita: e.partita?.avversario || '',
       data: e.partita?.data_ora,
-      competizione: e.partita?.competizione || ''
+      competizione: e.partita?.competizione || '',
+      giornata: e.partita?.giornata || null
     }));
 
     res.json({

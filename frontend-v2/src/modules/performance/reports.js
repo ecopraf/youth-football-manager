@@ -436,43 +436,44 @@ function renderSeasonalReport(report) {
       </div>
       
       <!-- Stats Squadra -->
-      <div class="stats-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:20px;">
-        <div class="stat-card" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:12px 8px;border-radius:8px;text-align:center;color:white;">
-          <div style="font-size:20px;font-weight:bold;">${report.punti || 0}</div>
-          <div style="font-size:10px;opacity:0.9;">Punti</div>
+      <div class="stats-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:20px;">
+        <div class="stat-card" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:12px 6px;border-radius:8px;text-align:center;color:white;">
+          <div style="font-size:18px;font-weight:bold;">${report.punti || 0}</div>
+          <div style="font-size:9px;opacity:0.9;">Punti</div>
         </div>
-        <div class="stat-card" style="background:#cce5ff;padding:12px 8px;border-radius:8px;text-align:center;">
-          <div style="font-size:20px;font-weight:bold;color:#004085;">${report.partiteGiocate || 0}</div>
-          <div style="color:#666;font-size:10px;">Giocate</div>
+        <div class="stat-card" style="background:#cce5ff;padding:12px 6px;border-radius:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:bold;color:#004085;">${report.partiteGiocate || 0}</div>
+          <div style="color:#666;font-size:9px;">Giocate</div>
         </div>
-        <div class="stat-card" style="background:#d4edda;padding:12px 8px;border-radius:8px;text-align:center;">
-          <div style="font-size:20px;font-weight:bold;color:#28a745;">${report.vittorie || 0}</div>
-          <div style="color:#666;font-size:10px;">Vittorie</div>
+        <div class="stat-card" style="background:#d4edda;padding:12px 6px;border-radius:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:bold;color:#28a745;">${report.vittorie || 0}</div>
+          <div style="color:#666;font-size:9px;">V</div>
         </div>
-        <div class="stat-card" style="background:#fff3cd;padding:12px 8px;border-radius:8px;text-align:center;">
-          <div style="font-size:20px;font-weight:bold;color:#856404;">${report.pareggi || 0}</div>
-          <div style="color:#666;font-size:10px;">Pareggi</div>
+        <div class="stat-card" style="background:#fff3cd;padding:12px 6px;border-radius:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:bold;color:#856404;">${report.pareggi || 0}</div>
+          <div style="color:#666;font-size:9px;">P</div>
         </div>
-        <div class="stat-card" style="background:#f8d7da;padding:12px 8px;border-radius:8px;text-align:center;">
-          <div style="font-size:20px;font-weight:bold;color:#dc3545;">${report.sconfitte || 0}</div>
-          <div style="color:#666;font-size:10px;">Sconfitte</div>
+        <div class="stat-card" style="background:#f8d7da;padding:12px 6px;border-radius:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:bold;color:#dc3545;">${report.sconfitte || 0}</div>
+          <div style="color:#666;font-size:9px;">S</div>
         </div>
-        <div class="stat-card" style="background:#cce5ff;padding:12px 8px;border-radius:8px;text-align:center;">
-          <div style="font-size:20px;font-weight:bold;color:#28a745;">${report.golFatti || 0}</div>
-          <div style="color:#666;font-size:10px;">GF</div>
+        <div class="stat-card" style="background:#cce5ff;padding:12px 6px;border-radius:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:bold;color:#28a745;">${report.golFatti || 0}</div>
+          <div style="color:#666;font-size:9px;">GF</div>
         </div>
-        <div class="stat-card" style="background:#e2e3e5;padding:12px 8px;border-radius:8px;text-align:center;">
-          <div style="font-size:20px;font-weight:bold;color:#495057;">${report.golSubiti || 0}</div>
-          <div style="color:#666;font-size:10px;">GS</div>
+        <div class="stat-card" style="background:#e2e3e5;padding:12px 6px;border-radius:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:bold;color:#495057;">${report.golSubiti || 0}</div>
+          <div style="color:#666;font-size:9px;">GS</div>
         </div>
-        <div class="stat-card" style="background:#f8f9fa;padding:12px 8px;border-radius:8px;text-align:center;">
-          <div style="font-size:20px;font-weight:bold;color:#495057;">${report.differenzaReti > 0 ? '+' : ''}${report.differenzaReti || 0}</div>
-          <div style="color:#666;font-size:10px;">DR</div>
+        <div class="stat-card" style="background:#f8f9fa;padding:12px 6px;border-radius:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:bold;color:#495057;">${report.differenzaReti > 0 ? '+' : ''}${report.differenzaReti || 0}</div>
+          <div style="color:#666;font-size:9px;">DR</div>
         </div>
       </div>
       <style>
         @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(4, 1fr) !important; } }
-        @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+        @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(4, 1fr) !important; } }
+        @media (max-width: 400px) { .stats-grid { grid-template-columns: repeat(2, 1fr) !important; } }
       </style>
       
       <!-- Top Rankings -->
@@ -711,6 +712,7 @@ function renderPlayerReport(report) {
                   <span style="font-weight:bold;color:#667eea;min-width:35px;">${e.minuto}'</span>
                   <span>${getEventIcon(e.tipo)}</span>
                   <span style="flex:1;">${e.partita || 'Evento'}</span>
+                  ${e.giornata ? `<span style="background:#e0e0e0;padding:2px 6px;border-radius:4px;font-size:10px;color:#666;">G.${e.giornata}</span>` : ''}
                 </div>
               `).join('')}
             </div>
