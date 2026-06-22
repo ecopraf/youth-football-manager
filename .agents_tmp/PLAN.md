@@ -2,10 +2,10 @@
 
 Implementare le **4 feature ad alta priorità** della roadmap Core 1.x per completare il prodotto minimo vitale:
 
-1. **Auth/Ruoli MVP** - Sistema di autenticazione e gestione ruoli
-2. **Valutazioni Giocatore** - Valutazioni tecniche per stagione/partita
-3. **Reports** - Report partita completo + Report stagionale/giocatore
-4. **Timeline Partita** - Vista minuto-per-minuto degli eventi
+1. **Auth/Ruoli MVP** - Sistema di autenticazione e gestione ruoli ✅ COMPLETATO
+2. **Valutazioni Giocatore** - Valutazioni tecniche per stagione/partita 🔴 Da fare
+3. **Reports** - Report partita completo + Report stagionale/giocatore ✅ COMPLETATO
+4. **Timeline Partita** - Vista minuto-per-minuto degli eventi 🔴 Da fare
 
 ---
 
@@ -15,10 +15,10 @@ Implementare le **4 feature ad alta priorità** della roadmap Core 1.x per compl
 
 | Feature | Stato | Note |
 |---------|-------|------|
-| Reports | ⚠️ Parziale | UI esistente, solo Report Partita funzionante |
-| Timeline Partita | ⚠️ Base | Lista eventi in matchDetail.js, no visualizzazione timeline |
+| Auth/Ruoli MVP | ✅ COMPLETATO | Login/Register, JWT, middleware, protezione route |
+| Reports | ✅ COMPLETATO | Report Partita (con social comment), Report Stagionale (stats, top rankings), Report Giocatore (stats, storico) |
+| Timeline Partita | 🔴 Da fare | Lista eventi in matchDetail.js, no visualizzazione timeline |
 | Valutazioni Giocatore | 🔴 Da fare | Nessun riferimento nel codebase |
-| Auth/Ruoli MVP | 🔴 Da fare | Nessun riferimento nel codebase |
 
 ## Componenti Chiave
 - **Backend**: `backend/api/index.js` (Node.js + Express + Supabase)
@@ -28,14 +28,20 @@ Implementare le **4 feature ad alta priorità** della roadmap Core 1.x per compl
 
 ## Dipendenze Tra Feature
 ```
-Auth/Ruoli MVP (1)
+Auth/Ruoli MVP (1) ✅ COMPLETATO
     ↓
-Valutazioni Giocatore (2) ← dipende da auth per autorizzazione
+Reports (3) ✅ COMPLETATO
     ↓
-Reports (3) ← dipende da valutazioni per report individuali
+Valutazioni Giocatore (2) ← dipende da auth per report individuali
     ↓
 Timeline Partita (4) ← indipendente, ma utilizza eventi esistenti
 ```
+
+## Ultimo Rilascio Stabile (v3.10)
+- **Auth MVP**: Login, Register, JWT, middleware, protezione route
+- **Report Partita**: Con social comment per social media
+- **Report Stagionale**: Stats aggregate, Punti, DR, Top Marcatori/Assist/Presenze
+- **Report Giocatore**: Stats individuali, Minuti giocati, Storico eventi
 
 ---
 
@@ -45,10 +51,10 @@ Timeline Partita (4) ← indipendente, ma utilizza eventi esistenti
 
 Implementazione partendo dalle dipendenze fondamentali:
 
-1. **Auth/Ruoli MVP** - Base per sicurezza e autorizzazione
-2. **Valutazioni Giocatore** - Feature richiesta per Reports
-3. **Reports** - Espansione da MVP a completo
-4. **Timeline Partita** - UI migliorata per visualizzazione eventi
+1. **Auth/Ruoli MVP** ✅ COMPLETATO - Base per sicurezza e autorizzazione
+2. **Reports** ✅ COMPLETATO - Espansione da MVP a completo
+3. **Valutazioni Giocatore** 🔄 PROSSIMO - Feature richiesta per report individuali
+4. **Timeline Partita** 🔴 Da fare - UI migliorata per visualizzazione eventi
 
 ## Alternativa Considerata
 Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà di testing.
@@ -63,20 +69,20 @@ Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà d
 
 # 4. IMPLEMENTATION STEPS
 
-## FASE 1: Auth/Ruoli MVP
+## FASE 1: Auth/Ruoli MVP ✅ COMPLETATO
 
-### Step 1.1 - Schema Database Auth
+### Step 1.1 - Schema Database Auth ✅
 **Goal:** Creare tabelle per utenti e ruoli
 
 **Method:**
-1. Creare tabella `utente` con campi: `id`, `email`, `password_hash`, `nome`, `ruolo` (enum: 'admin', 'allenatore', 'staff'), `squadra_id`, `created_at`
+1. Creare tabella `utente` con campi: `id`, `email`, `password_hash`, `nome`, `cognome`, `ruolo` (enum: 'admin', 'allenatore', 'staff'), `workspace_id`, `created_at`
 2. Creare tabella `sessione` per token refresh: `id`, `utente_id`, `token`, `scadenza`
 
 **Reference:** `backend/api/index.js`, Supabase schema
 
 ---
 
-### Step 1.2 - API Auth Backend
+### Step 1.2 - API Auth Backend ✅
 **Goal:** Endpoint per login/logout/registrazione
 
 **Method:**
@@ -84,12 +90,13 @@ Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà d
 2. `POST /api/auth/login` - Login con email/password, ritorna JWT
 3. `POST /api/auth/logout` - Invalida sessione
 4. `GET /api/auth/me` - Ritorna utente corrente
+5. `PUT /api/auth/profile` - Aggiorna profilo
 
 **Reference:** `backend/api/index.js`
 
 ---
 
-### Step 1.3 - Middleware Auth
+### Step 1.3 - Middleware Auth ✅
 **Goal:** Proteggere endpoint con JWT
 
 **Method:**
@@ -101,7 +108,7 @@ Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà d
 
 ---
 
-### Step 1.4 - UI Login
+### Step 1.4 - UI Login ✅
 **Goal:** Schermata di login
 
 **Method:**
@@ -114,7 +121,7 @@ Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà d
 
 ---
 
-### Step 1.5 - Protezione Route
+### Step 1.5 - Protezione Route ✅
 **Goal:** Bloccare accesso senza auth
 
 **Method:**
@@ -126,9 +133,63 @@ Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà d
 
 ---
 
-## FASE 2: Valutazioni Giocatore
+## FASE 2: Reports Completo ✅ COMPLETATO
 
-### Step 2.1 - Schema Database Valutazioni
+### Step 2.1 - Report Partita ✅
+**Goal:** Generare report partita con stats e formazione
+
+**Method:**
+1. Creare endpoint `GET /api/partite/:partitaId/report`
+2. Includere: formazione, eventi, marcatori, ammonizioni
+3. Aggiungere Commento Social per social media
+4. UI con tabs in `reports.js`
+
+**Reference:** `backend/api/index.js`, `frontend-v2/src/modules/performance/reports.js`
+
+---
+
+### Step 2.2 - Report Stagionale ✅
+**Goal:** Generare report aggregato stagione
+
+**Method:**
+1. Creare endpoint `GET /api/squadre/:squadraId/report-stagionale`
+2. Aggregare: partite giocate, vittorie/pareggi/sconfitte, gol fatti/subiti, Punti, DR
+3. Top 3 Marcatori, Top 3 Assist, Top 3 Presenze
+4. Lista risultati stagionali
+5. Integrare in UI con tabs
+
+**Reference:** `backend/api/index.js`, `frontend-v2/src/modules/performance/reports.js`
+
+---
+
+### Step 2.3 - Report Giocatore ✅
+**Goal:** Report individuale giocatore
+
+**Method:**
+1. Creare endpoint `GET /api/calciatori/:id/report`
+2. Includere: stats individuali (partite, gol, assist, ammonizioni, espulsioni)
+3. Minuti giocati (calcolati)
+4. Storico eventi per partita
+5. Giocatori ordinati alfabeticamente
+
+**Reference:** `backend/api/index.js`, `frontend-v2/src/modules/performance/reports.js`
+
+---
+
+### Step 2.4 - Export PDF/CSV 🔴 Da fare
+**Goal:** Download report in formato PDF
+
+**Method:**
+1. Implementare stampa PDF native del browser
+2. Escludere sezioni non necessarie (es. commento social)
+
+**Reference:** `frontend-v2/src/modules/performance/reports.js`
+
+---
+
+## FASE 3: Valutazioni Giocatore 🔴 DA FARE
+
+### Step 3.1 - Schema Database Valutazioni
 **Goal:** Creare tabella per valutazioni
 
 **Method:**
@@ -139,7 +200,7 @@ Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà d
 
 ---
 
-### Step 2.2 - API Valutazioni Backend
+### Step 3.2 - API Valutazioni Backend
 **Goal:** CRUD per valutazioni
 
 **Method:**
@@ -153,7 +214,7 @@ Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà d
 
 ---
 
-### Step 2.3 - UI Scheda Giocatore con Valutazioni
+### Step 3.3 - UI Scheda Giocatore con Valutazioni
 **Goal:** Integrare valutazioni nella scheda giocatore esistente
 
 **Method:**
@@ -165,7 +226,7 @@ Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà d
 
 ---
 
-### Step 2.4 - UI Lista Valutazioni Stagione
+### Step 3.4 - UI Lista Valutazioni Stagione
 **Goal:** Vista aggregate delle valutazioni
 
 **Method:**
@@ -177,57 +238,7 @@ Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà d
 
 ---
 
-## FASE 3: Reports Completo
-
-### Step 3.1 - Report Stagionale
-**Goal:** Generare report aggregato stagione
-
-**Method:**
-1. Creare endpoint `GET /api/squadre/:squadraId/report-stagionale`
-2. Aggregare: partite giocate, vittorie/sconfitte/pareggi, gol fatti/subiti, miglior marcatore, miglior assistman
-3. Integrare in UI (`reports.js`)
-
-**Reference:** `backend/api/index.js`, `frontend-v2/src/modules/performance/reports.js`
-
----
-
-### Step 3.2 - Report Giocatore
-**Goal:** Report individuale giocatore
-
-**Method:**
-1. Creare endpoint `GET /api/calciatori/:id/report`
-2. Includere: stats stagione, valutazioni medie, presenze, note coach
-3. Integrare in UI con selettore giocatore
-
-**Reference:** `backend/api/index.js`, `frontend-v2/src/modules/performance/reports.js`
-
----
-
-### Step 3.3 - Export PDF/CSV
-**Goal:** Download report in diversi formati
-
-**Method:**
-1. Integrare jsPDF o html2pdf per PDF
-2. Aggiungere pulsante "Esporta CSV" che genera file tabular
-3. Applicare a tutti i tipi di report
-
-**Reference:** `frontend-v2/src/modules/performance/reports.js`
-
----
-
-### Step 3.4 - Template Report Migliorato
-**Goal:** Layout professionale per stampa
-
-**Method:**
-1. Migliorare CSS print-friendly
-2. Aggiungere logo società
-3. Includere grafici mini (bar chart presenze)
-
-**Reference:** `frontend-v2/src/modules/performance/reports.js`, `frontend-v2/src/style.css`
-
----
-
-## FASE 4: Timeline Partita
+## FASE 4: Timeline Partita 🔴 DA FARE
 
 ### Step 4.1 - UI Timeline in Match Detail
 **Goal:** Visualizzazione timeline minuto-per-minuto
@@ -280,27 +291,31 @@ Implementazione parallela: **Scartata** per rischio di conflitti e difficoltà d
 
 ## Criteri di Successo
 
-### Auth/Ruoli MVP
-- [ ] Login con credenziali valide → redirect a dashboard
-- [ ] Login con credenziali invalide → messaggio errore
-- [ ] Logout → clear token, redirect a login
-- [ ] Accesso a route protetta senza auth → redirect a login
-- [ ] Ruolo admin vs allenatore → visibilità menu diversa
+### Auth/Ruoli MVP ✅
+- [x] Login con credenziali valide → redirect a dashboard
+- [x] Login con credenziali invalide → messaggio errore
+- [x] Logout → clear token, redirect a login
+- [x] Accesso a route protetta senza auth → redirect a login
+- [ ] Ruolo admin vs allenatore → visibilità menu diversa (da completare)
 
-### Valutazioni Giocatore
+### Reports ✅
+- [x] Report Partita → genera correttamente con tutti i dati
+- [x] Report Partita → Commento Social per social media
+- [x] Report Partita → Social comment escluso dalla stampa
+- [x] Report Stagionale → stats aggregate, Punti, DR
+- [x] Report Stagionale → Top 3 Marcatori/Assist/Presenze
+- [x] Report Giocatore → stats individuali complete
+- [x] Report Giocatore → Minuti giocati
+- [x] Report Giocatore → ordinamento alfabetico
+- [ ] Export PDF → download file valido (stampa browser funziona)
+
+### Valutazioni Giocatore 🔴
 - [ ] Creazione valutazione → salvata in DB, visibile in scheda
 - [ ] Modifica valutazione → aggiornamento immediato
 - [ ] Media voti calcolata correttamente
 - [ ] Filtri funzionano (data, partita, categoria)
 
-### Reports
-- [ ] Report Partita → genera correttamente con tutti i dati
-- [ ] Report Stagionale → aggrega tutte le partite
-- [ ] Report Giocatore → stats individuali complete
-- [ ] Export PDF → download file valido
-- [ ] Export CSV → file tabular aperto in Excel
-
-### Timeline Partita
+### Timeline Partita 🔴
 - [ ] Timeline visibile in match detail
 - [ ] Eventi ordinati per minuto crescente
 - [ ] Icone corrette per tipo evento
