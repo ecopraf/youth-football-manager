@@ -15,10 +15,27 @@ window.YFM.workspaceInfo = null
 document.addEventListener('DOMContentLoaded', () => {
   setupLayout()
   initRouter()
-  loadWorkspaceInfo()
-  loadSquadre().then(() => {
-    window.YFM.navigateTo('dashboard')
-  })
+  
+  // Inizializza UI utente
+  if (window.YFM.updateUserUI) window.YFM.updateUserUI()
+  
+  // Setup logout button
+  const logoutBtn = document.getElementById('logoutBtn')
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      if (window.YFM.logout) window.YFM.logout()
+    })
+  }
+  
+  // Check autenticazione
+  if (window.YFM.isAuthenticated && window.YFM.isAuthenticated()) {
+    loadWorkspaceInfo()
+    loadSquadre().then(() => {
+      window.YFM.navigateTo('dashboard')
+    })
+  } else {
+    window.YFM.navigateTo('login')
+  }
 })
 
 // Funzioni globali per i moduli del calendario (caricate on-demand)

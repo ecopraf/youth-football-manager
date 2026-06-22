@@ -1,4 +1,12 @@
 export function setupLayout() {
+  // Recupera info utente da localStorage
+  const userStr = localStorage.getItem('yfm_user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const userInitial = user?.nome ? user.nome[0].toUpperCase() : 'U';
+  const userName = user?.nome || '';
+  const userRole = user?.ruolo || '';
+  const userRoleLabel = userRole === 'admin' ? 'Amministratore' : userRole === 'staff' ? 'Staff' : userRole === 'allenatore' ? 'Allenatore' : userRole;
+
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="layout">
@@ -22,11 +30,12 @@ export function setupLayout() {
           <a href="#" data-page="settings">⚙️ Impostazioni</a>
         </nav>
         <div class="sidebar-user">
-          <div class="sidebar-user-avatar">M</div>
+          <div class="sidebar-user-avatar">${userInitial}</div>
           <div>
-            <div class="sidebar-user-name">Marco Rossi</div>
-            <div class="sidebar-user-role">Allenatore</div>
+            <div class="sidebar-user-name" id="userName">${userName}</div>
+            <div class="sidebar-user-role" id="userRole">${userRoleLabel}</div>
           </div>
+          <button id="logoutBtn" class="btn btn-secondary btn-small" style="margin-left:auto;display:${user ? 'inline-block' : 'none'};">Logout</button>
         </div>
       </aside>
       <div class="main">
@@ -36,7 +45,7 @@ export function setupLayout() {
           <span id="headerSocName" style="font-weight:600;color:var(--blue);font-size:15px;margin-left:8px;margin-right:auto;"></span>
           <div class="header-right">
             <select class="header-select" id="squadraSelect"><option>Caricamento...</option></select>
-            <div class="player-avatar" style="width:36px;height:36px;font-size:14px;">M</div>
+            <div class="player-avatar" style="width:36px;height:36px;font-size:14px;">${userInitial}</div>
           </div>
         </header>
         <div class="content" id="pageContent">
