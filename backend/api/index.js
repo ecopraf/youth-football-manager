@@ -260,13 +260,25 @@ app.get('/api/calciatori/:id/last-matches', async (req, res) => {
 // ── REPORT PARTITA ──
 app.get('/api/partite/:partitaId/report', async (req, res) => {
   try {
-    // 1. Dati partita
+    // 1. Dati partita con join a stagione e workspace per avere il nome società
     const { data: partita } = await supabase
       .from('partita')
-      .select('*, squadra:squadra_id(nome, categoria, allenatore, dirigente)')
+      .select('*, squadra:squadra_id(nome, categoria, allenatore, dirigente, stagione:stagione_id(workspace_id))')
       .eq('id', req.params.partitaId)
       .single();
     if (!partita) return res.status(404).json({ error: 'Partita non trovata' });
+
+    // 2. Recupera il nome della società dal workspace
+    const workspaceId = partita.squadra?.stagione?.workspace_id;
+    let societaNome = 'ASD';
+    if (workspaceId) {
+      const { data: workspace } = await supabase
+        .from('workspace')
+        .select('nome')
+        .eq('id', workspaceId)
+        .single();
+      societaNome = workspace?.nome || 'ASD';
+    }
 
     // 2. Eventi
     const { data: eventi } = await supabase
@@ -334,7 +346,7 @@ app.get('/api/partite/:partitaId/report', async (req, res) => {
         giornata: partita.giornata,
         note: partita.note || ''
       },
-      societa: partita.squadra?.nome || 'ASD',
+      societa: societaNome,
       categoria: partita.squadra?.categoria || '',
       allenatore: partita.squadra?.allenatore || '',
       dirigente: partita.squadra?.dirigente || '',
