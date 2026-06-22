@@ -23,8 +23,7 @@ export default async function loadReports() {
             <option value="">-- Caricamento partite --</option>
           </select>
           <button class="btn btn-primary" id="btnGenerateReport" disabled>Genera Report</button>
-          <button class="btn btn-secondary" id="btnPrintReport" style="display:none;">🖨️ Stampa</button>
-          <button class="btn btn-secondary" id="btnSaveReport" style="display:none;" onclick="saveReportAsPDF('match')">💾 Salva PDF</button>
+          <button class="btn btn-secondary" id="btnPrintReport" style="display:none;">🖨️ Stampa / Salva PDF</button>
         </div>
         <div id="reportContent" style="display:none;"></div>
       </div>
@@ -35,8 +34,7 @@ export default async function loadReports() {
       <div class="card">
         <div style="display:flex;gap:16px;margin-bottom:16px;">
           <button class="btn btn-primary" id="btnGenerateSeasonalReport">Genera Report Stagionale</button>
-          <button class="btn btn-secondary" id="btnPrintSeasonalReport" style="display:none;">🖨️ Stampa</button>
-          <button class="btn btn-secondary" id="btnSaveSeasonalReport" style="display:none;" onclick="saveReportAsPDF('seasonal')">💾 Salva PDF</button>
+          <button class="btn btn-secondary" id="btnPrintSeasonalReport" style="display:none;">🖨️ Stampa / Salva PDF</button>
         </div>
         <div id="seasonalReportContent" style="display:none;"></div>
       </div>
@@ -51,8 +49,7 @@ export default async function loadReports() {
             <option value="">-- Seleziona giocatore --</option>
           </select>
           <button class="btn btn-primary" id="btnGeneratePlayerReport" disabled>Genera Report</button>
-          <button class="btn btn-secondary" id="btnPrintPlayerReport" style="display:none;">🖨️ Stampa</button>
-          <button class="btn btn-secondary" id="btnSavePlayerReport" style="display:none;" onclick="saveReportAsPDF('player')">💾 Salva PDF</button>
+          <button class="btn btn-secondary" id="btnPrintPlayerReport" style="display:none;">🖨️ Stampa / Salva PDF</button>
         </div>
         <div id="playerReportContent" style="display:none;"></div>
       </div>
@@ -293,7 +290,6 @@ function renderReport(report) {
 
   container.style.display = 'block';
   document.getElementById('btnPrintReport').style.display = 'inline-block';
-  document.getElementById('btnSaveReport').style.display = 'inline-block';
 }
 
 function printReport() {
@@ -328,7 +324,10 @@ function printReport() {
   const url = URL.createObjectURL(blob);
   const printWindow = window.open(url, '_blank');
   if (!printWindow) { alert('Popup bloccato! Abilita i popup per questo sito.'); return; }
-  printWindow.onload = () => { printWindow.print(); };
+  printWindow.onload = () => {
+    printWindow.print();
+    printWindow.onafterprint = () => printWindow.close();
+  };
 }
 
 function generateSocialComment(report) {
@@ -405,7 +404,6 @@ async function generateSeasonalReport() {
     const report = await apiFetch('/squadre/' + window.YFM.squadraId + '/report-stagionale');
     renderSeasonalReport(report);
     document.getElementById('btnPrintSeasonalReport').style.display = 'inline-block';
-    document.getElementById('btnSaveSeasonalReport').style.display = 'inline-block';
   } catch (err) {
     alert('Errore: ' + err.message);
   } finally {
@@ -618,7 +616,10 @@ function printSeasonalReport() {
   const url = URL.createObjectURL(blob);
   const printWindow = window.open(url, '_blank');
   if (!printWindow) { alert('Popup bloccato! Abilita i popup per questo sito.'); return; }
-  printWindow.onload = () => { printWindow.print(); };
+  printWindow.onload = () => {
+    printWindow.print();
+    printWindow.onafterprint = () => printWindow.close();
+  };
 }
 
 // ── REPORT GIOCATORE ──
@@ -631,7 +632,6 @@ async function generatePlayerReport() {
     const report = await apiFetch('/calciatori/' + playerId + '/report');
     renderPlayerReport(report);
     document.getElementById('btnPrintPlayerReport').style.display = 'inline-block';
-    document.getElementById('btnSavePlayerReport').style.display = 'inline-block';
   } catch (err) {
     alert('Errore: ' + err.message);
   } finally {
@@ -781,43 +781,8 @@ function printPlayerReport() {
   const url = URL.createObjectURL(blob);
   const printWindow = window.open(url, '_blank');
   if (!printWindow) { alert('Popup bloccato! Abilita i popup per questo sito.'); return; }
-  printWindow.onload = () => { printWindow.print(); };
-}
-
-// Funzione Salva PDF (usa Blob per evitare problemi di popup)
-function saveReportAsPDF(reportType) {
-  const printAreaId = reportType === 'match' ? 'reportPrintArea' : 
-                      reportType === 'seasonal' ? 'seasonalPrintArea' : 'playerPrintArea';
-  const printArea = document.getElementById(printAreaId);
-  if (!printArea) { alert('Area di stampa non trovata'); return; }
-
-  const title = reportType === 'match' ? 'Report Partita' : 
-                reportType === 'seasonal' ? 'Report Stagionale' : 'Report Giocatore';
-
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <title>${title}</title>
-  <meta charset="UTF-8">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; padding: 15px; color: #333; font-size: 11px; background: white; }
-    h1 { font-size: 16px; margin: 0 0 6px 0; }
-    h2 { font-size: 14px; margin: 10px 0 5px 0; }
-    h3 { font-size: 12px; margin: 10px 0 5px 0; border-bottom: 1px solid #ddd; padding-bottom: 3px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 10px; }
-    th, td { padding: 3px 5px; text-align: left; border: 1px solid #eee; }
-    th { background: #f5f5f5; font-weight: 600; }
-    @page { size: A4; margin: 8mm; }
-  </style>
-</head>
-<body>${printArea.innerHTML}</body>
-</html>`;
-
-  const blob = new Blob([html], { type: 'application/pdf' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `${title.replace(' ', '_')}_${new Date().toISOString().split('T')[0]}.html`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+  printWindow.onload = () => {
+    printWindow.print();
+    printWindow.onafterprint = () => printWindow.close();
+  };
 }
