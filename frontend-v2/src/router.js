@@ -76,8 +76,7 @@ export function initRouter() {
     localStorage.removeItem('yfm_token');
     localStorage.removeItem('yfm_user');
     localStorage.removeItem('yfm_guest');
-    window.YFM.updateUserUI();
-    window.YFM.navigateTo('login');
+    window.location.reload();
   };
 
   window.YFM.updateUserUI = function() {

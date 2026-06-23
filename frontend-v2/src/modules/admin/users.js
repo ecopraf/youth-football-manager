@@ -110,23 +110,28 @@ export default async function loadUsers() {
 
 async function loadData() {
   try {
+    showLoading('Caricamento...');
+    
     const [usersRes, squadreRes] = await Promise.all([
       apiFetch('/auth/users'),
-      apiFetch('/stagioni/' + window.YFM.stagioneId + '/squadre').catch(() => ({ data: [] }))
+      apiFetch('/stagioni/' + window.YFM.stagioneId + '/squadre').catch(() => [])
     ]);
     
     users = usersRes.users || [];
-    squadre = squadreRes || [];
+    squadre = Array.isArray(squadreRes) ? squadreRes : (squadreRes.data || []);
     
+    hideLoading();
     renderUsers();
     populateSquadreSelect();
   } catch (err) {
+    hideLoading();
     document.getElementById('pageContent').innerHTML = `<div class="error-box">Errore: ${err.message}</div>`;
   }
 }
 
 function renderUsers() {
   const tbody = document.getElementById('usersTableBody');
+  if (!tbody) return; // Evita errore se DOM non pronto
   
   if (users.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#999;">Nessun utente trovato</td></tr>';
