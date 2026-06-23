@@ -83,6 +83,7 @@ export function setupLayout() {
           <span id="headerSocName" style="font-weight:600;color:var(--blue);font-size:15px;margin-left:8px;margin-right:auto;"></span>
           <div class="header-right">
             <select class="header-select" id="squadraSelect"><option>Caricamento...</option></select>
+            <button id="headerLogoutBtn" onclick="window.YFM.handleLogout()" style="background:#E74C3C;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;margin-left:12px;font-weight:500;display:${(currentUser || guest) ? 'inline-block' : 'none'};">🚪 Logout</button>
             <div class="player-avatar" style="width:36px;height:36px;font-size:14px;">${userInitial}</div>
           </div>
         </header>
