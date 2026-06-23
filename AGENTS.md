@@ -1,38 +1,53 @@
 # Youth Football Manager - Contesto Progetto
 
 ## Stack Tecnico
-- **Frontend**: React + Vite, deploy su Vercel
-- **Backend**: Node.js/Express, deploy su Render o simile
+- **Frontend**: Vite + JavaScript ES modules, deploy su Vercel
+- **Backend**: Node.js/Express, deploy su Vercel
 - **Database**: Supabase (PostgreSQL)
-- **Autenticazione**: Auth Supabase
+- **Autenticazione**: Auth Supabase (opzionale)
 
 ## Struttura Progetto
 ```
 /frontend-v2/src/
   /modules/team/
-    calendar.js      - Calendario partite
-    distinta.js     - Distinta partita
-    formazione.js   - Gestione formazione
-    convocazioni.js - Gestione convocazioni
-    resultForm.js   - Inserimento risultato/eventi (futuro)
-    valutazioni.js  - Valutazioni giocatori (passate)
-    playerDetail.js - Scheda giocatore
-    matchDetail.js  - Dettaglio partita
-  /services/api.js  - Chiamate API
-  main.js           - Entry point, routing
+    calendar.js       - Calendario partite (con archiviazione)
+    distinta.js       - Distinta FIGC
+    formazione.js     - Gestione formazione
+    convocazioni.js   - Gestione convocazioni
+    resultForm.js     - Inserimento eventi/risultato
+    valutazioni.js    - Valutazioni giocatori
+    playerDetail.js   - Scheda giocatore
+    matchDetail.js    - Dettaglio partita con timeline
+    noteAvversario.js - Note avversario
+    roster.js         - Rosa giocatori
+    squadre.js        - Gestione squadre
+  /modules/coach/
+    training.js       - Allenamenti e presenze
+  /modules/performance/
+    stats.js          - Statistiche disciplina
+    reports.js        - Report partita/stagionale
+  /modules/club/
+    settings.js       - Impostazioni
+    workspace.js      - Info società
+  /services/api.js    - Chiamate API
+  /utils/            - Formatters e UI utils
+  main.js            - Entry point
+  router.js          - Routing
 
-/backend/api/index.js - Tutti gli endpoint API
+/backend/api/index.js - Tutti gli endpoint API (v3.12)
 ```
 
 ## Tabelle DB Principali
 - `calciatori` - Giocatori
 - `rosa` - Associazione giocatori-squadra
 - `squadra` - Squadre
-- `partita` - Partite
+- `stagione` - Stagioni sportive
+- `workspace` - Società/club
+- `partita` - Partite (con campo `archiviata`)
 - `convocazione` - Convocazioni
 - `formazione_partita` - Formazioni
-- `evento_partita` - Eventi (GOAL, YELLOW, RED, ASSIST, GOAL_SUBITO)
-- `valutazione_partita` - Valutazioni (calciatore_id, voto, nota_allenatore)
+- `evento_partita` - Eventi (GOAL, SUBITO, YELLOW, RED, ASSIST, IN, OUT)
+- `valutazione_partita` - Valutazioni
 
 ## Regole Chat (da rispettare SEMPRE)
 1. **Prima di ogni modifica**: Verificare struttura DB esistente con API Supabase
@@ -40,46 +55,74 @@
 3. **Endpoint**: Verificare se esistono già prima di crearne di nuovi
 4. **Commit**: Sempre con messaggio descrittivo e push
 
-## Flusso Logico Attuale
+---
 
-### Calendario Partite
+## Flusso Logico: Calendario Partite
+
 ```
-├── ⚽ PROSSIMA PARTITA (evidenziata)
+├── ⚽ PROSSIMA PARTITA (evidenziata in verde)
 ├── 📅 Prossime Partite (ordinate per data)
-└── 🏆 Partite Giocate (ordinate per data DESC)
+└── 🏆 Partite Giocate (ordinate per data DESC, con stile archivio)
 ```
 
-### Gestione Singola Partita
-- **Futura senza risultato**: [📊 Risultato] → form eventi+valutazioni
-- **Passata con risultato**: [✏️ Eventi] [👥 Formazione] [⭐ Valutazioni]
+### Logica Pulsanti Calendario
+
+| Scenario | Pulsanti Visualizzati |
+|----------|----------------------|
+| **Futura senza risultato** | Formazione, Note, Convoca, Distinta, Edit, Elimina |
+| **Futura con risultato** | Formazione, Note, Convoca, Distinta, ✏️ Eventi, Edit, Elimina |
+| **Passata con risultato** | Formazione, Convoca, Distinta, 📦 Archivia, Edit, Elimina |
+| **Passata archiviata** | Formazione, Convoca, Distinta, 🔓 Sblocca (stile grigio) |
+
+### Logica Archiviazione
+- **Campo**: `partita.archiviata` (boolean)
+- **Pulsante Archivia**: visibile SOLO per partite passate con risultato
+- **Dopo archiviazione**: stile visivo grigio (#8B7355), icona 📦, Edit/Elimina nascosti
+- **Sblocca**: disponibile per riattivare modifiche
+
+### Gestione Moduli (Formazione/Eventi/Convocazioni)
+- **Non archiviata**: modal modificabile
+- **Archiviata**: modal sola lettura con badge "📦 Partita Archiviata"
+
+---
 
 ## Endpoint API principali
-- `GET /api/partite/:id/dettaglio` - Dettaglio con eventi
+
+### Partite
+- `GET /api/partite/:id/dettaglio` - Dettaglio con eventi e campo archiviata
+- `PUT /api/partite/:id/archivia` - Archivia partita
+- `PUT /api/partite/:id/sblocca` - Sblocca partita archiviata
+
+### Formazione e Convocazioni
 - `GET /api/partite/:id/formazione` - Formazione (array diretto)
+- `POST /api/partite/:id/formazione` - Salva formazione
 - `GET /api/partite/:id/convocazioni` - Convocazioni
-- `POST /api/partite/:id/eventi` - Inserisci evento
-- `DELETE /api/partite/:id/eventi` - Elimina tutti eventi
+
+### Eventi
+- `POST /api/partite/:id/evento-item` - Inserisci singolo evento
+- `POST /api/partite/:id/eventi-batch` - Inserisci batch eventi
+- `DELETE /api/partite/:id/eventi-batch` - Elimina tutti eventi
+
+### Valutazioni
 - `GET /api/partite/:id/valutazioni` - Lista valutazioni
 - `POST /api/partite/:id/valutazioni` - Salva batch valutazioni
 
-## Task Da Completare
-- [x] ✅ **Pulsante "Archivia Partita"** - Blocco modifiche dopo archiviazione
+---
 
-## Task Sospesi (on hold)
-- ⏸️ **Valutazioni Giocatore** - Valutazioni tecniche per stagione/partita (sospesa per ora)
+## Task Completati ✅
+- ✅ **Timeline Partita** - Vista minuto-per-minuto eventi in matchDetail.js
+- ✅ **Archivia Partita** - Blocco modifiche per partite concluse
 
-## Funzionalità Implementate
-- ✅ **Timeline Partita** - Vista minuto-per-minuto eventi (in matchDetail.js)
-- ✅ **Archivia Partita** - Pulsante per bloccare modifiche a eventi/formazione/convocazioni
+## Task Sospesi ⏸️
+- ⏸️ **Valutazioni Giocatore** - Valutazioni tecniche per stagione/partita
 
-## Ultime Modifiche (commit: FEAT - Archivia Partita)
-- Aggiunto campo archiviata alla tabella partita
-- Aggiunti endpoint PUT /api/partite/:id/archivia e /sblocca
-- Calendario: badge e pulsante Archivia/Sblocca
-- Formazione: sola lettura per partite archiviate
-- Eventi: sola lettura per partite archiviate
-- Convocazioni: sola lettura per partite archiviate
+## Ultime Modifiche (commit: abad1ab)
+- Fix logica Archivia Partita con UI corretta
+- Solo icona 📦 (senza etichetta "Archiviata")
+- Rimosso pulsante Formazione duplicato
+- Partite future con risultato: pulsante "✏️ Eventi" per continuare modifiche
 
 ## URL Applicazione
-- Frontend: https://youth-football-manager.vercel.app
-- Repo: https://github.com/ecopraf/youth-football-manager
+- **Frontend**: https://youth-football-manager.vercel.app
+- **Backend**: https://youth-football-manager-backend.vercel.app
+- **Repo**: https://github.com/ecopraf/youth-football-manager

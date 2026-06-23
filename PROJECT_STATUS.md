@@ -30,6 +30,7 @@ Macro-aree funzionali:
 
 ### Backend (`backend/api/index.js`)
 - **Stack**: Node.js + Express
+- **Versione**: 3.12
 - **Database**: Supabase (PostgreSQL)
 - **Esport**: `module.exports = app;` per Vercel
 - **CORS**: abilitato globalmente
@@ -46,7 +47,7 @@ Macro-aree funzionali:
 - `frontend-v2/src/components/layout/Sidebar.js` → layout + sidebar + header
 
 ### Database (Supabase)
-Tabelle principali: `calciatore`, `stagione`, `squadra`, `rosa`, `partita`, `evento_partita`, `presenza_partita`, `presenza_allenamento`, `configurazione_allenamento`, `convocazione`, `formazione_partita`, `materiale_allenamento`.
+Tabelle principali: `calciatori`, `rosa`, `squadra`, `stagione`, `workspace`, `partita` (con campo `archiviata`), `convocazione`, `formazione_partita`, `evento_partita`, `valutazione_partita`, `presenza_allenamento`, `configurazione_allenamento`.
 
 ---
 
@@ -56,35 +57,78 @@ Tabelle principali: `calciatore`, `stagione`, `squadra`, `rosa`, `partita`, `eve
 
 | Modulo | Percorso | Descrizione |
 |--------|----------|-------------|
-| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, trend ultimi 5 (GF/GS/DR), top marcatori/assist/presenze |
+| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, trend GF/GS/DR, top marcatori/assist/presenze |
 | Rosa | `modules/team/roster.js` | CRUD giocatori, scadenze mediche, filtri |
-| Calendario | `modules/team/calendar.js` | CRUD partite, prossima in evidenza, note avversario |
-| Convocazioni | `modules/team/convocazioni.js` | Vincoli min/max, archivio, PDF |
+| Calendario | `modules/team/calendar.js` | CRUD partite, prossima in evidenza, archiviazione |
+| Convocazioni | `modules/team/convocazioni.js` | Vincoli min/max, PDF, sola lettura se archiviata |
 | Distinta | `modules/team/distinta.js` | Layout FIGC, 24 righe, staff, stampa PDF |
-| Match Detail | `modules/team/matchDetail.js` | Eventi, timeline e statistiche per partita, header colorato |
+| Match Detail | `modules/team/matchDetail.js` | Eventi, timeline per tempo, statistiche |
 | Note Avversario | `modules/team/noteAvversario.js` | Ereditarietà automatica note |
 | Scheda Giocatore | `modules/team/playerDetail.js` | Profilo, stats, carriera, ultime partite |
-| Formazione | `modules/team/formazione.js` | Scelta titolari/panchina con numeri |
-| Allenamenti | `modules/coach/training.js` | Calendario sedute, presenze, summary, materiale |
+| Formazione | `modules/team/formazione.js` | Scelta titolari/panchina, sola lettura se archiviata |
+| Eventi/Risultato | `modules/team/resultForm.js` | Inserimento eventi, sola lettura se archiviata |
+| Valutazioni | `modules/team/valutazioni.js` | Valutazioni partite |
+| Allenamenti | `modules/coach/training.js` | Calendario sedute, presenze, materiale |
 | Stats | `modules/performance/stats.js` | Disciplina (ammonizioni, espulsioni) |
-| Reports | `modules/performance/reports.js` | Report Partita, Stagionale, Giocatore con stampa |
+| Reports | `modules/performance/reports.js` | Report Partita, Stagionale, Giocatore |
 | Settings | `modules/club/settings.js` | Stagione, categoria, staff |
 | Workspace | `modules/club/workspace.js` | Info società |
 
-### 🔴 NON ANCORA IMPLEMENTATI
+### ✅ COMPLETATI
+
+| Funzionalità | Commit | Note |
+|--------------|--------|------|
+| Timeline Partita | - | Vista minuto-per-minuto in matchDetail.js |
+| Archivia Partita | abad1ab | Blocco modifiche per partite concluse |
+
+### ⏸️ SOSPESI
 
 | Funzionalità | Note |
 |--------------|------|
-| ~~Timeline Partita~~ | ✅ IMPLEMENTATA - Vista minuto-per-minuto in matchDetail.js |
-| ~~Archivia Partita~~ | ✅ IMPLEMENTATA - Blocco modifiche per partite concluse |
-| Valutazioni Giocatore | ⏸️ SOSPESA - Valutazioni tecniche per stagione/partita |
+| Valutazioni Giocatore | Valutazioni tecniche per stagione/partita |
+
+### 🔴 DA IMPLEMENTARE
+
+| Funzionalità | Note |
+|--------------|------|
 | Auth/Ruoli | Login, ruoli (Allenatore, Staff, Admin) |
 | Import Tuttocampo | Import dati da fonti esterne |
 | Multi-istanza | Supporto multiple società |
 
 ---
 
-## 4. Routing e Navigazione
+## 4. Logica Archiviazione Partite
+
+### Campo Database
+- Tabella: `partita`
+- Campo: `archiviata` (boolean, default false)
+
+### Endpoint API
+- `PUT /api/partite/:id/archivia` - Archivia partita
+- `PUT /api/partite/:id/sblocca` - Sblocca partita archiviata
+
+### Pulsanti Calendario per Scenario
+
+| Scenario | Pulsanti |
+|----------|----------|
+| **Futura senza risultato** | Formazione, Note, Convoca, Distinta, Edit, Elimina |
+| **Futura con risultato** | Formazione, Note, Convoca, Distinta, ✏️ Eventi, Edit, Elimina |
+| **Passata con risultato** | Formazione, Convoca, Distinta, 📦 Archivia, Edit, Elimina |
+| **Passata archiviata** | Formazione, Convoca, Distinta, 🔓 Sblocca (stile grigio) |
+
+### Gestione Moduli
+- **Non archiviata**: modal modificabile
+- **Archiviata**: modal sola lettura con badge "📦 Partita Archiviata"
+
+### Stile Visivo Archiviate
+- Opacità: 75%
+- Bordo sinistro: #8B7355 (marrone)
+- Background: #F5F5F0 (beige chiaro)
+- Icona: 📦 accanto alla data
+
+---
+
+## 5. Routing e Navigazione
 
 Il router (`router.js`) definisce le pagine accessibili dalla sidebar:
 
@@ -104,7 +148,7 @@ Navigazione: `window.YFM.navigateTo('nomePagina')`
 
 ---
 
-## 5. Servizi e Utility
+## 6. Servizi e Utility
 
 ### API (`src/services/api.js`)
 - `apiFetch(path, options?)` → chiama il backend
@@ -120,7 +164,7 @@ Navigazione: `window.YFM.navigateTo('nomePagina')`
 
 ---
 
-## 6. Linee Guida per Collaboratori
+## 7. Linee Guida per Collaboratori
 
 ### Regole fondamentali
 1. **Mai inventare route, nomi tabelle o funzioni** → verificare prima nel codice
@@ -152,18 +196,9 @@ function renderModule(container, data) {
 }
 ```
 
-### API Backend (esterni)
-Per aggiungere nuovi endpoint, modificare `backend/api/index.js` seguendo il pattern esistente:
-```javascript
-app.get('/api/risorsa/:id', async (req, res) => {
-  const { data } = await supabase.from('tabella').select('*').eq('id', req.params.id);
-  res.json(data);
-});
-```
-
 ---
 
-## 7. Setup Locale
+## 8. Setup Locale
 
 ```bash
 # Backend
@@ -179,25 +214,6 @@ npm run dev -- --host 0.0.0.0 --port 8080
 
 ---
 
-## 8. Roadmap
-
-### 🔴 Priorità Alta (Core 1.x)
-- [ ] **Valutazioni Giocatore**: Valutazioni tecniche per stagione/partita
-- [ ] **Timeline Partita**: Vista minuto-per-minuto con eventi (gol, assist, cartellini, sostituzioni)
-- [ ] **Auth/Ruoli MVP**: Login base con ruoli (Allenatore, Staff, Admin)
-
-### 🟡 Priorità Media
-- [ ] Mini grafici andamento giocatore (minuti, forma, contributo offensivo)
-- [ ] Note del coach per stagione/partita
-- [ ] Integrazione Supabase Storage per materiale allenamento
-
-### 🟢 Future / Esteso
-- [ ] Import Tuttocampo (scraper + wizard import)
-- [ ] Architettura multi-istanza
-- [ ] Marketplace moduli opzionali (Scouting, Video Analysis, App Genitori)
-
----
-
 ## 9. Deploy
 
 ### Frontend (Vercel)
@@ -209,8 +225,7 @@ npm run dev -- --host 0.0.0.0 --port 8080
 ### Backend (Vercel)
 - **URL**: https://youth-football-manager-backend.vercel.app
 - Root Directory: `backend`
-- Build: vuoto
-- Output: vuoto (usa `api/index.js`)
+- Versione: 3.12
 
 ### Env richieste (Backend)
 - `SUPABASE_URL`
@@ -219,7 +234,16 @@ npm run dev -- --host 0.0.0.0 --port 8080
 
 ### Database (Supabase)
 - **URL**: https://csxdlxbhcnyfppojwwzy.supabase.co
-- Tabelle principali: calciatore, stagione, squadra, rosa, partita, evento_partita, presenza_partita, presenza_allenamento, configurazione_allenamento, convocazione, formazione_partita, materiale_allenamento
+
+---
+
+## 10. Ultimi Commit
+
+| Hash | Descrizione |
+|------|------------|
+| abad1ab | Fix UI Archivia Partita - logica corretta |
+| 3758059 | Correzione logica Archivia Partita |
+| a0e5ee1 | FEAT: Archivia Partita - blocco modifiche |
 
 ---
 
