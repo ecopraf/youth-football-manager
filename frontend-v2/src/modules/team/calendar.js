@@ -96,9 +96,10 @@ export function renderMatchCard(m, stats, isNext = false) {
   
   if (hasResult) {
     const color = r.golFatti > r.golSubiti ? '#27AE60' : r.golFatti === r.golSubiti ? '#F39C12' : '#E74C3C';
-    R += `<div style="font-size:22px;font-weight:bold;color:${color};cursor:pointer;min-width:50px;text-align:center;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')" title="Dettaglio">${r.golFatti} - ${r.golSubiti}</div>`;
-    } else if (!isPast) {
-    // Partita futura: mostra pulsante per inserire risultato
+    const liveIcon = !isPast ? '<span style="color:#E74C3C;font-size:10px;">●</span> ' : '';
+    R += `<div style="font-size:22px;font-weight:bold;color:${color};cursor:pointer;min-width:50px;text-align:center;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')" title="Dettaglio">${liveIcon}${r.golFatti} - ${r.golSubiti}</div>`;
+    if (!isPast) R += `<div style="font-size:10px;color:#E74C3C;text-align:center;">LIVE</div>`;
+  } else if (!isPast) {
     R += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">📊 Risultato</button>`;
   } else {
     R += `<span style="color:var(--gray);cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')">Dettaglio</span>`;
