@@ -39,6 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
 })
 
 // Funzioni globali per i moduli del calendario (caricate on-demand)
+window.YFM.loadCalendar = async () => {
+  const m = await import('./modules/team/calendar.js')
+  await m.default()
+}
 window.YFM.openConvocation = async (mid, readOnly) => {
   const m = await import('./modules/team/convocazioni.js')
   m.openConvocation(mid, readOnly)
