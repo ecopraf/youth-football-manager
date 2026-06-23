@@ -2,7 +2,7 @@ import { apiFetch } from '../../services/api.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
 
 const RUOLO_ACR = { 'Portiere': 'POR', 'Difensore': 'DIF', 'Centrocampista': 'CEN', 'Attaccante': 'ATT' };
-const EVENTI_ICON = { 'GOAL': '⚽', 'GOAL_SUBITO': '⚽', 'YELLOW': '🟨', 'RED': '🟥', 'ASSIST': '🅰️', 'OUT': '➡️', 'IN': '⬅️' };
+const EVENTI_ICON = { 'GOAL': '⚽', 'YELLOW': '🟨', 'RED': '🟥', 'ASSIST': '🅰️', 'OUT': '➡️', 'IN': '⬅️' };
 
 export async function openFormazioneForm(mid) {
   const match = window.YFM.allMatches.find(m => m.id === mid) || {};
@@ -48,7 +48,7 @@ export async function openFormazioneForm(mid) {
   }
 }
 
-// ==================== FORMAZIONE FUTURA (EDIT) ====================
+// ==================== FORMAZIONE FUTURA (EDIT - COME ERA PRIMA) ====================
 function renderFormazioneEdit(mid, match, giocatori, formMap) {
   let html = '<p style="margin-bottom:16px;"><strong>Formazione - ' + window.YFM.getSocietaName() + ' vs ' + match.avversario + '</strong></p>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">';
@@ -127,10 +127,6 @@ function renderFormazioneEdit(mid, match, giocatori, formMap) {
 
 // ==================== FORMAZIONE ARCHIVIATA ====================
 function renderFormazioneArchiviata(mid, match, giocatori, formMap, eventiByPlayer, valutazioniMap) {
-  const allEventi = Object.values(eventiByPlayer).flat();
-  const golFatti = allEventi.filter(e => e.tipo === 'GOAL').length;
-  const golSubiti = allEventi.filter(e => e.tipo === 'GOAL_SUBITO').length;
-  
   const titolari = [], riserve = [];
   giocatori.forEach(g => {
     const f = formMap[g.id];
@@ -140,10 +136,10 @@ function renderFormazioneArchiviata(mid, match, giocatori, formMap, eventiByPlay
   
   let html = '<style>';
   html += '.fa{max-height:75vh;overflow-y:auto;padding:8px;}';
-  html += '.fa-header{text-align:center;padding:20px;background:linear-gradient(135deg,#27AE6020,#27AE6040);border-radius:16px;margin-bottom:20px;border:2px solid #27AE6050;}';
-  html += '.fa-score{font-size:56px;font-weight:bold;}';
-  html += '.fa-meta{font-size:13px;color:#555;margin-top:8px;}';
-  html += '.fa-field{position:relative;background:linear-gradient(180deg,#4CAF50 0%,#2E7D32 100%);border-radius:20px;padding:24px;min-height:420px;margin-bottom:24px;overflow:hidden;box-shadow:inset 0 0 30px rgba(0,0,0,0.2);}';
+  html += '.fa-title{text-align:center;padding:16px;background:#f8f9fa;border-radius:12px;margin-bottom:20px;}';
+  html += '.fa-title h3{margin:0 0 8px;font-size:18px;}';
+  html += '.fa-title p{margin:0;font-size:13px;color:#888;}';
+  html += '.fa-field{position:relative;background:linear-gradient(180deg,#4CAF50 0%,#2E7D32 100%);border-radius:20px;padding:24px;min-height:400px;margin-bottom:24px;overflow:hidden;box-shadow:inset 0 0 30px rgba(0,0,0,0.2);}';
   html += '.fa-field::before{content:"";position:absolute;top:50%;left:0;right:0;height:3px;background:rgba(255,255,255,0.6);}';
   html += '.fa-field::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100px;height:100px;border:3px solid rgba(255,255,255,0.6);border-radius:50%;}';
   html += '.fa-circle{position:absolute;width:20px;height:20px;border:2px solid rgba(255,255,255,0.6);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);}';
@@ -154,30 +150,27 @@ function renderFormazioneArchiviata(mid, match, giocatori, formMap, eventiByPlay
   html += '.fa-name{font-size:10px;color:white;text-align:center;background:rgba(0,0,0,0.6);padding:3px 6px;border-radius:6px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}';
   html += '.fa-num{position:absolute;top:-6px;left:-6px;width:22px;height:22px;background:white;color:#333;border-radius:50%;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.3);}';
   html += '.fa-role{font-size:9px;color:rgba(255,255,255,0.8);margin-top:2px;}';
-  html += '.fa-val{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:white;border-radius:12px;margin-bottom:8px;border:1px solid #eee;transition:all 0.2s;}';
-  html += '.fa-val:hover{border-color:#27AE60;box-shadow:0 2px 8px rgba(39,174,96,0.1);}';
+  html += '.fa-val{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:white;border-radius:12px;margin-bottom:8px;border:1px solid #eee;}';
+  html += '.fa-val:hover{border-color:#4CAF50;}';
   html += '.fa-val-name{flex:1;}';
   html += '.fa-val-nome{font-weight:600;font-size:14px;}';
   html += '.fa-val-role{font-size:11px;color:#888;margin-top:2px;}';
   html += '.fa-val-badge{margin:0 12px;font-size:16px;}';
-  html += '.fa-val-voto{padding:10px 16px;background:linear-gradient(135deg,#27AE60,#219653);color:white;border:none;border-radius:10px;font-weight:bold;font-size:16px;min-width:70px;cursor:pointer;}';
-  html += '.fa-section{margin-top:20px;}';
-  html += '.fa-section h4{margin:0 0 16px;font-size:16px;color:#333;display:flex;align-items:center;gap:8px;}';
-  html += '.fa-empty{text-align:center;padding:40px;color:#888;font-size:14px;}';
-  html += '.fa-goals{text-align:center;font-size:14px;color:#666;margin-bottom:8px;}';
+  html += '.fa-val-voto{padding:10px 16px;background:#4CAF50;color:white;border:none;border-radius:10px;font-weight:bold;font-size:16px;min-width:70px;cursor:pointer;}';
+  html += '.fa-section h4{margin:0 0 16px;font-size:16px;color:#333;}';
+  html += '.fa-empty{text-align:center;padding:40px;color:#888;}';
   html += '</style>';
   
   html += '<div class="fa">';
   
-  // HEADER
-  html += '<div class="fa-header">';
-  html += '<div class="fa-score"><span style="color:#27AE60;">' + golFatti + '</span> - <span style="color:#E74C3C;">' + golSubiti + '</span></div>';
-  html += '<div class="fa-meta">' + window.YFM.getSocietaName() + ' vs ' + match.avversario + ' | ' + match.competizione + '</div>';
+  // HEADER (senza risultato)
+  html += '<div class="fa-title">';
+  html += '<h3>👥 Formazione Schierata</h3>';
+  html += '<p>' + window.YFM.getSocietaName() + ' vs ' + match.avversario + ' | ' + match.competizione + '</p>';
   html += '</div>';
   
   // CAMPO
-  html += '<div class="fa-field">';
-  html += '<div class="fa-circle"></div>';
+  html += '<div class="fa-field"><div class="fa-circle"></div>';
   
   const linee = { POR: [], DIF: [], CEN: [], ATT: [] };
   titolari.forEach(g => {
@@ -195,7 +188,6 @@ function renderFormazioneArchiviata(mid, match, giocatori, formMap, eventiByPlay
   // VALUTAZIONI
   html += '<div class="fa-section">';
   html += '<h4>⭐ Valutazioni Giocatori</h4>';
-  html += '<div class="fa-goals">⚽ ' + golFatti + ' gol fatti | ' + golSubiti + ' gol subiti</div>';
   
   const tutti = [...titolari, ...riserve].sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
   
@@ -217,7 +209,7 @@ function renderFormazioneArchiviata(mid, match, giocatori, formMap, eventiByPlay
       html += '<div class="fa-val-role">' + acr + '</div>';
       html += '</div>';
       html += badgeHtml;
-      html += '<select class="fa-val-voto" data-vid="' + g.id + '">';
+      html += '<select class="fa-val-voto" data-vid="' + g.id + '" style="background:#4CAF50;">';
       html += '<option value="">-</option>';
       for (let v = 4; v <= 10; v += 0.5) {
         html += '<option value="' + v + '"' + (exVoto == v ? ' selected' : '') + '>' + v.toString().replace('.', ',') + '</option>';
