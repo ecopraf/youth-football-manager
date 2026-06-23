@@ -99,7 +99,7 @@ export default async function loadGuestLinks() {
           </div>
           
           <div style="display:flex;gap:12px;justify-content:center;">
-            <button class="btn btn-primary" onclick="copyLink()">📋 Copia Link</button>
+            <button class="btn btn-primary" id="btnCopyCreatedLink">📋 Copia Link</button>
             <button class="btn btn-secondary" onclick="document.getElementById('linkCreatedModal').style.display='none'">Chiudi</button>
           </div>
         </div>
@@ -113,6 +113,7 @@ export default async function loadGuestLinks() {
   // Event listeners
   document.getElementById('btnCreateLink').addEventListener('click', openCreateModal);
   document.getElementById('linkForm').addEventListener('submit', handleCreate);
+  document.getElementById('btnCopyCreatedLink').addEventListener('click', copyLink);
 }
 
 async function loadData() {
@@ -239,15 +240,19 @@ async function handleCreate(e) {
 
 function copyLink() {
   const input = document.getElementById('createdLink');
-  input.select();
-  document.execCommand('copy');
-  alert('Link copiato!');
+  if (input) {
+    input.select();
+    document.execCommand('copy');
+    alert('Link copiato!');
+  }
 }
 
-function copyToClipboard(text) {
+// Esporta globalmente
+window.copyLink = copyLink;
+window.copyToClipboard = function(text) {
   navigator.clipboard.writeText(text).then(() => {
     alert('Link copiato!');
   }).catch(() => {
     prompt('Copia questo link:', text);
   });
-}
+};

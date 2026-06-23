@@ -1,5 +1,7 @@
 import { verifyGuestToken, setGuestSession } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
+import { loadWorkspaceInfo } from '../club/workspace';
+import { loadSquadre } from '../team/squadre';
 
 export default async function loadGuest() {
   const c = document.getElementById('pageContent');
@@ -44,6 +46,13 @@ export default async function loadGuest() {
         </div>
       </div>
     `;
+    
+    // Aggiorna UI
+    window.YFM.updateUserUI();
+    
+    // Carica dati per il guest
+    await loadWorkspaceInfo();
+    await loadSquadre();
     
     // Reindirizza dopo 2 secondi
     setTimeout(() => {
