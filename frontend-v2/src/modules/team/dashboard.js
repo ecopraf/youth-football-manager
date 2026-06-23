@@ -1,18 +1,20 @@
 import { apiFetch } from '../../services/api';
-import { formatDate, formatDateShort } from '../../utils/formatters';
+import { formatDate, formatDateShort, formatTime } from '../../utils/formatters';
 
 export default async function loadDashboard() {
   const c = document.getElementById('pageContent');
   const squadraId = window.YFM.squadraId;
   
   try {
-    const [stats, top, topValutazioni] = await Promise.all([
+    const [stats, top, topValutazioni, partiteFuture] = await Promise.all([
       apiFetch('/squadre/' + squadraId + '/statistiche-complete').catch(() => ({ punti:0, partiteGiocate:0, vittorie:0, pareggi:0, sconfitte:0, golFatti:0, golSubiti:0, differenzaReti:0, risultati:[] })),
       apiFetch('/squadre/' + squadraId + '/top-players').catch(() => ({ marcatori:[], assistmen:[], presenze:[] })),
-      apiFetch('/squadre/' + squadraId + '/valutazioni-top').catch(() => ({ topGiocatori:[] }))
+      apiFetch('/squadre/' + squadraId + '/valutazioni-top').catch(() => ({ topGiocatori:[] })),
+      apiFetch('/squadre/' + squadraId + '/partite-future').catch(() => [])
     ]);
     
     const s = window.YFM.getSquadra();
+    const prossimaPartita = partiteFuture && partiteFuture.length > 0 ? partiteFuture[0] : null;
     
     // Widget principali
     const widgets = [
@@ -32,8 +34,43 @@ export default async function loadDashboard() {
           <h1 class="page-title">Dashboard ${window.YFM.getSquadraName()}</h1>
           <p class="page-subtitle">Stagione 2025/26 · ${stats.partiteGiocate} partite</p>
         </div>
-        <button class="btn btn-primary" id="btnNewMatch">+ Nuova Partita</button>
       </div>
+      
+      ${prossimaPartita ? `
+      <!-- Prossima Partita Evidenziata -->
+      <div class="card" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;margin-bottom:24px;color:white;border:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:11px;font-weight:600;opacity:0.9;text-transform:uppercase;margin-bottom:4px;">
+              ⏱ Prossima Partita
+            </div>
+            <div style="font-size:18px;font-weight:bold;margin-bottom:4px;">
+              ${prossimaPartita.avversario}
+            </div>
+            <div style="font-size:12px;opacity:0.9;">
+              📅 ${formatDate(prossimaPartita.data_ora)} · 🕐 ${formatTime(prossimaPartita.data_ora)}
+              ${prossimaPartita.luogo === 'Casa' ? ' · 🏠 Casa' : ' · ✈️ Trasferta'}
+              ${prossimaPartita.competizione ? ' · 🏆 ' + prossimaPartita.competizione : ''}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;" 
+                    onclick="window.YFM.openConvocation('${prossimaPartita.id}')" title="Convocazioni">
+              👥 Convocazioni
+            </button>
+            <button class="btn" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;" 
+                    onclick="window.YFM.openMatchDetail('${prossimaPartita.id}')" title="Dettagli Partita">
+              ℹ️ Dettagli
+            </button>
+          </div>
+        </div>
+      </div>
+      ` : `
+      <div class="card" style="padding:16px;margin-bottom:24px;text-align:center;border:2px dashed #ddd;">
+        <p style="color:var(--gray);margin:0;">📅 Nessuna partita in programma</p>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="window.YFM.navigateTo('calendar')">+ Nuova Partita</button>
+      </div>
+      `}
       
       <!-- Widgets responsive -->
       <div class="dashboard-widgets" style="display:grid;grid-template-columns:repeat(8,1fr);gap:10px;margin-bottom:24px;">
@@ -54,7 +91,7 @@ export default async function loadDashboard() {
       <div class="top-cards-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
         <!-- Top 3 Marcatori -->
         <div class="card" style="padding:12px;">
-          <h3 class="section-title" style="margin:0 0 12px 0;">⚽ Top 3 Marcatori</h3>
+          <h3 class="section-title" style="margin:0 0 12px 0;" title="Top 3 Marcatori">⚽ Top 3 Marcatori</h3>
           <div class="top-cards-row" style="display:flex;gap:8px;">
             ${(top.marcatori || []).slice(0, 3).map((x, i) => `
               <div style="flex:1;background:${['#fff9e6','#f0f0f0','#f0f8ff'][i]};padding:10px 6px;border-radius:8px;text-align:center;">
@@ -68,7 +105,7 @@ export default async function loadDashboard() {
         </div>
         <!-- Top 3 Assist -->
         <div class="card" style="padding:12px;">
-          <h3 class="section-title" style="margin:0 0 12px 0;">🅰️ Top 3 Assist</h3>
+          <h3 class="section-title" style="margin:0 0 12px 0;" title="Top 3 Assist">🅰️ Top 3 Assist</h3>
           <div class="top-cards-row" style="display:flex;gap:8px;">
             ${(top.assistmen || []).slice(0, 3).map((x, i) => `
               <div style="flex:1;background:${['#e6fff0','#f0f0f0','#f0f8ff'][i]};padding:10px 6px;border-radius:8px;text-align:center;">
@@ -82,7 +119,7 @@ export default async function loadDashboard() {
         </div>
         <!-- Top 3 Presenze -->
         <div class="card" style="padding:12px;">
-          <h3 class="section-title" style="margin:0 0 12px 0;">🏃 Top 3 Presenze</h3>
+          <h3 class="section-title" style="margin:0 0 12px 0;" title="Top 3 Presenze">🏃 Top 3 Presenze</h3>
           <div class="top-cards-row" style="display:flex;gap:8px;">
             ${(top.presenze || []).slice(0, 3).map((x, i) => `
               <div style="flex:1;background:${['#e6f3ff','#f0f0f0','#fff9e6'][i]};padding:10px 6px;border-radius:8px;text-align:center;">
@@ -99,7 +136,7 @@ export default async function loadDashboard() {
       <!-- Top Valutazioni -->
       ${(topValutazioni.topGiocatori || []).length > 0 ? `
       <div class="card" style="padding:16px;margin-bottom:20px;">
-        <h3 class="section-title" style="margin:0 0 12px 0;">⭐ Migliori per Media Voto</h3>
+        <h3 class="section-title" style="margin:0 0 12px 0;" title="Migliori per Media Voto">⭐ Migliori per Media Voto</h3>
         <div style="display:flex;flex-direction:column;gap:8px;">
           ${topValutazioni.topGiocatori.slice(0, 5).map((g, i) => `
             <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:${i === 0 ? '#fff9e6' : '#f8f9fa'};border-radius:8px;">
@@ -121,7 +158,7 @@ export default async function loadDashboard() {
       <div class="dashboard-bottom-grid" style="display:grid;gap:20px;grid-template-columns:1fr;">
         <!-- Ultimi Risultati -->
         <div class="card">
-          <h3 class="section-title">📋 Ultimi Risultati</h3>
+          <h3 class="section-title" title="Ultimi Risultati">📋 Ultimi Risultati</h3>
           ${(() => {
             const risultati = (stats.risultati || []).slice(0, 5);
             if (risultati.length === 0) return '<p style="color:var(--gray);text-align:center;padding:20px;">Nessuna partita disputata</p>';
@@ -140,7 +177,7 @@ export default async function loadDashboard() {
             const trendHtml = ultimi5.map(r => {
               const esito = r.golFatti > r.golSubiti ? 'V' : r.golFatti === r.golSubiti ? 'P' : 'S';
               const color = r.golFatti > r.golSubiti ? '#27AE60' : r.golFatti === r.golSubiti ? '#F39C12' : '#E74C3C';
-              return `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:${color};color:white;font-size:11px;font-weight:bold;border-radius:6px;">${esito}</span>`;
+              return `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:${color};color:white;font-size:11px;font-weight:bold;border-radius:6px;" title="${esito === 'V' ? 'Vittoria' : esito === 'P' ? 'Pareggio' : 'Sconfitta'}">${esito}</span>`;
             }).join('<span style="color:#ddd;margin:0 4px;">—</span>');
             
             const gruppi = {};
@@ -161,15 +198,15 @@ export default async function loadDashboard() {
                   ${trendHtml}
                 </div>
                 <div style="display:flex;justify-content:center;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.2);">
-                  <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:8px 16px;text-align:center;min-width:60px;">
+                  <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:8px 16px;text-align:center;min-width:60px;" title="Gol Fatti">
                     <div style="font-size:22px;font-weight:bold;color:white;">${gf5}</div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.8);">Gol Fatti</div>
                   </div>
-                  <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:8px 16px;text-align:center;min-width:60px;">
+                  <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:8px 16px;text-align:center;min-width:60px;" title="Gol Subiti">
                     <div style="font-size:22px;font-weight:bold;color:white;">${gs5}</div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.8);">Gol Subiti</div>
                   </div>
-                  <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:8px 16px;text-align:center;min-width:60px;">
+                  <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:8px 16px;text-align:center;min-width:60px;" title="Differenza Reti">
                     <div style="font-size:22px;font-weight:bold;color:${dr5 >= 0 ? '#4ade80' : '#f87171'};">${dr5 >= 0 ? '+' : ''}${dr5}</div>
                     <div style="font-size:10px;color:rgba(255,255,255,0.8);">Diff. Reti</div>
                   </div>
@@ -189,7 +226,7 @@ export default async function loadDashboard() {
                       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 6px;border-bottom:1px solid #f0f0f0;cursor:pointer;" 
                            onclick="window.YFM.openMatchDetail('${r.id}')">
                         <div style="display:flex;align-items:center;gap:8px;">
-                          <span style="font-size:10px;color:#667eea;font-weight:600;min-width:24px;">G.${String(r.giornata || '-').padStart(2,'0')}</span>
+                          <span style="font-size:10px;color:#667eea;font-weight:600;min-width:24px;" title="Giornata">G.${String(r.giornata || '-').padStart(2,'0')}</span>
                           <span style="font-size:11px;color:var(--gray);">${formatDateShort(r.dataOra)}</span>
                           <span title="${isCasa ? 'Casa' : 'Trasferta'}" style="font-size:12px;">${isCasa ? '🏠' : '✈️'}</span>
                         </div>
@@ -208,7 +245,7 @@ export default async function loadDashboard() {
         
         <!-- Staff -->
         <div class="card">
-          <h3 class="section-title">👥 Staff</h3>
+          <h3 class="section-title" title="Staff della Squadra">👥 Staff</h3>
           <div style="display:flex;flex-direction:column;gap:8px;">
             ${['allenatore','dirigente','dirigente2','preparatore_atletico','allenatore_portieri'].filter(r => s[r]).map(r => `
               <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
@@ -226,10 +263,6 @@ export default async function loadDashboard() {
         @media (min-width: 900px) { .dashboard-bottom-grid { grid-template-columns: 1.5fr 1fr !important; } }
       </style>
     `;
-    
-    document.getElementById('btnNewMatch').addEventListener('click', () => {
-      window.YFM.navigateTo('calendar');
-    });
   } catch (error) {
     c.innerHTML = `<div class="error-box">Errore: ${error.message}</div>`;
   }

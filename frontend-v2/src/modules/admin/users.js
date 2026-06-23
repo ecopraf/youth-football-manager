@@ -132,7 +132,7 @@ async function loadData() {
     // Prova a ottenere le squadre con fallback
     let squadreRes = [];
     try {
-      squadreRes = await apiFetch('/squadre'); // Endpoint generico
+      squadreRes = await apiFetch('/squadre');
     } catch (e) {
       try {
         if (window.YFM.stagioneId) {
@@ -142,8 +142,6 @@ async function loadData() {
     }
     
     const usersRes = await apiFetch('/auth/users');
-    console.log('Users response:', usersRes);
-    
     users = usersRes.users || [];
     squadre = Array.isArray(squadreRes) ? squadreRes : (squadreRes.data || []);
     
@@ -152,7 +150,6 @@ async function loadData() {
     populateSquadreSelect();
   } catch (err) {
     hideLoading();
-    console.error('Errore loadData:', err);
     document.getElementById('pageContent').innerHTML = `<div class="error-box">Errore: ${err.message}</div>`;
   }
 }
@@ -315,8 +312,8 @@ async function handleSubmit(e) {
     
     hideLoading();
     document.getElementById('userModal').style.display = 'none';
-    // Ricarica la pagina per mostrare i nuovi utenti
-    window.location.reload();
+    // Ricarica solo i dati senza ricaricare la pagina
+    await loadData();
   } catch (err) {
     hideLoading();
     alert('Errore: ' + err.message);
