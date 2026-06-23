@@ -6,7 +6,7 @@ export async function openDistinta(mid, staffOverrides) {
   const content = '<div id="distintaInner"><div class="loading"><div class="spinner"></div>Caricamento distinta...</div></div>';
   const footer = '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>' +
     '<button class="btn btn-secondary" id="staffBtn">👥 Staff</button>' +
-    '<button class="btn btn-secondary" id="valutazioniBtn">⭐ Valutazioni</button>' +
+    
     '<button class="btn btn-primary" id="printBtn">🖨️ Stampa</button>';
   const modal = createModal('📄 Distinta Gara', content, footer, '980px');
   
@@ -37,7 +37,6 @@ export async function openDistinta(mid, staffOverrides) {
   
   document.getElementById('staffBtn').addEventListener('click', () => openStaffForm(mid, curStaff));
   
-  document.getElementById('valutazioniBtn').addEventListener('click', () => openValutazioniForm(mid));
 }
 
 async function openValutazioniForm(mid) {

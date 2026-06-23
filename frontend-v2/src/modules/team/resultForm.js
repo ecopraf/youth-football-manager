@@ -52,7 +52,7 @@ export async function openResultForm(mid) {
   
   renderForm(mid, match, eventi, giocatori, modal);
   
-  document.getElementById('saveBtn').addEventListener('click', () => saveEventi(mid, modal));
+  document.getElementById('saveBtn').addEventListener('click', () => saveEventi(mid, modal, eventi, giocatori));
 }
 
 function renderForm(mid, match, eventi, giocatori, modal) {
@@ -102,7 +102,7 @@ function renderForm(mid, match, eventi, giocatori, modal) {
   
   html += '<div class="form-row">';
   html += '<input type="number" id="evtMin" placeholder="Min" min="1" max="150" style="width:60px;">';
-  html += '<select id="evtTipo" onchange="toggleGiocatore()">';
+  html += '<select id="evtTipo">';
   Object.entries(EVENTI).forEach(([k, v]) => {
     html += '<option value="' + k + '">' + v.icon + ' ' + v.label + '</option>';
   });
@@ -128,19 +128,23 @@ function renderForm(mid, match, eventi, giocatori, modal) {
   
   container.innerHTML = html;
   
-  window.toggleGiocatore = function() {
-    const tipo = document.getElementById('evtTipo').value;
+  // Toggle visibilità giocatore/maglia avversario
+  document.getElementById('evtTipo').addEventListener('change', function() {
+    const tipo = this.value;
     document.getElementById('giocGroup').style.display = (tipo === 'GOAL_SUBITO') ? 'none' : 'block';
     document.getElementById('magliaGroup').style.display = (tipo === 'GOAL_SUBITO') ? 'block' : 'none';
-  };
+  });
   
+  // Elimina evento
   eventiOrd.forEach((e, i) => {
     document.getElementById('delEvt' + i).addEventListener('click', () => {
-      eventi.splice(eventi.indexOf(e), 1);
+      const idx = eventi.indexOf(e);
+      if (idx > -1) eventi.splice(idx, 1);
       renderForm(mid, match, eventi, giocatori, modal);
     });
   });
   
+  // Aggiungi evento
   document.getElementById('addEvtBtn').addEventListener('click', () => {
     const min = parseInt(document.getElementById('evtMin').value);
     const tipo = document.getElementById('evtTipo').value;
@@ -166,41 +170,18 @@ function renderForm(mid, match, eventi, giocatori, modal) {
   });
 }
 
-async function saveEventi(mid, modal) {
+async function saveEventi(mid, modal, eventi, giocatori) {
   showLoading();
   try {
     await apiFetch('/partite/' + mid + '/eventi', { method: 'DELETE' }).catch(() => {});
     
-    const listDiv = document.getElementById('evtList');
-    if (listDiv) {
-      const items = listDiv.querySelectorAll('.evt-item');
-      items.forEach((item, i) => {
-        const badge = item.querySelector('.evt-badge');
-        const info = item.querySelector('.evt-info');
-        if (badge && info) {
-          const tipoText = badge.textContent;
-          const infoText = info.textContent;
-          const minMatch = infoText.match(/^(\d+)/);
-          const min = minMatch ? parseInt(minMatch[1]) : null;
-          
-          let tipo = null;
-          for (const [k, v] of Object.entries(EVENTI)) {
-            if (tipoText.includes(v.label)) { tipo = k; break; }
-          }
-          
-          if (tipo && min) {
-            const body = { tipo, minuto: min };
-            const principali = infoText.replace(/^\d+\'\s*-\s*/, '');
-            const g = giocatori.find(x => (x.cognome + ' ' + x.nome) === principali);
-            if (g) body.calciatorePrincipaleId = g.id;
-            
-            apiFetch('/partite/' + mid + '/eventi', {
-              method: 'POST',
-              body: JSON.stringify(body)
-            }).catch(err => console.error('Errore:', err));
-          }
-        }
-      });
+    for (const e of eventi) {
+      const body = { tipo: e.tipo, minuto: parseInt(e.minuto) };
+      if (e.principale_id) body.calciatorePrincipaleId = e.principale_id;
+      await apiFetch('/partite/' + mid + '/eventi', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      }).catch(err => console.error('Errore:', err));
     }
     
     hideLoading();
