@@ -26,7 +26,7 @@ app.use(express.json({ limit: '5mb' }));
 // Health con warmup
 app.get('/api/health', async (req, res) => {
   try { await supabase.from('squadra').select('id').limit(1); } catch(e) {}
-  res.json({ status: 'ok', version: '3.12', warm: true });
+  res.json({ status: 'ok', version: '3.13', warm: true });
 });
 
 // Endpoint warmup dedicato per mantenere il backend attivo
@@ -50,11 +50,25 @@ const authMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const { data: user } = await supabase.from('utente').select('*').eq('id', decoded.userId).single();
     if (!user) return res.status(401).json({ error: 'Utente non trovato' });
+    if (user.is_active === false) return res.status(401).json({ error: 'Account disattivato' });
     req.user = user;
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Token non valido' });
   }
+};
+
+// Helper: verifica se utente è admin
+const isAdmin = (user) => {
+  return user.is_superadmin === true || user.ruolo === 'admin';
+};
+
+// Helper: verifica se utente ha accesso a una squadra
+const hasAccessToSquadra = (user, squadraId) => {
+  if (user.is_superadmin === true) return true;
+  if (isAdmin(user)) return true;
+  if (user.squadre_accesso && user.squadre_accesso.includes(squadraId)) return true;
+  return false;
 };
 
 // ── AUTH ENDPOINTS ──
@@ -72,12 +86,35 @@ app.post('/api/auth/register', async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const { data: user, error } = await supabase.from('utente')
-      .insert({ email, password_hash: passwordHash, nome, cognome, ruolo: ruolo || 'allenatore', workspace_id: workspaceId })
+      .insert({ 
+        email, 
+        password_hash: passwordHash, 
+        nome, 
+        cognome, 
+        ruolo: ruolo || 'allenatore',
+        ruoli: [ruolo || 'allenatore'],
+        workspace_id: workspaceId,
+        is_active: true,
+        is_superadmin: false
+      })
       .select().single();
     if (error) return res.status(500).json({ error: error.message });
 
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ user: { id: user.id, email: user.email, nome: user.nome, ruolo: user.ruolo }, token });
+    res.status(201).json({ 
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        nome: user.nome, 
+        cognome: user.cognome,
+        ruolo: user.ruolo,
+        ruoli: user.ruoli,
+        squadre_accesso: user.squadre_accesso,
+        is_superadmin: user.is_superadmin,
+        workspace_id: user.workspace_id
+      }, 
+      token 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -91,12 +128,26 @@ app.post('/api/auth/login', async (req, res) => {
 
     const { data: user } = await supabase.from('utente').select('*').eq('email', email).single();
     if (!user) return res.status(401).json({ error: 'Credenziali non valide' });
+    if (user.is_active === false) return res.status(401).json({ error: 'Account disattivato' });
 
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) return res.status(401).json({ error: 'Credenziali non valide' });
 
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ user: { id: user.id, email: user.email, nome: user.nome, cognome: user.cognome, ruolo: user.ruolo, workspaceId: user.workspace_id }, token });
+    res.json({ 
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        nome: user.nome, 
+        cognome: user.cognome,
+        ruolo: user.ruolo,
+        ruoli: user.ruoli,
+        squadre_accesso: user.squadre_accesso,
+        is_superadmin: user.is_superadmin,
+        workspace_id: user.workspace_id 
+      }, 
+      token 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -104,12 +155,23 @@ app.post('/api/auth/login', async (req, res) => {
 
 // GET /api/auth/me
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
-  res.json({ user: { id: req.user.id, email: req.user.email, nome: req.user.nome, cognome: req.user.cognome, ruolo: req.user.ruolo, workspaceId: req.user.workspace_id } });
+  res.json({ 
+    user: { 
+      id: req.user.id, 
+      email: req.user.email, 
+      nome: req.user.nome, 
+      cognome: req.user.cognome,
+      ruolo: req.user.ruolo,
+      ruoli: req.user.ruoli,
+      squadre_accesso: req.user.squadre_accesso,
+      is_superadmin: req.user.is_superadmin,
+      workspace_id: req.user.workspace_id
+    } 
+  });
 });
 
 // POST /api/auth/logout
 app.post('/api/auth/logout', authMiddleware, async (req, res) => {
-  // Per ora il logout è gestito lato client (cancellazione token)
   res.json({ success: true });
 });
 
@@ -124,6 +186,224 @@ app.put('/api/auth/profile', authMiddleware, async (req, res) => {
     
     await supabase.from('utente').update(updateData).eq('id', req.user.id);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GESTIONE UTENTI (Admin) ──
+
+// GET /api/auth/users - Lista utenti (admin only)
+app.get('/api/auth/users', authMiddleware, async (req, res) => {
+  if (!isAdmin(req.user)) {
+    return res.status(403).json({ error: 'Accesso negato' });
+  }
+  try {
+    const { data: users } = await supabase
+      .from('utente')
+      .select('id, email, nome, cognome, ruolo, ruoli, squadre_accesso, is_active, is_superadmin, workspace_id, created_at')
+      .order('created_at', { ascending: false });
+    res.json({ users: users || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/auth/users - Crea utente (admin only)
+app.post('/api/auth/users', authMiddleware, async (req, res) => {
+  if (!isAdmin(req.user)) {
+    return res.status(403).json({ error: 'Accesso negato' });
+  }
+  try {
+    const { email, password, nome, cognome, ruolo, squadre_accesso } = req.body;
+    if (!email || !password || !nome) {
+      return res.status(400).json({ error: 'Email, password e nome sono obbligatori' });
+    }
+    
+    const { data: existing } = await supabase.from('utente').select('id').eq('email', email).single();
+    if (existing) return res.status(400).json({ error: 'Email già registrata' });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const { data: user, error } = await supabase.from('utente')
+      .insert({ 
+        email, 
+        password_hash: passwordHash, 
+        nome, 
+        cognome, 
+        ruolo: ruolo || 'allenatore',
+        ruoli: [ruolo || 'allenatore'],
+        squadre_accesso: squadre_accesso || [],
+        workspace_id: req.user.workspace_id,
+        is_active: true,
+        is_superadmin: false
+      })
+      .select().single();
+    
+    if (error) return res.status(500).json({ error: error.message });
+
+    res.status(201).json({ 
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        nome: user.nome, 
+        cognome: user.cognome,
+        ruolo: user.ruolo,
+        ruoli: user.ruoli,
+        squadre_accesso: user.squadre_accesso,
+        is_active: user.is_active,
+        workspace_id: user.workspace_id
+      } 
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/auth/users/:id - Modifica utente (admin only)
+app.put('/api/auth/users/:id', authMiddleware, async (req, res) => {
+  if (!isAdmin(req.user)) {
+    return res.status(403).json({ error: 'Accesso negato' });
+  }
+  try {
+    const { nome, cognome, ruolo, squadre_accesso, is_active, password } = req.body;
+    const updateData = {};
+    if (nome !== undefined) updateData.nome = nome;
+    if (cognome !== undefined) updateData.cognome = cognome;
+    if (ruolo !== undefined) {
+      updateData.ruolo = ruolo;
+      updateData.ruoli = [ruolo];
+    }
+    if (squadre_accesso !== undefined) updateData.squadre_accesso = squadre_accesso;
+    if (is_active !== undefined) updateData.is_active = is_active;
+    if (password) updateData.password_hash = await bcrypt.hash(password, 10);
+    
+    const { error } = await supabase.from('utente').update(updateData).eq('id', req.params.id);
+    if (error) return res.status(500).json({ error: error.message });
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/auth/users/:id - Disattiva utente (admin only)
+app.delete('/api/auth/users/:id', authMiddleware, async (req, res) => {
+  if (!isAdmin(req.user)) {
+    return res.status(403).json({ error: 'Accesso negato' });
+  }
+  try {
+    // Non permettere di disattivare se stessi
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ error: 'Non puoi disattivare il tuo account' });
+    }
+    
+    await supabase.from('utente').update({ is_active: false }).eq('id', req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GUEST TOKEN ──
+
+// POST /api/auth/guest-link - Genera link guest (admin only)
+app.post('/api/auth/guest-link', authMiddleware, async (req, res) => {
+  if (!isAdmin(req.user)) {
+    return res.status(403).json({ error: 'Accesso negato' });
+  }
+  try {
+    const { tipo, squadre_accesso, giocatore_id, scadenza_giorni } = req.body;
+    if (!tipo || !['atleta', 'genitore'].includes(tipo)) {
+      return res.status(400).json({ error: 'Tipo non valido (atleta o genitore)' });
+    }
+    
+    // Genera token casuale
+    const token = require('crypto').randomBytes(32).toString('hex');
+    const scadenza = scadenza_giorni ? new Date(Date.now() + scadenza_giorni * 24 * 60 * 60 * 1000) : null;
+    
+    const { data: guestToken, error } = await supabase.from('guest_token')
+      .insert({
+        token,
+        utente_id: req.user.id,
+        tipo,
+        squadre_accesso: squadre_accesso || [],
+        giocatore_id: giocatore_id || null,
+        scadenza: scadenza,
+        created_at: new Date().toISOString()
+      })
+      .select().single();
+    
+    if (error) return res.status(500).json({ error: error.message });
+    
+    const baseUrl = process.env.FRONTEND_URL || 'https://youth-football-manager.vercel.app';
+    const link = `${baseUrl}/guest/${token}`;
+    
+    res.status(201).json({ 
+      id: guestToken.id,
+      token,
+      link,
+      tipo,
+      scadenza: guestToken.scadenza,
+      created_at: guestToken.created_at
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/auth/guest-links - Lista link guest (admin only)
+app.get('/api/auth/guest-links', authMiddleware, async (req, res) => {
+  if (!isAdmin(req.user)) {
+    return res.status(403).json({ error: 'Accesso negato' });
+  }
+  try {
+    const { data: tokens } = await supabase
+      .from('guest_token')
+      .select('*, utente:utente_id(nome, cognome)')
+      .order('created_at', { ascending: false });
+    res.json({ tokens: tokens || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/auth/guest-link/:token - Revoca link guest (admin only)
+app.delete('/api/auth/guest-link/:token', authMiddleware, async (req, res) => {
+  if (!isAdmin(req.user)) {
+    return res.status(403).json({ error: 'Accesso negato' });
+  }
+  try {
+    await supabase.from('guest_token').delete().eq('token', req.params.token);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/guest/:token - Accesso guest
+app.get('/api/guest/:token', async (req, res) => {
+  try {
+    const { data: guestToken } = await supabase
+      .from('guest_token')
+      .select('*, utente:utente_id(nome, cognome)')
+      .eq('token', req.params.token)
+      .single();
+    
+    if (!guestToken) {
+      return res.status(404).json({ error: 'Link non valido' });
+    }
+    
+    // Verifica scadenza
+    if (guestToken.scadenza && new Date(guestToken.scadenza) < new Date()) {
+      return res.status(410).json({ error: 'Link scaduto' });
+    }
+    
+    res.json({ 
+      tipo: guestToken.tipo,
+      squadre_accesso: guestToken.squadre_accesso,
+      giocatore_id: guestToken.giocatore_id,
+      creator: guestToken.utente ? `${guestToken.utente.nome} ${guestToken.utente.cognome}` : 'Admin'
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
