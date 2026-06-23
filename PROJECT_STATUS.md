@@ -15,12 +15,14 @@ Obiettivi principali:
 - Analisi partite, timeline eventi, note avversario
 - Statistiche avanzate e performance individuali/di squadra
 - Storico carriera dei giocatori su più stagioni
+- Sistema di autenticazione con ruoli multipli (Admin, Allenatore, Staff, Guest)
 
 Macro-aree funzionali:
 - 🏢 **CLUB** – Impostazioni società e stagione
 - 👥 **TEAM** – Rosa, calendari, partite, formazione
 - 🎯 **COACH** – Allenamenti e presenze
 - 📈 **PERFORMANCE** – Statistiche e report
+- 🔐 **ADMIN** – Gestione utenti e link guest
 
 > ⚠️ Il vecchio frontend `frontend/` è **dismesso**. Tutto lo sviluppo va fatto su `frontend-v2/`.
 
@@ -30,7 +32,6 @@ Macro-aree funzionali:
 
 ### Backend (`backend/api/index.js`)
 - **Stack**: Node.js + Express
-- **Versione**: 3.12
 - **Database**: Supabase (PostgreSQL)
 - **Esport**: `module.exports = app;` per Vercel
 - **CORS**: abilitato globalmente
@@ -47,17 +48,54 @@ Macro-aree funzionali:
 - `frontend-v2/src/components/layout/Sidebar.js` → layout + sidebar + header
 
 ### Database (Supabase)
-Tabelle principali: `calciatori`, `rosa`, `squadra`, `stagione`, `workspace`, `partita` (con campo `archiviata`), `convocazione`, `formazione_partita`, `evento_partita`, `valutazione_partita`, `presenza_allenamento`, `configurazione_allenamento`.
+Tabelle principali: `utente`, `guest_token`, `calciatori`, `rosa`, `squadra`, `stagione`, `workspace`, `partita` (con campo `archiviata`), `convocazione`, `formazione_partita`, `evento_partita`, `valutazione_partita`, `presenza_allenamento`, `configurazione_allenamento`.
 
 ---
 
-## 3. Stato Funzionale dei Moduli
+## 3. Sistema di Autenticazione (Auth FASE 1) ✅ COMPLETATO
+
+### Ruoli Utente
+| Ruolo | Descrizione | Permessi |
+|-------|-------------|----------|
+| **Admin** | Amministratore sistema | Accesso completo, gestisce utenti e link guest |
+| **Allenatore** | Responsabile tecnico | Gestisce rosa, partite, formazioni, eventi, convocazioni |
+| **Staff** | Assistente | Accesso limitato alle funzionalità assegnate |
+| **Guest** | Ospite temporaneo | Accesso via link, solo lettura, limitato a categorie specifiche |
+
+### Gestione Utenti (Admin)
+- CRUD completo utenti da pannello Admin
+- Campo `squadre_accesso` per limitare accesso per categoria
+- Campo `is_active` per disattivare utenti senza eliminarli
+- Campo `is_superadmin` per permessi speciali
+
+### Link Guest
+- Generazione link temporanei con scadenza configurabile
+- URL formato: `/guest/{token}`
+- Tipi: `atleta` o `genitore`
+- Accesso limitato alle categorie selezionate
+- Revoca immediata dei link
+
+### Endpoint Auth
+- `POST /api/auth/login` - Login
+- `POST /api/auth/register` - Registrazione
+- `GET /api/auth/users` - Lista utenti (Admin)
+- `POST /api/auth/users` - Crea utente (Admin)
+- `PUT /api/auth/users/:id` - Modifica utente (Admin)
+- `DELETE /api/auth/users/:id` - Disattiva utente (Admin)
+- `POST /api/auth/guest-link` - Genera link guest (Admin)
+- `GET /api/auth/guest-links` - Lista link guest (Admin)
+- `DELETE /api/auth/guest-link/:token` - Revoca link (Admin)
+- `GET /api/guest/:token` - Attivazione guest
+
+---
+
+## 4. Stato Funzionale dei Moduli
 
 ### ✅ OPERATIVI
 
 | Modulo | Percorso | Descrizione |
 |--------|----------|-------------|
-| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, trend GF/GS/DR, top marcatori/assist/presenze |
+| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze |
 | Rosa | `modules/team/roster.js` | CRUD giocatori, scadenze mediche, filtri |
 | Calendario | `modules/team/calendar.js` | CRUD partite, prossima in evidenza, archiviazione |
 | Convocazioni | `modules/team/convocazioni.js` | Vincoli min/max, PDF, sola lettura se archiviata |
@@ -73,6 +111,8 @@ Tabelle principali: `calciatori`, `rosa`, `squadra`, `stagione`, `workspace`, `p
 | Reports | `modules/performance/reports.js` | Report Partita, Stagionale, Giocatore |
 | Settings | `modules/club/settings.js` | Stagione, categoria, staff |
 | Workspace | `modules/club/workspace.js` | Info società |
+| Gestione Utenti | `modules/admin/users.js` | CRUD utenti sistema (Admin) |
+| Link Guest | `modules/admin/guestLinks.js` | Genera/revoca link accesso guest (Admin) |
 
 ### ✅ COMPLETATI
 
@@ -80,24 +120,28 @@ Tabelle principali: `calciatori`, `rosa`, `squadra`, `stagione`, `workspace`, `p
 |--------------|--------|------|
 | Timeline Partita | - | Vista minuto-per-minuto in matchDetail.js |
 | Archivia Partita | abad1ab | Blocco modifiche per partite concluse |
+| Auth FASE 1 | bdedf42 | Sistema ruoli, gestione utenti, link guest |
+| Dashboard Aggiornata | bdedf42 | Prossima partita in evidenza, trend, top players |
+| Accessibilità | bdedf42 | Tooltip su tutte le icone |
 
 ### ⏸️ SOSPESI
 
 | Funzionalità | Note |
 |--------------|------|
 | Valutazioni Giocatore | Valutazioni tecniche per stagione/partita |
+| Filtro Categorie | Staff vede solo squadre assegnate |
 
 ### 🔴 DA IMPLEMENTARE
 
 | Funzionalità | Note |
 |--------------|------|
-| Auth/Ruoli | Login, ruoli (Allenatore, Staff, Admin) |
 | Import Tuttocampo | Import dati da fonti esterne |
+| Import CSV | Import massivo dati |
 | Multi-istanza | Supporto multiple società |
 
 ---
 
-## 4. Logica Archiviazione Partite
+## 5. Logica Archiviazione Partite
 
 ### Campo Database
 - Tabella: `partita`
@@ -128,12 +172,16 @@ Tabelle principali: `calciatori`, `rosa`, `squadra`, `stagione`, `workspace`, `p
 
 ---
 
-## 5. Routing e Navigazione
+## 6. Routing e Navigazione
 
 Il router (`router.js`) definisce le pagine accessibili dalla sidebar:
 
 ```javascript
-window.YFM.pages = {
+indow.YFM.pages = {
+  login:      () => import('./modules/auth/login.js'),
+  guest:      () => import('./modules/auth/guest.js'),
+  users:      () => import('./modules/admin/users.js'),
+  guestLinks: () => import('./modules/admin/guestLinks.js'),
   dashboard:  () => import('./modules/team/dashboard.js'),
   roster:     () => import('./modules/team/roster.js'),
   calendar:   () => import('./modules/team/calendar.js'),
@@ -148,11 +196,12 @@ Navigazione: `window.YFM.navigateTo('nomePagina')`
 
 ---
 
-## 6. Servizi e Utility
+## 7. Servizi e Utility
 
 ### API (`src/services/api.js`)
 - `apiFetch(path, options?)` → chiama il backend
-- Gestisce cache busting, timeout, errori
+- `verifyGuestToken(token)` → verifica token guest
+- `setGuestSession(data)` → imposta sessione guest
 - **Regola**: usare sempre `apiFetch`, mai `fetch` diretto
 
 ### UI Utils (`src/utils/ui.js`)
@@ -164,7 +213,7 @@ Navigazione: `window.YFM.navigateTo('nomePagina')`
 
 ---
 
-## 7. Linee Guida per Collaboratori
+## 8. Linee Guida per Collaboratori
 
 ### Regole fondamentali
 1. **Mai inventare route, nomi tabelle o funzioni** → verificare prima nel codice
@@ -172,17 +221,17 @@ Navigazione: `window.YFM.navigateTo('nomePagina')`
 3. **Usare `window.YFM`** per stato globale e navigazione
 4. **Usare `apiFetch`** per chiamate backend
 5. **Usare `showLoading/hideLoading`** per operazioni asincrone
-6. **Documentazione** → Dopo ogni feature importante, aggiornare SEMPRE AGENTS.md e PROJECT_STATUS.md
+6. **Documentazione** → Dopo ogni feature importante, aggiornare AGENTS.md e PROJECT_STATUS.md
 
 ### Struttura di un modulo
 ```javascript
-import { apiFetch } from '../../services/api';
-import { showLoading, hideLoading } from '../../utils/ui';
+mport { apiFetch } from '../../services/api';
+mport { showLoading, hideLoading } from '../../utils/ui';
 
-export default async function loadModuleName() {
+xport default async function loadModuleName() {
   const c = document.getElementById('pageContent');
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
-  
+
   try {
     const data = await apiFetch('/endpoint');
     renderModule(c, data);
@@ -191,7 +240,7 @@ export default async function loadModuleName() {
   }
 }
 
-function renderModule(container, data) {
+unction renderModule(container, data) {
   container.innerHTML = '<h1 class="page-title">Titolo</h1>';
   // ... render logica
 }
@@ -199,64 +248,22 @@ function renderModule(container, data) {
 
 ---
 
-## 8. Roadmap MVP 2026
+## 9. Roadmap MVP 2026
 
 ### 🎯 Obiettivo
 **Versione completa e stabile entro metà Settembre 2026** per inizio campionati.
 
-### 📅 Piano di Sviluppo
-
-#### FASE 1: Luglio - Autenticazione
-| Settimana | Attività | Deliverable |
-|----------|----------|-------------|
-| 1-2 | Auth backend (login, logout, JWT) | Endpoint funzionanti |
-| 2-3 | Auth frontend (login page, session) | UI login |
-| 3-4 | Ruoli base (Admin, Allenatore, Staff) | Controllo accessi |
-
-#### FASE 2: Luglio-Agosto - Import Dati Base
-| Settimana | Attività | Deliverable |
-|----------|----------|-------------|
-| 4-5 | Import CSV (rosa, partite) | Wizard base |
-| 5-6 | Parsing CSV avanzato | Gestione formati |
-| 6-7 | Validazione e feedback | Errori chiari |
-
-#### FASE 3: Agosto - Import Tuttocampo
-| Settimana | Attività | Deliverable |
-|----------|----------|-------------|
-| 7-8 | Reverse engineering URL | Endpoint mapping |
-| 8-9 | Web scraping base (Playwright/Puppeteer) | Parser funzionante |
-| 9 | Test con dati reali | Import verificato |
-
-#### FASE 4: Agosto - Centro Importazioni
-| Settimana | Attività | Deliverable |
-|----------|----------|-------------|
-| 10 | Storico importazioni | Log completo |
-| 10-11 | Controllo duplicati | Merge intelligente |
-| 11 | Matching giocatori | Riconoscimento esistenti |
-
-#### FASE 5: Settembre - Polish e Test
-| Settimana | Attività | Deliverable |
-|----------|----------|-------------|
-| 12 | UX polish | UI curata |
-| 12-13 | Bug fix | Stabilità |
-| 13 | Test end-to-end | Zero critical issues |
-| 13-14 | Beta con società pilota | Feedback reale |
-
-#### FASE 6: Settembre - Template e Documentazione
-| Settimana | Attività | Deliverable |
-|----------|----------|-------------|
-| 14 | Template repository | Setup replicabile |
-| 14 | Documentazione admin | Guida installazione |
-| 14 | Documentazione utente | Manuale base |
-
-### ✅ Checklist MVP
+### ✅ Checklist Completata - Auth FASE 1
 
 #### Core Autenticazione
-- [ ] Login/Logout funzionante
-- [ ] JWT con scadenza
-- [ ] Middleware protezione route
-- [ ] Ruoli: Admin, Allenatore, Staff
-- [ ] Permessi per sezione
+- [x] Login/Logout funzionante con JWT
+- [x] Ruoli: Admin, Allenatore, Staff con permessi
+- [x] Gestione utenti (Admin)
+- [x] Link guest (Atleta/Genitore)
+- [x] Dashboard con prossima partita
+- [x] Accessibilità tooltip
+
+### 📋 Prossime Checklist - Import Dati
 
 #### Core Import Dati
 - [ ] Wizard import CSV (rosa)
@@ -278,27 +285,6 @@ function renderModule(container, data) {
 - [ ] Matching giocatori esistenti
 - [ ] Report finale import
 
-#### Polishing
-- [ ] UI consistente
-- [ ] Feedback utente chiaro
-- [ ] Responsive mobile
-- [ ] Zero bug critici
-- [ ] Performance accettabili
-
-### 🔮 Roadmap Futuro (Post-Settembre 2026)
-
-#### Multi-istanza
-- [ ] Template repository configurabile
-- [ ] Script deploy automatico
-- [ ] Guida setup nuova istanza
-- [ ] Database seeding automatico
-
-#### Funzionalità Avanzate
-- [ ] Sincronizzazione automatica Tuttocampo (scheduler)
-- [ ] Multi-provider (FIGC, Gazzetta)
-- [ ] Dashboard analytics avanzata
-- [ ] App mobile genitori
-
 ### 📊 Milestone
 
 | Data | Milestone | Stato |
@@ -309,66 +295,9 @@ function renderModule(container, data) {
 | 1 Settembre 2026 | Import Tuttocampo | ⏳ |
 | 15 Settembre 2026 | MVP STABILE | ⏳ |
 
-### ✅ Checklist Completata
-
-#### Core Autenticazione
-- [x] Login/Logout funzionante con JWT
-- [x] Ruoli: Admin, Allenatore, Staff con permessi
-- [x] Gestione utenti (Admin)
-- [x] Link guest (Atleta/Genitore)
-
 ---
 
-## 9. Architettura Multi-istanza (Futuro)
-
-### Strategia: Single-tenant replicabile
-
-```
-┌─────────────────────────────────────────┐
-│         Template Repository              │
-│   football-manager-template (GitHub)    │
-└─────────────────────────────────────────┘
-              │ Clone
-              ▼
-┌─────────────────────────────────────────┐
-│         Deployment Script               │
-│   (Crea repo, DB, deploy)              │
-└─────────────────────────────────────────┘
-              │
-    ┌─────────┼─────────┐
-    ▼         ▼         ▼
-┌───────┐ ┌───────┐ ┌───────┐
-│ASD A  │ │ASD B  │ │ASD C  │
-│  Repo │ │  Repo │ │  Repo │
-└───────┘ └───────┘ └───────┘
-```
-
-### Implementazione Futura
-1. Template repository con config variabili
-2. Script di deployment (GitHub Actions)
-3. Provisioning database (Supabase CLI o API)
-4. Deploy automatico (Vercel API)
-5. Admin panel per gestire istanze
-
----
-
-## 10. Setup Locale
-
-```bash
-# Backend
-cd backend
-npm install
-node api/index.js
-
-# Frontend
-cd frontend-v2
-npm install
-npm run dev -- --host 0.0.0.0 --port 8080
-```
-
----
-
-## 9. Deploy
+## 10. Deploy
 
 ### Frontend (Vercel)
 - **URL**: https://youth-football-manager.vercel.app
@@ -379,7 +308,6 @@ npm run dev -- --host 0.0.0.0 --port 8080
 ### Backend (Vercel)
 - **URL**: https://youth-football-manager-backend.vercel.app
 - Root Directory: `backend`
-- Versione: 3.12
 
 ### Env richieste (Backend)
 - `SUPABASE_URL`
@@ -391,13 +319,15 @@ npm run dev -- --host 0.0.0.0 --port 8080
 
 ---
 
-## 10. Ultimi Commit
+## 11. Ultimi Commit
 
 | Hash | Descrizione |
 |------|------------|
-| abad1ab | Fix UI Archivia Partita - logica corretta |
-| 3758059 | Correzione logica Archivia Partita |
-| a0e5ee1 | FEAT: Archivia Partita - blocco modifiche |
+| bdedf42 | FIX: Dashboard aggiornata con prossima partita, tooltip accessibilità |
+| 4b7c9e6 | FIX: Query order by id invece di created_at (colonna non esiste) |
+| 4fed908 | DEBUG: Aggiunto logging in /auth/users per diagnosticare |
+| 542f267 | FIX: Lista utenti, guest link, copy clipboard |
+| 7fc2bce | FIX: Router guest link, main.js cleanup, logout button header |
 
 ---
 
