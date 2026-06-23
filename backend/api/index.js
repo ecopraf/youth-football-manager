@@ -136,15 +136,16 @@ app.delete('/api/partite/:partitaId/eventi', async (req, res) => {
 app.post('/api/partite/:partitaId/eventi', async (req, res) => {
   try {
     const { tipo, calciatorePrincipaleId, calciatoreSecondarioId, minuto, note } = req.body;
-    if (!tipo || !calciatorePrincipaleId) {
-      return res.status(400).json({ error: 'Tipo e calciatorePrincipaleId sono obbligatori' });
+    if (!tipo) {
+      return res.status(400).json({ error: 'Tipo è obbligatorio' });
     }
+    // GOAL_SUBITO può non avere giocatore (gol avversario)
     const { data, error } = await supabase
       .from('evento_partita')
       .insert({
         partita_id: req.params.partitaId,
         tipo_evento_codice: tipo,
-        calciatore_principale_id: calciatorePrincipaleId,
+        calciatore_principale_id: calciatorePrincipaleId || null,
         calciatore_secondario_id: calciatoreSecondarioId || null,
         minuto: minuto || null,
         note: note || null
