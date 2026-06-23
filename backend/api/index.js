@@ -203,9 +203,9 @@ app.get('/api/auth/users', authMiddleware, async (req, res) => {
   try {
     const { data: users, error } = await supabase
       .from('utente')
-      .select('id, email, nome, cognome, ruolo, ruoli, squadre_accesso, is_active, is_superadmin, workspace_id, created_at')
+      .select('*')
       .order('created_at', { ascending: false });
-    console.log('DEBUG: Query result - users:', users, 'error:', error);
+    console.log('DEBUG: Query result - users:', users?.length, 'error:', error);
     res.json({ users: users || [] });
   } catch (err) {
     console.log('DEBUG: Exception:', err);
