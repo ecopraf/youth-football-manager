@@ -26,11 +26,11 @@ export async function openFormazioneForm(mid) {
   const formMap = {};
   (formazioneEsistente || []).forEach(f => { formMap[f.calciatoreId] = f; });
 
-  if (isArchiviata || isPast) {
+  if (isArchiviata) {
     // VISTA SOLA LETTURA per partite archiviate
     renderFormazioneReadOnly(match, giocatoriConvocati, formMap, isArchiviata);
   } else {
-    // FORM EDITABILE per partite future
+    // FORM EDITABILE per partite future e passate (se non archiviate)
     renderFormazioneEdit(mid, match, giocatoriConvocati, formMap);
   }
 }

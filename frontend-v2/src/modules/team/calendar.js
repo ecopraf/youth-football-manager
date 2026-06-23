@@ -99,39 +99,55 @@ export function renderMatchCard(m, stats, isNext = false) {
 
   let R = '';
   
+  // ===== PARTE SINISTRA: Risultato/Dettaglio =====
   if (hasResult) {
     const color = r.golFatti > r.golSubiti ? '#27AE60' : r.golFatti === r.golSubiti ? '#F39C12' : '#E74C3C';
     const liveIcon = !isPast ? '<span style="color:#E74C3C;font-size:10px;">●</span> ' : '';
     R += `<div style="font-size:22px;font-weight:bold;color:${color};cursor:pointer;min-width:50px;text-align:center;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')" title="Dettaglio">${liveIcon}${r.golFatti} - ${r.golSubiti}</div>`;
     if (!isPast) R += `<div style="font-size:10px;color:#E74C3C;text-align:center;">LIVE</div>`;
   } else if (!isPast) {
+    // Partita futura senza risultato: mostra pulsante Risultato
     R += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">📊 Risultato</button>`;
   } else {
+    // Partita passata senza risultato: mostra dettaglio
     R += `<span style="color:var(--gray);cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')">Dettaglio</span>`;
   }
 
-  // Pulsanti - NASCONDI per partite archiviate
+  // ===== PULSANTI: Logica corretta =====
+  
+  // TUTTI I PULSANTI sono visibili (archiviazione non nasconde nulla nel calendario)
+  // I moduli (formazione, eventi, convocazioni) decideranno se in sola lettura o modificabile
+  
+  // Formazione - sempre visibile
+  if (hasResult) {
+    R += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">👥 Formazione</button>`;
+  }
+  
+  if (!isPast) {
+    // Partite future: tutti i pulsanti modificabili
+    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">👥 Formazione</button>`;
+    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openNoteAvversario('${m.id}')">📝 Note</button>`;
+    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',false)">📋 Convoca</button>`;
+    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Distinta</button>`;
+    
+    // Pulsante Archivia SOLO per partite passate con risultato
+  } else if (isPast && hasResult && !isArchiviata) {
+    // Partita passata con risultato ma non archiviata: mostra pulsante Archivia
+    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Conv.</button>`;
+    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Dist.</button>`;
+    R += `<button class="btn btn-secondary btn-small" style="background:#8B7355;color:white;border-color:#8B7355;" onclick="event.stopPropagation();archiveMatch('${m.id}')">📦 Archivia</button>`;
+  } else {
+    // Partite passate senza risultato O archiviate
+    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Conv.</button>`;
+    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Dist.</button>`;
+  }
+  
+  // Edit e Elimina - nascondi SOLO per partite archiviate
   if (!isArchiviata) {
-    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',${isPast})">📋 ${isPast ? 'Conv.' : 'Convoca'}</button>`;
-    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 ${isPast ? 'Dist.' : 'Distinta'}</button>`;
-    if (hasResult) {
-      R += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">👥 Formazione</button>`;
-    }
-    
-    if (!isPast) {
-      R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">👥 Formazione</button>`;
-      R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openNoteAvversario('${m.id}')">📝 Note</button>`;
-    }
-    
-    // Pulsante Archivia per partite passate con risultato (non ancora archiviate)
-    if (isPast && hasResult) {
-      R += `<button class="btn btn-secondary btn-small" style="background:#8B7355;color:white;border-color:#8B7355;" onclick="event.stopPropagation();archiveMatch('${m.id}')">📦 Archivia</button>`;
-    }
-    
     R += `<button class="btn btn-secondary btn-small btn-editm" data-mid="${m.id}">✏️</button>`;
     R += `<button class="btn btn-secondary btn-small btn-danger btn-del" data-mid="${m.id}">🗑️</button>`;
   } else {
-    // Partita archiviata - mostra solo pulsante Sblocca
+    // Partita archiviata: mostra solo pulsante Sblocca
     R += `<button class="btn btn-secondary btn-small" style="background:#6B5B4F;color:white;border-color:#6B5B4F;" onclick="event.stopPropagation();unarchiveMatch('${m.id}')">🔓 Sblocca</button>`;
   }
 
@@ -143,7 +159,7 @@ export function renderMatchCard(m, stats, isNext = false) {
 
 // Funzioni globali per archivia/sblocca
 window.archiveMatch = async function(id) {
-  if (!confirm('Archiviare questa partita? Non sarà più possibile modificare eventi, formazione e convocazioni.')) return;
+  if (!confirm('Archiviare questa partita? La partita verrà spostata nelle partite giocate e non sarà più possibile modificare eventi, formazione e convocazioni.')) return;
   showLoading();
   try {
     await apiFetch('/partite/' + id + '/archivia', { method: 'PUT' });
