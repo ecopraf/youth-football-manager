@@ -60,6 +60,21 @@ export async function openMatchDetail(mid) {
     html += '<div class="match-stat"><div class="match-stat-val" style="color:#E74C3C;">' + espulsioni + '</div><div class="match-stat-label">Esp.</div></div>';
     html += '</div>';
     
+    // Helper per nomi con omonimia
+    const formatPlayerName = (fullName) => {
+      if (!fullName) return '';
+      const parts = fullName.trim().split(' ');
+      if (parts.length === 1) return parts[0];
+      const nome = parts.slice(0, -1).join(' ');
+      const cognome = parts[parts.length - 1];
+      const sameSurname = eventi.filter(e => e.principale && e.principale.endsWith(' ' + cognome));
+      if (sameSurname.length > 1) {
+        const initial = nome.charAt(0).toUpperCase() + '.';
+        return cognome + ' ' + initial;
+      }
+      return cognome;
+    };
+    
     html += '<div class="timeline-title">📋 Cronologia Eventi</div>';
     
     if (eventi.length === 0) {
@@ -80,10 +95,10 @@ export async function openMatchDetail(mid) {
           html += '<div class="timeline-content">';
           html += '<div class="timeline-header">';
           html += '<span class="timeline-minute">' + e.minuto + '\'</span>';
-          html += '<span class="timeline-player">' + e.principale + '</span>';
+          html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
           html += '</div>';
           if (e.secondario) {
-            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + e.secondario + '</div>';
+            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + formatPlayerName(e.secondario) + '</div>';
           }
           html += '</div>';
           html += '</div>';
@@ -99,10 +114,10 @@ export async function openMatchDetail(mid) {
           html += '<div class="timeline-content">';
           html += '<div class="timeline-header">';
           html += '<span class="timeline-minute">' + e.minuto + '\'</span>';
-          html += '<span class="timeline-player">' + e.principale + '</span>';
+          html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
           html += '</div>';
           if (e.secondario) {
-            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + e.secondario + '</div>';
+            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + formatPlayerName(e.secondario) + '</div>';
           }
           html += '</div>';
           html += '</div>';
@@ -118,10 +133,10 @@ export async function openMatchDetail(mid) {
           html += '<div class="timeline-content">';
           html += '<div class="timeline-header">';
           html += '<span class="timeline-minute">' + e.minuto + '\'</span>';
-          html += '<span class="timeline-player">' + e.principale + '</span>';
+          html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
           html += '</div>';
           if (e.secondario) {
-            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + e.secondario + '</div>';
+            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + formatPlayerName(e.secondario) + '</div>';
           }
           html += '</div>';
           html += '</div>';
