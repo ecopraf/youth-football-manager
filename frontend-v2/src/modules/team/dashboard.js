@@ -6,9 +6,10 @@ export default async function loadDashboard() {
   const squadraId = window.YFM.squadraId;
   
   try {
-    const [stats, top] = await Promise.all([
+    const [stats, top, topValutazioni] = await Promise.all([
       apiFetch('/squadre/' + squadraId + '/statistiche-complete').catch(() => ({ punti:0, partiteGiocate:0, vittorie:0, pareggi:0, sconfitte:0, golFatti:0, golSubiti:0, differenzaReti:0, risultati:[] })),
-      apiFetch('/squadre/' + squadraId + '/top-players').catch(() => ({ marcatori:[], assistmen:[], presenze:[] }))
+      apiFetch('/squadre/' + squadraId + '/top-players').catch(() => ({ marcatori:[], assistmen:[], presenze:[] })),
+      apiFetch('/squadre/' + squadraId + '/valutazioni-top').catch(() => ({ topGiocatori:[] }))
     ]);
     
     const s = window.YFM.getSquadra();
@@ -94,6 +95,24 @@ export default async function loadDashboard() {
           </div>
         </div>
       </div>
+      
+      <!-- Top Valutazioni -->
+      ${(topValutazioni.topGiocatori || []).length > 0 ? `
+      <div class="card" style="padding:16px;margin-bottom:20px;">
+        <h3 class="section-title" style="margin:0 0 12px 0;">⭐ Migliori per Media Voto</h3>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${topValutazioni.topGiocatori.slice(0, 5).map((g, i) => `
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:${i === 0 ? '#fff9e6' : '#f8f9fa'};border-radius:8px;">
+              <span style="font-size:18px;">${['🥇','🥈','🥉','4','5'][i]}</span>
+              <span style="flex:1;font-weight:600;">${g.nome}</span>
+              <span style="font-size:12px;color:#888;">${g.partiteValutate} partite</span>
+              <span style="font-size:18px;font-weight:bold;color:#667eea;">${g.media}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
+      
       <style>
         @media (max-width: 900px) { .top-cards-grid { grid-template-columns: 1fr !important; } }
       </style>

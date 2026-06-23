@@ -1,10 +1,12 @@
 import { apiFetch } from '../../services/api';
 import { formatDateShort } from '../../utils/formatters';
+import { showLoading, hideLoading } from '../../utils/ui';
 
 export async function openDistinta(mid, staffOverrides) {
   const content = '<div id="distintaInner"><div class="loading"><div class="spinner"></div>Caricamento distinta...</div></div>';
   const footer = '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>' +
     '<button class="btn btn-secondary" id="staffBtn">👥 Staff</button>' +
+    '<button class="btn btn-secondary" id="valutazioniBtn">⭐ Valutazioni</button>' +
     '<button class="btn btn-primary" id="printBtn">🖨️ Stampa</button>';
   const modal = createModal('📄 Distinta Gara', content, footer, '980px');
   
@@ -34,6 +36,99 @@ export async function openDistinta(mid, staffOverrides) {
   });
   
   document.getElementById('staffBtn').addEventListener('click', () => openStaffForm(mid, curStaff));
+  
+  document.getElementById('valutazioniBtn').addEventListener('click', () => openValutazioniForm(mid));
+}
+
+async function openValutazioniForm(mid) {
+  const content = '<div id="valutazioniInner"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>';
+  const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="saveValutazioniBtn">💾 Salva</button>';
+  const modal = createModal('⭐ Valutazioni Giocatori', content, footer, '700px');
+  
+  try {
+    const [partitaRes, valutazioniRes] = await Promise.all([
+      apiFetch('/partite/' + mid),
+      apiFetch('/partite/' + mid + '/valutazioni').catch(() => ({ valutazioni: [] }))
+    ]);
+    
+    const formazioneRes = await apiFetch('/partite/' + mid + '/formazione');
+    const formazione = formazioneRes.formazione || [];
+    
+    // Crea mappa valutazioni esistenti
+    const existingVotes = {};
+    (valutazioniRes.valutazioni || []).forEach(v => {
+      existingVotes[v.calciatore_id] = v;
+    });
+    
+    // Genera HTML con voti selezionabili
+    let html = '<style>';
+    html += '.val-card{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f8f9fa;border-radius:10px;margin-bottom:8px;border:1px solid #eee;}';
+    html += '.val-card:hover{border-color:#667eea;}';
+    html += '.val-player{font-weight:600;font-size:14px;flex:1;}';
+    html += '.val-number{font-size:20px;font-weight:bold;color:#667eea;min-width:40px;text-align:center;}';
+    html += '.vote-select{padding:8px 12px;font-size:16px;border:2px solid #667eea;border-radius:8px;background:white;cursor:pointer;min-width:70px;text-align:center;}';
+    html += '.vote-select:focus{outline:none;border-color:#764ba2;}';
+    html += '.note-input{width:100%;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;margin-top:6px;}';
+    html += '</style>';
+    html += '<p style="margin-bottom:16px;color:#666;font-size:13px;">Assegna un voto da 1 a 10 per ogni giocatore della formazione.</p>';
+    html += '<div id="valutazioniList">';
+    
+    formazione.forEach((g, idx) => {
+      const existing = existingVotes[g.id] || {};
+      const currentVoto = existing.voto || '';
+      const currentNota = existing.nota_allenatore || '';
+      
+      html += '<div class="val-card" data-player-id="' + g.id + '">';
+      html += '<div style="flex:1;">';
+      html += '<div class="val-player">' + (g.cognome || '').toUpperCase() + ' ' + (g.nome || '') + '</div>';
+      html += '<input type="text" class="note-input" placeholder="Note (opzionale)" value="' + currentNota + '" data-nota-id="' + g.id + '">';
+      html += '</div>';
+      html += '<select class="vote-select" data-voto-id="' + g.id + '">';
+      html += '<option value="">-</option>';
+      for (let v = 4; v <= 10; v += 0.5) {
+        html += '<option value="' + v + '"' + (currentVoto == v ? ' selected' : '') + '>' + v.toString().replace('.', ',') + '</option>';
+      }
+      html += '</select>';
+      html += '</div>';
+    });
+    
+    html += '</div>';
+    
+    document.getElementById('valutazioniInner').innerHTML = html;
+    
+    // Salva valutazioni
+    document.getElementById('saveValutazioniBtn').addEventListener('click', async () => {
+      const valutazioni = [];
+      document.querySelectorAll('.vote-select').forEach(sel => {
+        const playerId = sel.dataset.votoId;
+        const voto = sel.value;
+        const nota = document.querySelector('[data-nota-id="' + playerId + '"]').value;
+        if (voto) {
+          valutazioni.push({
+            calciatore_id: playerId,
+            voto: parseFloat(voto),
+            nota_allenatore: nota || null
+          });
+        }
+      });
+      
+      showLoading();
+      try {
+        await apiFetch('/partite/' + mid + '/valutazioni', {
+          method: 'POST',
+          body: JSON.stringify({ valutazioni })
+        });
+        modal.close();
+        alert('✅ Valutazioni salvate!');
+      } catch (e) {
+        alert('Errore: ' + e.message);
+      } finally {
+        hideLoading();
+      }
+    });
+  } catch (err) {
+    document.getElementById('valutazioniInner').innerHTML = '<div class="error-box">Errore: ' + err.message + '</div>';
+  }
 }
 
 function renderDistinta(d, staff) {

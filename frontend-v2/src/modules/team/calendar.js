@@ -58,50 +58,10 @@ export function renderMatchCard(m, stats) {
   const hasResult = !!r;
   const isPast = new Date(m.data_ora) < new Date();
 
-  // Mini timeline events
-  const allEvents = r?.eventi || [];
-  
-  // Formatta nome con omonimia
-  const formatPlayerName = (fullName) => {
-    if (!fullName) return '';
-    const parts = fullName.trim().split(' ');
-    if (parts.length === 1) return parts[0];
-    const nome = parts.slice(0, -1).join(' ');
-    const cognome = parts[parts.length - 1];
-    // Cerca omonimia nella lista eventi
-    const sameSurname = allEvents.filter(e => e.giocatore && e.giocatore.endsWith(' ' + cognome));
-    if (sameSurname.length > 1) {
-      const initial = nome.charAt(0).toUpperCase() + '.';
-      return cognome + ' ' + initial;
-    }
-    return cognome;
-  };
-  
-  const miniEvents = allEvents.slice(0, 4);
-  const extraCount = allEvents.length - 4;
-  
-  const miniTimeline = allEvents.length > 0 ? `
-    <div class="mini-timeline" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #eee;">
-      ${miniEvents.map(e => {
-        const icons = { 'GOAL': '⚽', 'YELLOW': '🟨', 'RED': '🟥', 'ASSIST': '🅰️' };
-        const colors = { 'GOAL': '#27AE60', 'YELLOW': '#F39C12', 'RED': '#E74C3C', 'ASSIST': '#3498db' };
-        const icon = icons[e.tipo] || '●';
-        const color = colors[e.tipo] || '#999';
-        const playerName = formatPlayerName(e.giocatore);
-        return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:${color}15;border-radius:12px;font-size:11px;border-left:3px solid ${color};">
-          <span>${icon}</span>
-          <span style="font-weight:600;">${e.minuto}'</span>
-          <span style="color:#666;">${playerName}</span>
-        </span>`;
-      }).join('')}
-      ${extraCount > 0 ? `<span style="font-size:11px;color:#888;background:#f0f0f0;padding:4px 8px;border-radius:12px;">+${extraCount}</span>` : ''}
-    </div>
-  ` : '';
-
   const L = `
     <div class="match-date">${formatDate(m.data_ora)}</div>
     <div class="match-teams">${window.YFM.getSocietaName()} vs ${m.avversario}</div>
-    <div class="match-info">${m.giornata ? 'Giornata ' + m.giornata + ' - ' : ''}${m.competizione} · ${m.luogo}</div>${miniTimeline}`;
+    <div class="match-info">${m.giornata ? 'Giornata ' + m.giornata + ' - ' : ''}${m.competizione} · ${m.luogo}</div>`;
 
   let R = '';
   if (hasResult) {

@@ -171,7 +171,7 @@ app.post('/api/partite/:partitaId/formazione-batch', async (req, res) => {
 });
 
 // STATISTICHE COMPLETE
-app.get('/api/squadre/:squadraId/statistiche-complete', async (req, res) => { try { const { data: partite } = await supabase.from('partita').select('id, data_ora, avversario, luogo, competizione, giornata').eq('squadra_id', req.params.squadraId).order('data_ora'); let vittorie=0,pareggi=0,sconfitte=0,gf=0,gs=0,punti=0; const risultati=[]; for(const p of(partite||[])){const{data:eventi}=await supabase.from('evento_partita').select('tipo_evento_codice,minuto,calciatore_principale:calciatore_principale_id(nome,cognome)').eq('partita_id',p.id).order('minuto');const golFatti=(eventi||[]).filter(e=>e.tipo_evento_codice==='GOAL').length;const seed=p.id.charCodeAt(0)+p.id.charCodeAt(1);const golSubiti=Math.max(0,golFatti-(seed%3)+(seed%2));gf+=golFatti;gs+=golSubiti;const partitaEventi=(eventi||[]).slice(0,4).map(e=>({tipo:e.tipo_evento_codice,minuto:e.minuto,giocatore:e.calciatore_principale?e.calciatore_principale.nome+' '+e.calciatore_principale.cognome:null}));if(new Date(p.data_ora)<new Date()){if(golFatti>golSubiti){vittorie++;punti+=3}else if(golFatti===golSubiti){pareggi++;punti+=1}else sconfitte++;risultati.push({id:p.id,dataOra:p.data_ora,avversario:p.avversario,luogo:p.luogo,competizione:p.competizione,giornata:p.giornata,golFatti,golSubiti,eventi:partitaEventi});}}res.json({partiteGiocate:risultati.length,partiteTotali:(partite||[]).length,punti,vittorie,pareggi,sconfitte,golFatti:gf,golSubiti:gs,differenzaReti:gf-gs,risultati:risultati.sort((a,b)=>new Date(b.dataOra)-new Date(a.dataOra))});}catch(err){res.status(500).json({error:err.message});} });
+app.get('/api/squadre/:squadraId/statistiche-complete', async (req, res) => { try { const { data: partite } = await supabase.from('partita').select('id, data_ora, avversario, luogo, competizione, giornata').eq('squadra_id', req.params.squadraId).order('data_ora'); let vittorie=0,pareggi=0,sconfitte=0,gf=0,gs=0,punti=0; const risultati=[]; for(const p of(partite||[])){const{data:eventi}=await supabase.from('evento_partita').select('tipo_evento_codice').eq('partita_id',p.id);const golFatti=(eventi||[]).filter(e=>e.tipo_evento_codice==='GOAL').length;const seed=p.id.charCodeAt(0)+p.id.charCodeAt(1);const golSubiti=Math.max(0,golFatti-(seed%3)+(seed%2));gf+=golFatti;gs+=golSubiti;if(new Date(p.data_ora)<new Date()){if(golFatti>golSubiti){vittorie++;punti+=3}else if(golFatti===golSubiti){pareggi++;punti+=1}else sconfitte++;risultati.push({id:p.id,dataOra:p.data_ora,avversario:p.avversario,luogo:p.luogo,competizione:p.competizione,giornata:p.giornata,golFatti,golSubiti});}}res.json({partiteGiocate:risultati.length,partiteTotali:(partite||[]).length,punti,vittorie,pareggi,sconfitte,golFatti:gf,golSubiti:gs,differenzaReti:gf-gs,risultati:risultati.sort((a,b)=>new Date(b.dataOra)-new Date(a.dataOra))});}catch(err){res.status(500).json({error:err.message});} });
 app.get('/api/squadre/:squadraId/top-players', async (req, res) => { try { const { data: partite } = await supabase.from('partita').select('id').eq('squadra_id', req.params.squadraId); const ids = (partite||[]).map(p => p.id); if(ids.length===0) return res.json({ marcatori:[], assistmen:[], presenze:[] }); const { data: eventi } = await supabase.from('evento_partita').select('tipo_evento_codice, calciatore_principale_id, calciatore_secondario_id, minuto').in('partita_id', ids); const stats = {}; (eventi||[]).forEach(e => { if(!stats[e.calciatore_principale_id]) stats[e.calciatore_principale_id] = { gol:0, assist:0, presenze:0, minuti:0 }; stats[e.calciatore_principale_id].presenze++; if(e.tipo_evento_codice==='GOAL') { stats[e.calciatore_principale_id].gol++; stats[e.calciatore_principale_id].minuti += (e.minuto||0); } if(e.tipo_evento_codice==='GOAL' && e.calciatore_secondario_id) { if(!stats[e.calciatore_secondario_id]) stats[e.calciatore_secondario_id] = { gol:0, assist:0, presenze:0, minuti:0 }; stats[e.calciatore_secondario_id].assist++; } }); const { data: rosa } = await supabase.from('rosa').select('calciatore:calciatore_id(id, nome, cognome)').eq('squadra_id', req.params.squadraId); const nomi = {}; (rosa||[]).forEach(r => { nomi[r.calciatore.id] = r.calciatore.nome + ' ' + r.calciatore.cognome; }); const result = Object.entries(stats).map(([id, s]) => ({ id, nome: nomi[id]||id, ...s })); res.json({ marcatori: result.filter(x=>x.gol>0).sort((a,b) => b.gol-a.gol).slice(0,5), assistmen: result.filter(x=>x.assist>0).sort((a,b) => b.assist-a.assist).slice(0,5), presenze: result.filter(x=>x.presenze>0).sort((a,b) => b.presenze-a.presenze).slice(0,5) }); } catch(err) { res.status(500).json({ error: err.message }); } });
 app.get('/api/partite/:partitaId/convocazioni', async (req, res) => { const { data } = await supabase.from('convocazione').select('id, presente, calciatore:calciatore_id(id, nome, cognome)').eq('partita_id', req.params.partitaId); res.json((data||[]).map(c => ({ id: c.id, calciatoreId: c.calciatore.id, nome: c.calciatore.nome, cognome: c.calciatore.cognome, presente: c.presente }))); });
 app.post('/api/partite/:partitaId/convocazioni', async (req, res) => { try { const { calciatoreId, presente } = req.body; if(!calciatoreId||!req.params.partitaId) return res.status(400).json({error:'Dati mancanti'}); const { data: existing } = await supabase.from('convocazione').select('id').eq('partita_id', req.params.partitaId).eq('calciatore_id', calciatoreId); if(existing&&existing.length>0) await supabase.from('convocazione').update({presente}).eq('partita_id',req.params.partitaId).eq('calciatore_id',calciatoreId); else await supabase.from('convocazione').insert({partita_id:req.params.partitaId,calciatore_id:calciatoreId,presente}); if(presente){ const { data: rosa } = await supabase.from('rosa').select('numero_maglia').eq('calciatore_id',calciatoreId).single(); const { data: form } = await supabase.from('formazione_partita').select('id').eq('partita_id',req.params.partitaId).eq('calciatore_id',calciatoreId); if(form&&form.length>0) await supabase.from('formazione_partita').update({numero_maglia:rosa?.numero_maglia||99}).eq('partita_id',req.params.partitaId).eq('calciatore_id',calciatoreId); else await supabase.from('formazione_partita').insert({partita_id:req.params.partitaId,calciatore_id:calciatoreId,numero_maglia:rosa?.numero_maglia||99,posizione:'Panchina',capitano:false,vice_capitano:false}); } else { await supabase.from('formazione_partita').delete().eq('partita_id',req.params.partitaId).eq('calciatore_id',calciatoreId); } res.status(201).json({success:true}); } catch(err) { res.status(400).json({error:err.message}); } });
@@ -690,6 +690,164 @@ app.get('/api/calciatori/:calciatoreId/report', async (req, res) => {
       },
       stats,
       storico
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── VALUTAZIONI GIOCATORE ──
+
+// GET /api/partite/:partitaId/valutazioni - Lista valutazioni per partita
+app.get('/api/partite/:partitaId/valutazioni', async (req, res) => {
+  try {
+    const { data: valutazioni, error } = await supabase
+      .from('valutazione_partita')
+      .select('*, calciatore:calciatore_id(id, nome, cognome)')
+      .eq('partita_id', req.params.partitaId)
+      .order('voto', { ascending: false });
+    
+    if (error) {
+      // Tabella potrebbe non esistere ancora
+      if (error.code === '42P01') {
+        return res.json({ valutazioni: [], message: 'Tabella valutazioni non configurata' });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+    res.json({ valutazioni: valutazioni || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/partite/:partitaId/valutazioni - Salva valutazioni (batch)
+app.post('/api/partite/:partitaId/valutazioni', async (req, res) => {
+  try {
+    const { valutazioni } = req.body; // array di { calciatore_id, voto, nota_allenatore }
+    
+    if (!Array.isArray(valutazioni)) {
+      return res.status(400).json({ error: 'valutazioni deve essere un array' });
+    }
+    
+    const results = [];
+    for (const v of valutazioni) {
+      const { data, error } = await supabase
+        .from('valutazione_partita')
+        .upsert({
+          partita_id: req.params.partitaId,
+          calciatore_id: v.calciatore_id,
+          voto: v.voto,
+          nota_allenatore: v.nota_allenatore || null
+        }, { onConflict: 'partita_id,calciatore_id' })
+        .select()
+        .single();
+      
+      if (error && error.code !== '42P01') {
+        results.push({ calciatore_id: v.calciatore_id, error: error.message });
+      } else {
+        results.push({ calciatore_id: v.calciatore_id, success: true, data });
+      }
+    }
+    
+    res.json({ saved: results.filter(r => r.success).length, results });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/squadre/:squadraId/valutazioni-top - Top giocatori per media voto
+app.get('/api/squadre/:squadraId/valutazioni-top', async (req, res) => {
+  try {
+    // Prima verifica se la tabella esiste
+    const { error: checkError } = await supabase
+      .from('valutazione_partita')
+      .select('id')
+      .limit(1);
+    
+    if (checkError && checkError.code === '42P01') {
+      return res.json({ topGiocatori: [], message: 'Tabella valutazioni non configurata' });
+    }
+    
+    // Prendi tutte le valutazioni della squadra
+    const { data: partite } = await supabase
+      .from('partita')
+      .select('id')
+      .eq('squadra_id', req.params.squadraId);
+    
+    const partiteIds = (partite || []).map(p => p.id);
+    
+    if (partiteIds.length === 0) {
+      return res.json({ topGiocatori: [] });
+    }
+    
+    const { data: valutazioni } = await supabase
+      .from('valutazione_partita')
+      .select('calciatore_id, voto, calciatore:calciatore_id(nome, cognome)')
+      .in('partita_id', partiteIds);
+    
+    // Calcola media per giocatore
+    const playerStats = {};
+    (valutazioni || []).forEach(v => {
+      if (!playerStats[v.calciatore_id]) {
+        playerStats[v.calciatore_id] = { sum: 0, count: 0, nome: v.calciatore?.nome + ' ' + v.calciatore?.cognome };
+      }
+      playerStats[v.calciatore_id].sum += parseFloat(v.voto);
+      playerStats[v.calciatore_id].count++;
+    });
+    
+    const topGiocatori = Object.entries(playerStats)
+      .map(([id, stats]) => ({
+        calciatore_id: id,
+        nome: stats.nome,
+        media: (stats.sum / stats.count).toFixed(2),
+        partiteValutate: stats.count
+      }))
+      .filter(p => p.partiteValutate >= 2) // minimo 2 partite
+      .sort((a, b) => parseFloat(b.media) - parseFloat(a.media))
+      .slice(0, 10);
+    
+    res.json({ topGiocatori });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/giocatori/:giocatoreId/valutazioni - Storico valutazioni giocatore
+app.get('/api/giocatori/:giocatoreId/valutazioni', async (req, res) => {
+  try {
+    const { data: valutazioni, error } = await supabase
+      .from('valutazione_partita')
+      .select('*, partita:partita_id(data_ora, avversario, competizione, giornata)')
+      .eq('calciatore_id', req.params.giocatoreId)
+      .order('created_at', { ascending: false });
+    
+    if (error && error.code === '42P01') {
+      return res.json({ valutazioni: [], storico: [], message: 'Tabella valutazioni non configurata' });
+    }
+    
+    // Calcola stats
+    const vals = valutazioni || [];
+    const media = vals.length > 0 
+      ? (vals.reduce((sum, v) => sum + parseFloat(v.voto), 0) / vals.length).toFixed(2)
+      : null;
+    const migliore = vals.length > 0 
+      ? vals.reduce((max, v) => parseFloat(v.voto) > parseFloat(max.voto) ? v : max)
+      : null;
+    const peggiore = vals.length > 0 
+      ? vals.reduce((min, v) => parseFloat(v.voto) < parseFloat(min.voto) ? v : min)
+      : null;
+    
+    res.json({
+      media,
+      partiteValutate: vals.length,
+      migliore: migliore ? { voto: migliore.voto, avversario: migliore.partita?.avversario } : null,
+      peggiore: peggiore ? { voto: peggiore.voto, avversario: peggiore.partita?.avversario } : null,
+      storico: vals.map(v => ({
+        partita: v.partita?.avversario,
+        data: v.partita?.data_ora,
+        voto: v.voto,
+        nota: v.nota_allenatore
+      }))
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
