@@ -97,8 +97,7 @@ export function renderMatchCard(m, stats, isNext = false) {
   if (hasResult) {
     const color = r.golFatti > r.golSubiti ? '#27AE60' : r.golFatti === r.golSubiti ? '#F39C12' : '#E74C3C';
     R += `<div style="font-size:22px;font-weight:bold;color:${color};cursor:pointer;min-width:50px;text-align:center;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')" title="Dettaglio">${r.golFatti} - ${r.golSubiti}</div>`;
-    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">✏️ Eventi</button>`;
-  } else if (!isPast) {
+    } else if (!isPast) {
     // Partita futura: mostra pulsante per inserire risultato
     R += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">📊 Risultato</button>`;
   } else {
@@ -107,9 +106,8 @@ export function renderMatchCard(m, stats, isNext = false) {
 
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',${isPast})">📋 ${isPast ? 'Conv.' : 'Convoca'}</button>`;
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 ${isPast ? 'Dist.' : 'Distinta'}</button>`;
-  if (hasResult && isPast) {
-    R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">👥 Formazione</button>`;
-    R += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openValutazioni('${m.id}')">⭐ Valutazioni</button>`;
+  if (hasResult) {
+    R += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">👥 Formazione</button>`;
   }
   
   if (!isPast) {

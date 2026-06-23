@@ -5,19 +5,24 @@ const EVENTI_CONFIG = {
   'GOAL': { icon: '⚽', label: 'Gol Fatto', color: '#27AE60', bgColor: '#E8F8F0' },
   'GOAL_SUBITO': { icon: '⚽', label: 'Gol Subito', color: '#E74C3C', bgColor: '#FDEDEC' },
   'YELLOW': { icon: '🟨', label: 'Amm.', color: '#F39C12', bgColor: '#FFF9E6' },
-  'RED': { icon: '🟥', label: 'Esp.', color: '#E74C3C', bgColor: '#FDEDEC' },
-  'ASSIST': { icon: '🅰️', label: 'Assist', color: '#3498DB', bgColor: '#EBF5FB' }
+  'RED': { icon: '🟥', label: 'Espulsione', color: '#E74C3C', bgColor: '#FDEDEC' },
+  'ASSIST': { icon: '🅰️', label: 'Assist', color: '#3498DB', bgColor: '#EBF5FB' },
+  'OUT': { icon: '➡️', label: 'Uscita', color: '#9B59B6', bgColor: '#F5EEF8' },
+  'IN': { icon: '⬅️', label: 'Entrata', color: '#1ABC9C', bgColor: '#E8F8F5' }
+};
+
+const RUOLO_ACR = {
+  'Portiere': 'POR', 'Difensore': 'DIF', 'Centrocampista': 'CEN', 'Attaccante': 'ATT'
 };
 
 export async function openResultForm(mid) {
   const match = window.YFM.allMatches.find(m => m.id === mid) || {};
-  const isPast = new Date(match.data_ora) < new Date();
   
   // Carica formazione
   let formazione = [];
   try {
     const res = await apiFetch('/partite/' + mid + '/formazione');
-    formazione = Array.isArray(res) ? res : (res.formazione || []);
+    formazione = Array.isArray(res) ? res : [];
   } catch(e) {}
   
   // Se vuota, carica convocati
@@ -31,7 +36,14 @@ export async function openResultForm(mid) {
         (rosaRes || []).forEach(g => { rosaMap[g.id] = g; });
         formazione = convocati.map(c => {
           const g = rosaMap[c.calciatoreId] || {};
-          return { id: c.calciatoreId, calciatore_id: c.calciatoreId, nome: g.nome || '', cognome: g.cognome || '', posizione: 'Convocato' };
+          return { 
+            id: c.calciatoreId, 
+            calciatore_id: c.calciatoreId, 
+            nome: g.nome || '', 
+            cognome: g.cognome || '', 
+            ruolo: g.ruolo || '',
+            posizione: 'Convocato' 
+          };
         });
       }
     } catch(e) {}
@@ -44,33 +56,21 @@ export async function openResultForm(mid) {
     eventi = detRes.eventi || [];
   } catch(e) {}
   
-  // Carica valutazioni
-  let valutazioniMap = {};
-  try {
-    const valRes = await apiFetch('/partite/' + mid + '/valutazioni');
-    (valRes.valutazioni || []).forEach(v => { valutazioniMap[v.calciatore_id] = v; });
-  } catch(e) {}
-  
-  // Ordina alfabeticamente
+  // Ordina alfabeticamente per cognome
   formazione.sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
   
   const content = '<div id="rfInner"></div>';
-  const buttons = isPast 
-    ? '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>'
-    : '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="saveBtn">💾 Salva Tutto</button>';
-  const modal = createModal('Risultato + Eventi', content, buttons, '900px');
+  const buttons = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="saveBtn">💾 Salva Eventi</button>';
+  const modal = createModal('⚽ Inserisci Risultato', content, buttons, '900px');
   
-  renderContent(formazione, eventi, valutazioniMap, isPast);
+  renderForm(formazione, eventi);
   
-  if (!isPast) {
-    document.getElementById('saveBtn').addEventListener('click', () => saveAll(mid, modal));
-  }
+  document.getElementById('saveBtn').addEventListener('click', () => saveEventi(mid, modal));
 }
 
-function renderContent(formazione, eventi, valutazioniMap, isPast) {
+function renderForm(formazione, eventi) {
   const container = document.getElementById('rfInner');
   
-  // Calcola risultato
   const golFatti = eventi.filter(e => e.tipo === 'GOAL').length;
   const golSubiti = eventi.filter(e => e.tipo === 'GOAL_SUBITO').length;
   
@@ -89,17 +89,14 @@ function renderContent(formazione, eventi, valutazioniMap, isPast) {
   html += '.evt-det{flex:1;padding:10px;background:white;border-radius:8px;border:1px solid #eee;}';
   html += '.evt-row{display:flex;gap:8px;margin-bottom:6px;}';
   html += '.evt-row input,.evt-row select{padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;}';
-  html += '.pv{display:flex;align-items:center;justify-content:space-between;padding:10px;background:white;border-radius:8px;margin-bottom:6px;border:1px solid #eee;}';
-  html += '.pv:hover{border-color:#667eea;}';
-  html += '.pv-nome{font-weight:600;font-size:13px;}';
-  html += '.pv-pos{font-size:10px;color:#888;}';
-  html += '.vs{padding:8px 12px;border:2px solid #667eea;border-radius:8px;background:white;font-weight:bold;color:#667eea;font-size:16px;min-width:70px;text-align:center;}';
-  html += '.na{width:100%;padding:6px 8px;border:1px solid #eee;border-radius:6px;font-size:11px;margin-top:4px;}';
   html += '.abtn{background:linear-gradient(#667eea,#764ba2);color:white;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;width:100%;}';
   html += '.dbtn{background:#E74C3C;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;}';
   html += '.empty{padding:24px;text-align:center;color:#888;font-size:13px;}';
   html += '.tdiv{margin:12px 0 8px;font-size:10px;color:#667eea;font-weight:700;text-transform:uppercase;}';
   html += '.tdiv::after{content:"";display:block;height:1px;background:#ddd;margin-top:4px;}';
+  html += '.gioc-list{max-height:200px;overflow-y:auto;border:1px solid #ddd;border-radius:8px;padding:8px;background:white;margin-top:12px;}';
+  html += '.gioc-item{padding:6px 8px;cursor:pointer;border-radius:4px;font-size:12px;}';
+  html += '.gioc-item:hover{background:#667eea20;}';
   html += '</style>';
   
   html += '<div class="rf">';
@@ -124,7 +121,16 @@ function renderContent(formazione, eventi, valutazioniMap, isPast) {
   if (formazione.length === 0) {
     html += '<div class="empty">Nessun giocatore. Crea prima convocazioni.</div>';
   } else {
-    // Raggruppa per tempo
+    // Lista giocatori per selezione rapida
+    html += '<div style="margin-bottom:12px;"><strong style="font-size:12px;">Giocatori:</strong>';
+    html += '<div class="gioc-list">';
+    formazione.forEach(g => {
+      const acr = RUOLO_ACR[g.ruolo] || '';
+      const nome = g.cognome + ' ' + (g.nome || '')[0] + '.';
+      html += '<div class="gioc-item" data-gid="' + g.id + '">' + nome + ' <span style="color:#888;">' + acr + '</span></div>';
+    });
+    html += '</div></div>';
+    
     const p1 = [], p2 = [], ext = [];
     eventi.forEach(e => {
       const m = parseInt(e.minuto) || 0;
@@ -134,69 +140,43 @@ function renderContent(formazione, eventi, valutazioniMap, isPast) {
     });
     
     html += '<div class="timeline" id="tl">';
-    if (p1.length) { html += '<div class="tdiv">1° Tempo</div>'; p1.forEach(e => html += evtHTML(e, formazione, isPast)); }
-    if (p2.length) { html += '<div class="tdiv">2° Tempo</div>'; p2.forEach(e => html += evtHTML(e, formazione, isPast)); }
-    if (ext.length) { html += '<div class="tdiv">Extratime</div>'; ext.forEach(e => html += evtHTML(e, formazione, isPast)); }
+    if (p1.length) { html += '<div class="tdiv">1° Tempo</div>'; p1.forEach(e => html += evtHTML(e, formazione)); }
+    if (p2.length) { html += '<div class="tdiv">2° Tempo</div>'; p2.forEach(e => html += evtHTML(e, formazione)); }
+    if (ext.length) { html += '<div class="tdiv">Extratime</div>'; ext.forEach(e => html += evtHTML(e, formazione)); }
     if (eventi.length === 0) html += '<div class="empty">Nessun evento</div>';
     html += '</div>';
     
-    if (!isPast) {
-      html += '<button class="abtn" id="addEvtBtn">+ Aggiungi Evento</button>';
-    }
-  }
-  html += '</div>';
-  
-  // VALUTAZIONI
-  html += '<div class="sec">';
-  html += '<h4>⭐ Valutazioni</h4>';
-  if (formazione.length === 0) {
-    html += '<div class="empty">Nessun giocatore</div>';
-  } else {
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;">';
-    formazione.forEach(g => {
-      const ex = valutazioniMap[g.id] || {};
-      const pc = g.posizione === 'Titolare' ? '#27AE60' : g.posizione === 'Panchina' ? '#F39C12' : '#3498DB';
-      html += '<div class="pv">';
-      html += '<div><div class="pv-nome">' + (g.cognome || '').toUpperCase() + ' ' + (g.nome || '') + '</div>';
-      html += '<div class="pv-pos" style="color:' + pc + ';">' + (g.posizione || 'Convocato') + '</div>';
-      html += '<input type="text" class="na" placeholder="Note..." value="' + (ex.nota_allenatore || '') + '" data-nid="' + g.id + '"></div>';
-      html += '<select class="vs" data-vid="' + g.id + '"><option value="">-</option>';
-      for (let v = 4; v <= 10; v += 0.5) {
-        html += '<option value="' + v + '"' + (ex.voto == v ? ' selected' : '') + '>' + v.toString().replace('.', ',') + '</option>';
-      }
-      html += '</select></div>';
-    });
-    html += '</div>';
+    html += '<button class="abtn" id="addEvtBtn">+ Aggiungi Evento</button>';
   }
   html += '</div>';
   
   html += '</div>';
   container.innerHTML = html;
   
-  // Aggiorna risultato quando cambia tipo evento
-  container.querySelectorAll('.evt-tipo').forEach(sel => {
-    sel.addEventListener('change', updateScore);
-  });
-  container.querySelectorAll('.evt-del').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.target.closest('.evt').remove();
-      updateScore();
+  // Event listeners
+  container.querySelectorAll('.evt-tipo').forEach(sel => sel.addEventListener('change', updateScore));
+  container.querySelectorAll('.evt-del').forEach(btn => btn.addEventListener('click', (e) => { e.target.closest('.evt').remove(); updateScore(); }));
+  
+  const addBtn = document.getElementById('addEvtBtn');
+  if (addBtn) addBtn.addEventListener('click', () => addEvent(formazione));
+  
+  // Click su giocatore per selezionarlo
+  container.querySelectorAll('.gioc-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const lastEvt = document.querySelector('#tl .evt:last-child .evt-g');
+      if (lastEvt) lastEvt.value = item.dataset.gid;
     });
   });
-  
-  // Aggiungi evento
-  const addBtn = document.getElementById('addEvtBtn');
-  if (addBtn) {
-    addBtn.addEventListener('click', () => addEvent(formazione));
-  }
 }
 
-function evtHTML(evt, formazione, isPast) {
+function evtHTML(evt, formazione) {
   const cfg = EVENTI_CONFIG[evt.tipo] || EVENTI_CONFIG['GOAL'];
   const pid = evt.principale_id || evt.calciatore_principale_id;
   const opts = formazione.map(g => {
     const id = g.id || g.calciatore_id;
-    return '<option value="' + id + '"' + (id === pid ? ' selected' : '') + '>' + (g.cognome || '').toUpperCase() + '</option>';
+    const acr = RUOLO_ACR[g.ruolo] || '';
+    const nome = g.cognome + ' ' + (g.nome || '')[0] + '.';
+    return '<option value="' + id + '"' + (id === pid ? ' selected' : '') + '>' + nome + ' ' + acr + '</option>';
   }).join('');
   
   return '<div class="evt">' +
@@ -208,11 +188,9 @@ function evtHTML(evt, formazione, isPast) {
     Object.entries(EVENTI_CONFIG).map(([k, v]) => '<option value="' + k + '"' + (evt.tipo === k ? ' selected' : '') + '>' + v.icon + ' ' + v.label + '</option>').join('') +
     '</select>' +
     '</div>' +
-    '<select class="evt-g">' +
-    '<option value="">Giocatore...</option>' + opts +
-    '</select>' +
+    '<select class="evt-g"><option value="">Giocatore...</option>' + opts + '</select>' +
     '</div>' +
-    (isPast ? '' : '<button class="dbtn evt-del">✕</button>') +
+    '<button class="dbtn evt-del">✕</button>' +
     '</div>';
 }
 
@@ -223,7 +201,9 @@ function addEvent(formazione) {
   
   const opts = formazione.map(g => {
     const id = g.id || g.calciatore_id;
-    return '<option value="' + id + '">' + (g.cognome || '').toUpperCase() + '</option>';
+    const acr = RUOLO_ACR[g.ruolo] || '';
+    const nome = g.cognome + ' ' + (g.nome || '')[0] + '.';
+    return '<option value="' + id + '">' + nome + ' ' + acr + '</option>';
   }).join('');
   
   const div = document.createElement('div');
@@ -255,49 +235,35 @@ function updateScore() {
   if (scoreDiv) scoreDiv.innerHTML = '<span style="color:#27AE60;">' + f + '</span> - <span style="color:#E74C3C;">' + s + '</span>';
 }
 
-async function saveAll(mid, modal) {
+async function saveEventi(mid, modal) {
   showLoading();
-  const errors = [];
   
   try {
-    // 1. Salva eventi (DELETE + INSERT)
+    // Elimina eventi esistenti
     await apiFetch('/partite/' + mid + '/eventi', { method: 'DELETE' }).catch(() => {});
     
+    // Salva nuovi eventi
+    const errors = [];
     document.querySelectorAll('#tl .evt').forEach(e => {
       const min = parseInt(e.querySelector('.evt-min')?.value);
       const tipo = e.querySelector('.evt-tipo')?.value;
       const gid = e.querySelector('.evt-g')?.value;
+      
       if (min && tipo && gid) {
         apiFetch('/partite/' + mid + '/eventi', {
           method: 'POST',
           body: JSON.stringify({ tipo, calciatorePrincipaleId: gid, minuto: min })
-        }).catch(err => errors.push('Evento: ' + err.message));
+        }).catch(err => errors.push(err.message));
       }
     });
-    
-    // 2. Salva valutazioni
-    const valutazioni = [];
-    document.querySelectorAll('.vs').forEach(sel => {
-      const pid = sel.dataset.vid;
-      const voto = sel.value;
-      const nota = document.querySelector('[data-nid="' + pid + '"]')?.value;
-      if (voto) valutazioni.push({ calciatore_id: pid, voto: parseFloat(voto), nota_allenatore: nota || null });
-    });
-    
-    if (valutazioni.length > 0) {
-      await apiFetch('/partite/' + mid + '/valutazioni', {
-        method: 'POST',
-        body: JSON.stringify({ valutazioni })
-      }).catch(err => errors.push('Valutazioni: ' + err.message));
-    }
     
     hideLoading();
     
     if (errors.length > 0) {
-      alert('⚠️ Alcuni errori:\n' + errors.join('\n'));
+      alert('⚠️ Alcuni eventi non sono stati salvati');
     } else {
       modal.close();
-      alert('✅ Salvato!');
+      alert('✅ Eventi salvati!');
       if (window.YFM?.loadCalendar) window.YFM.loadCalendar();
     }
   } catch (err) {
