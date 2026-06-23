@@ -15,6 +15,18 @@ window.YFM = {
   workspaceInfo: null
 }
 
+// Funzioni helper per squadra (definite subito, non aspettano loadSquadre)
+window.YFM.getSquadraName = () => {
+  const s = window.YFM.allSquadre.find(x => x.id === window.YFM.squadraId);
+  return s ? s.nome : 'Squadra';
+};
+window.YFM.getSquadra = () => {
+  return window.YFM.allSquadre.find(x => x.id === window.YFM.squadraId) || {};
+};
+window.YFM.getSocietaName = () => {
+  return window.YFM.workspaceInfo ? window.YFM.workspaceInfo.nome : 'ASD Albalonga';
+};
+
 // Funzioni globali per logout
 window.YFM.handleLogout = function() {
   localStorage.removeItem('yfm_token');
