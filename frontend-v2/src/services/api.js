@@ -18,6 +18,56 @@ export async function warmup() {
 // Avvia warmup in background
 warmup();
 
+// ── AUTH HELPERS ──
+
+// Verifica se utente è loggato
+export function isAuthenticated() {
+  return !!localStorage.getItem('yfm_token');
+}
+
+// Verifica se utente è admin
+export function isAdmin() {
+  const user = getCurrentUser();
+  if (!user) return false;
+  return user.is_superadmin === true || user.ruolo === 'admin';
+}
+
+// Verifica se utente ha un ruolo specifico
+export function hasRole(role) {
+  const user = getCurrentUser();
+  if (!user) return false;
+  if (user.is_superadmin === true) return true;
+  return user.ruolo === role || (user.ruoli && user.ruoli.includes(role));
+}
+
+// Verifica se utente ha accesso a una squadra
+export function hasAccessToSquadra(squadraId) {
+  const user = getCurrentUser();
+  if (!user) return false;
+  if (user.is_superadmin === true) return true;
+  if (user.ruolo === 'admin') return true;
+  if (user.squadre_accesso && user.squadre_accesso.includes(squadraId)) return true;
+  return false;
+}
+
+// Ottieni utente corrente
+export function getCurrentUser() {
+  const userStr = localStorage.getItem('yfm_user');
+  if (!userStr) return null;
+  try {
+    return JSON.parse(userStr);
+  } catch {
+    return null;
+  }
+}
+
+// Imposta utente corrente
+export function setCurrentUser(user) {
+  localStorage.setItem('yfm_user', JSON.stringify(user));
+}
+
+// ── FUNZIONE API ──
+
 // Funzione per chiamate API con timeout e gestione errori
 export async function apiFetch(endpoint, options = {}) {
   const controller = new AbortController();
@@ -41,11 +91,44 @@ export async function apiFetch(endpoint, options = {}) {
       throw new Error('Sessione scaduta, effettua il login');
     }
     
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+      throw new Error(err.error || `HTTP ${response.status}`);
+    }
     return await response.json();
   } catch (error) {
     clearTimeout(timeout);
     if (error.name === 'AbortError') throw new Error('Timeout del server');
     throw error;
   }
+}
+
+// ── GUEST ACCESS ──
+
+// Verifica token guest
+export async function verifyGuestToken(token) {
+  return apiFetch(`/guest/${token}`);
+}
+
+// Salva sessione guest
+export function setGuestSession(guestData) {
+  localStorage.setItem('yfm_guest', JSON.stringify(guestData));
+  localStorage.removeItem('yfm_token');
+  localStorage.removeItem('yfm_user');
+}
+
+// Ottieni sessione guest
+export function getGuestSession() {
+  const guestStr = localStorage.getItem('yfm_guest');
+  if (!guestStr) return null;
+  try {
+    return JSON.parse(guestStr);
+  } catch {
+    return null;
+  }
+}
+
+// Verifica se è sessione guest
+export function isGuest() {
+  return !!localStorage.getItem('yfm_guest') && !localStorage.getItem('yfm_token');
 }

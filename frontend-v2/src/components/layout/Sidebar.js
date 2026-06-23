@@ -2,10 +2,24 @@ export function setupLayout() {
   // Recupera info utente da localStorage
   const userStr = localStorage.getItem('yfm_user');
   const user = userStr ? JSON.parse(userStr) : null;
-  const userInitial = user?.nome ? user.nome[0].toUpperCase() : 'U';
-  const userName = user?.nome || '';
-  const userRole = user?.ruolo || '';
-  const userRoleLabel = userRole === 'admin' ? 'Amministratore' : userRole === 'staff' ? 'Staff' : userRole === 'allenatore' ? 'Allenatore' : userRole;
+  const guestStr = localStorage.getItem('yfm_guest');
+  const guest = guestStr ? JSON.parse(guestStr) : null;
+  
+  const isGuest = !!guest;
+  const currentUser = user;
+  const userInitial = currentUser?.nome ? currentUser.nome[0].toUpperCase() : isGuest ? (guest.tipo === 'atleta' ? 'A' : 'G') : 'U';
+  const userName = currentUser?.nome || (isGuest ? (guest.tipo === 'atleta' ? 'Atleta' : 'Genitore') : '');
+  const userRole = currentUser?.ruolo || (isGuest ? guest.tipo : '');
+  const userRoleLabel = userRole === 'admin' ? 'Amministratore' : userRole === 'staff' ? 'Staff' : userRole === 'allenatore' ? 'Allenatore' : userRole === 'atleta' ? 'Atleta' : userRole === 'genitore' ? 'Genitore' : userRole;
+
+  // Helper per verificare se mostrare sezione in base al ruolo
+  const showForRole = (roles) => {
+    if (isGuest) return false; // Guest non vede sidebar normale
+    if (!currentUser) return false;
+    if (currentUser.is_superadmin === true) return true;
+    if (typeof roles === 'string') roles = [roles];
+    return roles.includes(currentUser.ruolo);
+  };
 
   const app = document.getElementById('app');
   app.innerHTML = `
@@ -22,12 +36,36 @@ export function setupLayout() {
         </div>
         <nav class="sidebar-nav">
           <a href="#" class="active" data-page="dashboard">📊 Dashboard</a>
+          
+          <!-- Sezione Club -->
+          ${showForRole(['admin']) ? `
+          <div class="sidebar-section-title">🏢 Club</div>
+          <a href="#" data-page="settings">⚙️ Impostazioni</a>
+          ` : ''}
+          
+          <!-- Sezione Team -->
+          <div class="sidebar-section-title">👥 Team</div>
           <a href="#" data-page="roster">👥 Rosa</a>
           <a href="#" data-page="calendar">📅 Calendario</a>
+          
+          <!-- Sezione Coach -->
+          <div class="sidebar-section-title">🎯 Coach</div>
           <a href="#" data-page="training">🏃 Allenamenti</a>
-          <a href="#" data-page="stats">📈 Dati & Statistiche</a>
+          ${showForRole(['admin', 'allenatore', 'staff']) ? `
+          <a href="#" data-page="convocazioni" style="display:none;">👥 Convocazioni</a>
+          ` : ''}
+          
+          <!-- Sezione Performance -->
+          <div class="sidebar-section-title">📈 Performance</div>
+          <a href="#" data-page="stats">📊 Statistiche</a>
           <a href="#" data-page="reports">📄 Report</a>
-          <a href="#" data-page="settings">⚙️ Impostazioni</a>
+          
+          <!-- Sezione Admin (solo admin) -->
+          ${showForRole(['admin']) ? `
+          <div class="sidebar-section-title">🔐 Amministrazione</div>
+          <a href="#" data-page="users">👥 Utenti</a>
+          <a href="#" data-page="guestLinks">🔗 Link Guest</a>
+          ` : ''}
         </nav>
         <div class="sidebar-user">
           <div class="sidebar-user-avatar">${userInitial}</div>
@@ -35,7 +73,7 @@ export function setupLayout() {
             <div class="sidebar-user-name" id="userName">${userName}</div>
             <div class="sidebar-user-role" id="userRole">${userRoleLabel}</div>
           </div>
-          <button id="logoutBtn" class="btn btn-secondary btn-small" style="margin-left:auto;display:${user ? 'inline-block' : 'none'};">Logout</button>
+          <button id="logoutBtn" class="btn btn-secondary btn-small" style="margin-left:auto;display:${(currentUser || guest) ? 'inline-block' : 'none'};">Logout</button>
         </div>
       </aside>
       <div class="main">
