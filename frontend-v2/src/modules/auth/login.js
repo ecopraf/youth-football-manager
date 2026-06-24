@@ -2,9 +2,17 @@ import { apiFetch } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
 
 export default async function loadLogin() {
-  // Salva referral code dall URL se presente
+  // Leggi parametri dalla URL
   const urlParams = new URLSearchParams(window.location.search);
   const refCode = urlParams.get('ref');
+  const demoEmail = urlParams.get('demo_email');
+  const demoPassword = urlParams.get('demo_password');
+  const autoLogin = urlParams.get('auto_login');
+  
+  // Logga i parametri per debug
+  console.log('Demo params:', { demoEmail, demoPassword, autoLogin });
+  
+  // Salva referral code dall URL se presente
   if (refCode) {
     localStorage.setItem('referralCode', refCode);
     // Rimuovi il parametro ref dall URL per pulizia
@@ -31,12 +39,12 @@ export default async function loadLogin() {
         <form id="loginForm" class="auth-form">
           <div class="form-group">
             <label for="email">Email</label>
-            <input type="email" id="email" placeholder=" tua@email.com" required>
+            <input type="email" id="email" placeholder=" tua@email.com" value="${demoEmail || ''}" ${demoEmail ? 'required' : ''}>
           </div>
           
           <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" placeholder=" La tua password" required>
+            <input type="password" id="password" placeholder=" La tua password" value="${demoPassword || ''}" ${demoPassword ? 'required' : ''}>
           </div>
           
           <div id="loginError" class="error-message" style="display:none;"></div>

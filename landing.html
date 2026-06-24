@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Youth Football Manager - Gestisci la tua squadra con semplicità</title>
-    <meta name="description" content="La piattaforma completa per la gestione delle società sportive dilettanti. Rosa, calendari, formazioni, statistiche e molto altro.">
-    <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Youth Football Manager - Gestisci la tua squadra con semplicità</title>
+<meta content="La piattaforma completa per la gestione delle società sportive dilettanti. Rosa, calendari, formazioni, statistiche e molto altro." name="description"/>
+<style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
         * {
@@ -566,236 +567,207 @@
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav>
-        <div class="nav-logo">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABOYAAATmCAIAAAAKnjl9AABhWmNhQlgAAGFaanVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAYTRqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjNhMmYwOGJhLWExYTktNDlmNC05OWUxLTIxNzBhODA0OWMxNQAAABf9anVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAJ0Wp1bWIAAAA7anVtZEDLDDK7ikidpwsq1vR/Q2kTYzJwYS5pY29uAAAAABhjMnNo2blYmHzYlMjsHSTyiSXKTwAAABdiZmRiAGltYWdlL3N2Zyt4bWwAAAAJd2JpZGI8c3ZnIHdpZHRoPSI3MTYiIGhlaWdodD0iNzE2IiB2aWV3Qm94PSIwIDAgNzE2IDcxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUwOC43NDkgMzE3LjM5OUM1MTYuNzc3IDI4Ny4zMTQgNTA4Ljk5MSAyNTMuODg0IDQ4NS4zODkgMjMwLjI4MkM0NjEuNzg4IDIwNi42ODEgNDI4LjM2IDE5OC44OTUgMzk4LjI3MyAyMDYuOTIzQzM3Ni4yMzEgMTg0LjkyOCAzNDMuMzkgMTc0Ljk1NiAzMTEuMTQ4IDE4My41OTZDMjc4LjkwNiAxOTIuMjM0IDI1NS40NSAyMTcuMjkyIDI0Ny4zNiAyNDcuMzYxQzIxNy4yOTEgMjU1LjQ1MSAxOTIuMjMzIDI3OC45MSAxODMuNTk1IDMxMS4xNDlDMTc0Ljk1NyAzNDMuMzkxIDE4NC45MjcgMzc2LjIzMiAyMDYuOTI0IDM5OC4yNzRDMTk4Ljg5NiA0MjguMzU5IDIwNi42ODMgNDYxLjc4OSAyMzAuMjg0IDQ4NS4zOTFDMjUzLjg4NSA1MDguOTkyIDI4Ny4zMTMgNTE2Ljc3OSAzMTcuNDAxIDUwOC43NUMzMzkuNDQyIDUzMC43NDUgMzcyLjI4NiA1NDAuNzE3IDQwNC41MjUgNTMyLjA3OUM0MzYuNzY3IDUyMy40NDEgNDYwLjIyMyA0OTguMzg0IDQ2OC4zMTMgNDY4LjMxNUM0OTguMzgzIDQ2MC4yMjQgNTIzLjQ0IDQzNi43NjYgNTMyLjA3OCA0MDQuNTI2QzU0MC43MTYgMzcyLjI4NSA1MzAuNzQ3IDMzOS40NDMgNTA4Ljc0OSAzMTcuNDAyVjMxNy4zOTlaTTQ3MC44OTkgMjQ0Ljc3NkM0ODYuODkyIDI2MC43NyA0OTMuNDg4IDI4Mi42MDEgNDkwLjY4NyAzMDMuNDEyTDQxNS41NzcgMjYwLjA0NkM0MTIuNDExIDI1OC4yMTggNDA4LjUwOSAyNTguMjE4IDQwNS4zNDUgMjYwLjA0NkwzMTcuNDAxIDMxMC44MlYyNzcuNTI2QzMxNy40MDEgMjc1LjE5MSAzMTguNjUyIDI3My4wMDUgMzIwLjY3NiAyNzEuODM3TDM4Ny42NDQgMjMzLjE3NEM0MTQuMTc4IDIxOC4zNTMgNDQ4LjM0NiAyMjIuMjIzIDQ3MC45MDEgMjQ0Ljc3Nlg0NzAuODk5Wk0zNTcuODM3IDMxMS4xNDRMMzk4LjI3NSAzMzQuNDkxVjM4MS4xODVMMzU3LjgzNyA0MDQuNTMyTDMxNy4zOTggMzgxLjE4NVYzMzQuNDkxTDM1Ny44MzcgMzExLjE0NFpNMjY0Ljc3NiAyNjkuNjkzQzI2NS4yMDcgMjM5LjMwNSAyODUuNjQ0IDIxMS42NDkgMzE2LjQ1MyAyMDMuMzkzQzMzOC4zIDE5Ny41NCAzNjAuNTA1IDIwMi43NDQgMzc3LjEyNyAyMTUuNTczTDMwMi4wMTQgMjU4LjkzN0MyOTguODQ4IDI2MC43NjQgMjk2Ljg5OCAyNjQuMTQ0IDI5Ni44OTggMjY3Ljc5OFYzNjkuMzQ2TDI2OC4wNjUgMzUyLjY5OUMyNjYuMDQzIDM1MS41MzEgMjY0Ljc3NiAzNDkuMzUzIDI2NC43NzYgMzQ3LjAxN1YyNjkuNjkxVjI2OS42OTNaTTIwMy4zOTEgMzE2LjQ1NEMyMDkuMjQ0IDI5NC42MDggMjI0Ljg1NCAyNzcuOTc4IDI0NC4yNzYgMjY5Ljk5OVYzNTYuNzNDMjQ0LjI3NiAzNjAuMzg0IDI0Ni4yMjYgMzYzLjc2MyAyNDkuMzkyIDM2NS41OTFMMzM3LjMzNyA0MTYuMzY1TDMwOC41MDMgNDMzLjAxM0MzMDYuNDgxIDQzNC4xODEgMzAzLjk2MSA0MzQuMTg4IDMwMS45MzkgNDMzLjAyTDIzNC45NzEgMzk0LjM1N0MyMDguODY4IDM3OC43ODkgMTk1LjEzOCAzNDcuMjYxIDIwMy4zOTEgMzE2LjQ1NFpNMjQ0Ljc3NSA0NzAuOUMyMjguNzgxIDQ1NC45MDYgMjIyLjE4NiA0MzMuMDc1IDIyNC45ODYgNDExLjI2NEwzMDAuMDk2IDQ1NS42M0MzMDMuMjYzIDQ1Ny40NTcgMzA3LjE2NCA0NTcuNDU3IDMxMC4zMjggNDU1LjYzTDM5OC4yNzMgNDA0Ljg1NlY0MzguMTQ5QzM5OC4yNzMgNDQwLjQ4NSAzOTcuMDIyIDQ0Mi42NzEgMzk0Ljk5NyA0NDMuODM5TDMyOC4wMjkgNDgyLjUwMkMzMDEuNDk1IDQ5Ny4zMjIgMjY3LjMyNyA0OTMuNDUyIDI0NC43NzIgNDcwLjlIMjQ0Ljc3NVpNNDUwLjg5NyA0NDUuOTgyQzQ1MC40NjYgNDc2LjM3MSA0MzAuMDI5IDUwNC4wMjcgMzk5LjIyMSA1MTIuMjgzQzM3Ny4zNzMgNTE4LjEzNiAzNTUuMTY4IDUxMi45MzIgMzM4LjU0NyA1MDAuMTAyTDQxMy42NTkgNDU2LjczNEM0MTYuODI2IDQ1NC45MTEgNDE4Ljc3NSA0NTEuNTMzMiA0MTguNzc1IDQ0Ny44NzdWMzQ2LjMyOUw0NDcuNjA5IDM2Mi45NzdDNDQ5LjYzMSAzNjQuMTQ1IDQ1MC44OTcgMzY2LjMyMyA0NTAuODk3IDM2OC42NTlWNDQ1Ljk4NVY0NDUuOTgyWlpNNTEyLjI4MiAzOTkuMjIxQzUwNi40MjkgNDIxLjA2OCA0OTAuODE5IDQzNy42OTcgNDcxLjM5NyA0NDUuNjc2VjM1OC45NDZDNDcxLjM5NyAzNTUuMjkyIDQ2OS40NDggMzUxLjkxMiA0NjYuMjgxIDM1MC4wODVMTjc4LjMzNiAyOTkuMzExTDQwNy4xNyAyODIuNjYzQzQwOS4xOTIgMjgxLjQ5NSA0MTEuNzEyIDI4MS40ODcgNDEzLjczNCAyODIuNjU1TDQ4MC43MDIgMzIxLjMxOEM1MDYuODA1IDMzNi44ODcgNTIwLjUzNiAzNjguNDE1IDUxMi4yODIgMzk5LjIyMVoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo=" alt="YFM Logo">
+<!-- Navigation -->
+<nav>
+<div class="nav-logo">
+<img alt="YFM Logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABOYAAATmCAIAAAAKnjl9AABhWmNhQlgAAGFaanVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAYTRqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjNhMmYwOGJhLWExYTktNDlmNC05OWUxLTIxNzBhODA0OWMxNQAAABf9anVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAJ0Wp1bWIAAAA7anVtZEDLDDK7ikidpwsq1vR/Q2kTYzJwYS5pY29uAAAAABhjMnNo2blYmHzYlMjsHSTyiSXKTwAAABdiZmRiAGltYWdlL3N2Zyt4bWwAAAAJd2JpZGI8c3ZnIHdpZHRoPSI3MTYiIGhlaWdodD0iNzE2IiB2aWV3Qm94PSIwIDAgNzE2IDcxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUwOC43NDkgMzE3LjM5OUM1MTYuNzc3IDI4Ny4zMTQgNTA4Ljk5MSAyNTMuODg0IDQ4NS4zODkgMjMwLjI4MkM0NjEuNzg4IDIwNi42ODEgNDI4LjM2IDE5OC44OTUgMzk4LjI3MyAyMDYuOTIzQzM3Ni4yMzEgMTg0LjkyOCAzNDMuMzkgMTc0Ljk1NiAzMTEuMTQ4IDE4My41OTZDMjc4LjkwNiAxOTIuMjM0IDI1NS40NSAyMTcuMjkyIDI0Ny4zNiAyNDcuMzYxQzIxNy4yOTEgMjU1LjQ1MSAxOTIuMjMzIDI3OC45MSAxODMuNTk1IDMxMS4xNDlDMTc0Ljk1NyAzNDMuMzkxIDE4NC45MjcgMzc2LjIzMiAyMDYuOTI0IDM5OC4yNzRDMTk4Ljg5NiA0MjguMzU5IDIwNi42ODMgNDYxLjc4OSAyMzAuMjg0IDQ4NS4zOTFDMjUzLjg4NSA1MDguOTkyIDI4Ny4zMTMgNTE2Ljc3OSAzMTcuNDAxIDUwOC43NUMzMzkuNDQyIDUzMC43NDUgMzcyLjI4NiA1NDAuNzE3IDQwNC41MjUgNTMyLjA3OUM0MzYuNzY3IDUyMy40NDEgNDYwLjIyMyA0OTguMzg0IDQ2OC4zMTMgNDY4LjMxNUM0OTguMzgzIDQ2MC4yMjQgNTIzLjQ0IDQzNi43NjYgNTMyLjA3OCA0MDQuNTI2QzU0MC43MTYgMzcyLjI4NSA1MzAuNzQ3IDMzOS40NDMgNTA4Ljc0OSAzMTcuNDAyVjMxNy4zOTlaTTQ3MC44OTkgMjQ0Ljc3NkM0ODYuODkyIDI2MC43NyA0OTMuNDg4IDI4Mi42MDEgNDkwLjY4NyAzMDMuNDEyTDQxNS41NzcgMjYwLjA0NkM0MTIuNDExIDI1OC4yMTggNDA4LjUwOSAyNTguMjE4IDQwNS4zNDUgMjYwLjA0NkwzMTcuNDAxIDMxMC44MlYyNzcuNTI2QzMxNy40MDEgMjc1LjE5MSAzMTguNjUyIDI3My4wMDUgMzIwLjY3NiAyNzEuODM3TDM4Ny42NDQgMjMzLjE3NEM0MTQuMTc4IDIxOC4zNTMgNDQ4LjM0NiAyMjIuMjIzIDQ3MC45MDEgMjQ0Ljc3Nlg0NzAuODk5Wk0zNTcuODM3IDMxMS4xNDRMMzk4LjI3NSAzMzQuNDkxVjM4MS4xODVMMzU3LjgzNyA0MDQuNTMyTDMxNy4zOTggMzgxLjE4NVYzMzQuNDkxTDM1Ny44MzcgMzExLjE0NFpNMjY0Ljc3NiAyNjkuNjkzQzI2NS4yMDcgMjM5LjMwNSAyODUuNjQ0IDIxMS42NDkgMzE2LjQ1MyAyMDMuMzkzQzMzOC4zIDE5Ny41NCAzNjAuNTA1IDIwMi43NDQgMzc3LjEyNyAyMTUuNTczTDMwMi4wMTQgMjU4LjkzN0MyOTguODQ4IDI2MC43NjQgMjk2Ljg5OCAyNjQuMTQ0IDI5Ni44OTggMjY3Ljc5OFYzNjkuMzQ2TDI2OC4wNjUgMzUyLjY5OUMyNjYuMDQzIDM1MS41MzEgMjY0Ljc3NiAzNDkuMzUzIDI2NC43NzYgMzQ3LjAxN1YyNjkuNjkxVjI2OS42OTNaTTIwMy4zOTEgMzE2LjQ1NEMyMDkuMjQ0IDI5NC42MDggMjI0Ljg1NCAyNzcuOTc4IDI0NC4yNzYgMjY5Ljk5OVYzNTYuNzNDMjQ0LjI3NiAzNjAuMzg0IDI0Ni4yMjYgMzYzLjc2MyAyNDkuMzkyIDM2NS41OTFMMzM3LjMzNyA0MTYuMzY1TDMwOC41MDMgNDMzLjAxM0MzMDYuNDgxIDQzNC4xODEgMzAzLjk2MSA0MzQuMTg4IDMwMS45MzkgNDMzLjAyTDIzNC45NzEgMzk0LjM1N0MyMDguODY4IDM3OC43ODkgMTk1LjEzOCAzNDcuMjYxIDIwMy4zOTEgMzE2LjQ1NFpNMjQ0Ljc3NSA0NzAuOUMyMjguNzgxIDQ1NC45MDYgMjIyLjE4NiA0MzMuMDc1IDIyNC45ODYgNDExLjI2NEwzMDAuMDk2IDQ1NS42M0MzMDMuMjYzIDQ1Ny40NTcgMzA3LjE2NCA0NTcuNDU3IDMxMC4zMjggNDU1LjYzTDM5OC4yNzMgNDA0Ljg1NlY0MzguMTQ5QzM5OC4yNzMgNDQwLjQ4NSAzOTcuMDIyIDQ0Mi42NzEgMzk0Ljk5NyA0NDMuODM5TDMyOC4wMjkgNDgyLjUwMkMzMDEuNDk1IDQ5Ny4zMjIgMjY3LjMyNyA0OTMuNDUyIDI0NC43NzIgNDcwLjlIMjQ0Ljc3NVpNNDUwLjg5NyA0NDUuOTgyQzQ1MC40NjYgNDc2LjM3MSA0MzAuMDI5IDUwNC4wMjcgMzk5LjIyMSA1MTIuMjgzQzM3Ny4zNzMgNTE4LjEzNiAzNTUuMTY4IDUxMi45MzIgMzM4LjU0NyA1MDAuMTAyTDQxMy42NTkgNDU2LjczNEM0MTYuODI2IDQ1NC45MTEgNDE4Ljc3NSA0NTEuNTMzMiA0MTguNzc1IDQ0Ny44NzdWMzQ2LjMyOUw0NDcuNjA5IDM2Mi45NzdDNDQ5LjYzMSAzNjQuMTQ1IDQ1MC44OTcgMzY2LjMyMyA0NTAuODk3IDM2OC42NTlWNDQ1Ljk4NVY0NDUuOTgyWlpNNTEyLjI4MiAzOTkuMjIxQzUwNi40MjkgNDIxLjA2OCA0OTAuODE5IDQzNy42OTcgNDcxLjM5NyA0NDUuNjc2VjM1OC45NDZDNDcxLjM5NyAzNTUuMjkyIDQ2OS40NDggMzUxLjkxMiA0NjYuMjgxIDM1MC4wODVMTjc4LjMzNiAyOTkuMzExTDQwNy4xNyAyODIuNjYzQzQwOS4xOTIgMjgxLjQ5NSA0MTEuNzEyIDI4MS40ODcgNDEzLjczNCAyODIuNjU1TDQ4MC43MDIgMzIxLjMxOEM1MDYuODA1IDMzNi44ODcgNTIwLjUzNiAzNjguNDE1IDUxMi4yODIgMzk5LjIyMVoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="/>
             Youth Football Manager
         </div>
-        <div class="nav-links">
-            <a href="#funzionalita">Funzionalità</a>
-            <a href="#come-funziona">Come Funziona</a>
-            <a href="#prezzi">Prezzi</a>
-            <a href="https://youth-football-manager.vercel.app" class="btn btn-primary">Inizia Gratis</a>
-        </div>
-        <button class="mobile-menu-btn">☰</button>
-    </nav>
-    
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-badge">✨ Nuovo: Sistema Convocazioni Automatiche</div>
-        <h1>Gestisci la tua squadra<br><span>con semplicità</span></h1>
-        <p>La piattaforma completa per allenatori e dirigenti del calcio dilettantistico. Rosa, calendari, formazioni, statistiche e molto altro - tutto in un unico posto.</p>
-        <div class="hero-buttons">
-            <a href="https://youth-football-manager.vercel.app" class="btn btn-primary">
-                🏃 Inizia Gratis
-            </a>
-            <a href="#funzionalita" class="btn btn-secondary">
-                Scopri le funzionalità
-            </a>
-        </div>
-        <div class="hero-stats">
-            <div class="hero-stat">
-                <div class="hero-stat-value">500+</div>
-                <div class="hero-stat-label">Squadre attive</div>
-            </div>
-            <div class="hero-stat">
-                <div class="hero-stat-value">10k+</div>
-                <div class="hero-stat-label">Giocatori gestiti</div>
-            </div>
-            <div class="hero-stat">
-                <div class="hero-stat-value">98%</div>
-                <div class="hero-stat-label">Soddisfazione</div>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Features Section -->
-    <section class="features" id="funzionalita">
-        <div class="section-header">
-            <h2>Tutto ciò di cui hai bisogno</h2>
-            <p>Funzionalità professionali, semplici da usare, progettate per il calcio dilettantistico.</p>
-        </div>
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">📊</div>
-                <h3>Dashboard Intelligente</h3>
-                <p>Statistiche in tempo reale, prossime partite, top player e andamento stagionale. Tutto a portata di click.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">👥</div>
-                <h3>Rosa Giocatori</h3>
-                <p>Anagrafica completa, ruoli, statistiche individuali, storico prestazioni e valutazioni.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">📅</div>
-                <h3>Calendario Partite</h3>
-                <p>Gestisci calendario, risultati, eventi (gol, assist, cartellini) e archivio storico.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">✅</div>
-                <h3>Convocazioni</h3>
-                <p>Crea e gestisci convocazioni con stato confermato/in dubbio/assente. Notifiche automatiche.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">📋</div>
-                <h3>Formazione</h3>
-                <p>Schema tattico, trascinamento giocatori, distintа PDF pronta per la partita.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🏋️</div>
-                <h3>Registro Allenamenti</h3>
-                <p>Pianifica sedute, registra presenze, tiene traccia della preparazione atletica.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">📈</div>
-                <h3>Statistiche Dettagliate</h3>
-                <p>Classifiche marcatori, assist, media voto. Report individuali e di squadra.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🔐</div>
-                <h3>Gestione Ruoli</h3>
-                <p>Admin, allenatore, dirigente: permessi differenziati per ogni membro dello staff.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🔗</div>
-                <h3>Link Ospite</h3>
-                <p>Condividi risultati e statistiche con genitori e tifosi senza accesso completo.</p>
-            </div>
-        </div>
-    </section>
-    
-    <!-- How it Works -->
-    <section class="how-it-works" id="come-funziona">
-        <div class="section-header">
-            <h2>Inizia in 4 semplici passi</h2>
-            <p>Zero complessità, massima efficacia.</p>
-        </div>
-        <div class="steps">
-            <div class="step">
-                <div class="step-number">1</div>
-                <h3>Registrati</h3>
-                <p>Crea il tuo account gratuitamente in 30 secondi</p>
-            </div>
-            <div class="step">
-                <div class="step-number">2</div>
-                <h3>Aggiungi la Squadra</h3>
-                <p>Inserisci i dati della tua squadra e stagioni</p>
-            </div>
-            <div class="step">
-                <div class="step-number">3</div>
-                <h3>Importa la Rosa</h3>
-                <p>Aggiungi i giocatori manualmente o via CSV</p>
-            </div>
-            <div class="step">
-                <div class="step-number">4</div>
-                <h3>Inizia a Gestire</h3>
-                <p>Calendario, formazioni, statistiche: tutto pronto!</p>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Pricing -->
-    <section class="pricing" id="prezzi">
-        <div class="section-header">
-            <h2>Prezzi Trasparenti</h2>
-            <p>Nessun costo nascosto, nessuna commissione. Solo il meglio per la tua squadra.</p>
-        </div>
-        <div class="pricing-grid">
-            <div class="pricing-card">
-                <div class="pricing-name">Base</div>
-                <div class="pricing-price">€0 <span>/anno</span></div>
-                <div class="pricing-period">Gratuito per sempre</div>
-                <ul class="pricing-features">
-                    <li>1 Squadra</li>
-                    <li>25 Giocatori</li>
-                    <li>Calendario base</li>
-                    <li>Gestione rosa</li>
-                    <li>Statistiche essenziali</li>
-                </ul>
-                <a href="https://youth-football-manager.vercel.app" class="btn btn-secondary">Inizia Gratis</a>
-            </div>
-            <div class="pricing-card featured">
-                <div class="pricing-badge">Più Popolare</div>
-                <div class="pricing-name">Standard</div>
-                <div class="pricing-price">€199 <span>/anno</span></div>
-                <div class="pricing-period">Circa €16 al mese</div>
-                <ul class="pricing-features">
-                    <li>Squadre illimitate</li>
-                    <li>Giocatori illimitati</li>
-                    <li>Tutte le funzionalità</li>
-                    <li>Report PDF avanzati</li>
-                    <li>Supporto prioritario</li>
-                    <li>Backup automatico</li>
-                </ul>
-                <a href="https://youth-football-manager.vercel.app" class="btn" style="background:white;color:var(--primary);">Scegli Standard</a>
-            </div>
-            <div class="pricing-card">
-                <div class="pricing-name">Portali</div>
-                <div class="pricing-price">€199 <span>/anno</span></div>
-                <div class="pricing-period">Per portali sportivi</div>
-                <ul class="pricing-features">
-                    <li>Tutto di Standard</li>
-                    <li>Widget personalizzato</li>
-                    <li>Integrazione API</li>
-                    <li>Import dati automatico</li>
-                    <li>Badge "Partner Ufficiale"</li>
-                    <li>Supporto dedicato</li>
-                </ul>
-                <a href="mailto:youthfootballmanager@gmail.com" class="btn btn-secondary">Contattaci</a>
-            </div>
-        </div>
-    </section>
-    
-    <!-- CTA -->
-    <section class="cta">
-        <h2>Pronto a semplificare la gestione?</h2>
-        <p>Unisciti a centinaia di squadre che hanno già scelto Youth Football Manager.</p>
-        <a href="https://youth-football-manager.vercel.app" class="btn">
-            🏃 Inizia Ora - È Gratis
-        </a>
-    </section>
-    
-    <!-- Footer -->
-    <footer>
-        <div class="footer-content">
-            <div>
-                <div class="footer-brand">
-                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABOYAAATmCAIAAAAKnjl9AABhWmNhQlgAAGFaanVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAYTRqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjNhMmYwOGJhLWExYTktNDlmNC05OWUxLTIxNzBhODA0OWMxNQAAABf9anVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAJ0Wp1bWIAAAA7anVtZEDLDDK7ikidpwsq1vR/Q2kTYzJwYS5pY29uAAAAABhjMnNo2blYmHzYlMjsHSTyiSXKTwAAABdiZmRiAGltYWdlL3N2Zyt4bWwAAAAJd2JpZGI8c3ZnIHdpZHRoPSI3MTYiIGhlaWdodD0iNzE2IiB2aWV3Qm94PSIwIDAgNzE2IDcxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUwOC43NDkgMzE3LjM5OUM1MTYuNzc3IDI4Ny4zMTQgNTA4Ljk5MSAyNTMuODg0IDQ4NS4zODkgMjMwLjI4MkM0NjEuNzg4IDIwNi42ODEgNDI4LjM2IDE5OC44OTUgMzk4LjI3MyAyMDYuOTIzQzM3Ni4yMzEgMTg0LjkyOCAzNDMuMzkgMTc0Ljk1NiAzMTEuMTQ4IDE4My41OTZDMjc4LjkwNiAxOTIuMjM0IDI1NS40NSAyMTcuMjkyIDI0Ny4zNiAyNDcuMzYxQzIxNy4yOTEgMjU1LjQ1MSAxOTIuMjMzIDI3OC45MSAxODMuNTk1IDMxMS4xNDlDMTc0Ljk1NyAzNDMuMzkxIDE4NC45MjcgMzc2LjIzMiAyMDYuOTI0IDM5OC4yNzRDMTk4Ljg5NiA0MjguMzU5IDIwNi42ODMgNDYxLjc4OSAyMzAuMjg0IDQ4NS4zOTFDMjUzLjg4NSA1MDguOTkyIDI4Ny4zMTMgNTE2Ljc3OSAzMTcuNDAxIDUwOC43NUMzMzkuNDQyIDUzMC43NDUgMzcyLjI4NiA1NDAuNzE3IDQwNC41MjUgNTMyLjA3OUM0MzYuNzY3IDUyMy40NDEgNDYwLjIyMyA0OTguMzg0IDQ2OC4zMTMgNDY4LjMxNUM0OTguMzgzIDQ2MC4yMjQgNTIzLjQ0IDQzNi43NjYgNTMyLjA3OCA0MDQuNTI2QzU0MC43MTYgMzcyLjI4NSA1MzAuNzQ3IDMzOS40NDMgNTA4Ljc0OSAzMTcuNDAyVjMxNy4zOTlaTTQ3MC44OTkgMjQ0Ljc3NkM0ODYuODkyIDI2MC43NyA0OTMuNDg4IDI4Mi42MDEgNDkwLjY4NyAzMDMuNDEyTDQxNS41NzcgMjYwLjA0NkM0MTIuNDExIDI1OC4yMTggNDA4LjUwOSAyNTguMjE4IDQwNS4zNDUgMjYwLjA0NkwzMTcuNDAxIDMxMC44MlYyNzcuNTI2QzMxNy40MDEgMjc1LjE5MSAzMTguNjUyIDI3My4wMDUgMzIwLjY3NiAyNzEuODM3TDM4Ny42NDQgMjMzLjE3NEM0MTQuMTc4IDIxOC4zNTMgNDQ4LjM0NiAyMjIuMjIzIDQ3MC45MDEgMjQ0Ljc3Nlg0NzAuODk5Wk0zNTcuODM3IDMxMS4xNDRMMzk4LjI3NSAzMzQuNDkxVjM4MS4xODVMMzU3LjgzNyA0MDQuNTMyTDMxNy4zOTggMzgxLjE4NVYzMzQuNDkxTDM1Ny44MzcgMzExLjE0NFpNMjY0Ljc3NiAyNjkuNjkzQzI2NS4yMDcgMjM5LjMwNSAyODUuNjQ0IDIxMS42NDkgMzE2LjQ1MyAyMDMuMzkzQzMzOC4zIDE5Ny41NCAzNjAuNTA1IDIwMi43NDQgMzc3LjEyNyAyMTUuNTczTDMwMi4wMTQgMjU4LjkzN0MyOTguODQ4IDI2MC43NjQgMjk2Ljg5OCAyNjQuMTQ0IDI5Ni44OTggMjY3Ljc5OFYzNjkuMzQ2TDI2OC4wNjUgMzUyLjY5OUMyNjYuMDQzIDM1MS41MzEgMjY0Ljc3NiAzNDkuMzUzIDI2NC43NzYgMzQ3LjAxN1YyNjkuNjkxVjI2OS42OTNaTTIwMy4zOTEgMzE2LjQ1NEMyMDkuMjQ0IDI5NC42MDggMjI0Ljg1NCAyNzcuOTc4IDI0NC4yNzYgMjY5Ljk5OVYzNTYuNzNDMjQ0LjI3NiAzNjAuMzg0IDI0Ni4yMjYgMzYzLjc2MyAyNDkuMzkyIDM2NS41OTFMMzM3LjMzNyA0MTYuMzY1TDMwOC41MDMgNDMzLjAxM0MzMDYuNDgxIDQzNC4xODEgMzAzLjk2MSA0MzQuMTg4IDMwMS45MzkgNDMzLjAyTDIzNC45NzEgMzk0LjM1N0MyMDguODY4IDM3OC43ODkgMTk1LjEzOCAzNDcuMjYxIDIwMy4zOTEgMzE2LjQ1NFpNMjQ0Ljc3NSA0NzAuOUMyMjguNzgxIDQ1NC45MDYgMjIyLjE4NiA0MzMuMDc1IDIyNC45ODYgNDExLjI2NEwzMDAuMDk2IDQ1NS42M0MzMDMuMjYzIDQ1Ny40NTcgMzA3LjE2NCA0NTcuNDU3IDMxMC4zMjggNDU1LjYzTDM5OC4yNzMgNDA0Ljg1NlY0MzguMTQ5QzM5OC4yNzMgNDQwLjQ4NSAzOTcuMDIyIDQ0Mi42NzEgMzk0Ljk5NyA0NDMuODM5TDMyOC4wMjkgNDgyLjUwMkMzMDEuNDk1IDQ5Ny4zMjIgMjY3LjMyNyA0OTMuNDUyIDI0NC43NzIgNDcwLjlIMjQ0Ljc3NVpNNDUwLjg5NyA0NDUuOTgyQzQ1MC40NjYgNDc2LjM3MSA0MzAuMDI5IDUwNC4wMjcgMzk5LjIyMSA1MTIuMjgzQzM3Ny4zNzMgNTE4LjEzNiAzNTUuMTY4IDUxMi45MzIgMzM4LjU0NyA1MDAuMTAyTDQxMy42NTkgNDU2LjczNEM0MTYuODI2IDQ1NC45MTEgNDE4Ljc3NSA0NTEuNTMzMiA0MTguNzc1IDQ0Ny44NzdWMzQ2LjMyOUw0NDcuNjA5IDM2Mi45NzdDNDQ5LjYzMSAzNjQuMTQ1IDQ1MC44OTcgMzY2LjMyMyA0NTAuODk3IDM2OC42NTlWNDQ1Ljk4NVY0NDUuOTgyWlpNNTEyLjI4MiAzOTkuMjIxQzUwNi40MjkgNDIxLjA2OCA0OTAuODE5IDQzNy42OTcgNDcxLjM5NyA0NDUuNjc2VjM1OC45NDZDNDcxLjM5NyAzNTUuMjkyIDQ2OS40NDggMzUxLjkxMiA0NjYuMjgxIDM1MC4wODVMTjc4LjMzNiAyOTkuMzExTDQwNy4xNyAyODIuNjYzQzQwOS4xOTIgMjgxLjQ5NSA0MTEuNzEyIDI4MS40ODcgNDEzLjczNCAyODIuNjU1TDQ4MC43MDIgMzIxLjMxOEM1MDYuODA1IDMzNi44ODcgNTIwLjUzNiAzNjguNDE1IDUxMi4yODIgMzk5LjIyMVoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo=" alt="YFM Logo">
-                    <span>YFM</span>
-                </div>
-                <p>La piattaforma completa per la gestione delle società sportive dilettanti.</p>
-            </div>
-            <div class="footer-col">
-                <h4>Prodotto</h4>
-                <ul>
-                    <li><a href="#funzionalita">Funzionalità</a></li>
-                    <li><a href="#prezzi">Prezzi</a></li>
-                    <li><a href="https://youth-football-manager.vercel.app">Demo</a></li>
-                </ul>
-            </div>
-            <div class="footer-col">
-                <h4>Risorse</h4>
-                <ul>
-                    <li><a href="mailto:youthfootballmanager@gmail.com">Contatti</a></li>
-                    <li><a href="mailto:youthfootballmanager@gmail.com">Partnership</a></li>
-                </ul>
-            </div>
-            <div class="footer-col">
-                <h4>Legale</h4>
-                <ul>
-                    <li><a href="#">Privacy Policy</a></li>
-                    <li><a href="#">Termini di Servizio</a></li>
-                </ul>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>© 2025 Youth Football Manager. Tutti i diritti riservati.</p>
-            <p>youthfootballmanager@gmail.com</p>
-        </div>
-    </footer>
-    
-    <script>
+<div class="nav-links">
+<a href="#funzionalita">Funzionalità</a>
+<a href="#come-funziona">Come Funziona</a>
+<a href="#prezzi">Prezzi</a>
+
+</div>
+<button class="mobile-menu-btn">☰</button>
+</nav>
+<!-- Hero Section -->
+<section class="hero">
+<div class="hero-badge">✨ Nuovo Sistema Convocazioni e Creazione Distinta Integrato</div>
+<h1>La piattaforma che digitalizza<br/><span>la tua società di calcio.</span></h1>
+<p>Tutta la tua società. Un'unica piattaforma. Dalle convocazioni agli allenamenti, dalle statistiche alla segreteria: Youth Football Manager aiuta allenatori, dirigenti e società sportive a lavorare meglio, ogni giorno.</p>
+<div class="hero-buttons">
+<a class="btn btn-primary" href="https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1">Prova la Demo</a>
+<a class="btn btn-secondary" href="#funzionalita">Scopri le funzionalità</a>
+</div>
+<div class="hero-stats">
+<div class="hero-stat">
+<div class="hero-stat-value">☁️</div>
+<div class="hero-stat-label">Cloud</div>
+</div>
+<div class="hero-stat">
+<div class="hero-stat-value">🏢</div>
+<div class="hero-stat-label">Multi Squadra</div>
+</div>
+<div class="hero-stat">
+<div class="hero-stat-value">🔄</div>
+<div class="hero-stat-label">Aggiornamenti Continui</div>
+</div>
+<div class="hero-stat">
+<div class="hero-stat-value">🖥️📱💻</div>
+<div class="hero-stat-label">PC, Tablet e Mobile</div>
+</div>
+</div>
+</section>
+<!-- Features Section -->
+<section class="features" id="funzionalita">
+<div class="section-header">
+<h2>Tutto ciò di cui hai bisogno</h2>
+<p>Funzionalità professionali, semplici da usare, progettate per il calcio dilettantistico.</p>
+</div>
+<div class="features-grid">
+<div class="feature-card">
+<div class="feature-icon">📊</div>
+<h3>Dashboard Intelligente</h3>
+<p>Statistiche in tempo reale, prossime partite, top player e andamento stagionale. Tutto a portata di click.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon">👥</div>
+<h3>Rosa Giocatori</h3>
+<p>Anagrafica completa, ruoli, statistiche individuali, storico prestazioni e valutazioni.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon">📅</div>
+<h3>Calendario Partite</h3>
+<p>Gestisci calendario, risultati, eventi (gol, assist, cartellini) e archivio storico.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon">✅</div>
+<h3>Convocazioni</h3>
+<p>Crea e gestisci convocazioni con stato confermato/in dubbio/assente. Notifiche automatiche.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon">📋</div>
+<h3>Formazione</h3>
+<p>Schema tattico, trascinamento giocatori, distintа PDF pronta per la partita.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon">🏋️</div>
+<h3>Registro Allenamenti</h3>
+<p>Pianifica sedute, registra presenze, tiene traccia della preparazione atletica.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon">📈</div>
+<h3>Statistiche Dettagliate</h3>
+<p>Classifiche marcatori, assist, media voto. Report individuali e di squadra.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon">🔐</div>
+<h3>Gestione Ruoli</h3>
+<p>Admin, allenatore, dirigente: permessi differenziati per ogni membro dello staff.</p>
+</div>
+<div class="feature-card">
+<div class="feature-icon">🔗</div>
+<h3>Link Ospite</h3>
+<p>Condividi risultati e statistiche con genitori e tifosi senza accesso completo.</p>
+</div>
+</div>
+</section>
+<!-- How it Works -->
+<section class="how-it-works" id="come-funziona">
+<div class="section-header">
+<h2>Inizia in 4 semplici passi</h2>
+<p>Zero complessità, massima efficacia.</p>
+</div>
+<div class="steps">
+<div class="step">
+<div class="step-number">1</div>
+<h3>Registrati</h3>
+<p>Crea il tuo account gratuitamente in 30 secondi</p>
+</div>
+<div class="step">
+<div class="step-number">2</div>
+<h3>Aggiungi la Squadra</h3>
+<p>Inserisci i dati della tua squadra e stagioni</p>
+</div>
+<div class="step">
+<div class="step-number">3</div>
+<h3>Importa la Rosa</h3>
+<p>Aggiungi i giocatori manualmente o via CSV</p>
+</div>
+<div class="step">
+<div class="step-number">4</div>
+<h3>Inizia a Gestire</h3>
+<p>Calendario, formazioni, statistiche: tutto pronto!</p>
+</div>
+</div>
+</section>
+<!-- Pricing -->
+<section class="pricing" id="prezzi">
+<div class="section-header">
+<h2>Scegli il piano giusto</h2>
+<p>30 giorni di prova gratuita. Nessun vincolo, nessuna carta di credito.</p>
+</div>
+<div class="pricing-grid">
+<div class="pricing-card">
+<div class="pricing-name">Coach</div>
+<div class="pricing-price">€99 <span>/anno</span></div>
+<div class="pricing-period">oppure €9,90/mese</div>
+<ul class="pricing-features"><li>1 Squadra</li><li>Tutte le funzionalità</li><li>Convocazioni</li><li>Calendario</li><li>Allenamenti</li><li>Statistiche</li><li>Backup Cloud</li><li>Aggiornamenti inclusi</li></ul>
+<a class="btn btn-secondary" href="mailto:info@youthfootballmanager.it?subject=Richiesta%20informazioni">Scegli Coach</a>
+</div>
+<div class="pricing-card featured">
+<div class="pricing-badge">Più Popolare</div>
+<div class="pricing-name">Club</div>
+<div class="pricing-price">€249 <span>/anno</span></div>
+<div class="pricing-period" style="color:#fff;">oppure €24,90/mese</div>
+<ul class="pricing-features"><li>Squadre illimitate</li><li>Allenatori illimitati</li><li>Dirigenti illimitati</li><li>Tutte le funzionalità</li><li>Gestione categorie</li><li>Permessi utenti</li><li>Report avanzati</li><li>Supporto prioritario</li><li>Backup Cloud</li></ul>
+<a class="btn" href="mailto:info@youthfootballmanager.it?subject=Richiesta%20informazioni" style="background:white;color:var(--primary);">Scegli Club</a>
+</div>
+<div class="pricing-card">
+<div class="pricing-name">AI Plus</div>
+<div class="pricing-price">Coming Soon</div>
+<div class="pricing-period">Il futuro della gestione sportiva</div>
+<ul class="pricing-features"><li>Assistente AI</li><li>Suggerimenti convocazioni</li><li>Analisi giocatori</li><li>Analisi avversari</li><li>Report automatici</li><li>API</li><li>Automazioni</li></ul>
+<a class="btn btn-secondary" href="mailto:info@youthfootballmanager.it?subject=Richiesta%20informazioni">Entra nella Waiting List</a>
+</div>
+</div>
+</section>
+<!-- CTA -->
+<section class="cta">
+<h2>Più tempo sul campo. Meno tempo in segreteria.</h2>
+<p>Scopri come Youth Football Manager può trasformare il lavoro quotidiano della tua società.</p>
+<a class="btn" href="https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1">Prova Gratis</a>
+</section>
+<!-- Footer -->
+<footer>
+<div class="footer-content">
+<div>
+<div class="footer-brand">
+<img alt="YFM Logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABOYAAATmCAIAAAAKnjl9AABhWmNhQlgAAGFaanVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAYTRqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjNhMmYwOGJhLWExYTktNDlmNC05OWUxLTIxNzBhODA0OWMxNQAAABf9anVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAJ0Wp1bWIAAAA7anVtZEDLDDK7ikidpwsq1vR/Q2kTYzJwYS5pY29uAAAAABhjMnNo2blYmHzYlMjsHSTyiSXKTwAAABdiZmRiAGltYWdlL3N2Zyt4bWwAAAAJd2JpZGI8c3ZnIHdpZHRoPSI3MTYiIGhlaWdodD0iNzE2IiB2aWV3Qm94PSIwIDAgNzE2IDcxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUwOC43NDkgMzE3LjM5OUM1MTYuNzc3IDI4Ny4zMTQgNTA4Ljk5MSAyNTMuODg0IDQ4NS4zODkgMjMwLjI4MkM0NjEuNzg4IDIwNi42ODEgNDI4LjM2IDE5OC44OTUgMzk4LjI3MyAyMDYuOTIzQzM3Ni4yMzEgMTg0LjkyOCAzNDMuMzkgMTc0Ljk1NiAzMTEuMTQ4IDE4My41OTZDMjc4LjkwNiAxOTIuMjM0IDI1NS40NSAyMTcuMjkyIDI0Ny4zNiAyNDcuMzYxQzIxNy4yOTEgMjU1LjQ1MSAxOTIuMjMzIDI3OC45MSAxODMuNTk1IDMxMS4xNDlDMTc0Ljk1NyAzNDMuMzkxIDE4NC45MjcgMzc2LjIzMiAyMDYuOTI0IDM5OC4yNzRDMTk4Ljg5NiA0MjguMzU5IDIwNi42ODMgNDYxLjc4OSAyMzAuMjg0IDQ4NS4zOTFDMjUzLjg4NSA1MDguOTkyIDI4Ny4zMTMgNTE2Ljc3OSAzMTcuNDAxIDUwOC43NUMzMzkuNDQyIDUzMC43NDUgMzcyLjI4NiA1NDAuNzE3IDQwNC41MjUgNTMyLjA3OUM0MzYuNzY3IDUyMy40NDEgNDYwLjIyMyA0OTguMzg0IDQ2OC4zMTMgNDY4LjMxNUM0OTguMzgzIDQ2MC4yMjQgNTIzLjQ0IDQzNi43NjYgNTMyLjA3OCA0MDQuNTI2QzU0MC43MTYgMzcyLjI4NSA1MzAuNzQ3IDMzOS40NDMgNTA4Ljc0OSAzMTcuNDAyVjMxNy4zOTlaTTQ3MC44OTkgMjQ0Ljc3NkM0ODYuODkyIDI2MC43NyA0OTMuNDg4IDI4Mi42MDEgNDkwLjY4NyAzMDMuNDEyTDQxNS41NzcgMjYwLjA0NkM0MTIuNDExIDI1OC4yMTggNDA4LjUwOSAyNTguMjE4IDQwNS4zNDUgMjYwLjA0NkwzMTcuNDAxIDMxMC44MlYyNzcuNTI2QzMxNy40MDEgMjc1LjE5MSAzMTguNjUyIDI3My4wMDUgMzIwLjY3NiAyNzEuODM3TDM4Ny42NDQgMjMzLjE3NEM0MTQuMTc4IDIxOC4zNTMgNDQ4LjM0NiAyMjIuMjIzIDQ3MC45MDEgMjQ0Ljc3Nlg0NzAuODk5Wk0zNTcuODM3IDMxMS4xNDRMMzk4LjI3NSAzMzQuNDkxVjM4MS4xODVMMzU3LjgzNyA0MDQuNTMyTDMxNy4zOTggMzgxLjE4NVYzMzQuNDkxTDM1Ny44MzcgMzExLjE0NFpNMjY0Ljc3NiAyNjkuNjkzQzI2NS4yMDcgMjM5LjMwNSAyODUuNjQ0IDIxMS42NDkgMzE2LjQ1MyAyMDMuMzkzQzMzOC4zIDE5Ny41NCAzNjAuNTA1IDIwMi43NDQgMzc3LjEyNyAyMTUuNTczTDMwMi4wMTQgMjU4LjkzN0MyOTguODQ4IDI2MC43NjQgMjk2Ljg5OCAyNjQuMTQ0IDI5Ni44OTggMjY3Ljc5OFYzNjkuMzQ2TDI2OC4wNjUgMzUyLjY5OUMyNjYuMDQzIDM1MS41MzEgMjY0Ljc3NiAzNDkuMzUzIDI2NC43NzYgMzQ3LjAxN1YyNjkuNjkxVjI2OS42OTNaTTIwMy4zOTEgMzE2LjQ1NEMyMDkuMjQ0IDI5NC42MDggMjI0Ljg1NCAyNzcuOTc4IDI0NC4yNzYgMjY5Ljk5OVYzNTYuNzNDMjQ0LjI3NiAzNjAuMzg0IDI0Ni4yMjYgMzYzLjc2MyAyNDkuMzkyIDM2NS41OTFMMzM3LjMzNyA0MTYuMzY1TDMwOC41MDMgNDMzLjAxM0MzMDYuNDgxIDQzNC4xODEgMzAzLjk2MSA0MzQuMTg4IDMwMS45MzkgNDMzLjAyTDIzNC45NzEgMzk0LjM1N0MyMDguODY4IDM3OC43ODkgMTk1LjEzOCAzNDcuMjYxIDIwMy4zOTEgMzE2LjQ1NFpNMjQ0Ljc3NSA0NzAuOUMyMjguNzgxIDQ1NC45MDYgMjIyLjE4NiA0MzMuMDc1IDIyNC45ODYgNDExLjI2NEwzMDAuMDk2IDQ1NS42M0MzMDMuMjYzIDQ1Ny40NTcgMzA3LjE2NCA0NTcuNDU3IDMxMC4zMjggNDU1LjYzTDM5OC4yNzMgNDA0Ljg1NlY0MzguMTQ5QzM5OC4yNzMgNDQwLjQ4NSAzOTcuMDIyIDQ0Mi42NzEgMzk0Ljk5NyA0NDMuODM5TDMyOC4wMjkgNDgyLjUwMkMzMDEuNDk1IDQ5Ny4zMjIgMjY3LjMyNyA0OTMuNDUyIDI0NC43NzIgNDcwLjlIMjQ0Ljc3NVpNNDUwLjg5NyA0NDUuOTgyQzQ1MC40NjYgNDc2LjM3MSA0MzAuMDI5IDUwNC4wMjcgMzk5LjIyMSA1MTIuMjgzQzM3Ny4zNzMgNTE4LjEzNiAzNTUuMTY4IDUxMi45MzIgMzM4LjU0NyA1MDAuMTAyTDQxMy42NTkgNDU2LjczNEM0MTYuODI2IDQ1NC45MTEgNDE4Ljc3NSA0NTEuNTMzMiA0MTguNzc1IDQ0Ny44NzdWMzQ2LjMyOUw0NDcuNjA5IDM2Mi45NzdDNDQ5LjYzMSAzNjQuMTQ1IDQ1MC44OTcgMzY2LjMyMyA0NTAuODk3IDM2OC42NTlWNDQ1Ljk4NVY0NDUuOTgyWlpNNTEyLjI4MiAzOTkuMjIxQzUwNi40MjkgNDIxLjA2OCA0OTAuODE5IDQzNy42OTcgNDcxLjM5NyA0NDUuNjc2VjM1OC45NDZDNDcxLjM5NyAzNTUuMjkyIDQ2OS40NDggMzUxLjkxMiA0NjYuMjgxIDM1MC4wODVMTjc4LjMzNiAyOTkuMzExTDQwNy4xNyAyODIuNjYzQzQwOS4xOTIgMjgxLjQ5NSA0MTEuNzEyIDI4MS40ODcgNDEzLjczNCAyODIuNjU1TDQ4MC43MDIgMzIxLjMxOEM1MDYuODA1IDMzNi44ODcgNTIwLjUzNiAzNjguNDE1IDUxMi4yODIgMzk5LjIyMVoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="/>
+<span>YFM</span>
+</div>
+<p>La piattaforma completa per la gestione delle società sportive dilettanti.</p>
+</div>
+<div class="footer-col">
+<h4>Prodotto</h4>
+<ul>
+<li><a href="#funzionalita">Funzionalità</a></li>
+<li><a href="#prezzi">Prezzi</a></li>
+<li><a href="https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1">Demo</a></li>
+</ul>
+</div>
+<div class="footer-col">
+<h4>Risorse</h4>
+<ul>
+<li><a href="mailto:youthfootballmanager@gmail.com">Contatti</a></li>
+<li><a href="mailto:youthfootballmanager@gmail.com">Partnership</a></li>
+</ul>
+</div>
+<div class="footer-col">
+<h4>Legale</h4>
+<ul>
+<li><a href="#">Privacy Policy</a></li>
+<li><a href="#">Termini di Servizio</a></li>
+</ul>
+</div>
+</div>
+<div class="footer-bottom">
+<p>© 2026 Youth Football Manager. Tutti i diritti riservati.</p>
+<p>youthfootballmanager@gmail.com</p>
+</div>
+</footer>
+<script>
         // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
