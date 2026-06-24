@@ -1,6 +1,8 @@
 # Proposta di Partnership Strategica
 
-## Youth Football Manager x [Nome Portale]
+![Logo Youth Football Manager](../frontend-v2/public/assets/logo.png)
+
+## Youth Football Manager
 
 ---
 

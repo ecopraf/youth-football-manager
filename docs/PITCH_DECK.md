@@ -1,5 +1,7 @@
 # 🎯 Partnership Strategica
-## Youth Football Manager x [Partner]
+## Youth Football Manager
+
+![Logo](../frontend-v2/public/assets/logo.png)
 
 ---
 
