@@ -366,6 +366,33 @@ onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow=
 
 ---
 
+## Sistema Partnership
+
+### Modello Commerciale
+| Tipo | Prezzo |
+|------|--------|
+| Annuale | €199/anno |
+| Mensile | €19,90/mese |
+
+### Partnership a 3 Livelli
+1. **Referral Commerciale** - Landing page + codice referral + 20% commissione
+2. **Integrazione Tecnica** - Widget, import dati, link diretti
+3. **Co-Marketing** - Webinar, articoli, eventi FIGC/LND
+
+### Commissioni Partner
+| Tipo | Commissione | Esempio |
+|------|-------------|---------|
+| Prima registrazione | 20% | €39,80 su €199 |
+| Rinnovi annuali | 10% | €19,90 su €199 |
+
+### Documentazione Partnership
+- `/docs/PROPOSTA_PARTNERSHIP.md` - Proposta completa
+- `/docs/PITCH_DECK.md` - Presentazione sintetica
+- `/docs/CONTATTI_PORTALI.md` - Email tipo e contatti
+- `/SQL/referral_system.sql` - Schema DB per referral
+
+---
+
 ## Task Completati ✅
 - ✅ Timeline Partita - vista minuto-per-minuto eventi in matchDetail.js
 - ✅ Archivia Partita - Blocco modifiche per partite concluse
