@@ -20,95 +20,36 @@ export function setupLayout() {
   };
 
   const app = document.getElementById('app');
-  app.innerHTML = `
-    <div class="layout">
-      <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-          <div class="sidebar-logo-icon">Y</div>
-          <span class="sidebar-logo-text">YFM</span>
-        </div>
-        <div class="sidebar-info">
-          <div class="sidebar-info-label">Workspace</div>
-          <div class="sidebar-info-workspace" id="workspaceName">Caricamento...</div>
-          <div class="sidebar-info-season" id="seasonName">Stagione 2025/26</div>
-        </div>
-        <nav class="sidebar-nav">
-          <a href="#" class="active" data-page="dashboard">📊 Dashboard</a>
-          
-          ${showForRole(['admin']) ? `
-          <div class="sidebar-section-title">🏢 Club</div>
-          <a href="#" data-page="settings">⚙️ Impostazioni</a>
-          ` : ''}
-          
-          <div class="sidebar-section-title">👥 Team</div>
-          <a href="#" data-page="roster">👥 Rosa</a>
-          <a href="#" data-page="calendar">📅 Calendario</a>
-          
-          <div class="sidebar-section-title">🎯 Coach</div>
-          <a href="#" data-page="training">🏃 Allenamenti</a>
-          ${showForRole(['admin', 'allenatore', 'staff']) ? `
-          <a href="#" data-page="convocazioni" style="display:none;">👥 Convocazioni</a>
-          ` : ''}
-          
-          <div class="sidebar-section-title">📈 Performance</div>
-          <a href="#" data-page="stats">📊 Statistiche</a>
-          <a href="#" data-page="reports">📄 Report</a>
-          
-          ${showForRole(['admin']) ? `
-          <div class="sidebar-section-title">🔐 Amministrazione</div>
-          <a href="#" data-page="users">👥 Utenti</a>
-          <a href="#" data-page="guestLinks">🔗 Link Guest</a>
-          ` : ''}
-        </nav>
-        
-        <div class="sidebar-user" id="sidebarUser" style="cursor:pointer;display:${(currentUser || guest) ? 'flex' : 'none'};" title="Clicca per logout">
-          <div class="sidebar-user-avatar" id="sidebarUserAvatar">${userInitial}</div>
-          <div>
-            <div class="sidebar-user-name" id="userName">${userName}</div>
-            <div class="sidebar-user-role" id="userRole">${userRoleLabel}</div>
-          </div>
-        </div>
-      </aside>
-      <div class="main">
-        <header class="header">
-          <button id="menuBtn">☰</button>
-          <img id="headerLogo" src="" style="width:32px;height:32px;border-radius:8px;object-fit:cover;display:none;cursor:pointer;" onclick="updateLogo()" title="Clicca per cambiare logo">
-          <span id="headerSocName" style="font-weight:600;color:var(--blue);font-size:15px;margin-left:8px;margin-right:auto;"></span>
-          <div class="header-right">
-            <select class="header-select" id="squadraSelect"><option>Caricamento...</option></select>
-            <div class="player-avatar" id="headerUserAvatar" style="width:36px;height:36px;font-size:14px;cursor:pointer;" title="Logout ${userName}">${userInitial}</div>
-          </div>
-        </header>
-        <div class="content" id="pageContent">
-          <div class="loading"><div class="spinner"></div>Caricamento...</div>
-        </div>
-      </div>
-    </div>
-  `;
+  app.innerHTML = '<div class="layout"><aside class="sidebar" id="sidebar"><div class="sidebar-logo"><div class="sidebar-logo-icon">Y</div><span class="sidebar-logo-text">YFM</span></div><div class="sidebar-info"><div class="sidebar-info-label">Workspace</div><div class="sidebar-info-workspace" id="workspaceName">Caricamento...</div><div class="sidebar-info-season" id="seasonName">Stagione 2025/26</div></div><nav class="sidebar-nav"><a href="#" class="active" data-page="dashboard">📊 Dashboard</a>' + (showForRole(['admin']) ? '<div class="sidebar-section-title">🏢 Club</div><a href="#" data-page="settings">⚙️ Impostazioni</a>' : '') + '<div class="sidebar-section-title">👥 Team</div><a href="#" data-page="roster">👥 Rosa</a><a href="#" data-page="calendar">📅 Calendario</a><div class="sidebar-section-title">🎯 Coach</div><a href="#" data-page="training">🏃 Allenamenti</a>' + (showForRole(['admin', 'allenatore', 'staff']) ? '<a href="#" data-page="convocazioni" style="display:none;">👥 Convocazioni</a>' : '') + '<div class="sidebar-section-title">📈 Performance</div><a href="#" data-page="stats">📊 Statistiche</a><a href="#" data-page="reports">📄 Report</a>' + (showForRole(['admin']) ? '<div class="sidebar-section-title">🔐 Amministrazione</div><a href="#" data-page="users">👥 Utenti</a><a href="#" data-page="guestLinks">🔗 Link Guest</a>' : '') + '</nav><div class="sidebar-user" id="sidebarUser" style="cursor:pointer;display:' + ((currentUser || guest) ? 'flex' : 'none') + ';" title="Clicca per opzioni"><div class="sidebar-user-avatar" id="sidebarUserAvatar">' + userInitial + '</div><div><div class="sidebar-user-name" id="sidebarUserName">' + userName + '</div><div class="sidebar-user-role" id="sidebarUserRole">' + userRoleLabel + '</div></div></div></aside><div class="main"><header class="header"><button id="menuBtn">☰</button><img id="headerLogo" src="" style="width:32px;height:32px;border-radius:8px;object-fit:cover;display:none;cursor:pointer;" onclick="updateLogo()" title="Clicca per cambiare logo"><span id="headerSocName" style="font-weight:600;color:var(--blue);font-size:15px;margin-left:8px;margin-right:auto;"></span><div class="header-right"><select class="header-select" id="squadraSelect"><option>Caricamento...</option></select><div class="user-menu-container" style="position:relative;"><div class="player-avatar" id="headerUserAvatar" style="width:36px;height:36px;font-size:14px;cursor:pointer;" title="' + userName + '">' + userInitial + '</div><div class="user-dropdown" id="userDropdown" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);min-width:160px;z-index:1000;overflow:hidden;"><div style="padding:12px 16px;border-bottom:1px solid #eee;"><div style="font-weight:600;font-size:13px;">' + userName + '</div><div style="font-size:11px;color:#888;">' + userRoleLabel + '</div></div><button onclick="window.YFM.handleLogout()" style="width:100%;padding:12px 16px;text-align:left;background:none;border:none;cursor:pointer;font-size:13px;color:#E74C3C;display:flex;align-items:center;gap:8px;">🚪 Logout</button></div></div></div></header><div class="content" id="pageContent"><div class="loading"><div class="spinner"></div>Caricamento...</div></div></div></div><style>.user-dropdown button:hover { background: #f8f8f8; }</style>';
 
   const sidebar = document.getElementById('sidebar');
   const menuBtn = document.getElementById('menuBtn');
   const sidebarUser = document.getElementById('sidebarUser');
   const headerUserAvatar = document.getElementById('headerUserAvatar');
-  
-  // Click su avatar/nome utente per logout
-  if (sidebarUser) {
-    sidebarUser.addEventListener('click', () => {
-      if (confirm('Vuoi effettuare il logout?')) {
-        window.YFM.handleLogout();
-      }
+  const userDropdown = document.getElementById('userDropdown');
+
+  if (headerUserAvatar && userDropdown) {
+    headerUserAvatar.addEventListener('click', (e) => {
+      e.stopPropagation();
+      userDropdown.style.display = userDropdown.style.display === 'none' ? 'block' : 'none';
     });
   }
-  
-  if (headerUserAvatar) {
-    headerUserAvatar.addEventListener('click', () => {
-      if (confirm('Vuoi effettuare il logout?')) {
-        window.YFM.handleLogout();
-      }
+
+  if (sidebarUser && userDropdown) {
+    sidebarUser.addEventListener('click', (e) => {
+      e.stopPropagation();
+      userDropdown.style.display = userDropdown.style.display === 'none' ? 'block' : 'none';
     });
   }
-  
-  // Navigazione
+
+  document.addEventListener('click', (e) => {
+    if (userDropdown && userDropdown.style.display === 'block') {
+      if (!e.target.closest('.user-menu-container') && !e.target.closest('#sidebarUser')) {
+        userDropdown.style.display = 'none';
+      }
+    }
+  });
+
   document.querySelectorAll('.sidebar-nav a').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
@@ -121,8 +62,7 @@ export function setupLayout() {
       }
     });
   });
-  
-  // Toggle sidebar mobile
+
   if (menuBtn && sidebar) {
     menuBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -130,8 +70,7 @@ export function setupLayout() {
       document.body.classList.toggle('sidebar-open', isOpen);
     });
   }
-  
-  // Chiudi sidebar su click fuori
+
   document.addEventListener('click', (e) => {
     if (!sidebar || window.innerWidth > 768) return;
     if (!sidebar.classList.contains('open')) return;
