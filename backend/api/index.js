@@ -1232,4 +1232,37 @@ app.get('/api/giocatori/:giocatoreId/valutazioni', async (req, res) => {
   }
 });
 
+
+
+// DELETE /api/squadre/:squadraId/calciatori/:id - Rimuovi giocatore dalla rosa
+app.delete('/api/squadre/:squadraId/calciatori/:id', async (req, res) => {
+  try {
+    const { data: existing } = await supabase.from('rosa').select('id').eq('calciatore_id', req.params.id).eq('squadra_id', req.params.squadraId).single();
+    if (!existing) return res.status(404).json({ error: 'Giocatore non presente in questa rosa' });
+    await supabase.from('rosa').delete().eq('calciatore_id', req.params.id).eq('squadra_id', req.params.squadraId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/calciatori/:id/move - Sposta giocatore in altra categoria
+app.post('/api/calciatori/:id/move', async (req, res) => {
+  try {
+    const { fromSquadraId, toSquadraId } = req.body;
+    const { data: existing } = await supabase.from('rosa').select('id, numero_maglia, ruolo, stato').eq('calciatore_id', req.params.id).eq('squadra_id', fromSquadraId).single();
+    if (!existing) return res.status(404).json({ error: 'Giocatore non presente nella rosa di origine' });
+    const { data: alreadyThere } = await supabase.from('rosa').select('id').eq('calciatore_id', req.params.id).eq('squadra_id', toSquadraId).single();
+    if (alreadyThere) {
+      await supabase.from('rosa').delete().eq('calciatore_id', req.params.id).eq('squadra_id', fromSquadraId);
+      return res.json({ success: true, message: 'Giocatore gia presente nella rosa di destinazione' });
+    }
+    await supabase.from('rosa').delete().eq('calciatore_id', req.params.id).eq('squadra_id', fromSquadraId);
+    await supabase.from('rosa').insert({ calciatore_id: req.params.id, squadra_id: toSquadraId, numero_maglia: existing.numero_maglia, ruolo: existing.ruolo, stato: existing.stato });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = app;
