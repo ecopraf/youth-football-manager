@@ -76,7 +76,7 @@ const hasAccessToSquadra = (user, squadraId) => {
 // POST /api/auth/register
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, nome, cognome, ruolo, workspaceId } = req.body;
+    const { email, password, nome, cognome, ruolo, workspaceId, referralCode } = req.body;
     if (!email || !password || !nome) {
       return res.status(400).json({ error: 'Email, password e nome sono obbligatori' });
     }
@@ -100,6 +100,23 @@ app.post('/api/auth/register', async (req, res) => {
       .select().single();
     if (error) return res.status(500).json({ error: error.message });
 
+    // Tracciamento referral se presente
+    if (referralCode && user.workspace_id) {
+      try {
+        await supabase.from('workspace')
+          .update({ referral_code: referralCode })
+          .eq('id', user.workspace_id);
+        await supabase.from('referral_log').insert({
+          referral_code: referralCode,
+          utente_id: user.id,
+          workspace_id: user.workspace_id,
+          tipo: 'registrazione',
+          commissione: 50.00,
+          stato: 'pending'
+        }).catch(() => {});
+      } catch (refErr) { console.log('Referral error:', refErr.message); }
+    }
+
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ 
       user: { 
@@ -111,7 +128,8 @@ app.post('/api/auth/register', async (req, res) => {
         ruoli: user.ruoli,
         squadre_accesso: user.squadre_accesso,
         is_superadmin: user.is_superadmin,
-        workspace_id: user.workspace_id
+        workspace_id: user.workspace_id,
+        referralCode: referralCode || null
       }, 
       token 
     });
@@ -241,6 +259,23 @@ app.post('/api/auth/users', authMiddleware, async (req, res) => {
     
     if (error) return res.status(500).json({ error: error.message });
 
+    // Tracciamento referral se presente
+    if (referralCode && user.workspace_id) {
+      try {
+        await supabase.from('workspace')
+          .update({ referral_code: referralCode })
+          .eq('id', user.workspace_id);
+        await supabase.from('referral_log').insert({
+          referral_code: referralCode,
+          utente_id: user.id,
+          workspace_id: user.workspace_id,
+          tipo: 'registrazione',
+          commissione: 50.00,
+          stato: 'pending'
+        }).catch(() => {});
+      } catch (refErr) { console.log('Referral error:', refErr.message); }
+    }
+
     res.status(201).json({ 
       user: { 
         id: user.id, 
@@ -251,7 +286,8 @@ app.post('/api/auth/users', authMiddleware, async (req, res) => {
         ruoli: user.ruoli,
         squadre_accesso: user.squadre_accesso,
         is_active: user.is_active,
-        workspace_id: user.workspace_id
+        workspace_id: user.workspace_id,
+        referralCode: referralCode || null
       } 
     });
   } catch (err) {
@@ -279,6 +315,23 @@ app.put('/api/auth/users/:id', authMiddleware, async (req, res) => {
     
     const { error } = await supabase.from('utente').update(updateData).eq('id', req.params.id);
     if (error) return res.status(500).json({ error: error.message });
+
+    // Tracciamento referral se presente
+    if (referralCode && user.workspace_id) {
+      try {
+        await supabase.from('workspace')
+          .update({ referral_code: referralCode })
+          .eq('id', user.workspace_id);
+        await supabase.from('referral_log').insert({
+          referral_code: referralCode,
+          utente_id: user.id,
+          workspace_id: user.workspace_id,
+          tipo: 'registrazione',
+          commissione: 50.00,
+          stato: 'pending'
+        }).catch(() => {});
+      } catch (refErr) { console.log('Referral error:', refErr.message); }
+    }
     
     res.json({ success: true });
   } catch (err) {
@@ -334,6 +387,23 @@ app.post('/api/auth/guest-link', authMiddleware, async (req, res) => {
       .select().single();
     
     if (error) return res.status(500).json({ error: error.message });
+
+    // Tracciamento referral se presente
+    if (referralCode && user.workspace_id) {
+      try {
+        await supabase.from('workspace')
+          .update({ referral_code: referralCode })
+          .eq('id', user.workspace_id);
+        await supabase.from('referral_log').insert({
+          referral_code: referralCode,
+          utente_id: user.id,
+          workspace_id: user.workspace_id,
+          tipo: 'registrazione',
+          commissione: 50.00,
+          stato: 'pending'
+        }).catch(() => {});
+      } catch (refErr) { console.log('Referral error:', refErr.message); }
+    }
     
     const baseUrl = process.env.FRONTEND_URL || 'https://youth-football-manager.vercel.app';
     const link = `${baseUrl}/guest/${token}`;
@@ -697,6 +767,23 @@ app.get('/api/squadre/:squadraId/allenamenti/materiale', async (req, res) => {
     .eq('squadra_id', req.params.squadraId)
     .order('data_caricamento', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
+
+    // Tracciamento referral se presente
+    if (referralCode && user.workspace_id) {
+      try {
+        await supabase.from('workspace')
+          .update({ referral_code: referralCode })
+          .eq('id', user.workspace_id);
+        await supabase.from('referral_log').insert({
+          referral_code: referralCode,
+          utente_id: user.id,
+          workspace_id: user.workspace_id,
+          tipo: 'registrazione',
+          commissione: 50.00,
+          stato: 'pending'
+        }).catch(() => {});
+      } catch (refErr) { console.log('Referral error:', refErr.message); }
+    }
   res.json(data || []);
 });
 
@@ -753,6 +840,23 @@ app.get('/api/calciatori/:id', async (req, res) => {
       .eq('id', req.params.id)
       .single();
     if (error) return res.status(500).json({ error: error.message });
+
+    // Tracciamento referral se presente
+    if (referralCode && user.workspace_id) {
+      try {
+        await supabase.from('workspace')
+          .update({ referral_code: referralCode })
+          .eq('id', user.workspace_id);
+        await supabase.from('referral_log').insert({
+          referral_code: referralCode,
+          utente_id: user.id,
+          workspace_id: user.workspace_id,
+          tipo: 'registrazione',
+          commissione: 50.00,
+          stato: 'pending'
+        }).catch(() => {});
+      } catch (refErr) { console.log('Referral error:', refErr.message); }
+    }
     
     // Prendi i dati dalla rosa per questa squadra
     if (data && req.query.squadraId) {
@@ -786,6 +890,23 @@ app.get('/api/calciatori/:id/stats-current', async (req, res) => {
         p_stagione_id: stagioneId,
       });
     if (error) return res.status(500).json({ error: error.message });
+
+    // Tracciamento referral se presente
+    if (referralCode && user.workspace_id) {
+      try {
+        await supabase.from('workspace')
+          .update({ referral_code: referralCode })
+          .eq('id', user.workspace_id);
+        await supabase.from('referral_log').insert({
+          referral_code: referralCode,
+          utente_id: user.id,
+          workspace_id: user.workspace_id,
+          tipo: 'registrazione',
+          commissione: 50.00,
+          stato: 'pending'
+        }).catch(() => {});
+      } catch (refErr) { console.log('Referral error:', refErr.message); }
+    }
     if (Array.isArray(data)) return res.json(data[0] || {});
     res.json(data || {});
   } catch (err) {
@@ -801,6 +922,23 @@ app.get('/api/calciatori/:id/career', async (req, res) => {
         p_calciatore_id: req.params.id,
       });
     if (error) return res.status(500).json({ error: error.message });
+
+    // Tracciamento referral se presente
+    if (referralCode && user.workspace_id) {
+      try {
+        await supabase.from('workspace')
+          .update({ referral_code: referralCode })
+          .eq('id', user.workspace_id);
+        await supabase.from('referral_log').insert({
+          referral_code: referralCode,
+          utente_id: user.id,
+          workspace_id: user.workspace_id,
+          tipo: 'registrazione',
+          commissione: 50.00,
+          stato: 'pending'
+        }).catch(() => {});
+      } catch (refErr) { console.log('Referral error:', refErr.message); }
+    }
     res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -817,6 +955,23 @@ app.get('/api/calciatori/:id/last-matches', async (req, res) => {
         p_limit: limit,
       });
     if (error) return res.status(500).json({ error: error.message });
+
+    // Tracciamento referral se presente
+    if (referralCode && user.workspace_id) {
+      try {
+        await supabase.from('workspace')
+          .update({ referral_code: referralCode })
+          .eq('id', user.workspace_id);
+        await supabase.from('referral_log').insert({
+          referral_code: referralCode,
+          utente_id: user.id,
+          workspace_id: user.workspace_id,
+          tipo: 'registrazione',
+          commissione: 50.00,
+          stato: 'pending'
+        }).catch(() => {});
+      } catch (refErr) { console.log('Referral error:', refErr.message); }
+    }
     res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1300,6 +1455,86 @@ app.post('/api/calciatori/:id/move', async (req, res) => {
     await supabase.from('rosa').delete().eq('calciatore_id', req.params.id).eq('squadra_id', fromSquadraId);
     await supabase.from('rosa').insert({ calciatore_id: req.params.id, squadra_id: toSquadraId, numero_maglia: existing.numero_maglia, ruolo: existing.ruolo, stato: existing.stato });
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PARTNER / REFERRAL ENDPOINTS ──
+
+// GET /api/partners - Lista partner attivi (pubblico)
+app.get('/api/partners', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('partner')
+      .select('id, nome, codice, logo_url, website')
+      .eq('attivo', true)
+      .order('nome');
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/partners/:codice - Verifica codice partner (pubblico)
+app.get('/api/partners/:codice/verify', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('partner')
+      .select('id, nome, codice')
+      .eq('codice', req.params.codice)
+      .eq('attivo', true)
+      .single();
+    if (error || !data) return res.status(404).json({ valid: false });
+    res.json({ valid: true, partner: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/referrals - Referral log (admin only)
+app.get('/api/admin/referrals', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.is_superadmin) return res.status(403).json({ error: 'Accesso negato' });
+    const { data, error } = await supabase
+      .from('referral_log')
+      .select('*, partner(nome, codice), workspace(nome), utente(nome, cognome, email)')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/partner-stats - Statistiche per partner (admin only)
+app.get('/api/admin/partner-stats', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.is_superadmin) return res.status(403).json({ error: 'Accesso negato' });
+    const { data, error } = await supabase
+      .from('partner')
+      .select('*, referral_log(count)')
+      .eq('attivo', true);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/partners - Crea partner (admin only)
+app.post('/api/admin/partners', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.is_superadmin) return res.status(403).json({ error: 'Accesso negato' });
+    const { nome, email, codice, commissione, website } = req.body;
+    if (!nome || !email || !codice) return res.status(400).json({ error: 'Nome, email e codice sono obbligatori' });
+    const { data, error } = await supabase.from('partner').insert({
+      nome, email, codice, commissione: commissione || 20.00, website, attivo: true
+    }).select().single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.status(201).json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

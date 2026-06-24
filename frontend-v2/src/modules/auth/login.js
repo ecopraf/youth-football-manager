@@ -2,6 +2,15 @@ import { apiFetch } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
 
 export default async function loadLogin() {
+  // Salva referral code dall URL se presente
+  const urlParams = new URLSearchParams(window.location.search);
+  const refCode = urlParams.get('ref');
+  if (refCode) {
+    localStorage.setItem('referralCode', refCode);
+    // Rimuovi il parametro ref dall URL per pulizia
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+  }
   const c = document.getElementById('pageContent');
   
   // Se già loggato, reindirizza
@@ -231,7 +240,7 @@ export default async function loadLogin() {
     try {
       const res = await apiFetch('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password, nome, cognome, ruolo })
+        body: JSON.stringify({ email, password, nome, cognome, ruolo, referralCode: localStorage.getItem('referralCode') })
       });
       
       // Salva token e user info
