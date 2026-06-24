@@ -55,8 +55,9 @@ Le società sportive dilettanti visitano il tuo portale per:
 
 | Per le Società | Prezzo |
 |----------------|--------|
-| Annuale | €199/anno |
-| Mensile | €19,90/mese |
+| Base | €0/anno (gratuito) |
+| Standard | €199/anno |
+| Portali | €199/anno |
 
 | Per Te | Commissione |
 |--------|-------------|

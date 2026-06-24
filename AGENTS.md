@@ -402,10 +402,99 @@ onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow=
 - ✅ Accessibilità - Tooltip su tutte le icone senza testo
 - ✅ Dashboard 3D - Grafica moderna con effetto hover e card cliccabili
 - ✅ Design System - Stili consolidati in AGENTS.md
+- ✅ Landing Page v3 - Demo auto-login, pricing 3-tier, icona multi-device
+- ✅ Demo Auto-login - Parametri URL demo_email, demo_password, auto_login
+- ✅ Pricing Aggiornato - Base (free), Standard (€199), Portali (€199)
 
 ## Task Sospesi ⏸️
 - ⏸️ Valutazioni Giocatore - Valutazioni tecniche per stagione/partita
 - ⏸️ Filtro Categorie - Staff vede solo squadre assegnate
+- ⏸️ Credenziali Demo - Creare utente demo_yfm in Supabase
+
+---
+
+---
+
+## Landing Page
+
+### File e Posizione
+- **File principale**: `/landing.html` (root del repo)
+- Logo embedded base64
+- Responsive (desktop/tablet/mobile)
+- Stesso stile dei documenti PDF
+
+### Link Demo Auto-login
+La landing page contiene link che permettono accesso demo automatico:
+```
+https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1
+```
+
+**Parametri URL:**
+| Parametro | Descrizione | Esempio |
+|-----------|-------------|---------|
+| `demo_email` | Email account demo | `demo_yfm` |
+| `demo_password` | Password account demo | `demo_yfm` |
+| `auto_login` | Auto-submit form | `1` |
+
+### Gestione Landing Page
+1. **Modifiche**: Il file è HTML statico, modificare direttamente e pushare
+2. **Deploy**: Vercel aggiorna automaticamente su push
+3. **Test locale**: Aprire `landing.html` nel browser
+
+---
+
+## Regole per Modifiche con Task Tracker
+
+### Prima di Iniziare una Modifica
+1. Creare **PLAN dettagliato** delle modifiche
+2. Elencare tutti i **file coinvolti**
+3. Prevedere **test necessari**
+4. Condividere con utente per validazione
+
+### Durante le Modifiche
+1. Usare `task_tracker` per tracciare progressi:
+   ```javascript
+   task_tracker({
+     command: "plan",
+     task_list: [
+       { title: "Task 1", status: "in_progress" },
+       { title: "Task 2", status: "todo" }
+     ]
+   })
+   ```
+
+2. Aggiornare task man mano:
+   - `in_progress`: task attualmente in lavorazione
+   - `done`: task completato
+   - `todo`: task da fare
+
+3. Per modifiche multi-step, numerare i passi nel messaggio commit
+
+### Dopo le Modifiche
+1. **Verificare** che il build passi (`vite build`)
+2. **Testare** localmente se possibile
+3. **Commit** con messaggio chiaro:
+   - Formato: `[breve tag]: [descrizione]`
+   - Esempi:
+     - `feat: aggiungi feature X`
+     - `fix: risolvi bug in Y`
+     - `docs: aggiorna documentazione`
+     - `refactor: migliora codice Z`
+
+4. **Push** immediato dopo commit
+
+### Template Commit Message
+```
+<tipo>: <descrizione breve>
+
+[descrizione dettagliata se necessario]
+
+Files:
+- file1.js
+- file2.html
+
+Test: vite build ✅
+```
 
 ---
 
@@ -457,7 +546,10 @@ Quando si crea un documento HTML destinato alla stampa PDF, **SEMPRE**:
 ### Documenti Esistenti
 | File | Descrizione |
 |------|-------------|
+| `/landing.html` | Landing page professionale (HTML statico) |
 | `/docs/PROPOSTA_PARTNERSHIP_WITH_LOGO.html` | Proposta partnership (logo embedded, 3 livelli) |
+| `/docs/PROPOSTA_PARTNERSHIP.md` | Proposta partnership (Markdown) |
+| `/docs/PITCH_DECK.md` | Presentazione sintetica |
 | `/docs/FUNZIONALITA_YFM.html` | Panoramica funzionalità per partnership |
 | `/docs/MANUALE_UTENTE.html` | Manuale utente completo |
 | `/docs/logo.png` | Logo YFM (usare per base64) |
@@ -474,15 +566,16 @@ with open('docs/logo.png', 'rb') as f:
 html = html.replace('src="logo.png"', f'src="data:image/png;base64,{logo_b64}"')
 ```
 
-## Ultime Modifiche (commit: b18283a)
-- Dashboard: ricreata con grafica 3D moderna
-- Card Top 3: effetto hover lift, gradienti oro/argento/bronzo
-- Giocatori cliccabili: aprono scheda giocatore
-- Style system: consolidato in AGENTS.md
-- DB cleanup: rimossi riferimenti orfani giocatore test
-- Backend: fix sintassi, environment variables Vercel
+## Ultime Modifiche (commit: latest)
+- Landing page v3: demo auto-login, pricing 3-tier, icona multi-device
+- Login: supporto parametri URL demo_email, demo_password, auto_login
+- Pricing aggiornato: Base (free), Standard (€199), Portali (€199)
+- Documenti: PROPOSTA_PARTNERSHIP, PITCH_DECK, FUNZIONALITA allineati al pricing
+- AGENTS.md: aggiunta sezione Landing Page e regole Task Tracker
 
 ## URL Applicazione
-- **Frontend**: https://youth-football-manager.vercel.app
+- **Landing Page**: https://youth-football-manager.vercel.app (index) → landing.html
+- **App**: https://youth-football-manager.vercel.app/login
 - **Backend**: https://youth-football-manager-backend.vercel.app
 - **Repo**: https://github.com/ecopraf/youth-football-manager
+- **Demo**: https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1

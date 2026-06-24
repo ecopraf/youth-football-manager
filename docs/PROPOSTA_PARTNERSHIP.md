@@ -89,8 +89,9 @@ Investimento: Coordinamento e contenuti condivisi
 
 | Piano | Prezzo | Note |
 |-------|--------|------|
-| **Annuale** | €199/anno | €16,58/mese |
-| **Mensile** | €19,90/mese | Flessibilità |
+| **Base** | €0/anno | Gratuito per sempre, 1 squadra, 25 giocatori |
+| **Standard** | €199/anno | ~€16/mese, squadre illimitate, tutte le funzionalità |
+| **Portali** | €199/anno | Per portali sportivi, widget + API + integrazione |
 
 ### Commissioni per Te
 
