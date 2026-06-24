@@ -306,21 +306,34 @@ box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 </div>
 ```
 
-### Template Player Card (Top 3)
+### Template Player Box (Top 3 - con effetto 3D hover)
 ```html
-<div class="player-card" style="
+<!-- Box giocatore singolo con effetto rilievo 3D -->
+<div style="
+  flex: 1;
   background: linear-gradient(180deg, #FFD700 0%, #FFA500 100%);
-  padding: 14px 8px;
+  padding: 16px 8px;
   border-radius: 16px;
   text-align: center;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-">
-  <div style="font-size: 26px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));">🥇</div>
-  <div style="font-size: 12px; font-weight: bold; color: #222;">Nome</div>
-  <div style="font-size: 15px; font-weight: bold; color: #fff;">X Gol</div>
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25), 0 3px 6px rgba(0,0,0,0.15), inset 0 2px 4px rgba(255,255,255,0.4);
+"
+onmouseover="this.style.transform='translateY(-8px) scale(1.05)'; this.style.boxShadow='0 20px 40px rgba(0,0,0,0.35), 0 10px 15px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255,255,255,0.4)';"
+onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.25), 0 3px 6px rgba(0,0,0,0.15), inset 0 2px 4px rgba(255,255,255,0.4)';"
+>
+  <div style="font-size: 32px; margin-bottom: 8px; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.4));">🥇</div>
+  <div style="font-size: 13px; font-weight: bold; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); margin-bottom: 6px;">Marco Rossi</div>
+  <div style="font-size: 16px; font-weight: bold; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.4);">20 Gol</div>
 </div>
 ```
+
+**Colori per posizione:**
+| Posizione | Background Start | Background End |
+|-----------|-----------------|---------------|
+| 1° (Oro) | `#FFD700` | `#FFA500` |
+| 2° (Argento) | `#C0C0C0` | `#A0A0A0` |
+| 3° (Bronzo) | `#CD7F32` | `#8B4513` |
 
 ### Template Prossima Partita (Evidenziata)
 ```html
