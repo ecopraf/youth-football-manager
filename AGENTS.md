@@ -407,6 +407,73 @@ onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow=
 - ⏸️ Valutazioni Giocatore - Valutazioni tecniche per stagione/partita
 - ⏸️ Filtro Categorie - Staff vede solo squadre assegnate
 
+---
+
+## Documenti di Progetto (HTML → PDF)
+
+### Regole per Documenti Professionali
+Quando si crea un documento HTML destinato alla stampa PDF, **SEMPRE**:
+
+1. **Logo Embedded (OBBLIGATORIO)**
+   - Il logo NON deve essere un riferimento a file esterno
+   - Usare sempre il logo in formato **base64 embedded** direttamente nell'SRC dell'img
+   - Posizione logo: `/workspace/project/youth-football-manager/docs/logo.png`
+   - Procedura: convertire il PNG in base64 e includerlo come `src="data:image/png;base64,..."`
+
+2. **Foglio di Stile CSS Integrato**
+   - Tutti gli stili inline nel tag `<style>` nell'`<head>`
+   - Usare Google Fonts: `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');`
+   - Font principale: `font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;`
+
+3. **Struttura Cover**
+   ```html
+   <div class="cover">
+       <img src="data:image/png;base64,..." alt="Logo YFM" class="cover-logo">
+       <h1>Titolo Documento</h1>
+       <h2>Sottotitolo</h2>
+   </div>
+   ```
+
+4. **Page Break**
+   - Per forzare una nuova pagina PDF: `style="page-break-before: always;"`
+   - Esempio: prima delle sezioni principali o contenuti che devono iniziare da pagina nuova
+
+5. **Box Evidenziati**
+   ```html
+   <div class="highlight-box">
+       <h3>Titolo</h3>
+       <p>Contenuto...</p>
+   </div>
+   ```
+
+6. **Responsive per Stampa**
+   ```css
+   @media print {
+       body { padding: 20px; }
+       .section { page-break-inside: avoid; }
+   }
+   ```
+
+### Documenti Esistenti
+| File | Descrizione |
+|------|-------------|
+| `/docs/PROPOSTA_PARTNERSHIP_WITH_LOGO.html` | Proposta partnership (logo embedded, 3 livelli) |
+| `/docs/FUNZIONALITA_YFM.html` | Panoramica funzionalità per partnership |
+| `/docs/MANUALE_UTENTE.html` | Manuale utente completo |
+| `/docs/logo.png` | Logo YFM (usare per base64) |
+
+### Esempio Script Python per Logo Embedded
+```python
+import base64
+
+# Leggi e converte logo in base64
+with open('docs/logo.png', 'rb') as f:
+    logo_b64 = base64.b64encode(f.read()).decode('utf-8')
+
+# Inserisci nel tag img
+html = html.replace('src="logo.png"', f'src="data:image/png;base64,{logo_b64}"')
+```
+
 ## Ultime Modifiche (commit: b18283a)
 - Dashboard: ricreata con grafica 3D moderna
 - Card Top 3: effetto hover lift, gradienti oro/argento/bronzo
