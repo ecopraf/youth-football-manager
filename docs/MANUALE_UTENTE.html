@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Youth Football Manager - Manuale Utente</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 11pt;
+            line-height: 1.7;
+            color: #333;
+            background: #fff;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* Cover */
+        .cover {
+            text-align: center;
+            padding: 60px 20px;
+            border-bottom: 3px solid #667eea;
+            margin-bottom: 40px;
+        }
+        
+        .cover-logo {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+        }
+        
+        .cover h1 {
+            font-size: 28pt;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .cover h2 {
+            font-size: 16pt;
+            color: #888;
+            font-weight: 500;
+        }
+        
+        .cover p {
+            color: #999;
+            margin-top: 20px;
+            font-size: 11pt;
+        }
+        
+        /* Indice */
+        .toc {
+            background: #f8f9fa;
+            padding: 25px 30px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+        }
+        
+        .toc h2 {
+            font-size: 16pt;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .toc ol {
+            padding-left: 20px;
+        }
+        
+        .toc li {
+            margin-bottom: 8px;
+        }
+        
+        .toc a {
+            color: #333;
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            color: #667eea;
+        }
+        
+        /* Sezioni */
+        .section {
+            margin-bottom: 35px;
+            page-break-inside: avoid;
+        }
+        
+        .section h2 {
+            font-size: 18pt;
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .section h3 {
+            font-size: 13pt;
+            color: #333;
+            margin: 20px 0 10px 0;
+        }
+        
+        .section h4 {
+            font-size: 11pt;
+            color: #666;
+            margin: 15px 0 8px 0;
+        }
+        
+        /* Step numerati */
+        .steps {
+            counter-reset: step;
+        }
+        
+        .step {
+            position: relative;
+            padding-left: 40px;
+            margin-bottom: 15px;
+        }
+        
+        .step::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 28px;
+            height: 28px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-size: 12pt;
+            font-weight: 600;
+        }
+        
+        /* Box info */
+        .info-box {
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .info-box.success {
+            background: #e8f5e9;
+            border-left-color: #4CAF50;
+        }
+        
+        .info-box.warning {
+            background: #fff8e1;
+            border-left-color: #FFC107;
+        }
+        
+        .info-box strong {
+            color: #333;
+        }
+        
+        /* Screenshot placeholder */
+        .screenshot {
+            background: #f0f0f0;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            margin: 15px 0;
+            color: #888;
+        }
+        
+        /* Lista */
+        ul, ol {
+            padding-left: 25px;
+            margin: 10px 0;
+        }
+        
+        li {
+            margin-bottom: 6px;
+        }
+        
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 25px;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 10pt;
+        }
+        
+        /* Page break */
+        .new-page {
+            page-break-before: always;
+        }
+        
+        @media print {
+            body {
+                padding: 20px;
+            }
+            .section {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Cover -->
+    <div class="cover">
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABOYAAATmCAIAAAAKnjl9AABhWmNhQlgAAGFaanVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAYTRqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjNhMmYwOGJhLWExYTktNDlmNC05OWUxLTIxNzBhODA0OWMxNQAAABf9anVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAJ0Wp1bWIAAAA7anVtZEDLDDK7ikidpwsq1vR/Q2kTYzJwYS5pY29uAAAAABhjMnNo2blYmHzYlMjsHSTyiSXKTwAAABdiZmRiAGltYWdlL3N2Zyt4bWwAAAAJd2JpZGI8c3ZnIHdpZHRoPSI3MTYiIGhlaWdodD0iNzE2IiB2aWV3Qm94PSIwIDAgNzE2IDcxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTUwOC43NDkgMzE3LjM5OUM1MTYuNzc3IDI4Ny4zMTQgNTA4Ljk5MSAyNTMuODg0IDQ4NS4zODkgMjMwLjI4MkM0NjEuNzg4IDIwNi42ODEgNDI4LjM2IDE5OC44OTUgMzk4LjI3MyAyMDYuOTIzQzM3Ni4yMzEgMTg0LjkyOCAzNDMuMzkgMTc0Ljk1NiAzMTEuMTQ4IDE4My41OTZDMjc4LjkwNiAxOTIuMjM0IDI1NS40NSAyMTcuMjkyIDI0Ny4zNiAyNDcuMzYxQzIxNy4yOTEgMjU1LjQ1MSAxOTIuMjMzIDI3OC45MSAxODMuNTk1IDMxMS4xNDlDMTc0Ljk1NyAzNDMuMzkxIDE4NC45MjcgMzc2LjIzMiAyMDYuOTI0IDM5OC4yNzRDMTk4Ljg5NiA0MjguMzU5IDIwNi42ODMgNDYxLjc4OSAyMzAuMjg0IDQ4NS4zOTFDMjUzLjg4NSA1MDguOTkyIDI4Ny4zMTMgNTE2Ljc3OSAzMTcuNDAxIDUwOC43NUMzMzkuNDQyIDUzMC43NDUgMzcyLjI4NiA1NDAuNzE3IDQwNC41MjUgNTMyLjA3OUM0MzYuNzY3IDUyMy40NDEgNDYwLjIyMyA0OTguMzg0IDQ2OC4zMTMgNDY4LjMxNUM0OTguMzgzIDQ2MC4yMjQgNTIzLjQ0IDQzNi43NjYgNTMyLjA3OCA0MDQuNTI2QzU0MC43MTYgMzcyLjI4NSA1MzAuNzQ3IDMzOS40NDMgNTA4Ljc0OSAzMTcuNDAyVjMxNy4zOTlaTTQ3MC44OTkgMjQ0Ljc3NkM0ODYuODkyIDI2MC43NyA0OTMuNDg4IDI4Mi42MDEgNDkwLjY4NyAzMDMuNDEyTDQxNS41NzcgMjYwLjA0NkM0MTIuNDExIDI1OC4yMTggNDA4LjUwOSAyNTguMjE4IDQwNS4zNDUgMjYwLjA0NkwzMTcuNDAxIDMxMC44MlYyNzcuNTI2QzMxNy40MDEgMjc1LjE5MSAzMTguNjUyIDI3My4wMDUgMzIwLjY3NiAyNzEuODM3TDM4Ny42NDQgMjMzLjE3NEM0MTQuMTc4IDIxOC4zNTMgNDQ4LjM0NiAyMjIuMjIzIDQ3MC45MDEgMjQ0Ljc3Nkg0NzAuODk5Wk0zNTcuODM3IDMxMS4xNDRMMzk4LjI3NSAzMzQuNDkxVjM4MS4xODVMMzU3LjgzNyA0MDQuNTMyTDMxNy4zOTggMzgxLjE4NVYzMzQuNDkxTDM1Ny44MzcgMzExLjE0NFpNMjY0Ljc3NiAyNjkuNjkzQzI2NS4yMDcgMjM5LjMwNSAyODUuNjQ0IDIxMS42NDkgMzE2LjQ1MyAyMDMuMzkzQzMzOC4zIDE5Ny41NCAzNjAuNTA1IDIwMi43NDQgMzc3LjEyNyAyMTUuNTczTDMwMi4wMTQgMjU4LjkzN0MyOTguODQ4IDI2MC43NjQgMjk2Ljg5OCAyNjQuMTQ0IDI5Ni44OTggMjY3Ljc5OFYzNjkuMzQ2TDI2OC4wNjUgMzUyLjY5OUMyNjYuMDQzIDM1MS41MzEgMjY0Ljc3NiAzNDkuMzUzIDI2NC43NzYgMzQ3LjAxN1YyNjkuNjkxVjI2OS42OTNaTTIwMy4zOTEgMzE2LjQ1NEMyMDkuMjQ0IDI5NC42MDggMjI0Ljg1NCAyNzcuOTc4IDI0NC4yNzYgMjY5Ljk5OVYzNTYuNzNDMjQ0LjI3NiAzNjAuMzg0IDI0Ni4yMjYgMzYzLjc2MyAyNDkuMzkyIDM2NS41OTFMMzM3LjMzNyA0MTYuMzY1TDMwOC41MDMgNDMzLjAxM0MzMDYuNDgxIDQzNC4xODEgMzAzLjk2MSA0MzQuMTg4IDMwMS45MzkgNDMzLjAyTDIzNC45NzEgMzk0LjM1N0MyMDguODY4IDM3OC43ODkgMTk1LjEzOCAzNDcuMjYxIDIwMy4zOTEgMzE2LjQ1NFpNMjQ0Ljc3NSA0NzAuOUMyMjguNzgxIDQ1NC45MDYgMjIyLjE4NiA0MzMuMDc1IDIyNC45ODYgNDExLjI2NEwzMDAuMDk2IDQ1NS42M0MzMDMuMjYzIDQ1Ny40NTcgMzA3LjE2NCA0NTcuNDU3IDMxMC4zMjggNDU1LjYzTDM5OC4yNzMgNDA0Ljg1NlY0MzguMTQ5QzM5OC4yNzMgNDQwLjQ4NSAzOTcuMDIyIDQ0Mi42NzEgMzk0Ljk5NyA0NDMuODM5TDMyOC4wMjkgNDgyLjUwMkMzMDEuNDk1IDQ5Ny4zMjIgMjY3LjMyNyA0OTMuNDUyIDI0NC43NzIgNDcwLjlIMjQ0Ljc3NVpNNDUwLjg5NyA0NDUuOTgyQzQ1MC40NjYgNDc2LjM3MSA0MzAuMDI5IDUwNC4wMjcgMzk5LjIyMSA1MTIuMjgzQzM3Ny4zNzMgNTE4LjEzNiAzNTUuMTY4IDUxMi45MzIgMzM4LjU0NyA1MDAuMTAyTDQxMy42NTkgNDU2LjczNEM0MTYuODI2IDQ1NC45MTEgNDE4Ljc3NSA0NTEuNTMzMiA0MTguNzc1IDQ0Ny44NzdWMzQ2LjMyOUw0NDcuNjA5IDM2Mi45NzdDNDQ5LjYzMSAzNjQuMTQ1IDQ1MC44OTcgMzY2LjMyMyA0NTAuODk3IDM2OC42NTlWNDQ1Ljk4NVY0NDUuOTgyWlpNNTEyLjI4MiAzOTkuMjIxQzUwNi40MjkgNDIxLjA2OCA0OTAuODE5IDQzNy42OTcgNDcxLjM5NyA0NDUuNjc2VjM1OC45NDZDNDcxLjM5NyAzNTUuMjkyIDQ2OS40NDggMzUxLjkxMiA0NjYuMjgxIDM1MC4wODVMTjc4LjMzNiAyOTkuMzExTDQwNy4xNyAyODIuNjYzQzQwOS4xOTIgMjgxLjQ5NSA0MTEuNzEyIDI4MS40ODcgNDEzLjczNCAyODIuNjU1TDQ4MC43MDIgMzIxLjMxOEM1MDYuODA1IDMzNi44ODcgNTIwLjUzNiAzNjguNDE1IDUxMi4yODIgMzk5LjIyMVoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo=" alt="YFM Logo" class="cover-logo">
+        <h1>Manuale Utente</h1>
+        <h2>Youth Football Manager</h2>
+        <p>Versione 1.0 - Guida completa alla piattaforma</p>
+    </div>
+    
+    <!-- Indice -->
+    <div class="toc">
+        <h2>📑 Indice</h2>
+        <ol>
+            <li><a href="#accesso">Accesso e Autenticazione</a></li>
+            <li><a href="#dashboard">Dashboard</a></li>
+            <li><a href="#rosa">Gestione Rosa Giocatori</a></li>
+            <li><a href="#calendario">Calendario Partite</a></li>
+            <li><a href="#convocazioni">Sistema Convocazioni</a></li>
+            <li><a href="#formazione">Formazione e Distinta</a></li>
+            <li><a href="#valutazioni">Valutazioni e Statistiche</a></li>
+            <li><a href="#allenamenti">Registro Allenamenti</a></li>
+            <li><a href="#staff">Gestione Staff</a></li>
+            <li><a href="#report">Report e Analisi</a></li>
+            <li><a href="#settings">Impostazioni</a></li>
+        </ol>
+    </div>
+    
+    <!-- Accesso -->
+    <div class="section" id="accesso">
+        <h2>1. Accesso e Autenticazione</h2>
+        
+        <h3>Come accedere</h3>
+        <div class="steps">
+            <div class="step">Vai all'indirizzo youthfootballmanager.it</div>
+            <div class="step">Clicca su "Accedi" nell'angolo in alto a destra</div>
+            <div class="step">Inserisci la tua email e password</div>
+            <div class="step">Clicca su "Accedi" per entrare nella piattaforma</div>
+        </div>
+        
+        <div class="info-box">
+            <strong>Primo accesso?</strong> Se è la prima volta che accedi, chiedi all'amministratore della tua squadra di inviarti un'email di invito con le credenziali.
+        </div>
+        
+        <h3>Ruoli e Permessi</h3>
+        <table>
+            <tr>
+                <th>Ruolo</th>
+                <th>Permessi</th>
+            </tr>
+            <tr>
+                <td><strong>Admin</strong></td>
+                <td>Accesso completo a tutte le funzionalità, gestione utenti</td>
+            </tr>
+            <tr>
+                <td><strong>Allenatore</strong></td>
+                <td>Gestione formazioni, convocazioni, valutazioni, risultati</td>
+            </tr>
+            <tr>
+                <td><strong>Dirigente</strong></td>
+                <td>Visualizzazione statistiche, supporto organizzativo</td>
+            </tr>
+        </table>
+    </div>
+    
+    <!-- Dashboard -->
+    <div class="section new-page" id="dashboard">
+        <h2>2. Dashboard</h2>
+        
+        <p>La Dashboard è la <strong>pagina principale</strong> che vedi subito dopo l'accesso. Mostra una panoramica completa dello stato della tua squadra.</p>
+        
+        <h3>Cosa trovi nella Dashboard</h3>
+        <ul>
+            <li><strong>Prossima Partita:</strong> Avversario, data, orario, luogo</li>
+            <li><strong>Statistiche Stagionali:</strong> Punti, partite giocate, vittorie, pareggi, sconfitte</li>
+            <li><strong>Top Player:</strong> I migliori marcatori, assistmen e presenze</li>
+            <li><strong>Ultimi Risultati:</strong> Le ultime 5 partite disputate</li>
+            <li><strong>Staff:</strong> Allenatore e dirigenti registrati</li>
+        </ul>
+        
+        <div class="info-box success">
+            <strong>Suggerimento:</strong> Clicca su qualsiasi giocatore nella sezione "Top Player" per vedere la sua scheda completa con statistiche dettagliate.
+        </div>
+    </div>
+    
+    <!-- Rosa -->
+    <div class="section" id="rosa">
+        <h2>3. Gestione Rosa Giocatori</h2>
+        
+        <h3>Accedere alla Rosa</h3>
+        <div class="steps">
+            <div class="step">Dal menu laterale, clicca su "Rosa"</div>
+            <div class="step">Visualizzi l'elenco di tutti i giocatori</div>
+        </div>
+        
+        <h3>Aggiungere un Nuovo Giocatore</h3>
+        <div class="steps">
+            <div class="step">Dalla sezione Rosa, clicca su "+ Nuovo Giocatore"</div>
+            <div class="step">Compila i campi obbligatori:
+                <ul>
+                    <li>Nome e Cognome</li>
+                    <li>Data di nascita</li>
+                    <li>Ruolo (Portiere, Difensore, Centrocampista, Attaccante)</li>
+                </ul>
+            </div>
+            <div class="step">Clicca su "Salva" per aggiungere il giocatore</div>
+        </div>
+        
+        <h3>Modificare un Giocatore</h3>
+        <div class="steps">
+            <div class="step">Clicca sul nome del giocatore nella lista</div>
+            <div class="step">Modifica i campi desiderati</div>
+            <div class="step">Clicca su "Salva" per confermare le modifiche</div>
+        </div>
+        
+        <div class="info-box warning">
+            <strong>Nota:</strong> I dati anagrafici sensibili sono visibili solo allo staff tecnico (Admin e Allenatore).
+        </div>
+    </div>
+    
+    <!-- Calendario -->
+    <div class="section new-page" id="calendario">
+        <h2>4. Calendario Partite</h2>
+        
+        <h3>Creare una Nuova Partita</h3>
+        <div class="steps">
+            <div class="step">Vai su "Calendario" dal menu</div>
+            <div class="step">Clicca su "+ Nuova Partita"</div>
+            <div class="step">Compila i dettagli:
+                <ul>
+                    <li><strong>Avversario:</strong> Nome della squadra avversaria</li>
+                    <li><strong>Data e Ora:</strong> Quando si gioca</li>
+                    <li><strong>Luogo:</strong> Casa o Trasferta</li>
+                    <li><strong>Campo:</strong> Nome del campo di gioco</li>
+                    <li><strong>Competizione:</strong> Es. Campionato, Coppa, Amichevole</li>
+                </ul>
+            </div>
+            <div class="step">Clicca su "Salva"</div>
+        </div>
+        
+        <h3>Inserire il Risultato</h3>
+        <p>Dopo aver disputato la partita:</p>
+        <div class="steps">
+            <div class="step">Dalla scheda partita, clicca su "Inserisci Risultato"</div>
+            <div class="step">Inserisci i gol fatti dalla tua squadra</div>
+            <div class="step">Inserisci i gol subiti dalla squadra avversaria</div>
+            <div class="step">Clicca su "Salva" per confermare</div>
+        </div>
+        
+        <h3>Gestire Eventi Partita</h3>
+        <p>Nella scheda partita puoi registrare:</p>
+        <ul>
+            <li><strong>Gol:</strong> Chi ha segnato e al minuto</li>
+            <li><strong>Assist:</strong> Chi ha servito il gol</li>
+            <li><strong>Ammonizioni:</strong> Cartellini gialli</li>
+            <li><strong>Espulsioni:</strong> Cartellini rossi</li>
+        </ul>
+    </div>
+    
+    <!-- Convocazioni -->
+    <div class="section" id="convocazioni">
+        <h2>5. Sistema Convocazioni</h2>
+        
+        <h3>Creare una Convocazione</h3>
+        <div class="steps">
+            <div class="step">Dalla Dashboard o dal Calendario, clicca su "Convocazioni" per la partita desiderata</div>
+            <div class="step">Vedrai la lista di tutti i giocatori della rosa</div>
+            <div class="step">Per ogni giocatore, seleziona lo stato:
+                <ul>
+                    <li><strong>Confermato:</strong> Sarà presente</li>
+                    <li><strong>In dubbio:</strong> Potrebbe non esserci</li>
+                    <li><strong>Assente:</strong> Non sarà presente (con motivazione)</li>
+                </ul>
+            </div>
+            <div class="step">Clicca su "Salva Convocazione"</div>
+        </div>
+        
+        <div class="info-box">
+            <strong>Nota:</strong> I giocatori ricevono una notifica automatica quando vengono convocati (se configurato).
+        </div>
+        
+        <h3>Modificare una Convocazione</h3>
+        <p>Puoi modificare lo stato di un giocatore in qualsiasi momento prima della partita. Le modifiche sono tracciate nello storico.</p>
+    </div>
+    
+    <!-- Formazione -->
+    <div class="section new-page" id="formazione">
+        <h2>6. Formazione e Distinta</h2>
+        
+        <h3>Creare la Formazione</h3>
+        <div class="steps">
+            <div class="step">Dalla scheda partita, clicca su "Formazione"</div>
+            <div class="step">Seleziona lo <strong>schema tattico</strong> (es. 4-3-3, 4-4-2, 3-5-2)</div>
+            <div class="step">Trascina i giocatori dalla lista alle posizioni in campo</div>
+            <div class="step">Indica il <strong>capitano</strong> selezionando il giocatore</div>
+            <div class="step">Clicca su "Salva Formazione"</div>
+        </div>
+        
+        <h3>Modificare la Formazione</h3>
+        <div class="info-box warning">
+            <strong>Attenzione:</strong> Puoi modificare la formazione fino a <strong>30 minuti prima</strong> dell'orario della partita. Dopo, la formazione viene bloccata automaticamente.
+        </div>
+        
+        <h3>Visualizzare la Distinta</h3>
+        <p>La distinta è il documento ufficiale con l'elenco dei giocatori schierati. Puoi stamparla o esportarla in PDF per averla con te durante la partita.</p>
+    </div>
+    
+    <!-- Valutazioni -->
+    <div class="section" id="valutazioni">
+        <h2>7. Valutazioni e Statistiche</h2>
+        
+        <h3>Inserire Valutazioni Post-Gara</h3>
+        <div class="steps">
+            <div class="step">Dopo una partita disputata, accedi alla scheda partita</div>
+            <div class="step">Clicca su "Valutazioni"</div>
+            <div class="step">Per ogni giocatore presente in distinta:
+                <ul>
+                    <li>Assegna un <strong>voto</strong> (da 1 a 10)</li>
+                    <li>Opzionalmente, aggiungi una <strong>nota</strong> dell'allenatore</li>
+                </ul>
+            </div>
+            <div class="step">Clicca su "Salva Valutazioni"</div>
+        </div>
+        
+        <h3>Visualizzare le Statistiche</h3>
+        <p>Le statistiche dei giocatori vengono calcolate automaticamente:</p>
+        <ul>
+            <li><strong>Gol totali</strong> e <strong>assist</strong> in stagione</li>
+            <li><strong>Presenze</strong> (partite giocate)</li>
+            <li><strong>Media voto</strong> calcolata dalle valutazioni</li>
+            <li><strong>Rendimento</strong> (gol + assist) / partite giocate</li>
+        </ul>
+        
+        <div class="info-box success">
+            <strong>Consiglio:</strong> Usa le statistiche per identificare i giocatori più costanti e quelli che hanno bisogno di più lavoro tecnico.
+        </div>
+    </div>
+    
+    <!-- Allenamenti -->
+    <div class="section new-page" id="allenamenti">
+        <h2>8. Registro Allenamenti</h2>
+        
+        <h3>Registrare un Allenamento</h3>
+        <div class="steps">
+            <div class="step">Vai su "Allenamenti" dal menu</div>
+            <div class="step">Clicca su "+ Nuovo Allenamento"</div>
+            <div class="step">Compila i dettagli:
+                <ul>
+                    <li><strong>Data e ora</strong></li>
+                    <li><strong>Tipo:</strong> Tecnico, Tattico, Atletico, Conferenza</li>
+                    <li><strong>Durata:</strong> In minuti</li>
+                    <li><strong>Note:</strong> Descrizione della sessione</li>
+                </ul>
+            </div>
+            <div class="step">Clicca su "Salva"</div>
+        </div>
+        
+        <h3>Segnare le Presenze</h3>
+        <p>Per ogni allenamento, puoi segnare quali giocatori erano presenti:</p>
+        <div class="steps">
+            <div class="step">Dalla lista allenamenti, clicca sull'allenamento</div>
+            <div class="step">Segna come "Presente" i giocatori presenti</div>
+            <div class="step">Clicca su "Salva Presenze"</div>
+        </div>
+        
+        <div class="info-box">
+            <strong>Utilizzo:</strong> Il registro presenze ti aiuta a monitorare l'impegno dei giocatori e individuare chi partecipa meno agli allenamenti.
+        </div>
+    </div>
+    
+    <!-- Staff -->
+    <div class="section" id="staff">
+        <h2>9. Gestione Staff</h2>
+        
+        <h3>Aggiungere membri dello Staff</h3>
+        <div class="steps">
+            <div class="step">Vai su "Impostazioni" dal menu</div>
+            <div class="step">Clicca su "Gestione Staff"</div>
+            <div class="step">Aggiungi i membri dello staff con i rispettivi ruoli:
+                <ul>
+                    <li>Allenatore</li>
+                    <li>1° Dirigente / 2° Dirigente</li>
+                    <li>Preparatore Atletico</li>
+                    <li>Allenatore Portieri</li>
+                </ul>
+            </div>
+        </div>
+        
+        <h3>Permessi dello Staff</h3>
+        <p>Lo staff ha accesso differenziato:</p>
+        <ul>
+            <li><strong>Allenatore:</strong> Può gestire formazioni, convocazioni, valutazioni</li>
+            <li><strong>Dirigente:</strong> Può visualizzare statistiche e supporto logistico</li>
+        </ul>
+    </div>
+    
+    <!-- Report -->
+    <div class="section new-page" id="report">
+        <h2>10. Report e Analisi</h2>
+        
+        <h3>Generare la Scheda Giocatore</h3>
+        <p>Per ogni giocatore puoi generare un report completo:</p>
+        <div class="steps">
+            <div class="step">Vai sulla scheda del giocatore</div>
+            <div class="step">Clicca su "Genera Report"</div>
+            <div class="step">Il report include:
+                <ul>
+                    <li>Dati anagrafici</li>
+                    <li>Statistiche stagionali</li>
+                    <li>Storico partite e valutazioni</li>
+                    <li>Grafico dell'andamento</li>
+                </ul>
+            </div>
+            <div class="step">Puoi esportarlo in <strong>PDF</strong> o stamparlo direttamente</div>
+        </div>
+        
+        <h3>Report di Squadra</h3>
+        <p>Dalla sezione Report puoi generare:</p>
+        <ul>
+            <li><strong>Classifica marcatori</strong> stagionale</li>
+            <li><strong>Statistiche generali</strong> di squadra</li>
+            <li><strong>Andamento</strong> nel tempo (vittorie/sconfitte)</li>
+        </ul>
+    </div>
+    
+    <!-- Settings -->
+    <div class="section" id="settings">
+        <h2>11. Impostazioni</h2>
+        
+        <h3>Profilo Personale</h3>
+        <p>Puoi modificare i tuoi dati personali:</p>
+        <ul>
+            <li>Nome e cognome</li>
+            <li>Email</li>
+            <li>Password</li>
+        </ul>
+        
+        <h3>Dati Squadra</h3>
+        <p>L'Admin può modificare:</p>
+        <ul>
+            <li>Nome della squadra</li>
+            <li>Colore sociale</li>
+            <li>Logo</li>
+            <li>Stagione sportiva</li>
+        </ul>
+        
+        <h3>Gestione Utenti</h3>
+        <p>L'Admin può:</p>
+        <ul>
+            <li>Invitare nuovi utenti via email</li>
+            <li>Modificare i ruoli degli utenti</li>
+            <li>Rimuovere utenti dalla squadra</li>
+            <li>Generare link ospite temporanei</li>
+        </ul>
+        
+        <div class="info-box">
+            <strong>Link Ospite:</strong> I link ospite permettono a genitori o osservatori di seguire le partite senza accedere ai dati completi della rosa.
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+        <p>Youth Football Manager - Manuale Utente v1.0</p>
+        <p style="margin-top: 10px;">youthfootballmanager.it | youthfootballmanager@gmail.com</p>
+    </div>
+</body>
+</html>
