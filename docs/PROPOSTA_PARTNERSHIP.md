@@ -102,20 +102,22 @@ Investimento: Coordinamento e contenuti condivisi
 
 ### Perché questo modello funziona per te
 
-✅ **Basso barrier d'ingress**: €99/anno (Coach) è accessibile per qualsiasi ASD
+✅ **Basso barrier d'ingresso**: €249/anno (Club) è accessibile per qualsiasi ASD
 ✅ **Ricorrente**: i rinnovi generano entrate continuative
 ✅ **Nessun rischio**: zero investimento, guadagno solo su risultati reali
 ✅ **Valore aggiunto**: offri qualcosa di concreto ai tuoi lettori
 
 ---
 
-## Proiezione Ricavi (Esempio)
+## Proiezione Ricavi (Esempio - Profilo Club)
 
-| Scenario | Società/mese | Ricavo Annuo | Tua Commissione |
+| Scenario | Società/Anno | Ricavo Annuo | Tua Commissione |
 |----------|--------------|--------------|----------------|
-| **Conservativo** | 3 | €7.164 | €1.433 |
-| **Realistico** | 10 | €23.880 | €4.776 |
-| **Ottimistico** | 25 | €59.700 | €11.940 |
+| **Conservativo** | 10 | €2.490 | **€498** |
+| **Realistico** | 20 | €4.980 | **€996** |
+| **Ottimistico** | 30 | €7.470 | **€1.494** |
+
+*Calcolato su Profilo Club (€249/anno - commissione 20%)*
 
 ---
 
