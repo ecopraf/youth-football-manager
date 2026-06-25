@@ -113,9 +113,9 @@ Investimento: Coordinamento e contenuti condivisi
 
 | Scenario | Società/Anno | Ricavo Annuo | Tua Commissione |
 |----------|--------------|--------------|----------------|
-| **Conservativo** | 10 | €2.490 | **€498** |
-| **Realistico** | 20 | €4.980 | **€996** |
-| **Ottimistico** | 30 | €7.470 | **€1.494** |
+| **Conservativo** | 15 | €3.735 | **€747** |
+| **Realistico** | 30 | €7.470 | **€1.494** |
+| **Ottimistico** | 45 | €11.205 | **€2.241** |
 
 *Calcolato su Profilo Club (€249/anno - commissione 20%)*
 
