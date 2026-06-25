@@ -650,6 +650,9 @@ class DemoManager {
   // ═══════════════════════════════════════════════════════════════
 
   showCompletionCelebration() {
+    // Chiudi prima eventuali banner aperti
+    document.getElementById('demo-celebration')?.remove();
+    
     const banner = document.createElement('div');
     banner.id = 'demo-celebration';
     banner.innerHTML = `
@@ -659,11 +662,16 @@ class DemoManager {
         <p>Sei pronto per provare YFM con la tua società?</p>
         <div class="celebration-actions">
           <button class="celebration-btn-primary" onclick="window.demoManager.showRegistrationForm()">
-            ✉️ Invia Richiesta
+            ✉️ Registrati Adesso
           </button>
-          <button class="celebration-btn-secondary" onclick="window.demoManager.resetDemo()">
-            🔄 Riprova la demo
-          </button>
+          <div class="demo-completion-extra-actions">
+            <button class="demo-btn-reload" onclick="window.demoManager.resetDemo()">
+              🔄 Ricarica Demo
+            </button>
+            <button class="demo-btn-close" onclick="window.demoManager.exitDemo()">
+              🚪 Chiudi Demo
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -680,17 +688,12 @@ class DemoManager {
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       z-index: 20001;
       animation: popIn 0.4s ease;
+      max-width: 90vw;
+      width: 400px;
     `;
     
     this.injectCelebrationStyles();
     document.body.appendChild(banner);
-    
-    // Auto show after 2 seconds if not interacted
-    setTimeout(() => {
-      if (document.getElementById('demo-celebration')) {
-        // Already showing
-      }
-    }, 2000);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -919,6 +922,27 @@ class DemoManager {
       this.showMissionPanel();
       this.showWelcomePopup();
     }, 500);
+  }
+  
+  // Chiude la demo e reindirizza alla landing page
+  exitDemo() {
+    console.log('[DEMO] exitDemo() called');
+    
+    // Rimuovi TUTTI i dati demo dal localStorage
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('demo') || key.includes('yfm_demo') || key.includes('mission') || key.includes('yfm_token') || key.includes('yfm_user')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Rimuovi UI demo
+    ['demo-badge', 'demo-mission-panel', 'demo-welcome-overlay', 'demo-celebration', 
+     'demo-registration-overlay', 'demo-marketing-tooltip'].forEach(id => {
+      document.getElementById(id)?.remove();
+    });
+    
+    // Reindirizza alla landing page
+    window.location.href = '/landing.html';
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1199,32 +1223,77 @@ class DemoManager {
       #demo-celebration .celebration-content p {
         color: #666;
         margin: 0 0 20px;
+        white-space: nowrap;
       }
       #demo-celebration .celebration-actions {
         display: flex;
-        gap: 12px;
-        justify-content: center;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
       }
       #demo-celebration .celebration-btn-primary {
         background: linear-gradient(135deg, #27AE60, #2ECC71);
         color: white;
         border: none;
-        padding: 12px 24px;
+        padding: 14px 32px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 15px;
+        cursor: pointer;
+        width: 100%;
+        max-width: 280px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(39,174,96,0.3);
+      }
+      #demo-celebration .celebration-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(39,174,96,0.4);
+      }
+      #demo-celebration .demo-completion-extra-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        flex-wrap: nowrap;
+      }
+      #demo-celebration .demo-btn-reload,
+      #demo-celebration .demo-btn-close {
+        background: linear-gradient(135deg, #E74C3C, #C0392B);
+        color: white;
+        border: none;
+        padding: 10px 16px;
         border-radius: 8px;
         font-weight: 600;
+        font-size: 13px;
         cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.3s ease;
       }
-      #demo-celebration .celebration-btn-secondary {
-        background: #f0f0f0;
-        color: #333;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-        cursor: pointer;
+      #demo-celebration .demo-btn-reload:hover,
+      #demo-celebration .demo-btn-close:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(231,76,60,0.4);
       }
       @keyframes popIn {
         from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
         to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      }
+      @media (max-width: 480px) {
+        #demo-celebration {
+          padding: 24px !important;
+          width: 85vw !important;
+        }
+        #demo-celebration .celebration-content p {
+          white-space: normal !important;
+          font-size: 13px;
+        }
+        #demo-celebration .demo-completion-extra-actions {
+          flex-direction: column;
+          width: 100%;
+        }
+        #demo-celebration .demo-btn-reload,
+        #demo-celebration .demo-btn-close {
+          width: 100%;
+        }
       }
     `;
     document.head.appendChild(style);
