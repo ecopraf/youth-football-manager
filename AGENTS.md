@@ -789,6 +789,10 @@ curl -X POST "https://api.vercel.com/v13/deployments" \
 - ✅ Sistema Referral - tabelle partner, referral_log, endpoint admin
 - ✅ Player Detail - scheda giocatore completa con storico
 - ✅ **Demo Interattiva** - sistema missioni guidate con progress tracking
+- ✅ Demo Button Fix - avvia senza login API (localStorage)
+- ✅ Bottoni Login Allineati - stessa dimensione, effetti 3D hover
+- ✅ Demo Flow Fix - reload pagina per init corretto demoManager
+- ✅ Backend Bug Fix - rimosso codice referral mal posizionato
 
 ### Task Sospesi ⏸️
 - ⏸️ Valutazioni Giocatore - valutazioni tecniche per stagione/partita
@@ -811,27 +815,38 @@ curl -X POST "https://api.vercel.com/v13/deployments" \
 ### Concetto
 Demo guidata con **missioni** e **progress tracking** per massimizzare il coinvolgimento e la conversione. L'utente "impara" il prodotto invece di solo guardarlo.
 
-### Flusso
+### Flusso Completo
 ```
-Landing Page → "Prova la Demo" → /login (pulito)
-→ Click "🎮 Demo" → Auto-Login → Popup Benvenuto 
-→ Badge Demo 🌱 → Panel Missioni → Navigazione 
+Landing Page → "Prova la Demo" → /login
+→ Click "🎮 Demo" → Imposta sessione in localStorage
+→ window.location.href = '/' → Ricarica pagina principale
+→ main.js: isDemo() = true → Carica dati + demoManager.init()
+→ Popup Benvenuto → Badge Demo 🌱
+→ Panel Missioni → Navigazione pagine
 → Tooltip Marketing → Completion → CTA Registrazione
 ```
 
-### Flusso Login (2 pulsanti)
-1. Landing → click "Prova la Demo" → URL: `/login` (senza parametri)
-2. Login page → due pulsanti: "🔐 Login" | "🎮 Demo"
-3. Click "Demo" → login automatico con credenziali demo → redirect a dashboard
-
-### Credenziali Demo
-- **Email**: `demo_yfm` o `demo_yfm@yfm.it`
-- **Password**: `demo_yfm`
-- **URL Auto-Login**: https://youth-football-manager.vercel.app/?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1
-
 ### File Chiave
-- `frontend-v2/src/modules/demo/demo.js` - Manager demo completo (~900 righe)
-- `frontend-v2/src/main.js` - Auto-login demo e init demoManager
+| File | Responsabilità |
+|------|----------------|
+| `frontend-v2/src/modules/auth/login.js` | Click Demo → imposta sessione → ricarica / |
+| `frontend-v2/src/router.js` | `window.YFM.isDemo()` per accesso pagine |
+| `frontend-v2/src/main.js` | `isDemo()` check → `demoManager.init()` → navigate dashboard |
+| `frontend-v2/src/modules/demo/demo.js` | UI demo, missioni, progress tracking |
+
+### Costanti Demo (localStorage)
+```javascript
+'yfm_demo_session'   // 'active' quando demo è attiva
+'yfm_demo_user'      // JSON con {id, nome, cognome, ruolo, email}
+'yfm_demo_progress'   // JSON con {missions: [...], welcomeShown: bool}
+```
+
+### Funzioni Globali (window.YFM)
+```javascript
+window.YFM.isDemo()          // true se yfm_demo_session === 'active'
+window.YFM.isGuest()         // true se guest link attivo
+window.YFM.isAuthenticated() // true se JWT token valido
+```
 
 ### Missioni Disponibili (6 pagine)
 | # | Missione | Pagina Router |
@@ -851,21 +866,6 @@ Landing Page → "Prova la Demo" → /login (pulito)
 - **Celebrazione**: Popup quando tutte le 6 missioni sono completate
 - **Form Registrazione**: Sempre accessibile dal panel o dal completamento
 
-### Costanti Demo (in demo.js)
-```javascript
-const STORAGE_KEY = 'yfm_demo_progress';
-const SESSION_KEY = 'yfm_demo_session';
-```
-
-### Flusso Auto-Login (main.js)
-1. Check parametri URL: `demo_email`, `demo_password`, `auto_login=1`
-2. Se presenti → `performDemoLogin()` → fetch API → salva token + sessione
-3. Carica workspace/squadre → `demoManager.init()` → naviga a dashboard
-
-### Flusso Reset Demo
-1. Logout → `handleLogout()` in main.js → pulisce localStorage demo
-2. Oppure "Riprova la demo" → `resetDemo()` → pulisce + ricrea UI
-
 ### Setup Database Demo
 Eseguire `SQL/demo-data.sql` nel SQL Editor di Supabase per creare:
 - Workspace: ASD Green Academy
@@ -879,3 +879,82 @@ Eseguire `SQL/demo-data.sql` nel SQL Editor di Supabase per creare:
 - ⏸️ Clone sessione isolato per ogni visitatore
 - ⏸️ Reset automatico dati dopo timeout
 - ⏸️ Opzione "Salva progressi" → registrazione con dati precompilati
+
+---
+
+## Procedura Test post-Deploy
+
+### Ambiente di Test
+Dopo ogni deploy su Vercel, testare le modifiche su:
+- **Produzione**: https://youth-football-manager.vercel.app
+- **Preview** (se disponibile): link da Vercel Dashboard
+
+### Test Manuali Standard
+
+#### 1. Login Page
+- [ ] Apri `/login`
+- [ ] Verifica pulsanti "🔐 Accedi" e "🎮 Avvia Demo" visibili e allineati
+- [ ] Verifica effetti 3D hover sui bottoni
+- [ ] Test login con credenziali reali (se disponibili)
+
+#### 2. Demo Interattiva
+- [ ] Click "🎮 Avvia Demo"
+- [ ] Verifica popup benvenuto appare
+- [ ] Verifica badge "🌱 Demo XX%" nell'header
+- [ ] Naviga tra le pagine: Dashboard → Rosa → Calendario → Allenamenti → Statistiche → Report
+- [ ] Verifica progress tracking (missioni completate)
+- [ ] Verifica tooltip marketing su ogni pagina
+- [ ] Click sul badge → apre panel missioni
+
+#### 3. Console Browser (DevTools F12)
+- [ ] Check per errori JavaScript
+- [ ] Check per warning `console.log` lasciati nel codice
+- [ ] Verifica log `[DEMO]`, `[MAIN]`, `[ROUTER]` se presenti
+
+### Test Demo Flow (log attesi)
+```
+[MAIN] Autenticato: false Demo: true
+[MAIN] Init demo
+[DEMO] init() called, isDemo: true
+[DEMO] loadProgress, saved: null
+[DEMO] Creating UI...
+[DEMO] updateBadge called
+[DEMO] setupWelcomePopup called
+[ROUTER] navigateTo chiamato con: dashboard
+```
+
+### Test Backend
+- [ ] Avvia backend localmente: `cd backend && npm run dev`
+- [ ] Verifica nessun errore `ReferenceError`
+- [ ] Test API endpoints principali via Postman/curl
+
+### Comandi Locali per Test
+```bash
+# Pull ultime modifiche
+cd ~/workspace/youth-football-manager
+git pull origin main
+
+# Backend (terminale 1)
+cd backend && npm install && npm run dev
+
+# Frontend (terminale 2)
+cd frontend-v2 && npm install && npm run dev
+
+# Test in browser
+# http://localhost:5173/login
+```
+
+### Deploy su Vercel (se necessario)
+```bash
+# Trigger via deploy hook
+curl -s -X POST "https://api.vercel.com/v1/integrations/deploy/prj_zJ4cDM8Y8ledbwYKdJYWKQWwRrV6/sdSMzRESB6"
+
+# Oppure via GitHub push (automatico se configurato)
+```
+
+### Checklist Pre-Deploy
+- [ ] Build passa: `cd frontend-v2 && npm run build`
+- [ ] Nessun errore TypeScript/ESLint
+- [ ] Credenziali/demo user inserite nel DB Supabase
+- [ ] Backend avviabile senza errori
+- [ ] Commit con messaggio descrittivo
