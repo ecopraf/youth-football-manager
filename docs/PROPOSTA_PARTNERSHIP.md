@@ -97,12 +97,14 @@ Investimento: Coordinamento e contenuti condivisi
 
 | Tipo | Commissione | Esempio |
 |------|-------------|---------|
-| **Prima registrazione** | 20% | €39,80 su €199 |
-| **Rinnovi annuali** | 10% | €19,90 su €199 |
+| **Prima registrazione** | 20% | €29.80 su €149 |
+| **Rinnovi annuali** | 10% | €14.90 su €149 |
+
+**Nota**: Il prezzo medio considera Coach (€99) e Club (€249). Le commissioni variano in base al piano scelto dalla società.
 
 ### Perché questo modello funziona per te
 
-✅ **Basso barrier d'ingress**: €199/anno è accessibile per qualsiasi ASD
+✅ **Basso barrier d'ingress**: €99/anno (Coach) è accessibile per qualsiasi ASD
 ✅ **Ricorrente**: i rinnovi generano entrate continuative
 ✅ **Nessun rischio**: zero investimento, guadagno solo su risultati reali
 ✅ **Valore aggiunto**: offri qualcosa di concreto ai tuoi lettori
