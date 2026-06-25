@@ -655,13 +655,11 @@ with open('docs/logo.png', 'rb') as f:
 html = html.replace('src="logo.png"', f'src="data:image/png;base64,{logo_b64}"')
 ```
 
-## Ultime Modifiche (commit: 351dafb)
-- fix: chiusura banner, reset demo, validazione missioni
-- feat: badge demo bianco/verde 3D, missioni complete, completamento demo
-- fix: missioni ridotte a 3 pagine funzionanti (Dashboard, Rosa, Calendario)
-- feat: pulsante 'Richiedi Informazioni' sempre visibile nel panel missioni
-- fix: logout, auto-login, reset demo, tooltip Rosa
-- fix: demo flow completo, logout reset, nascondi credenziali
+## Ultime Modifiche (commit: f90fce8)
+- feat: nuovo flusso login con due pulsanti distinti (Login + Demo)
+- feat: banner demo con pulsanti, sidebar CTA, stili mobile
+- fix: demo init, badge reload, training modal close
+- docs: aggiorna AGENTS.md con Sistema Demo completo
 
 ## URL Applicazione
 - **Landing Page**: https://youth-football-manager.vercel.app (index) 
@@ -753,10 +751,16 @@ Demo guidata con **missioni** e **progress tracking** per massimizzare il coinvo
 
 ### Flusso
 ```
-Landing Page → "Prova la Demo" → Auto-Login → Popup Benvenuto 
+Landing Page → "Prova la Demo" → /login (pulito)
+→ Click "🎮 Demo" → Auto-Login → Popup Benvenuto 
 → Badge Demo 🌱 → Panel Missioni → Navigazione 
 → Tooltip Marketing → Completion → CTA Registrazione
 ```
+
+### Flusso Login (2 pulsanti)
+1. Landing → click "Prova la Demo" → URL: `/login` (senza parametri)
+2. Login page → due pulsanti: "🔐 Login" | "🎮 Demo"
+3. Click "Demo" → login automatico con credenziali demo → redirect a dashboard
 
 ### Credenziali Demo
 - **Email**: `demo_yfm` o `demo_yfm@yfm.it`
