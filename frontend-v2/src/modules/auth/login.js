@@ -282,15 +282,16 @@ export default async function loadLogin() {
     console.log('[DEMO] window.YFM.navigateTo disponibile:', !!(window.YFM && window.YFM.navigateTo));
     
     if (window.YFM && window.YFM.navigateTo) {
-      console.log('[DEMO] Chiamo navigateTo("dashboard")');
-      window.YFM.navigateTo('dashboard');
+      console.log('[DEMO] Ricarico pagina per inizializzazione corretta');
+      // Ricarica la pagina principale così main.js può inizializzare tutto correttamente
+      window.location.href = '/';
     } else {
       console.log('[DEMO] YFM non pronto, attendo...');
       const checkYFM = setInterval(() => {
         if (window.YFM && window.YFM.navigateTo) {
           clearInterval(checkYFM);
-          console.log('[DEMO] YFM pronto, chiamo navigateTo("dashboard")');
-          window.YFM.navigateTo('dashboard');
+          console.log('[DEMO] YFM pronto, ricarico pagina');
+          window.location.href = '/';
         }
       }, 100);
       setTimeout(() => clearInterval(checkYFM), 3000);

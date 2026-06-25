@@ -146,17 +146,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Se già autenticato
-  if (window.YFM.isAuthenticated && window.YFM.isAuthenticated()) {
-    console.log('[MAIN] Già autenticato');
+  // Se già autenticato o demo
+  const isAuth = window.YFM.isAuthenticated && window.YFM.isAuthenticated();
+  const isDemo = window.YFM.isDemo && window.YFM.isDemo();
+  
+  if (isAuth || isDemo) {
+    console.log('[MAIN] Autenticato:', isAuth, 'Demo:', isDemo);
     // Carica workspace e squadre in parallelo
     Promise.all([
       loadWorkspaceInfo(),
       loadSquadre()
     ]).then(() => {
       // Inizializza demo se è una sessione demo
-      if (localStorage.getItem('yfm_demo_session') === 'active') {
-        console.log('[MAIN] Init demo per sessione esistente');
+      if (isDemo) {
+        console.log('[MAIN] Init demo');
         demoManager.init();
       }
       window.YFM.navigateTo('dashboard');
