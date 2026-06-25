@@ -146,19 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Check per parametri demo dalla landing
-  const urlParams = new URLSearchParams(window.location.search);
-  const demoEmail = urlParams.get('demo_email');
-  const demoPassword = urlParams.get('demo_password');
-  const autoLogin = urlParams.get('auto_login');
-
-  // SE è richiesto auto-login demo, fallo subito (priorità massima)
-  if (autoLogin === '1' && demoEmail && demoPassword) {
-    console.log('[MAIN] Auto-login demo richiesto');
-    performDemoLogin(demoEmail, demoPassword);
-    return;
-  }
-
   // Se già autenticato
   if (window.YFM.isAuthenticated && window.YFM.isAuthenticated()) {
     console.log('[MAIN] Già autenticato');
@@ -180,42 +167,3 @@ document.addEventListener('DOMContentLoaded', () => {
     window.YFM.navigateTo('login');
   }
 });
-
-// Funzione separata per auto-login demo
-async function performDemoLogin(email, password) {
-  console.log('[MAIN] Eseguo auto-login demo...');
-  try {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    
-    const res = await response.json();
-    
-    if (res.token) {
-      console.log('[MAIN] Login demo riuscito');
-      localStorage.setItem('yfm_token', res.token);
-      localStorage.setItem('yfm_user', JSON.stringify(res.user));
-      localStorage.setItem('yfm_demo_session', 'active');
-      
-      // Pulisci URL da parametri
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-      
-      // Carica dati
-      await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
-      
-      // Inizializza demo
-      console.log('[MAIN] Chiamo demoManager.init()');
-      demoManager.init();
-      
-      window.YFM.navigateTo('dashboard');
-    } else {
-      throw new Error('Login fallito');
-    }
-  } catch (err) {
-    console.error('[MAIN] Auto-login demo fallito:', err);
-    window.YFM.navigateTo('login');
-  }
-}

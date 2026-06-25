@@ -43,7 +43,10 @@ export default async function loadLogin() {
           
           <div id="loginError" class="error-message" style="display:none;"></div>
           
-          <button type="submit" class="btn btn-primary btn-full">Accedi</button>
+          <div class="auth-buttons-row">
+            <button type="submit" class="btn btn-primary">🔐 Login</button>
+            <button type="button" id="startDemoBtn" class="btn btn-secondary">🎮 Demo</button>
+          </div>
         </form>
         
         <div class="auth-footer">
@@ -173,6 +176,31 @@ export default async function loadLogin() {
         font-size: 16px;
         margin-top: 8px;
       }
+      .auth-buttons-row {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .auth-buttons-row .btn {
+        flex: 1;
+        padding: 14px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .auth-buttons-row .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+      }
+      .auth-buttons-row .btn-secondary {
+        background: linear-gradient(135deg, #27AE60, #2ECC71);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 15px rgba(39,174,96,0.4);
+      }
+      .auth-buttons-row .btn-secondary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(39,174,96,0.5);
+      }
       .auth-footer {
         text-align: center;
         margin-top: 24px;
@@ -205,6 +233,49 @@ export default async function loadLogin() {
     e.preventDefault();
     document.getElementById('registerCard').style.display = 'none';
     document.querySelector('.auth-card').style.display = 'block';
+  });
+
+  // Avvia demo
+  document.getElementById('startDemoBtn').addEventListener('click', async () => {
+    showLoading('Avvio demo...');
+    
+    try {
+      const res = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ 
+          email: 'demo_yfm', 
+          password: 'demo_yfm' 
+        })
+      });
+      
+      // Salva token e user info
+      localStorage.setItem('yfm_token', res.token);
+      localStorage.setItem('yfm_user', JSON.stringify(res.user));
+      localStorage.setItem('yfm_demo_session', 'active');
+      
+      window.YFM.setUser(res.user);
+      
+      // Pulisci URL da parametri
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+      
+      // Carica dati necessari per la dashboard
+      const { loadWorkspaceInfo, loadSquadre } = await import('../../main.js');
+      await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+      
+      // Inizializza demo manager
+      if (window.demoManager) {
+        window.demoManager.init();
+      }
+      
+      hideLoading();
+      window.YFM.navigateTo('dashboard');
+    } catch (err) {
+      hideLoading();
+      const errorDiv = document.getElementById('loginError');
+      errorDiv.textContent = 'Errore avvio demo: ' + err.message;
+      errorDiv.style.display = 'block';
+    }
   });
 
   // Login form
