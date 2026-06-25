@@ -62,11 +62,32 @@
 - `valutazione_partita` - Valutazioni
 
 ## Regole Chat (da rispettare SEMPRE)
-1. Prima di ogni modifica: Verificare struttura DB esistente con API Supabase
-2. Prima di ogni feature: Creare PLAN dettagliato e validare con utente
-3. Endpoint: Verificare se esistono già prima di crearne di nuovi
-4. Commit: Sempre con messaggio descrittivo e push
-5. Documentazione: Dopo ogni feature importante, aggiornare AGENTS.md
+
+### Modifiche al Database
+1. **Preferire sempre API integrate**: Se il backend ha endpoint per le operazioni CRUD, usarli tramite le API esistenti
+2. **Se API non disponibili**: Fornire query SQL dettagliate da eseguire in Supabase SQL Editor con istruzioni step-by-step:
+   - Indicare esattamente quale tabella modificare
+   - Fornire la query completa con tutti i campi necessari
+   - Specificare l'ordine di esecuzione se ci sono dipendenze
+3. **Verificare struttura DB**: Prima di ogni modifica, controllare schema esistente con API o via SQL
+
+### Modifiche al Progetto
+1. **Prima di ogni feature**: Creare PLAN dettagliato e validare con utente
+2. **Endpoint**: Verificare se esistono già prima di crearne di nuovi
+3. **Commit**: Sempre con messaggio descrittivo e push
+
+### Comandi ed Esecuzioni
+1. **Se eseguibili in automatico**: Eseguirli direttamente e mostrare output
+2. **Se NON eseguibili in automatico**: Fornire comandi completi con istruzioni dettagliate:
+   - Comandi esatti da copiare
+   - Ordine di esecuzione
+   - Output atteso
+   - Come verificare il successo
+3. **Ambiente**: Notare che l'esecuzione avviene in ambiente sandbox, alcuni comandi potrebbero non essere disponibili
+
+### Documentazione
+1. Dopo ogni feature importante, aggiornare AGENTS.md
+2. Mantenere aggiornata la sezione "Task Completati"
 
 ---
 
