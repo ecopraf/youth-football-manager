@@ -697,6 +697,7 @@ html = html.replace('src="logo.png"', f'src="data:image/png;base64,{logo_b64}"')
 - ✅ Proiezioni Ricavi - scenari 15-30-45 con page-break PDF
 - ✅ Sistema Referral - tabelle partner, referral_log, endpoint admin
 - ✅ Player Detail - scheda giocatore completa con storico
+- ✅ **Demo Interattiva** - sistema missioni guidate con progress tracking
 
 ### Task Sospesi ⏸️
 - ⏸️ Valutazioni Giocatore - valutazioni tecniche per stagione/partita
@@ -706,7 +707,63 @@ html = html.replace('src="logo.png"', f'src="data:image/png;base64,{logo_b64}"')
 | Fase | Contenuto | Stato |
 |------|-----------|-------|
 | **FASE 1** | Auth/Ruoli (Login, JWT, Admin/Allenatore/Staff) | ✅ COMPLETATO |
+| **FASE 1b** | Demo Interattiva (missioni, progress, tooltip marketing) | ✅ COMPLETATO |
 | **FASE 2** | Import CSV base (rosa, partite, eventi) | TODO |
 | **FASE 3** | Import Tuttocampo (web scraping) | TODO |
 | **FASE 4** | Centro Importazioni (log, duplicati, matching) | TODO |
 | **FASE 5** | Polish, test, template repository | TODO |
+
+---
+
+## Sistema Demo Interattiva
+
+### Concetto
+Demo guidata con **missioni** e **progress tracking** per massimizzare il coinvolgimento e la conversione. L'utente "impara" il prodotto invece di solo guardarlo.
+
+### Flusso
+```
+Landing Page → "Prova la Demo" → Login Auto → Popup Benvenuto 
+→ Missioni Panel → Navigazione Guidata → Tooltip Marketing 
+→ Completion Celebration → CTA Registrazione
+```
+
+### Credenziali Demo
+- **Email**: `demo_yfm`
+- **Password**: `demo_yfm`
+- **URL**: https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1
+
+### File Chiave
+- `frontend-v2/src/modules/demo/demo.js` - Manager demo completo
+- `SQL/demo-data.sql` - Dati ASD Green Academy (da eseguire in Supabase)
+
+### Missioni Disponibili
+| # | Missione | Pagina |
+|---|----------|--------|
+| 1 | Dashboard | dashboard |
+| 2 | Calendario | calendar |
+| 3 | Rosa | roster |
+| 4 | Convocazioni | convocations |
+| 5 | Formazione | formation |
+| 6 | Scheda Giocatore | player_detail |
+| 7 | Statistiche | stats |
+
+### Componenti UI Demo
+- **Badge Progress**: `🌱 Demo XX%` nell'angolo in alto a destra
+- **Panel Missioni**: Click sul badge per vedere tutte le missioni
+- **Popup Benvenuto**: First-time con opzione tour o esplorazione libera
+- **Tooltip Marketing**: Slide-up contestuale per ogni pagina
+- **Celebrazione**: Popup quando tutte le missioni sono completate
+
+### Setup Database Demo
+Eseguire `SQL/demo-data.sql` nel SQL Editor di Supabase per creare:
+- Workspace: ASD Green Academy
+- 6 squadre (Primavera, Allievi B, Giovanissimi B, Esordienti, Pulcini, Primi Calci)
+- 20 giocatori nella Primavera
+- 5 partite (3 passate, 2 future)
+- Eventi, valutazioni, convocazioni, note avversario
+- Account demo con ruolo allenatore
+
+### Prossime Evoluzioni Demo
+- ⏸️ Clone sessione isolato per ogni visitatore
+- ⏸️ Reset automatico dati dopo timeout
+- ⏸️ Opzione "Salva progressi" → registrazione con dati precompilati
