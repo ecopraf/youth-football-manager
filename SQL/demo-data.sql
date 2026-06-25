@@ -108,7 +108,7 @@ INSERT INTO utente (id, workspace_id, email, password_hash, nome, cognome, ruolo
 VALUES (
   '00000000-0000-0005-0000-000000000001',
   '00000000-0000-0000-0000-000000000001',
-  'demo_yfm',
+  'demo_yfm@yfm.it',
   '$2b$12$vQzQcVHqEdVvKK.Y9C6NYeDsbM6Qi0bV8fmEGxEs6zleyNfXW.Xv2',
   'Demo',
   'Allenatore',
@@ -120,5 +120,5 @@ VALUES (
 -- ============================================
 -- ISTRUZIONI:
 -- 1. Esegui nel SQL Editor di Supabase
--- 2. Login: demo_yfm / demo_yfm
+-- 2. Login: demo_yfm@yfm.it / demo_yfm
 -- ============================================

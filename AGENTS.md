@@ -515,13 +515,13 @@ onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow=
 ### Link Demo Auto-login
 La landing page contiene link che permettono accesso demo automatico:
 ```
-https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1
+https://youth-football-manager.vercel.app/login?demo_email=demo_yfm@yfm.it&demo_password=demo_yfm&auto_login=1
 ```
 
 **Parametri URL:**
 | Parametro | Descrizione | Esempio |
 |-----------|-------------|---------|
-| `demo_email` | Email account demo | `demo_yfm` |
+| `demo_email` | Email account demo | `demo_yfm@yfm.it` |
 | `demo_password` | Password account demo | `demo_yfm` |
 | `auto_login` | Auto-submit form | `1` |
 
@@ -668,7 +668,7 @@ html = html.replace('src="logo.png"', f'src="data:image/png;base64,{logo_b64}"')
 - **App**: https://youth-football-manager.vercel.app/login
 - **Backend**: https://youth-football-manager-backend.vercel.app
 - **Repo**: https://github.com/ecopraf/youth-football-manager
-- **Demo**: https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1
+- **Demo**: https://youth-football-manager.vercel.app/login?demo_email=demo_yfm@yfm.it&demo_password=demo_yfm&auto_login=1
 
 ---
 
@@ -759,9 +759,9 @@ Landing Page → "Prova la Demo" → Login Auto → Popup Benvenuto
 ```
 
 ### Credenziali Demo
-- **Email**: `demo_yfm`
+- **Email**: `demo_yfm@yfm.it`
 - **Password**: `demo_yfm`
-- **URL**: https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1
+- **URL**: https://youth-football-manager.vercel.app/login?demo_email=demo_yfm@yfm.it&demo_password=demo_yfm&auto_login=1
 
 ### File Chiave
 - `frontend-v2/src/modules/demo/demo.js` - Manager demo completo

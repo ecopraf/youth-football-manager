@@ -208,7 +208,7 @@ export default async function loadLogin() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const errorDiv = document.getElementById('loginError');
-    const isDemo = email === 'demo_yfm';
+    const isDemo = email === 'demo_yfm' || email === 'demo_yfm@yfm.it';
     
     showLoading('Accesso in corso...');
     errorDiv.style.display = 'none';
