@@ -170,7 +170,7 @@ INSERT INTO utente (id, email, password_hash, nome, cognome, ruolo, ruoli, works
 VALUES (
   '00000000-0000-0000-0003-000000000001',
   'demo_yfm',
-  '$2a$10$rSZHLwHqCqCmJKvKqKqKuOKqKqKqKqKqKqKqKqKqKqKqKqKqKqK', -- placeholder, da sostituire
+  '$2b$12$vQzQcVHqEdVvKK.Y9C6NYeDsbM6Qi0bV8fmEGxEs6zleyNfXW.Xv2',
   'Demo',
   'Allenatore',
   'allenatore',
