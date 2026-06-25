@@ -767,23 +767,6 @@ app.get('/api/squadre/:squadraId/allenamenti/materiale', async (req, res) => {
     .eq('squadra_id', req.params.squadraId)
     .order('data_caricamento', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
-
-    // Tracciamento referral se presente
-    if (referralCode && user.workspace_id) {
-      try {
-        await supabase.from('workspace')
-          .update({ referral_code: referralCode })
-          .eq('id', user.workspace_id);
-        await supabase.from('referral_log').insert({
-          referral_code: referralCode,
-          utente_id: user.id,
-          workspace_id: user.workspace_id,
-          tipo: 'registrazione',
-          commissione: 50.00,
-          stato: 'pending'
-        }).catch(() => {});
-      } catch (refErr) { console.log('Referral error:', refErr.message); }
-    }
   res.json(data || []);
 });
 
