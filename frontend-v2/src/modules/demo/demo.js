@@ -123,10 +123,23 @@ class DemoManager {
     if (this.isDemo) {
       this.loadProgress();
       console.log('[DEMO] after loadProgress, missions:', this.completedCount, '/', this.missions.length);
-      this.setupWelcomePopup();
-      this.updateBadge();
-      this.injectTooltipStyles();
+      
+      // Assicurati che il DOM sia pronto
+      if (document.body) {
+        this._createDemoUI();
+      } else {
+        document.addEventListener('DOMContentLoaded', () => {
+          this._createDemoUI();
+        });
+      }
     }
+  }
+  
+  _createDemoUI() {
+    console.log('[DEMO] Creating UI...');
+    this.injectTooltipStyles();
+    this.updateBadge();
+    this.setupWelcomePopup();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -136,8 +149,10 @@ class DemoManager {
   loadProgress() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
+      console.log('[DEMO] loadProgress, saved:', saved);
       if (saved) {
         const data = JSON.parse(saved);
+        console.log('[DEMO] data.missions:', data.missions, 'length:', data.missions?.length);
         // Verifica che le missioni siano consistenti
         if (data.missions && Array.isArray(data.missions) && data.missions.length === DEMO_MISSIONS.length) {
           this.missions = data.missions;
@@ -147,8 +162,10 @@ class DemoManager {
         }
         this.welcomeShown = data.welcomeShown || false;
       } else {
+        console.log('[DEMO] Nessun dato salvato, uso default');
         this.missions = JSON.parse(JSON.stringify(DEMO_MISSIONS));
       }
+      console.log('[DEMO] this.missions dopo load:', this.missions.length);
       this.updateCompletedCount();
     } catch (e) {
       console.log('Demo: errore caricamento progressi', e);
@@ -236,10 +253,23 @@ class DemoManager {
 
   // Badge nell'header
   updateBadge() {
+    console.log('[DEMO] updateBadge called, isDemo:', this.isDemo, 'missions:', this.missions.length);
+    
     let badge = document.getElementById('demo-badge');
-    if (!badge && this.isDemo) {
+    
+    // Forza creazione badge se siamo in demo mode
+    if (this.isDemo && !badge) {
+      console.log('[DEMO] Creating badge...');
       badge = document.createElement('div');
       badge.id = 'demo-badge';
+      document.body.appendChild(badge);
+    }
+    
+    if (badge) {
+      const progress = this.missions.length > 0 
+        ? Math.round((this.completedCount / this.missions.length) * 100) 
+        : 0;
+      
       badge.innerHTML = '🌱 Demo';
       badge.style.cssText = `
         position: fixed;
@@ -267,18 +297,16 @@ class DemoManager {
         this.style.boxShadow = '0 4px 15px rgba(0,0,0,0.15), 0 2px 4px rgba(39,174,96,0.2), inset 0 1px 2px rgba(255,255,255,0.8)';
       };
       badge.onclick = () => this.toggleMissionPanel();
-      document.body.appendChild(badge);
-    }
-    
-    if (badge) {
-      const progress = Math.round((this.completedCount / this.missions.length) * 100);
-      badge.innerHTML = `🌱 Demo ${progress}%`;
+      
+      // Aggiorna testo con progress
+      if (this.missions.length > 0) {
+        badge.innerHTML = `🌱 Demo ${progress}%`;
+      }
       
       if (progress === 100) {
         badge.style.background = 'linear-gradient(180deg, #FFD700 0%, #FFA500 100%)';
         badge.style.color = 'white';
         badge.style.borderColor = '#FF8C00';
-        badge.style.boxShadow = '0 4px 15px rgba(255,165,0,0.4), 0 2px 4px rgba(0,0,0,0.1), inset 0 1px 2px rgba(255,255,255,0.4)';
         badge.innerHTML = '🎉 Demo Completa!';
       }
     }

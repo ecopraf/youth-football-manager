@@ -278,9 +278,16 @@ function openTrainingForm(tid, g, i, f, l) {
   document.body.appendChild(modal);
   
   const close = () => { const m = document.getElementById('currentModal'); if (m) m.remove(); };
-  document.getElementById('modalCloseX').addEventListener('click', close);
+  
+  // Assicura che gli eventi siano aggiunti dopo il rendering
+  setTimeout(() => {
+    const closeBtn = document.getElementById('modalCloseX');
+    const annullaBtn = modal.querySelector('.modal-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    if (annullaBtn) annullaBtn.addEventListener('click', close);
+  }, 10);
+  
   modal.addEventListener('click', e => { if (e.target === modal) close(); });
-  modal.querySelector('.modal-close-btn').addEventListener('click', close);
   
   document.getElementById('saveBtn').addEventListener('click', async () => {
     const data = {
@@ -320,10 +327,20 @@ function openMaterialeForm() {
   modal.innerHTML = `<div class="modal-content" style="max-width:500px;"><div class="modal-header"><h2>Carica Materiale</h2><button class="modal-close-btn" id="modalCloseX">×</button></div><div class="modal-body">${content}</div><div class="modal-footer">${footer}</div></div>`;
   document.body.appendChild(modal);
   
-  const close = () => { const m = document.getElementById('currentModal'); if (m) m.remove(); };
-  document.getElementById('modalCloseX').addEventListener('click', close);
+  const close = () => { 
+    const m = document.getElementById('currentModal'); 
+    if (m) m.remove(); 
+  };
+  
+  // Assicura che gli eventi siano aggiunti dopo il rendering
+  setTimeout(() => {
+    const closeBtn = document.getElementById('modalCloseX');
+    const annullaBtn = modal.querySelector('.modal-close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    if (annullaBtn) annullaBtn.addEventListener('click', close);
+  }, 10);
+  
   modal.addEventListener('click', e => { if (e.target === modal) close(); });
-  modal.querySelector('.modal-close-btn').addEventListener('click', close);
   
   document.getElementById('saveMatBtn').addEventListener('click', async () => {
     const data = {
