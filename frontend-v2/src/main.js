@@ -132,18 +132,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Check autenticazione
+  // Check per parametri demo dalla landing
+  const urlParams = new URLSearchParams(window.location.search);
+  const demoEmail = urlParams.get('demo_email');
+  const demoPassword = urlParams.get('demo_password');
+  const autoLogin = urlParams.get('auto_login');
+
+  // Se già autenticato
   if (window.YFM.isAuthenticated && window.YFM.isAuthenticated()) {
     // Carica workspace e squadre in parallelo
     Promise.all([
       loadWorkspaceInfo(),
       loadSquadre()
     ]).then(() => {
+      // Inizializza demo se è una sessione demo
+      if (localStorage.getItem('yfm_demo_session') === 'active') {
+        demoManager.init();
+      }
       window.YFM.navigateTo('dashboard');
     }).catch(() => {
       window.YFM.navigateTo('dashboard');
     });
-  } else {
+  } 
+  // Auto-login demo dalla landing
+  else if (autoLogin === '1' && demoEmail && demoPassword) {
+    fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: demoEmail, password: demoPassword })
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.token) {
+        localStorage.setItem('yfm_token', res.token);
+        localStorage.setItem('yfm_user', JSON.stringify(res.user));
+        localStorage.setItem('yfm_demo_session', 'active');
+        
+        // Pulisci URL da parametri
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        
+        // Carica dati
+        return Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+      } else {
+        throw new Error('Login fallito');
+      }
+    })
+    .then(() => {
+      // Inizializza demo
+      demoManager.init();
+      window.YFM.navigateTo('dashboard');
+    })
+    .catch((err) => {
+      console.error('Auto-login demo fallito:', err);
+      window.YFM.navigateTo('login');
+    });
+  } 
+  else {
     window.YFM.navigateTo('login');
   }
 });
