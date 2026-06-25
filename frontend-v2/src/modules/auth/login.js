@@ -223,8 +223,13 @@ export default async function loadLogin() {
   // Toggle tra login e register
   document.getElementById('showRegister').addEventListener('click', (e) => {
     e.preventDefault();
-    document.querySelector('.auth-card').style.display = 'none';
-    document.getElementById('registerCard').style.display = 'block';
+    // Apri form richiesta demo invece del form registrazione standard
+    if (window.demoManager) {
+      window.demoManager.showRegistrationForm();
+    } else {
+      document.querySelector('.auth-card').style.display = 'none';
+      document.getElementById('registerCard').style.display = 'block';
+    }
   });
 
   document.getElementById('showLogin').addEventListener('click', (e) => {
