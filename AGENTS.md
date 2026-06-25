@@ -41,56 +41,103 @@ JWT_SECRET=aEj1OXdTHxSHD8iObjFov1jJ06RoyM1Ormf8KBb0uPI=
 
 ## Struttura Progetto
 ```
-/frontend-v2/src/
-  /modules/
-    auth/
-      login.js      - Login page
-      guest.js      - Guest link activation
-    admin/
-      users.js      - Gestione utenti (Admin)
-      guestLinks.js - Gestione link guest (Admin)
-    team/
-      calendar.js       - Calendario partite (con archiviazione)
-      distinta.js       - Distinta FIGC
-      formazione.js     - Gestione formazione
-      convocazioni.js   - Gestione convocazioni
-      resultForm.js     - Inserimento eventi/risultato
-      valutazioni.js    - Valutazioni giocatori
-      playerDetail.js   - Scheda giocatore
-      matchDetail.js    - Dettaglio partita con timeline
-      noteAvversario.js - Note avversario
-      roster.js         - Rosa giocatori
-      squadre.js        - Gestione squadre
-      dashboard.js      - Dashboard con prossima partita
-    coach/
-      training.js       - Allenamenti e presenze
-    performance/
-      stats.js          - Statistiche disciplina
-      reports.js        - Report partita/stagionale
-    club/
-      settings.js       - Impostazioni
-      workspace.js      - Info società
-  /services/api.js    - Chiamate API
-  /utils/             - Formatters e UI utils
-  main.js             - Entry point
-  router.js           - Routing
-
-/backend/api/index.js - Tutti gli endpoint API
+frontend-v2/
+├── src/
+│   ├── main.js              # Entry point, init app, routing base
+│   ├── router.js            # Routing dinamico con window.YFM.navigateTo()
+│   ├── style.css            # Stili globali
+│   ├── components/
+│   │   └── layout/
+│   │       └── Sidebar.js   # Layout sidebar + header
+│   ├── modules/
+│   │   ├── auth/
+│   │   │   ├── login.js     # Login (2 pulsanti: Login + Demo)
+│   │   │   └── guest.js     # Attivazione guest link
+│   │   ├── admin/
+│   │   │   ├── users.js     # CRUD utenti
+│   │   │   └── guestLinks.js # Gestione link guest
+│   │   ├── demo/
+│   │   │   └── demo.js      # Sistema demo interattivo (~1300 righe)
+│   │   ├── team/
+│   │   │   ├── dashboard.js     # Dashboard con prossima partita
+│   │   │   ├── roster.js        # Rosa giocatori
+│   │   │   ├── calendar.js      # Calendario partite
+│   │   │   ├── matchDetail.js   # Dettaglio partita + timeline
+│   │   │   ├── formazione.js    # Gestione formazione
+│   │   │   ├── convocazioni.js  # Convocazioni
+│   │   │   ├── resultForm.js    # Eventi partita
+│   │   │   ├── playerDetail.js  # Scheda giocatore
+│   │   │   ├── valutazioni.js   # Valutazioni
+│   │   │   ├── distinta.js       # Distinta FIGC PDF
+│   │   │   ├── noteAvversario.js # Note avversario
+│   │   │   └── squadre.js       # Gestione squadre
+│   │   ├── coach/
+│   │   │   └── training.js     # Allenamenti + materiale
+│   │   ├── performance/
+│   │   │   ├── stats.js         # Statistiche disciplina
+│   │   │   └── reports.js       # Report PDF
+│   │   └── club/
+│   │       ├── settings.js       # Impostazioni
+│   │       └── workspace.js     # Info società
+│   ├── services/
+│   │   └── api.js            # Chiamate API (apiFetch)
+│   └── utils/
+│       ├── formatters.js     # Format data, numeri
+│       └── ui.js             # Loading, notifiche
+├── public/
+│   └── assets/
+│       ├── logo.png
+│       └── app-icon.png
+└── vite.config.js
 ```
 
-## Tabelle DB Principali
-- `utente` - Utenti sistema (id, email, password_hash, nome, cognome, ruolo, ruoli, squadre_accesso, is_active, is_superadmin, workspace_id)
-- `guest_token` - Token guest (token, tipo, squadre_accesso, scadenza, utente_id)
-- `calciatori` - Giocatori
-- `rosa` - Associazione giocatori-squadra
-- `squadra` - Squadre
-- `stagione` - Stagioni sportive
-- `workspace` - Società/club
-- `partita` - Partite (con campo `archiviata`)
-- `convocazione` - Convocazioni
-- `formazione_partita` - Formazioni
-- `evento_partita` - Eventi (GOAL, SUBITO, YELLOW, RED, ASSIST, IN, OUT)
-- `valutazione_partita` - Valutazioni
+### Backend (backend/)
+```
+backend/
+├── api/
+│   └── index.js              # Tutti gli endpoint (~1600 righe)
+├── node_modules/
+├── package.json
+└── vercel.json
+```
+
+### Landing Page
+```
+landing/
+└── index.html                # Landing page professionale
+```
+
+## Database Schema (Supabase)
+
+### Tabelle Principali
+
+| Tabella | Campi Chiave | Descrizione |
+|---------|--------------|-------------|
+| `workspace` | id, nome, logo_url, referral_code | Società/club |
+| `stagione` | id, workspace_id, nome, data_inizio, data_fine, is_attiva | Stagione sportiva |
+| `squadra` | id, stagione_id, nome, categoria, allenatore | Squadra |
+| `calciatore` | id, workspace_id, nome, cognome, data_nascita | Giocatore |
+| `rosa` | id, squadra_id, calciatore_id, numero_maglia, ruolo, stato | Associazione |
+| `partita` | id, squadra_id, data_ora, avversario, luogo, archiviata | Partita |
+| `evento_partita` | id, partita_id, tipo_evento_codice, calciatore_principale_id, minuto | Eventi |
+| `convocazione` | id, partita_id, calciatore_id | Convocazioni |
+| `formazione_partita` | id, partita_id, calciatore_id, ruolo, numero_maglia | Formazione |
+| `valutazione_partita` | id, partita_id, calciatore_id, voto, note | Valutazioni |
+| `utente` | id, workspace_id, email, password_hash, nome, ruolo, is_superadmin | Utente |
+| `guest_token` | id, token, tipo, scadenza, utente_id | Token guest |
+| `partner` | id, nome, email, codice, tipo | Partner commerciali |
+| `referral_log` | id, referral_code, utente_id, commissione, stato | Log referral |
+| `materiale_allenamento` | id, squadra_id, titolo, tipo, url | Materiale allenamenti |
+| `config_allenamento` | id, squadra_id, giorno_settimana, ora_inizio, ora_fine, luogo | Config allenamenti |
+
+### Tabella Eventi Partita (tipo_evento_codice)
+- `GOAL` - Gol segnato
+- `SUBITO` - Gol subito (portiere)
+- `ASSIST` - Assist
+- `YELLOW` - Cartellino giallo
+- `RED` - Cartellino rosso
+- `IN` - Entrato in campo
+- `OUT` - Uscito dal campo
 
 ## Regole Chat (da rispettare SEMPRE)
 
@@ -662,11 +709,13 @@ html = html.replace('src="logo.png"', f'src="data:image/png;base64,{logo_b64}"')
 - docs: aggiorna AGENTS.md con Sistema Demo completo
 
 ## URL Applicazione
-- **Landing Page**: https://youth-football-manager.vercel.app (index) 
-- **App**: https://youth-football-manager.vercel.app/login
-- **Backend**: https://youth-football-manager-backend.vercel.app
-- **Repo**: https://github.com/ecopraf/youth-football-manager
-- **Demo**: https://youth-football-manager.vercel.app/login?demo_email=demo_yfm@yfm.it&demo_password=demo_yfm&auto_login=1
+| Ambiente | URL |
+|----------|-----|
+| **Landing Page** | https://youth-football-manager.vercel.app |
+| **App** | https://youth-football-manager.vercel.app/login |
+| **Backend API** | https://youth-football-manager-backend.vercel.app/api |
+| **Repo GitHub** | https://github.com/ecopraf/youth-football-manager |
+| **Demo** | https://youth-football-manager.vercel.app/login → click "🎮 Demo" |
 
 ---
 
