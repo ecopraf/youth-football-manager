@@ -129,6 +129,8 @@ export default async function loadLogin() {
       .auth-header img {
         border-radius: 16px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        display: block;
+        margin: 0 auto;
       }
       .app-icon-login {
         width: 100px;
@@ -136,6 +138,8 @@ export default async function loadLogin() {
         object-fit: contain;
         border-radius: 20px !important;
         box-shadow: 0 8px 25px rgba(102,126,234,0.3) !important;
+        display: block !important;
+        margin: 0 auto !important;
       }
       .auth-header h1 {
         font-size: 22px;
@@ -237,9 +241,15 @@ export default async function loadLogin() {
       localStorage.setItem('yfm_token', res.token);
       localStorage.setItem('yfm_user', JSON.stringify(res.user));
       
-      // Se è login demo, marca la sessione
+      // Se è login demo, marca la sessione e avvia demo manager
       if (isDemo) {
         localStorage.setItem('yfm_demo_session', 'active');
+        // Avvia demo manager dopo un breve delay per permettere caricamento
+        setTimeout(() => {
+          if (window.demoManager && typeof window.demoManager.init === 'function') {
+            window.demoManager.init();
+          }
+        }, 300);
       }
       
       hideLoading();

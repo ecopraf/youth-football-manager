@@ -10,6 +10,7 @@ export function initRouter() {
     matchDetail: () => import('./modules/team/matchDetail.js'),
     convocazioni: () => import('./modules/team/convocazioni.js'),
     formazione: () => import('./modules/team/formazione.js'),
+    formation: () => import('./modules/team/formazione.js'), // alias inglese
     playerDetail: () => import('./modules/team/playerDetail.js'),
     training: () => import('./modules/coach/training.js'),
     stats: () => import('./modules/performance/stats.js'),
@@ -76,17 +77,26 @@ export function initRouter() {
   };
 
   window.YFM.logout = function() {
+    // Rimuovi tutti i dati di sessione
     localStorage.removeItem('yfm_token');
     localStorage.removeItem('yfm_user');
     localStorage.removeItem('yfm_guest');
     localStorage.removeItem('yfm_demo_session');
     localStorage.removeItem('yfm_demo_progress');
-    // Resetta anche la demo se attiva
+    // Rimuovi anche i dati demo completi (progressi missioni)
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('yfm_demo') || key.startsWith('demo_')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Rimuovi UI demo
     if (window.demoManager && typeof window.demoManager.resetDemo === 'function') {
       window.demoManager.resetDemo();
     }
-    // Redirect alla landing page
-    window.location.href = '/';
+    
+    // Redirect alla landing page SENZA parametri auto-login
+    window.location.href = '/landing.html';
   };
 
   window.YFM.updateUserUI = function() {

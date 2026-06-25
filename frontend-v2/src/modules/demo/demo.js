@@ -817,7 +817,7 @@ class DemoManager {
     
     // Recrea badge e mostra popup di benvenuto
     setTimeout(() => {
-      this.createBadge();
+      this.updateBadge();
       this.showMissionPanel();
       this.showWelcomePopup();
     }, 500);
