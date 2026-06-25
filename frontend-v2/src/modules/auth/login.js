@@ -271,8 +271,18 @@ export default async function loadLogin() {
     }));
 
     // Naviga alla dashboard - il demoManager si attivera automaticamente
-    if (window.YFM) {
+    if (window.YFM && window.YFM.navigateTo) {
       window.YFM.navigateTo('dashboard');
+    } else {
+      // Fallback: aspetta che YFM sia pronto
+      const checkYFM = setInterval(() => {
+        if (window.YFM && window.YFM.navigateTo) {
+          clearInterval(checkYFM);
+          window.YFM.navigateTo('dashboard');
+        }
+      }, 100);
+      // Timeout dopo 3 secondi
+      setTimeout(() => clearInterval(checkYFM), 3000);
     }
   });
 

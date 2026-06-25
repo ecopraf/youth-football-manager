@@ -35,6 +35,10 @@ export function initRouter() {
     }
   };
 
+  window.YFM.isDemo = function() {
+    return localStorage.getItem('yfm_demo_session') === 'active';
+  };
+  
   window.YFM.isGuest = function() {
     return !!localStorage.getItem('yfm_guest') && !localStorage.getItem('yfm_token');
   };
@@ -110,6 +114,7 @@ export function initRouter() {
     
     // Verifica accesso
     if (!publicPages.includes(page)) {
+      if (window.YFM.isDemo()) return; // Demo ha accesso a tutto
       if (window.YFM.isGuest()) {
         // Guest può accedere solo a certe pagine
         const guestAllowed = ['dashboard', 'calendar', 'matchDetail', 'stats', 'reports'];
