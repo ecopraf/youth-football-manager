@@ -304,6 +304,21 @@ class DemoManager {
         `).join('')}
       </div>
       
+      <div style="padding: 16px 20px; border-top: 1px solid #eee;">
+        <button onclick="window.demoManager.showRegistrationForm()" style="
+          width: 100%;
+          padding: 12px;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-bottom: 8px;
+        ">📩 Richiedi Informazioni</button>
+      </div>
+      
       ${this.completedCount === this.missions.length ? `
         <div class="demo-completion-banner">
           <h4>🎉 Hai completato la demo!</h4>
