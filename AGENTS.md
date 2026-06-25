@@ -717,6 +717,19 @@ html = html.replace('src="logo.png"', f'src="data:image/png;base64,{logo_b64}"')
 | **Repo GitHub** | https://github.com/ecopraf/youth-football-manager |
 | **Demo** | https://youth-football-manager.vercel.app/login → click "🎮 Demo" |
 
+## Deploy Vercel
+
+Token API disponibile come secret `VERCEL_TOKEN` per deploy automatici.
+
+**Project ID**: `prj_zJ4cDM8Y8ledbwYKdJYWKQWwRrV6`
+
+```bash
+curl -X POST "https://api.vercel.com/v13/deployments" \
+  -H "Authorization: Bearer $VERCEL_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"youth-football-manager","gitSource":{"type":"github","repo":"ecopraf/youth-football-manager","repoId":"1273151079","ref":"main"},"project":"prj_zJ4cDM8Y8ledbwYKdJYWKQWwRrV6","target":"production"}'
+```
+
 ---
 
 ## Stato Attuale Repository (Giugno 2025)
