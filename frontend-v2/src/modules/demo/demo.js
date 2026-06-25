@@ -69,7 +69,7 @@ export const DEMO_TOOLTIPS = {
   },
   roster: {
     title: '💡 Rosa Digitale',
-    content: 'Gestisci tutti i giocatori con ruoli, numeri di maglia e scadenze. Filtra, cerca e aggiungi in pochi click.'
+    content: 'Gestisci tutti i giocatori con ruoli, numeri di maglia e scadenze mediche. Filtra per ruolo, cerca per nome e aggiungi nuovi giocatori.'
   },
   calendar: {
     title: '💡 Calendario Completo',
@@ -86,6 +86,11 @@ export const DEMO_TOOLTIPS = {
   reports: {
     title: '💡 Report Professionali',
     content: 'Genera report partita, stagionali e individuali in PDF. Professionali e pronti da stampare.'
+  },
+  // Alias per compatibilità
+  'player-detail': {
+    title: '💡 Scheda Giocatore',
+    content: 'Storico completo: presenze, gol, assist e valutazioni del giocatore selezionato.'
   }
 };
 

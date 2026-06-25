@@ -32,23 +32,37 @@ window.YFM.getSocietaName = () => {
 
 // Funzioni globali per logout
 window.YFM.handleLogout = function() {
+  console.log('[LOGOUT] Starting logout...');
+  
   // Rimuovi tutti i dati di sessione
   localStorage.removeItem('yfm_token');
   localStorage.removeItem('yfm_user');
   localStorage.removeItem('yfm_guest');
   localStorage.removeItem('yfm_demo_session');
   localStorage.removeItem('yfm_demo_progress');
-  // Rimuovi tutti i dati demo
+  
+  // Rimuovi TUTTI i dati demo (chiavi che iniziano con yfm_demo o demo_)
   Object.keys(localStorage).forEach(key => {
     if (key.startsWith('yfm_demo') || key.startsWith('demo_')) {
+      console.log('[LOGOUT] Removing:', key);
       localStorage.removeItem(key);
     }
   });
+  
   // Rimuovi UI demo
-  if (window.demoManager && typeof window.demoManager.resetDemo === 'function') {
-    window.demoManager.resetDemo();
+  if (window.demoManager) {
+    window.demoManager.missions = [...window.demoManager.constructor.prototype.missions || []];
+    window.demoManager.isDemo = false;
+    window.demoManager.welcomeShown = false;
+    
+    // Rimuovi elementi UI
+    ['demo-badge', 'demo-mission-panel', 'demo-welcome-overlay', 'demo-celebration', 
+     'demo-registration-overlay', 'demo-marketing-tooltip'].forEach(id => {
+      document.getElementById(id)?.remove();
+    });
   }
-  // Redirect alla landing
+  
+  console.log('[LOGOUT] Redirecting to landing...');
   window.location.href = '/landing.html';
 };
 
@@ -138,8 +152,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const demoPassword = urlParams.get('demo_password');
   const autoLogin = urlParams.get('auto_login');
 
+  // SE è richiesto auto-login demo, fallo subito (priorità massima)
+  if (autoLogin === '1' && demoEmail && demoPassword) {
+    console.log('[MAIN] Auto-login demo richiesto');
+    performDemoLogin(demoEmail, demoPassword);
+    return;
+  }
+
   // Se già autenticato
   if (window.YFM.isAuthenticated && window.YFM.isAuthenticated()) {
+    console.log('[MAIN] Già autenticato');
     // Carica workspace e squadre in parallelo
     Promise.all([
       loadWorkspaceInfo(),
@@ -147,48 +169,53 @@ document.addEventListener('DOMContentLoaded', () => {
     ]).then(() => {
       // Inizializza demo se è una sessione demo
       if (localStorage.getItem('yfm_demo_session') === 'active') {
+        console.log('[MAIN] Init demo per sessione esistente');
         demoManager.init();
       }
       window.YFM.navigateTo('dashboard');
     }).catch(() => {
       window.YFM.navigateTo('dashboard');
     });
-  } 
-  // Auto-login demo dalla landing
-  else if (autoLogin === '1' && demoEmail && demoPassword) {
-    fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: demoEmail, password: demoPassword })
-    })
-    .then(res => res.json())
-    .then(res => {
-      if (res.token) {
-        localStorage.setItem('yfm_token', res.token);
-        localStorage.setItem('yfm_user', JSON.stringify(res.user));
-        localStorage.setItem('yfm_demo_session', 'active');
-        
-        // Pulisci URL da parametri
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-        
-        // Carica dati
-        return Promise.all([loadWorkspaceInfo(), loadSquadre()]);
-      } else {
-        throw new Error('Login fallito');
-      }
-    })
-    .then(() => {
-      // Inizializza demo
-      demoManager.init();
-      window.YFM.navigateTo('dashboard');
-    })
-    .catch((err) => {
-      console.error('Auto-login demo fallito:', err);
-      window.YFM.navigateTo('login');
-    });
-  } 
-  else {
+  } else {
     window.YFM.navigateTo('login');
   }
 });
+
+// Funzione separata per auto-login demo
+async function performDemoLogin(email, password) {
+  console.log('[MAIN] Eseguo auto-login demo...');
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    
+    const res = await response.json();
+    
+    if (res.token) {
+      console.log('[MAIN] Login demo riuscito');
+      localStorage.setItem('yfm_token', res.token);
+      localStorage.setItem('yfm_user', JSON.stringify(res.user));
+      localStorage.setItem('yfm_demo_session', 'active');
+      
+      // Pulisci URL da parametri
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+      
+      // Carica dati
+      await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+      
+      // Inizializza demo
+      console.log('[MAIN] Chiamo demoManager.init()');
+      demoManager.init();
+      
+      window.YFM.navigateTo('dashboard');
+    } else {
+      throw new Error('Login fallito');
+    }
+  } catch (err) {
+    console.error('[MAIN] Auto-login demo fallito:', err);
+    window.YFM.navigateTo('login');
+  }
+}
