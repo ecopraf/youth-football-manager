@@ -771,11 +771,27 @@ with open('docs/logo.png', 'rb') as f:
 html = html.replace('src="logo.png"', f'src="data:image/png;base64,{logo_b64}"')
 ```
 
-## Ultime Modifiche (commit: f90fce8)
-- feat: nuovo flusso login con due pulsanti distinti (Login + Demo)
-- feat: banner demo con pulsanti, sidebar CTA, stili mobile
-- fix: demo init, badge reload, training modal close
-- docs: aggiorna AGENTS.md con Sistema Demo completo
+## Ultime Modifiche (commit: 9e93100)
+- Mini Missioni: sistema semplificato con solo trigger page_view
+- Demo Completa: badge celebrativo "🎉 Demo Completa!" al 100% navigando 6 pagine
+- Pagine: Dashboard, Rosa, Calendario, Allenamenti, Statistiche, Report
+
+## Sistema Mini Missioni
+```javascript
+// Ogni pagina ha 1 step con trigger page_view (auto-complete su visita)
+MINI_MISSIONS_CONFIG = {
+  dashboard: { steps: [{ trigger: 'page_view' }] },
+  roster: { steps: [{ trigger: 'page_view' }] },
+  calendar: { steps: [{ trigger: 'page_view' }] },
+  training: { steps: [{ trigger: 'page_view' }] },
+  stats: { steps: [{ trigger: 'page_view' }] },
+  reports: { steps: [{ trigger: 'page_view' }] }
+}
+```
+
+## Badge Progresso
+- Badge mini missioni: mostra "🍱 Demo X%" con X = (step completati / step totali) * 100
+- Badge Demo Completa: "🎉 Demo Completa!" quando tutti gli step sono completati
 
 ## URL Applicazione
 | Ambiente | URL |
