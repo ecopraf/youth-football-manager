@@ -869,6 +869,9 @@ class DemoManager {
   setupPageHighlights(page) {
     if (!this.isDemo) return;
     
+    // Setup tooltip sidebar su tutti i link menu
+    this.setupSidebarTooltips();
+    
     // Configurazione tooltip per pagina
     const highlights = DEMO_HIGHLIGHTS[page];
     if (!highlights) return;
@@ -876,6 +879,74 @@ class DemoManager {
     highlights.forEach(h => {
       this.addElementTooltip(h.selector, h.title, h.description);
     });
+  }
+
+  setupSidebarTooltips() {
+    const sidebarLinks = document.querySelectorAll('.sidebar-nav a');
+    sidebarLinks.forEach(link => {
+      if (link._sidebarTooltipBound) return;
+      link._sidebarTooltipBound = true;
+      
+      const title = link.getAttribute('title');
+      if (!title) return;
+      
+      link.addEventListener('mouseenter', (e) => {
+        this.showSidebarTooltip(link, title);
+      });
+      
+      link.addEventListener('mouseleave', () => {
+        this.hideSidebarTooltip();
+      });
+    });
+  }
+
+  showSidebarTooltip(targetEl, text) {
+    this.hideSidebarTooltip();
+    
+    const rect = targetEl.getBoundingClientRect();
+    
+    const tip = document.createElement('div');
+    tip.id = 'demo-sidebar-tooltip';
+    tip.innerHTML = `<div class="demo-st-content">${text}</div>`;
+    
+    tip.style.cssText = `
+      position: fixed;
+      top: ${rect.top}px;
+      left: ${rect.right + 12}px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      max-width: 220px;
+      box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+      z-index: 10001;
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 12px;
+      line-height: 1.4;
+      pointer-events: none;
+      animation: fadeInLeft 0.2s ease;
+    `;
+    
+    const arrow = document.createElement('div');
+    arrow.style.cssText = `
+      position: absolute;
+      left: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-right: 6px solid #764ba2;
+    `;
+    tip.appendChild(arrow);
+    
+    document.body.appendChild(tip);
+  }
+
+  hideSidebarTooltip() {
+    const existing = document.getElementById('demo-sidebar-tooltip');
+    if (existing) existing.remove();
   }
 
   addElementTooltip(selector, title, description) {
@@ -1495,6 +1566,10 @@ class DemoManager {
       @keyframes slideDown {
         from { opacity: 0; transform: translate(-50%, -20px); }
         to { opacity: 1; transform: translate(-50%, 0); }
+      }
+      @keyframes fadeInLeft {
+        from { opacity: 0; transform: translateX(-10px); }
+        to { opacity: 1; transform: translateX(0); }
       }
     `;
     document.head.appendChild(style);
