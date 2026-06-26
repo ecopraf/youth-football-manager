@@ -1532,6 +1532,14 @@ class MiniMissionManager {
     this.renderMiniMissions();
     this.setupListeners();
     this.updateUI();
+
+    // Auto-complete per step immediati (page_view o auto_complete)
+    this.steps.forEach(step => {
+      if ((step.trigger === 'auto_complete' || step.trigger === 'page_view') && !step.completed) {
+        console.log('[MINI_MISSION] Auto-completing:', step.id);
+        setTimeout(() => this.completeStep(step.id), 500);
+      }
+    });
   }
 
   isDemoMode() {
