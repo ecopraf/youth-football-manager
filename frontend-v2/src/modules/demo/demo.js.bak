@@ -270,14 +270,6 @@ class DemoManager {
     this.missions = [...DEMO_MISSIONS];
     this.completedCount = 0;
     this.welcomeShown = false;
-    
-    // Dati demo per allenamenti
-    this.demoTrainings = [
-      { id: 't1', data: '2025-06-23', titolo: 'Tattica offensiva', descrizione: 'Esercizi per il gioco offensivo', durata: 90 },
-      { id: 't2', data: '2025-06-20', titolo: 'Palleggi e contrasti', descrizione: 'Tecnica e combattimento', durata: 75 },
-      { id: 't3', data: '2025-06-18', titolo: 'Possesso palla', descrizione: 'Esercizi sul mantenimento del possesso', durata: 60 },
-      { id: 't4', data: '2025-06-16', titolo: 'Schema corner', descrizione: 'Allenamento su calci da fermo', durata: 45 },
-    ];
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -311,18 +303,6 @@ class DemoManager {
     this.injectTooltipStyles();
     this.updateBadge();
     this.setupWelcomePopup();
-    this.preloadTrainingData();
-  }
-  
-  preloadTrainingData() {
-    // Precarica sedute di allenamento nella sessionStorage
-    if (!sessionStorage.getItem('yfm_training_sessions')) {
-      sessionStorage.setItem('yfm_training_sessions', JSON.stringify(this.demoTrainings));
-    }
-    // Imposta data selezionata
-    if (!sessionStorage.getItem('lastTrainingDate')) {
-      sessionStorage.setItem('lastTrainingDate', '2025-06-23');
-    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1501,9 +1481,6 @@ class MiniMissionManager {
     this.currentStepIndex = 0;
     this.completedSteps = new Set();
     this.listeners = [];
-    this.pageStates = {};
-    this.scrollTriggered = false;
-    this.interactionTriggered = false;
   }
 
   init(page) {
@@ -1630,8 +1607,7 @@ class MiniMissionManager {
   }
 
   setupClickListener(step) {
-    const handler = (e) => {
-      if (e.target.closest('#mini-missions-panel')) return;
+    const handler = () => {
       if (!this.completedSteps.has(step.id)) {
         this.completeStep(step.id);
       }
