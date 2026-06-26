@@ -8,6 +8,18 @@
 - **Logo**: `/frontend-v2/public/assets/logo.png`
 - **Email**: youthfootballmanager@gmail.com
 
+## Sistema Build Info
+Ogni build genera un ID univoco (timestamp in base36) visibile nell'interfaccia.
+
+**File**: `frontend-v2/src/build-info.js` (rigenerato ad ogni build)
+**Plugin Vite**: `frontend-v2/vite.config.js` (genera build-info in buildStart)
+
+**Display**:
+- Login (footer): `build: <id>`
+- Sidebar (footer): `build: <id>`
+
+**Variabile globale**: `window.YFM_BUILD_ID`
+
 ## Credenziali Supabase (Environment Variables)
 
 ### Variabili Backend (Vercel)
@@ -551,6 +563,7 @@ onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow=
 - ✅ Proiezioni Ricavi - Scenari 15-30-45 con page-break PDF
 - ✅ Sistema Mini Missioni - Step sequenziali per pagina (Dashboard, Calendario, Rosa, etc.)
 - ✅ Sistema Multi-Workspace - Isolamento categorie per società, endpoint /auth/workspaces
+- ✅ Build Info - ID build visibile nel footer login e sidebar
 
 ## Bug Noti ⚠️
 - Nessuno (demo funziona completamente)
