@@ -50,6 +50,22 @@ const DEMO_CALCIATORI = [
   { id: 'c020', nome: 'Marco', cognome: 'Marea', data_nascita: '2010-08-03', numero_maglia: 20, ruolo: 'A' }
 ];
 
+// Popola il select delle squadre
+function populateSquadreSelect() {
+  const sel = document.getElementById('squadraSelect');
+  if (sel && window.YFM.allSquadre) {
+    sel.innerHTML = window.YFM.allSquadre.map(s => 
+      `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${s.nome}${s.categoria ? ' ' + s.categoria : ''}</option>`
+    ).join('');
+    sel.addEventListener('change', e => {
+      window.YFM.squadraId = e.target.value;
+      window.YFM.allPlayers = [];
+      window.YFM.allMatches = [];
+      window.YFM.navigateTo(window.YFM.currentPage);
+    });
+  }
+}
+
 // Inizializzazione sessione demo con dati in memoria
 function initDemoSession() {
   console.log('[MAIN] Init demo - ASD Green Academy');
@@ -63,6 +79,9 @@ function initDemoSession() {
   // Aggiorna UI
   const wsName = document.getElementById('workspaceName');
   if (wsName) wsName.textContent = DEMO_WORKSPACE.nome;
+  
+  // Popola il select delle squadre
+  populateSquadreSelect();
   
   // Inizializza demo manager
   demoManager.init();
