@@ -511,7 +511,7 @@ app.get('/api/auth/workspaces', authMiddleware, async (req, res) => {
 
 // Endpoint per ottenere le stagioni di un workspace
 app.get('/api/workspaces/:id/stagioni', async (req, res) => {
-  const { data } = await supabase.from('stagione').select('*').eq('workspace_id', req.params.id).order('anno_inizio', { ascending: false });
+  const { data } = await supabase.from('stagione').select('*').eq('workspace_id', req.params.id).order('data_inizio', { ascending: false });
   res.json(data || []);
 });
 app.get('/api/demo/init', async (req, res) => {
