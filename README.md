@@ -191,11 +191,39 @@ git commit -m "fix: correggi tooltip sidebar in demo mode"
 
 ## 🔑 Variabili d'Ambiente (Backend)
 
+Il backend richiede un file `.env` con le credenziali. 
+
+### 1. Crea il file `.env`
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+### 2. Compila le variabili
+
 ```env
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_KEY=your-anon-key
-JWT_SECRET=your-secret
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-anon-public-key
+JWT_SECRET=your-super-secret-jwt-key-change-this
 PORT=3001
+```
+
+### 3. Dove trovare le credenziali
+
+**Supabase Dashboard → Settings → API:**
+- `SUPABASE_URL`: Project URL
+- `SUPABASE_KEY`: `anon public` key
+
+**JWT_SECRET**: Genera una stringa random, es:
+```bash
+openssl rand -base64 32
+```
+
+### 4. Avvia il backend
+
+```bash
+node api/index.js
 ```
 
 ---
