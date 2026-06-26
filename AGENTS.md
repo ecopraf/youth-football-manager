@@ -649,6 +649,45 @@ Ogni pagina ha step sequenziali che guidano l'utente attraverso le funzionalità
 
 4. **Push** immediato dopo commit
 
+---
+
+## Regole Deploy Vercel ⚠️
+
+### LIMITE GIORNALIERO
+Vercel ha un limite di **100 deploy/giorno**. Per evitare saturazione:
+
+### Workflow Obbligatorio
+1. **Fare TUTTE le modifiche in locale** prima di pushare
+2. **UN SOLO commit+push per sessione di lavoro**
+3. **Non fare push intermedi** durante le modifiche
+
+### Esempio Workflow Corretto
+```bash
+# 1. Fai tutte le modifiche necessarie
+# 2. Verifica build
+npm run build
+# 3. Commit con tutte le modifiche
+git add -A && git commit -m "feat: implementa feature X"
+# 4. Push finale
+git push origin main
+```
+
+### Esempio Workflow Sbagliato (DA EVITARE)
+```bash
+# ❌ SBAGLIATO - multipli push
+git add file1.js && git commit -m "fix 1" && git push
+git add file2.js && git commit -m "fix 2" && git push  # NO!
+git add file3.js && git commit -m "fix 3" && git push  # NO!
+```
+
+### Casi Speciali
+- **Hotfix urgenti**: OK fare push separato solo se strettamente necessario
+- **Documentazione-only**: OK fare push separato (non richiede build)
+- **Rollback**: Solo in caso di emergenza
+
+### Conferma Prima di Push
+Prima di fare `git push`, chiedere sempre conferma all'utente se ci sono state modifiche multiple durante la sessione.
+
 ### Template Commit Message
 ```
 <tipo>: <descrizione breve>

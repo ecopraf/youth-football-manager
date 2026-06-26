@@ -15,19 +15,19 @@ export const MINI_MISSIONS_CONFIG = {
       {
         id: 'explore_dashboard',
         title: 'Esplora la Dashboard',
-        description: 'Scorri la pagina per scoprire le funzionalità',
-        trigger: 'scroll'
+        description: 'Scopri la panoramica della tua società',
+        trigger: 'page_view'
       },
       {
         id: 'view_match_results',
         title: 'Guarda i risultati',
         description: 'Clicca su una partita per vedere i dettagli',
         trigger: 'click',
-        target: '.match-item, .recent-match, [data-match-id]'
+        target: '.next-match-card, .match-highlight, [data-match-id], .match-card'
       }
     ]
   },
-  
+
   roster: {
     title: 'Rosa',
     icon: '👥',
@@ -37,18 +37,18 @@ export const MINI_MISSIONS_CONFIG = {
         title: 'Filtra per ruolo',
         description: 'Applica un filtro per ruolo',
         trigger: 'select',
-        target: 'select[id="roleFilter"], select[name="role"], select[name="role-filter"]'
+        target: '#roleFilter, select[name="role"], select[id*="role"], select[name*="role"]'
       },
       {
         id: 'view_player_card',
         title: 'Apri scheda giocatore',
         description: 'Clicca su un giocatore per vedere i dettagli',
         trigger: 'click',
-        target: '.player-card, .giocatore-item, [data-player-id]'
+        target: '.player-card, .giocatore-item, [data-player-id], .roster-player'
       }
     ]
   },
-  
+
   calendar: {
     title: 'Calendario',
     icon: '📅',
@@ -56,13 +56,13 @@ export const MINI_MISSIONS_CONFIG = {
       {
         id: 'explore_calendar',
         title: 'Esplora il calendario',
-        description: 'Esplora le partite in programma',
-        trigger: 'interaction'
+        description: 'Visualizza le partite in programma',
+        trigger: 'page_view'
       },
       {
         id: 'create_convocation',
         title: 'Crea convocazioni',
-        description: 'Prepara l\'elenco dei giocatori convocati',
+        description: 'Prepara la lista dei giocatori convocati',
         trigger: 'click',
         target: 'button[name="convoca"], button:has-text("Convoca"), .btn-convoca'
       },
@@ -85,11 +85,11 @@ export const MINI_MISSIONS_CONFIG = {
         title: 'Inserisci il risultato',
         description: 'Registra gol, assist e altri eventi',
         trigger: 'click',
-        target: 'button[name="eventi"], button[name="risultato"], button:has-text("Eventi"), button:has-text("Risultato"), .btn-eventi'
+        target: 'button[name="eventi"], button[name="risultato"], button:has-text("Eventi"), button:has-text("Risultato")'
       }
     ]
   },
-  
+
   training: {
     title: 'Allenamenti',
     icon: '🏃',
@@ -98,14 +98,14 @@ export const MINI_MISSIONS_CONFIG = {
         id: 'explore_training',
         title: 'Esplora gli allenamenti',
         description: 'Scopri le sedute programmate',
-        trigger: 'interaction'
+        trigger: 'page_view'
       },
       {
         id: 'view_session',
         title: 'Visualizza una seduta',
         description: 'Clicca su una seduta per vedere i dettagli',
         trigger: 'click',
-        target: '.session-item, .training-item, [data-session-id]'
+        target: '.session-item, .training-item, [data-session-id], .seduta-item'
       },
       {
         id: 'mark_attendance',
@@ -116,7 +116,7 @@ export const MINI_MISSIONS_CONFIG = {
       }
     ]
   },
-  
+
   stats: {
     title: 'Statistiche',
     icon: '📈',
@@ -129,7 +129,7 @@ export const MINI_MISSIONS_CONFIG = {
       }
     ]
   },
-  
+
   reports: {
     title: 'Report',
     icon: '📄',
@@ -138,8 +138,7 @@ export const MINI_MISSIONS_CONFIG = {
         id: 'explore_reports',
         title: 'Esplora i report',
         description: 'Scopri i modelli di report disponibili',
-        trigger: 'click',
-        target: '.report-section, button:has-text("Seleziona partita"), button:has-text("Report stagionale"), button:has-text("Report giocatore")'
+        trigger: 'page_view'
       },
       {
         id: 'generate_match_report',
@@ -164,7 +163,7 @@ export const MINI_MISSIONS_CONFIG = {
       }
     ]
   }
-};
+};;
 
 // ═══════════════════════════════════════════════════════════════
 // CONFIGURAZIONE MISSIONI GLOBALI
