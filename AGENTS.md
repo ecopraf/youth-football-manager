@@ -20,6 +20,11 @@ Ogni build genera un ID univoco (timestamp in base36) visibile nell'interfaccia.
 
 **Variabile globale**: `window.YFM_BUILD_ID`
 
+## Versioni Attuali
+- **Backend**: v3.14 (endpoint /api/health)
+- **Frontend**: Build ID visibile nell'interfaccia (footer login/sidebar)
+- **Ultimo commit**: 7422ae5 - chore: backend v3.14
+
 ## Credenziali Supabase (Environment Variables)
 
 ### Variabili Backend (Vercel)
