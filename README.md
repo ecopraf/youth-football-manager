@@ -55,7 +55,7 @@ git pull origin main
 ```bash
 cd backend
 npm install
-npm start
+node api/index.js
 # Backend disponibile su http://localhost:3001
 ```
 
