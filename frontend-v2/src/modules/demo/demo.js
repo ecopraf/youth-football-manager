@@ -23,7 +23,7 @@ export const MINI_MISSIONS_CONFIG = {
         title: 'Guarda i risultati',
         description: 'Clicca su una partita per vedere i dettagli',
         trigger: 'click',
-        target: '.next-match-card, .match-highlight, [data-match-id], .match-card'
+        target: '.match-item, .next-match-card, .match-highlight, [data-match-id], .match-card'
       }
     ]
   },
@@ -36,15 +36,15 @@ export const MINI_MISSIONS_CONFIG = {
         id: 'filter_role',
         title: 'Filtra per ruolo',
         description: 'Applica un filtro per ruolo',
-        trigger: 'select',
-        target: '#roleFilter, select[name="role"], select[id*="role"], select[name*="role"]'
+        trigger: 'change',
+        target: 'select:nth-of-type(2)'  // Secondo select = filtro ruolo
       },
       {
         id: 'view_player_card',
         title: 'Apri scheda giocatore',
         description: 'Clicca su un giocatore per vedere i dettagli',
         trigger: 'click',
-        target: '.player-card, .giocatore-item, [data-player-id], .roster-player'
+        target: '.player-card, .giocatore-item, [data-player-id], .roster-player, [class*="giocatore"]'
       }
     ]
   },
@@ -64,28 +64,28 @@ export const MINI_MISSIONS_CONFIG = {
         title: 'Crea convocazioni',
         description: 'Prepara la lista dei giocatori convocati',
         trigger: 'click',
-        target: 'button[name="convoca"], button:has-text("Convoca"), .btn-convoca'
+        target: 'button[class*="convoca"], button[class*="Convoca"], .btn-convoca'
       },
       {
         id: 'set_formation',
         title: 'Scegli la formazione',
         description: 'Assegna i ruoli in campo ai giocatori',
         trigger: 'click',
-        target: 'button[name="formazione"], button:has-text("Formazione"), .btn-formazione'
+        target: 'button[class*="formazione"], button[class*="Formazione"], button[class*="Formation"], .btn-formazione'
       },
       {
         id: 'view_distinta',
         title: 'Visiona la distinta',
         description: 'Genera la distinta ufficiale FIGC',
         trigger: 'click',
-        target: 'button[name="distinta"], button:has-text("Distinta"), .btn-distinta'
+        target: 'button[class*="distinta"], button[class*="Distinta"], .btn-distinta'
       },
       {
         id: 'insert_result',
         title: 'Inserisci il risultato',
         description: 'Registra gol, assist e altri eventi',
         trigger: 'click',
-        target: 'button[name="eventi"], button[name="risultato"], button:has-text("Eventi"), button:has-text("Risultato")'
+        target: 'button[class*="eventi"], button[class*="Eventi"], button[class*="risultato"], button[class*="Risultato"]'
       }
     ]
   },
@@ -105,14 +105,14 @@ export const MINI_MISSIONS_CONFIG = {
         title: 'Visualizza una seduta',
         description: 'Clicca su una seduta per vedere i dettagli',
         trigger: 'click',
-        target: '.session-item, .training-item, [data-session-id], .seduta-item'
+        target: '.session-item, .training-item, [data-session-id], .seduta-item, .allenamento-item'
       },
       {
         id: 'mark_attendance',
         title: 'Segna le presenze',
         description: 'Registra i giocatori presenti',
         trigger: 'click',
-        target: 'button:has-text("Presenze"), button:has-text("Attendance"), .btn-presenze'
+        target: 'button[class*="presenze"], button[class*="presenze"], .btn-presenze'
       }
     ]
   },
