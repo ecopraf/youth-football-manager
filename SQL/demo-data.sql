@@ -132,13 +132,4 @@ VALUES
   ('00000000-0000-0006-0000-000000000004', '00000000-0000-0000-0000-000000000010', 'Tattica Calci d\'Angolo', '15 schemi per calci d\'angolo', 'pdf', 'https://example.com/corners.pdf', 2, NOW() - INTERVAL '1 days')
 ON CONFLICT (id) DO NOTHING;
 
--- 10. CONFIGURAZIONE ALLENAMENTI
-INSERT INTO config_allenamento (id, squadra_id, giorno_settimana, ora_inizio, ora_fine, luogo, note)
-VALUES
-  ('00000000-0000-0007-0000-000000000001', '00000000-0000-0000-0000-000000000010', 1, '17:00', '19:00', 'Campo A - Centro Sportivo Verde', 'Allenamento tecnico'),
-  ('00000000-0000-0007-0000-000000000002', '00000000-0000-0000-0000-000000000010', 3, '17:00', '19:00', 'Campo A - Centro Sportivo Verde', 'Tattica'),
-  ('00000000-0000-0007-0000-000000000003', '00000000-0000-0000-0000-000000000010', 5, '17:00', '19:00', 'Palestra', 'Preparazione atletica'),
-  ('00000000-0000-0007-0000-000000000004', '00000000-0000-0000-0000-000000000010', 6, '10:00', '12:00', 'Campo B', 'Gara amichevole')
-ON CONFLICT (id) DO NOTHING;
-
 SELECT 'Demo data completa caricata!' as status;
