@@ -4,7 +4,237 @@
  */
 
 // ═══════════════════════════════════════════════════════════════
-// CONFIGURAZIONE MISSIONI
+// CONFIGURAZIONE MINI MISSIONI (per pagina)
+// ═══════════════════════════════════════════════════════════════
+
+export const MINI_MISSIONS_CONFIG = {
+  dashboard: {
+    title: 'Dashboard',
+    icon: '📊',
+    steps: [
+      {
+        id: 'view_overview',
+        title: 'Esplora la Dashboard',
+        description: 'Scopri la panoramica della tua società',
+        trigger: 'auto_on_view',
+        target: '#dashboard-content'
+      },
+      {
+        id: 'check_next_match',
+        title: 'Controlla la prossima partita',
+        description: 'Clicca sulla prossima partita in evidenza',
+        trigger: 'click',
+        target: '.next-match-card, .match-highlight'
+      },
+      {
+        id: 'view_stats',
+        title: 'Esplora le statistiche',
+        description: 'Visualizza top marcatori, assist e presenze',
+        trigger: 'auto_on_view',
+        target: '.stats-grid, .top-players'
+      },
+      {
+        id: 'view_recent',
+        title: 'Guarda i risultati recenti',
+        description: 'Controlla le ultime partite giocate',
+        trigger: 'auto_on_view',
+        target: '.recent-matches'
+      }
+    ]
+  },
+  
+  roster: {
+    title: 'Rosa',
+    icon: '👥',
+    steps: [
+      {
+        id: 'view_players',
+        title: 'Visualizza la rosa',
+        description: 'Sfoglia tutti i giocatori della squadra',
+        trigger: 'auto_on_view',
+        target: '.roster-grid, #roster-content'
+      },
+      {
+        id: 'filter_role',
+        title: 'Filtra per ruolo',
+        description: 'Prova a filtrare i giocatori per ruolo',
+        trigger: 'select',
+        target: 'select[name="role-filter"]'
+      },
+      {
+        id: 'search_player',
+        title: 'Cerca un giocatore',
+        description: 'Usa la barra di ricerca per trovare un giocatore',
+        trigger: 'input',
+        target: 'input[placeholder*="erca"]'
+      },
+      {
+        id: 'view_player_card',
+        title: 'Apri scheda giocatore',
+        description: 'Clicca su un giocatore per vedere i dettagli',
+        trigger: 'click',
+        target: '.player-card, .giocatore-item'
+      }
+    ]
+  },
+  
+  calendar: {
+    title: 'Calendario',
+    icon: '📅',
+    steps: [
+      {
+        id: 'view_calendar',
+        title: 'Esplora il calendario',
+        description: 'Visualizza tutte le partite organizzate per data',
+        trigger: 'auto_on_view',
+        target: '.calendar-content, #calendar-content'
+      },
+      {
+        id: 'open_next_match',
+        title: 'Apri la prossima partita',
+        description: 'Clicca sulla prossima partita in programma',
+        trigger: 'click',
+        target: '.match-item.next-match, .next-match-card'
+      },
+      {
+        id: 'create_convocation',
+        title: 'Crea convocazioni',
+        description: 'Prepara l\'elenco dei giocatori convocati',
+        trigger: 'click',
+        target: 'button[name="convoca"], button:has-text("Convoca")'
+      },
+      {
+        id: 'set_formation',
+        title: 'Scegli la formazione',
+        description: 'Assegna i ruoli in campo ai giocatori',
+        trigger: 'click',
+        target: 'button[name="formazione"], button:has-text("Formazione")'
+      },
+      {
+        id: 'view_distinta',
+        title: 'Visiona la distinta',
+        description: 'Genera la distinta ufficiale FIGC',
+        trigger: 'click',
+        target: 'button[name="distinta"], button:has-text("Distinta")'
+      },
+      {
+        id: 'insert_result',
+        title: 'Inserisci il risultato',
+        description: 'Registra gol, assist e altri eventi',
+        trigger: 'click',
+        target: 'button[name="eventi"], button:has-text("Eventi")'
+      },
+      {
+        id: 'archive_match',
+        title: 'Archivia la partita',
+        description: 'Blocca la partita dopo averla completata',
+        trigger: 'click',
+        target: 'button[name="archivia"], button:has-text("Archivia")'
+      }
+    ]
+  },
+  
+  training: {
+    title: 'Allenamenti',
+    icon: '🏃',
+    steps: [
+      {
+        id: 'view_training',
+        title: 'Esplora gli allenamenti',
+        description: 'Scopri le sedute programmate',
+        trigger: 'auto_on_view',
+        target: '.training-content, #training-content'
+      },
+      {
+        id: 'create_session',
+        title: 'Crea una seduta',
+        description: 'Organizza un nuovo allenamento',
+        trigger: 'click',
+        target: 'button[name="nuovo"], button:has-text("Nuovo")'
+      },
+      {
+        id: 'add_exercise',
+        title: 'Aggiungi esercizi',
+        description: 'Inserisci esercizi per la seduta',
+        trigger: 'click',
+        target: 'button:has-text("Esercizi")'
+      },
+      {
+        id: 'mark_attendance',
+        title: 'Segna le presenze',
+        description: 'Registra i giocatori presenti',
+        trigger: 'click',
+        target: 'button:has-text("Presenze")'
+      }
+    ]
+  },
+  
+  stats: {
+    title: 'Statistiche',
+    icon: '📈',
+    steps: [
+      {
+        id: 'view_stats',
+        title: 'Esplora le statistiche',
+        description: 'Visualizza le classifiche e i dati',
+        trigger: 'auto_on_view',
+        target: '.stats-content, #stats-content'
+      },
+      {
+        id: 'view_scorers',
+        title: 'Classifica marcatori',
+        description: 'Scopri chi ha segnato di più',
+        trigger: 'auto_on_view',
+        target: '.top-scorers, .classifica-gol'
+      },
+      {
+        id: 'view_assists',
+        title: 'Classifica assist',
+        description: 'Vedi chi crea più giocate',
+        trigger: 'auto_on_view',
+        target: '.top-assists, .classifica-assist'
+      },
+      {
+        id: 'view_discipline',
+        title: 'Statistiche disciplina',
+        description: 'Controlla cartellini e provvedimenti',
+        trigger: 'auto_on_view',
+        target: '.discipline-stats'
+      }
+    ]
+  },
+  
+  reports: {
+    title: 'Report',
+    icon: '📄',
+    steps: [
+      {
+        id: 'view_reports',
+        title: 'Esplora i report',
+        description: 'Scopri i modelli di report disponibili',
+        trigger: 'auto_on_view',
+        target: '.reports-content, #reports-content'
+      },
+      {
+        id: 'generate_match_report',
+        title: 'Genera report partita',
+        description: 'Crea il report dettagliato di una partita',
+        trigger: 'click',
+        target: 'button:has-text("Report Partita")'
+      },
+      {
+        id: 'download_pdf',
+        title: 'Scarica il PDF',
+        description: 'Scarica il report in formato PDF',
+        trigger: 'click',
+        target: 'a[href*=".pdf"], button:has-text("PDF")'
+      }
+    ]
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURAZIONE MISSIONI GLOBALI
 // ═══════════════════════════════════════════════════════════════
 
 export const DEMO_MISSIONS = [
@@ -237,6 +467,13 @@ class DemoManager {
     setTimeout(() => {
       this.showTooltipForPage(page);
     }, 500);
+    
+    // Inizializza mini missioni per la pagina
+    setTimeout(() => {
+      if (window.miniMissionManager) {
+        window.miniMissionManager.init(page);
+      }
+    }, 800);
   }
 
   trackPageVisit(page) {
@@ -890,9 +1127,17 @@ class DemoManager {
     
     // Remove all demo UI
     ["demo-badge", "demo-mission-panel", "demo-welcome-overlay", "demo-celebration",
-     "demo-registration-overlay", "demo-marketing-tooltip"].forEach(id => {
+     "demo-registration-overlay", "demo-marketing-tooltip", "mini-missions-container",
+     "mini-missions-styles"].forEach(id => {
       document.getElementById(id)?.remove();
     });
+
+    // Reset mini mission manager
+    if (window.miniMissionManager) {
+      window.miniMissionManager.currentPage = null;
+      window.miniMissionManager.steps = [];
+      window.miniMissionManager.completedSteps.clear();
+    }
     
     // Reset session storage for tooltips
     Object.keys(sessionStorage).forEach(key => {
@@ -1293,11 +1538,450 @@ class DemoManager {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// MINI MISSION MANAGER (mini missioni per pagina)
+// ═══════════════════════════════════════════════════════════════
+
+class MiniMissionManager {
+  constructor() {
+    this.currentPage = null;
+    this.steps = [];
+    this.currentStepIndex = 0;
+    this.completedSteps = new Set();
+    this.listeners = [];
+  }
+
+  init(page) {
+    if (!this.isDemoMode()) return;
+    
+    this.currentPage = page;
+    this.currentStepIndex = 0;
+    this.completedSteps.clear();
+    
+    // Carica configurazione per questa pagina
+    const config = MINI_MISSIONS_CONFIG[page];
+    if (!config) {
+      this.hideMiniMissions();
+      return;
+    }
+    
+    this.steps = config.steps.map((s, i) => ({
+      ...s,
+      index: i,
+      completed: false,
+      active: i === 0
+    }));
+    
+    this.renderMiniMissions();
+    this.setupListeners();
+    this.updateUI();
+  }
+
+  isDemoMode() {
+    return window.YFM && typeof window.YFM.isDemo === 'function' && window.YFM.isDemo();
+  }
+
+  // Render UI mini missioni
+  renderMiniMissions() {
+    let container = document.getElementById('mini-missions-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'mini-missions-container';
+      document.body.appendChild(container);
+    }
+    
+    const config = MINI_MISSIONS_CONFIG[this.currentPage];
+    const completedCount = this.completedSteps.size;
+    const totalSteps = this.steps.length;
+    const progress = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
+    
+    container.innerHTML = `
+      <div id="mini-missions-panel" class="mini-missions-panel ${this.isCollapsed() ? 'collapsed' : ''}">
+        <div class="mini-missions-header" onclick="window.miniMissionManager.togglePanel()">
+          <div class="mini-missions-title">
+            <span class="mini-missions-icon">${config.icon}</span>
+            <span class="mini-missions-label">${config.title}</span>
+          </div>
+          <div class="mini-missions-progress">
+            <span>${completedCount}/${totalSteps}</span>
+            <span class="mini-missions-toggle">${this.isCollapsed() ? '▼' : '▲'}</span>
+          </div>
+        </div>
+        <div class="mini-missions-progress-bar">
+          <div class="mini-missions-progress-fill" style="width: ${progress}%"></div>
+        </div>
+        <div class="mini-missions-steps">
+          ${this.steps.map((step, i) => this.renderStep(step, i)).join('')}
+        </div>
+      </div>
+    `;
+    
+    this.injectMiniMissionsStyles();
+  }
+
+  renderStep(step, index) {
+    const isActive = index === this.currentStepIndex && !step.completed;
+    const isCompleted = step.completed;
+    const isPending = !isActive && !isCompleted;
+    
+    let statusIcon = '⭕';
+    if (isCompleted) statusIcon = '✅';
+    if (isActive) statusIcon = '🎯';
+    
+    let className = 'mini-mission-step';
+    if (isActive) className += ' active';
+    if (isCompleted) className += ' completed';
+    if (isPending) className += ' pending';
+    
+    return `
+      <div class="${className}" data-step="${step.id}" onclick="window.miniMissionManager.focusStep('${step.id}')">
+        <div class="step-status">${statusIcon}</div>
+        <div class="step-content">
+          <div class="step-title">${step.title}</div>
+          <div class="step-description">${step.description}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  setupListeners() {
+    // Rimuovi listener precedenti
+    this.listeners.forEach(l => l.el.removeEventListener(l.type, l.handler));
+    this.listeners = [];
+    
+    this.steps.forEach(step => {
+      if (step.trigger === 'auto_on_view') {
+        // Auto-complete per elementi visibili
+        this.checkAutoComplete(step);
+      } else if (step.trigger === 'click') {
+        this.setupClickListener(step);
+      } else if (step.trigger === 'select') {
+        this.setupSelectListener(step);
+      } else if (step.trigger === 'input') {
+        this.setupInputListener(step);
+      }
+    });
+  }
+
+  checkAutoComplete(step) {
+    // Per trigger auto_on_view, verifica dopo un delay
+    setTimeout(() => {
+      if (this.completedSteps.has(step.id)) return;
+      const el = document.querySelector(step.target);
+      if (el) {
+        this.completeStep(step.id);
+      }
+    }, 1000);
+  }
+
+  setupClickListener(step) {
+    const handler = () => {
+      if (!this.completedSteps.has(step.id)) {
+        this.completeStep(step.id);
+      }
+    };
+    
+    // Prova a trovare l'elemento
+    const tryAttach = () => {
+      const elements = document.querySelectorAll(step.target);
+      elements.forEach(el => {
+        if (!el._miniMissionBound) {
+          el.addEventListener('click', handler);
+          el._miniMissionBound = true;
+          this.listeners.push({ el, type: 'click', handler });
+        }
+      });
+    };
+    
+    tryAttach();
+    // Riprova dopo un po' per elementi caricati dinamicamente
+    setTimeout(tryAttach, 1000);
+  }
+
+  setupSelectListener(step) {
+    const handler = () => {
+      if (!this.completedSteps.has(step.id)) {
+        this.completeStep(step.id);
+      }
+    };
+    
+    const tryAttach = () => {
+      const el = document.querySelector(step.target);
+      if (el && !el._miniMissionBound) {
+        el.addEventListener('change', handler);
+        el._miniMissionBound = true;
+        this.listeners.push({ el, type: 'change', handler });
+      }
+    };
+    
+    tryAttach();
+    setTimeout(tryAttach, 1000);
+  }
+
+  setupInputListener(step) {
+    const handler = () => {
+      if (!this.completedSteps.has(step.id)) {
+        this.completeStep(step.id);
+      }
+    };
+    
+    const tryAttach = () => {
+      const el = document.querySelector(step.target);
+      if (el && !el._miniMissionBound) {
+        el.addEventListener('input', handler);
+        el._miniMissionBound = true;
+        this.listeners.push({ el, type: 'input', handler });
+      }
+    };
+    
+    tryAttach();
+    setTimeout(tryAttach, 1000);
+  }
+
+  completeStep(stepId) {
+    if (this.completedSteps.has(stepId)) return;
+    
+    const step = this.steps.find(s => s.id === stepId);
+    if (!step) return;
+    
+    this.completedSteps.add(stepId);
+    step.completed = true;
+    
+    // Avanza al prossimo step
+    const nextIndex = this.currentStepIndex + 1;
+    if (nextIndex < this.steps.length) {
+      this.currentStepIndex = nextIndex;
+      this.steps[nextIndex].active = true;
+    }
+    
+    this.updateUI();
+    this.showStepComplete(step);
+  }
+
+  focusStep(stepId) {
+    const step = this.steps.find(s => s.id === stepId);
+    if (!step) return;
+    
+    // Trova e evidenzia l'elemento target
+    if (step.target) {
+      const el = document.querySelector(step.target);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('mini-mission-highlight');
+        setTimeout(() => el.classList.remove('mini-mission-highlight'), 2000);
+      }
+    }
+  }
+
+  showStepComplete(step) {
+    // Toast di completamento
+    const toast = document.createElement('div');
+    toast.className = 'mini-mission-toast';
+    toast.innerHTML = `
+      <span class="toast-icon">✅</span>
+      <span class="toast-text">${step.title} completata!</span>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 2000);
+    }, 100);
+  }
+
+  updateUI() {
+    const container = document.getElementById('mini-missions-container');
+    if (!container) return;
+    
+    this.renderMiniMissions();
+  }
+
+  togglePanel() {
+    const isCollapsed = this.isCollapsed();
+    localStorage.setItem('mini_missions_collapsed', !isCollapsed);
+    this.renderMiniMissions();
+  }
+
+  isCollapsed() {
+    return localStorage.getItem('mini_missions_collapsed') === 'true';
+  }
+
+  hideMiniMissions() {
+    const container = document.getElementById('mini-missions-container');
+    if (container) container.remove();
+  }
+
+  resetPage() {
+    // Reset mini missioni per la pagina corrente
+    this.currentStepIndex = 0;
+    this.completedSteps.clear();
+    this.steps.forEach((s, i) => {
+      s.completed = false;
+      s.active = i === 0;
+    });
+    this.renderMiniMissions();
+    this.setupListeners();
+  }
+
+  injectMiniMissionsStyles() {
+    if (document.getElementById('mini-missions-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'mini-missions-styles';
+    style.textContent = `
+      .mini-missions-panel {
+        position: fixed;
+        top: 120px;
+        right: 20px;
+        width: 300px;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        z-index: 9998;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+      .mini-missions-panel.collapsed {
+        width: 200px;
+      }
+      .mini-missions-panel.collapsed .mini-missions-steps {
+        display: none;
+      }
+      .mini-missions-header {
+        padding: 16px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .mini-missions-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .mini-missions-icon {
+        font-size: 20px;
+      }
+      .mini-missions-label {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .mini-missions-progress {
+        font-size: 12px;
+        opacity: 0.9;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .mini-missions-toggle {
+        font-size: 10px;
+      }
+      .mini-missions-progress-bar {
+        height: 4px;
+        background: rgba(255,255,255,0.3);
+      }
+      .mini-missions-progress-fill {
+        height: 100%;
+        background: #27AE60;
+        transition: width 0.3s ease;
+      }
+      .mini-missions-steps {
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 8px;
+      }
+      .mini-mission-step {
+        display: flex;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-bottom: 4px;
+      }
+      .mini-mission-step:hover {
+        background: #f0f4ff;
+      }
+      .mini-mission-step.active {
+        background: linear-gradient(135deg, rgba(102,126,234,0.15), rgba(118,75,162,0.15));
+        border-left: 3px solid #667eea;
+      }
+      .mini-mission-step.completed {
+        opacity: 0.7;
+      }
+      .mini-mission-step.pending {
+        opacity: 0.5;
+      }
+      .step-status {
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+      .step-content {
+        flex: 1;
+      }
+      .step-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 2px;
+      }
+      .step-description {
+        font-size: 11px;
+        color: #666;
+      }
+      .mini-mission-step.active .step-title {
+        color: #667eea;
+      }
+      .mini-mission-toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #27AE60, #2ECC71);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 25px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 15px rgba(39,174,96,0.4);
+        transform: translateY(100px);
+        opacity: 0;
+        transition: all 0.3s ease;
+        z-index: 10000;
+      }
+      .mini-mission-toast.show {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      .mini-mission-highlight {
+        animation: miniMissionPulse 0.5s ease-in-out 3;
+        box-shadow: 0 0 0 4px rgba(102,126,234,0.4);
+      }
+      @keyframes miniMissionPulse {
+        0%, 100% { box-shadow: 0 0 0 4px rgba(102,126,234,0.4); }
+        50% { box-shadow: 0 0 0 8px rgba(102,126,234,0.2); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // ESPORTAZIONE
 // ═══════════════════════════════════════════════════════════════
 
 const demoManager = new DemoManager();
+const miniMissionManager = new MiniMissionManager();
+
 export default demoManager;
+export { miniMissionManager };
 
 // Espone globalmente per accesso da HTML inline
 window.demoManager = demoManager;
+window.miniMissionManager = miniMissionManager;
