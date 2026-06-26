@@ -572,6 +572,27 @@ La demo funziona tramite pulsante "Avvia Demo" nella pagina di login:
 - **Flusso**: Landing → "Prova la Demo" → Login → "Avvia Demo"
 - Non richiede account, usa dati simulati in memoria
 
+#### Mini Missioni (Step Guidati per Pagina)
+Ogni pagina ha step sequenziali che guidano l'utente attraverso le funzionalità:
+
+| Pagina | Step |
+|--------|------|
+| **Dashboard** | Esplora → Prossima partita → Statistiche → Risultati recenti |
+| **Calendario** | Esplora → Apri partita → Convoca → Formazione → Distinta → Eventi → Archivia |
+| **Rosa** | Esplora → Filtra ruolo → Cerca giocatore → Apri scheda |
+| **Allenamenti** | Esplora → Crea seduta → Aggiungi esercizi → Presenze |
+| **Statistiche** | Esplora → Classifica marcatori → Classifica assist → Disciplina |
+| **Report** | Esplora → Genera report → Scarica PDF |
+
+**Caratteristiche:**
+- Trigger automatici: `auto_on_view`, `click`, `select`, `input`
+- Panel laterale con progress bar (collapsible)
+- Toast "completata!" su ogni step
+- Reset completo su "Ricarica Demo"
+- Badge "Demo X%" nell'header
+
+**File**: `frontend-v2/src/modules/demo/demo.js` (classe `MiniMissionManager`)
+
 ### Gestione Landing Page
 1. **Modifiche**: Il file è HTML statico, modificare direttamente e pushare
 2. **Deploy**: Vercel aggiorna automaticamente su push
