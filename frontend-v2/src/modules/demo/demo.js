@@ -426,6 +426,9 @@ class DemoManager {
         window.miniMissionManager.init(page);
       }
     }, 800);
+    
+    // DISABILITATO: la missione si completa solo con tutti gli step mini mission completati
+    // this.trackPageVisit(page);
   }
 
   trackPageVisit(page) {
@@ -1532,7 +1535,7 @@ class MiniMissionManager {
   }
 
   isDemoMode() {
-    return window.YFM && typeof window.YFM.isDemo === 'function' && window.YFM.isDemo();
+    return window.demoManager && window.demoManager.isDemo;
   }
 
   // Render UI mini missioni
