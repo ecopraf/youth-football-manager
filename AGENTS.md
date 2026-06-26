@@ -150,9 +150,11 @@ landing/
 3. **Verificare struttura DB**: Prima di ogni modifica, controllare schema esistente con API o via SQL
 
 ### Modifiche al Progetto
-1. **Prima di ogni feature**: Creare PLAN dettagliato e validare con utente
-2. **Endpoint**: Verificare se esistono già prima di crearne di nuovi
-3. **Commit**: Sempre con messaggio descrittivo e push
+1. **Ambiente di lavoro predefinito**: Locale - solo quando la versione è stabile e testata si fa deploy su Vercel (dopo conferma esplicita dell'utente)
+2. **Prima di ogni feature**: Creare PLAN dettagliato e validare con utente
+3. **Endpoint**: Verificare se esistono già prima di crearne di nuovi
+4. **Commit**: Sempre con messaggio descrittivo e push
+5. **Deploy**: Solo su richiesta esplicita dell'utente o dopo conferma che la versione è stabile
 
 ### Comandi ed Esecuzioni
 1. **Se eseguibili in automatico**: Eseguirli direttamente e mostrare output
