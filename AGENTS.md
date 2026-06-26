@@ -9,21 +9,23 @@
 - **Email**: youthfootballmanager@gmail.com
 
 ## Sistema Build Info
-Ogni build genera un ID univoco (timestamp in base36) visibile nell'interfaccia.
+Build ID basato su **versione SW + git commit hash**, univoco e confrontabile tra locale e produzione.
+
+**Formato**: `v3.14.<git-hash>` (es. `v3.14.ba1bf1f`)
 
 **File**: `frontend-v2/src/build-info.js` (rigenerato ad ogni build)
 **Plugin Vite**: `frontend-v2/vite.config.js` (genera build-info in buildStart)
 
 **Display**:
-- Login (footer): `build: <id>`
-- Sidebar (footer): `build: <id>`
+- Login (footer): `build: v3.14.ba1bf1f`
+- Sidebar (footer): `build: v3.14.ba1bf1f`
 
 **Variabile globale**: `window.YFM_BUILD_ID`
 
 ## Versioni Attuali
 - **Backend**: v3.14 (endpoint /api/health)
-- **Frontend**: Build ID visibile nell'interfaccia (footer login/sidebar)
-- **Ultimo commit**: 7422ae5 - chore: backend v3.14
+- **Frontend**: Build ID `v3.14.ba1bf1f` visibile nell'interfaccia
+- **Ultimo commit**: c496a89
 
 ## Credenziali Supabase (Environment Variables)
 
