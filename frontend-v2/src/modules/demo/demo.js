@@ -915,14 +915,6 @@ class DemoManager {
     // Ricarica la pagina principale (main.js ri-inizializzerà tutto)
     window.location.href = "/";
   }
-    // Recrea badge e mostra popup di benvenuto
-    setTimeout(() => {
-      console.log('[DEMO] After timeout, missions:', this.missions.map(m => m.id + ':' + m.completed));
-      this.updateBadge();
-      this.showMissionPanel();
-      this.showWelcomePopup();
-    }, 500);
-  }
   
   // Chiude la demo e reindirizza alla landing page
   exitDemo() {
