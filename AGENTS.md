@@ -522,7 +522,7 @@ onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow=
 - ✅ Pricing Aggiornato - Coach (€99), Club (€249), AI Plus (Coming Soon)
 - ✅ Commissioni Partnership - Dettaglio per profilo Coach/Club
 - ✅ Proiezioni Ricavi - Scenari 15-30-45 con page-break PDF
-- ✅ Fix Scheda Giocatore - Aggiunto onclick alle card in roster.js + supporto demo in playerDetail.js
+- ✅ Sistema Mini Missioni - Step sequenziali per pagina (Dashboard, Calendario, Rosa, etc.)
 
 ## Bug Noti ⚠️
 - Nessuno (demo funziona completamente)
