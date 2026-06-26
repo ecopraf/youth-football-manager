@@ -543,3 +543,9 @@ body.sidebar-open::before {
   background: #ccc;
   cursor: not-allowed;
 }
+
+/* Build Info */
+.build-info {
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}

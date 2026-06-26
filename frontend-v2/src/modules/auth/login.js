@@ -1,5 +1,6 @@
 import { apiFetch } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
+import { BUILD_INFO } from '../../build-info';
 
 export default async function loadLogin() {
   // Leggi parametri dalla URL
@@ -50,6 +51,10 @@ export default async function loadLogin() {
         <div class="auth-footer">
           <p>Non hai un account? <a href="#" id="showRegister">Registrati</a></p>
         </div>
+        
+        <div class="build-info" style="text-align:center;padding:8px;font-size:10px;color:#999;">
+          build: ${BUILD_INFO.id}
+        </div>
       </div>
       
       <!-- Form Registrazione (nascosto) -->
@@ -97,6 +102,10 @@ export default async function loadLogin() {
         
         <div class="auth-footer">
           <p>Hai già un account? <a href="#" id="showLogin">Accedi</a></p>
+        </div>
+        
+        <div class="build-info" style="text-align:center;padding:8px;font-size:10px;color:#999;">
+          build: ${BUILD_INFO.id}
         </div>
       </div>
     </div>

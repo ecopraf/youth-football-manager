@@ -5,6 +5,10 @@ import { loadWorkspaceInfo } from './modules/club/workspace'
 import { loadSquadre } from './modules/team/squadre'
 import { loadPlayerDetail } from './modules/team/playerDetail.js'
 import demoManager from './modules/demo/demo'
+import { BUILD_INFO } from './build-info'
+
+// Imposta build ID globale per la UI
+window.YFM_BUILD_ID = BUILD_INFO.id
 
 // ═══════════════════════════════════════════════════════════════
 // DATI DEMO IN MEMORIA (no API, no backend)
