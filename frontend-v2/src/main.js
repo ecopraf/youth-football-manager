@@ -19,12 +19,7 @@ const DEMO_WORKSPACE = {
 
 const DEMO_SQUADRE = [
   { id: '00000000-0000-0000-0000-000000000010', nome: 'Green Academy', categoria: 'Primavera', allenatore: 'Marco Bianchi', dirigente: 'Luca Verdi' },
-  { id: '00000000-0000-0000-0000-000000000011', nome: 'Green Academy', categoria: 'Allievi B', allenatore: 'Roberto Rossi', dirigente: 'Paolo Gialli' },
-  { id: 'a2222222-2222-2222-2222-222222222222', nome: 'Under 15', categoria: 'Regionale', allenatore: 'Marco Bianchi', dirigente: 'Luca Verdi' },
-  { id: 'a3333333-3333-3333-3333-333333333333', nome: 'Under 16', categoria: 'Regionale', allenatore: 'Roberto Rossi', dirigente: 'Paolo Gialli' },
-  { id: 'a4444444-4444-4444-4444-444444444444', nome: 'Under 17', categoria: 'Elite', allenatore: 'Marco Bianchi', dirigente: 'Luca Verdi' },
-  { id: 'a5555555-5555-5555-5555-555555555555', nome: 'Juniores', categoria: '', allenatore: 'Roberto Rossi', dirigente: 'Paolo Gialli' },
-  { id: '33333333-3333-3333-3333-333333333333', nome: 'Under 14', categoria: 'Regionale', allenatore: 'Marco Bianchi', dirigente: 'Luca Verdi' }
+  { id: '00000000-0000-0000-0000-000000000011', nome: 'Green Academy', categoria: 'Allievi B', allenatore: 'Roberto Rossi', dirigente: 'Paolo Gialli' }
 ];
 
 const DEMO_CALCIATORI = [
