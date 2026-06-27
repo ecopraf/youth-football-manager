@@ -572,9 +572,8 @@ CROSS JOIN (SELECT id FROM team_player WHERE team_id = 'b0000002-0000-0000-0000-
 INSERT INTO match_formation (match_id, team_player_id, posizione, numero_maglia, is_captain, is_starter)
 SELECT 
     (SELECT id FROM match WHERE team_id = 'b0000003-0000-0000-0000-000000000003' ORDER BY data_ora LIMIT 1),
-    id, posizione, numero_maglia, is_captain, is_starter
-FROM (
-    VALUES
+    tp.id, f.posizione, tp.numero_maglia, f.is_captain, f.is_starter
+FROM (VALUES
         ('Portiere', 1, true, true),
         ('Difensore', 2, false, true),
         ('Difensore', 3, false, true),
