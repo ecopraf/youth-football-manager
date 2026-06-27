@@ -716,6 +716,23 @@ app.get('/api/squadre/:squadraId/partite', async (req, res) => { const { data } 
 // GET /api/squadre/:squadraId/partite-future - Prossime partite
 app.get('/api/squadre/:squadraId/partite-future', async (req, res) => { const now = new Date().toISOString(); const { data } = await supabase.from('partita').select('*').eq('squadra_id', req.params.squadraId).gte('data_ora', now).order('data_ora', { ascending: true }).limit(5); res.json(data || []); });
 app.post('/api/squadre/:squadraId/partite', async (req, res) => { const p = req.body; const { data } = await supabase.from('partita').insert({ squadra_id: req.params.squadraId, data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, competizione: p.competizione, giornata: p.giornata }).select().single(); res.status(201).json(data); });
+// POST /api/squadre/:squadraId/partite-batch - Crea più partite
+app.post('/api/squadre/:squadraId/partite-batch', async (req, res) => { 
+  const { partite } = req.body;
+  const { data } = await supabase.from('partita').insert(partite.map(p => ({
+    squadra_id: req.params.squadraId,
+    avversario: p.avversario,
+    luogo: p.luogo,
+    competizione: p.competizione,
+    giornata: p.giornata,
+    data_ora: p.dataOra,
+    gol_casa: p.golCasa,
+    gol_ospite: p.golOspite,
+    stato: p.stato || 'Da disputare'
+  }))).select();
+  res.status(201).json({ created: data?.length || 0, partite: data });
+});
+
 app.put('/api/partite/:id', async (req, res) => { const p = req.body; await supabase.from('partita').update({ data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, competizione: p.competizione, giornata: p.giornata }).eq('id', req.params.id); res.json({ success: true }); });
 app.delete('/api/partite/:id', async (req, res) => { await supabase.from('evento_partita').delete().eq('partita_id', req.params.id); await supabase.from('formazione_partita').delete().eq('partita_id', req.params.id); await supabase.from('convocazione').delete().eq('partita_id', req.params.id); await supabase.from('partita').delete().eq('id', req.params.id); res.json({ success: true }); });
 
