@@ -586,6 +586,28 @@ app.post('/api/squadre/:id/sposta-partite', async (req, res) => {
   }
 });
 
+// POST /api/squadre/:id/sposta-allezioni - Sposta tutti i dati allenamento verso un'altra squadra
+app.post('/api/squadre/:id/sposta-allenamenti', async (req, res) => {
+  try {
+    const { toSquadraId } = req.body;
+    if (!toSquadraId) return res.status(400).json({ error: 'toSquadraId obbligatorio' });
+    
+    // Sposta configurazione allenamenti
+    await supabase.from('configurazione_allenamento')
+      .update({ squadra_id: toSquadraId })
+      .eq('squadra_id', req.params.id);
+    
+    // Sposta presenze
+    await supabase.from('presenza_allenamento')
+      .update({ squadra_id: toSquadraId })
+      .eq('squadra_id', req.params.id);
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE /api/squadre/:id
 app.delete('/api/squadre/:id', async (req, res) => { const sid = req.params.id; const { data: partite } = await supabase.from('partita').select('id').eq('squadra_id', sid); for (const p of (partite||[])) { await supabase.from('formazione_partita').delete().eq('partita_id', p.id); await supabase.from('convocazione').delete().eq('partita_id', p.id); await supabase.from('evento_partita').delete().eq('partita_id', p.id); } await supabase.from('partita').delete().eq('squadra_id', sid); await supabase.from('presenza_allenamento').delete().eq('squadra_id', sid); await supabase.from('configurazione_allenamento').delete().eq('squadra_id', sid); await supabase.from('rosa').delete().eq('squadra_id', sid); await supabase.from('squadra').delete().eq('id', sid); res.json({ success: true }); });
 app.get('/api/squadre/:squadraId/calciatori', async (req, res) => { const q = supabase.from('rosa').select('calciatore:calciatore_id(*), numero_maglia, ruolo, stato').eq('squadra_id', req.params.squadraId); const { data } = await q; res.json((data||[]).map(r => ({ id: r.calciatore.id, nome: r.calciatore.nome, cognome: r.calciatore.cognome, dataNascita: r.calciatore.data_nascita, telefono: r.calciatore.telefono, dataVisitaMedica: r.calciatore.data_visita_medica, matricolaFigc: r.calciatore.matricola_figc, tipoDocumento: r.calciatore.tipo_documento, numeroDocumento: r.calciatore.numero_documento, rilasciatoDa: r.calciatore.rilasciato_da, numeroMaglia: r.numero_maglia, ruolo: r.ruolo, stato: r.stato }))); });
