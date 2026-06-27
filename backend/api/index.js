@@ -518,6 +518,83 @@ app.get('/api/workspaces/:id/stagioni', async (req, res) => {
   const { data } = await supabase.from('stagione').select('*').eq('workspace_id', req.params.id).order('data_inizio', { ascending: false });
   res.json(data || []);
 });
+
+// POST /api/workspaces - Crea workspace
+app.post('/api/workspaces', async (req, res) => {
+  try {
+    const { nome, descrizione } = req.body;
+    const { data, error } = await supabase
+      .from('workspace')
+      .insert({ nome, descrizione })
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/workspaces/:id - Modifica workspace
+app.put('/api/workspaces/:id', async (req, res) => {
+  try {
+    const { nome, descrizione } = req.body;
+    const { error } = await supabase
+      .from('workspace')
+      .update({ nome, descrizione })
+      .eq('id', req.params.id);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/workspaces/:id - Elimina workspace
+app.delete('/api/workspaces/:id', async (req, res) => {
+  try {
+    const sid = req.params.id;
+    // Elimina in ordine: squadre -> stagioni -> workspace
+    const { data: stagioni } = await supabase.from('stagione').select('id').eq('workspace_id', sid);
+    for (const st of (stagioni || [])) {
+      const { data: squadre } = await supabase.from('squadra').select('id').eq('stagione_id', st.id);
+      for (const sq of (squadre || [])) {
+        await supabase.from('squadra').delete().eq('id', sq.id);
+      }
+      await supabase.from('stagione').delete().eq('id', st.id);
+    }
+    await supabase.from('workspace').delete().eq('id', sid);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/stagioni - Crea stagione
+app.post('/api/stagioni', async (req, res) => {
+  try {
+    const { workspace_id, nome, data_inizio, data_fine } = req.body;
+    const { data, error } = await supabase
+      .from('stagione')
+      .insert({ workspace_id, nome, data_inizio, data_fine })
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: error.message });
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/stagioni/:id - Elimina stagione
+app.delete('/api/stagioni/:id', async (req, res) => {
+  try {
+    await supabase.from('stagione').delete().eq('id', req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 app.get('/api/demo/init', async (req, res) => {
   try {
     // Trova il workspace demo (Green Academy)
