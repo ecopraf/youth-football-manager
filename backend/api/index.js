@@ -557,17 +557,145 @@ app.get('/api/calciatori/:id/stats-current', async (req, res) => {
   }
 });
 
-// ── DEMO INIT ──
-app.get('/api/demo/init', async (req, res) => {
+// ── MIGRATION ENDPOINT - Crea nuovo schema ──
+app.post('/api/admin/migrate-new-schema', authMiddleware, async (req, res) => {
   try {
-    const wsId = '00000000-0000-0000-0000-000000000001';
-    const { data: stagioni } = await supabase.from('stagione').select('id').eq('workspace_id', wsId);
-    if (!stagioni || stagioni.length === 0) {
-      const { data: newSeason } = await supabase.from('stagione').insert({ workspace_id: wsId, nome: '2024/25', anno_inizio: 2024, anno_fine: 2025, attiva: true }).select().single();
-      await supabase.from('squadra').insert([{ stagione_id: newSeason.id, nome: 'Green Academy', categoria: 'Primavera' }, { stagione_id: newSeason.id, nome: 'Green Academy', categoria: 'Allievi B' }]);
+    // Verifica che sia admin
+    if (!req.user?.is_superadmin && req.user?.ruolo !== 'superadmin') {
+      return res.status(403).json({ error: 'Solo superadmin può eseguire migrazioni' });
     }
-    res.json({ success: true, demo: true });
+
+    const results = { tables_created: [], seed_data: [], errors: [] };
+
+    // 1. Crea tabella category
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS category (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), nome VARCHAR(100) NOT NULL, anno_da INTEGER NOT NULL, anno_a INTEGER NOT NULL, genere VARCHAR(10) DEFAULT 'M', descrizione TEXT, created_at TIMESTAMP DEFAULT NOW())` });
+      results.tables_created.push('category');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('category: ' + e.message); }
+
+    // 2. Crea tabella competition
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS competition (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), nome VARCHAR(200) NOT NULL, tipo VARCHAR(50) DEFAULT 'Campionato', federazione VARCHAR(100), regione VARCHAR(100), logo_url TEXT, descrizione TEXT, created_at TIMESTAMP DEFAULT NOW())` });
+      results.tables_created.push('competition');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('competition: ' + e.message); }
+
+    // 3. Crea tabella facility
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS facility (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), nome VARCHAR(200) NOT NULL, indirizzo TEXT, citta VARCHAR(100), capienza INTEGER, superficie VARCHAR(50), tipo VARCHAR(50), illuminazione BOOLEAN DEFAULT false, servizi TEXT[], coordinate_gps JSONB, note TEXT, created_at TIMESTAMP DEFAULT NOW())` });
+      results.tables_created.push('facility');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('facility: ' + e.message); }
+
+    // 4. Crea tabella staff
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS staff (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), nome VARCHAR(100) NOT NULL, cognome VARCHAR(100) NOT NULL, data_nascita DATE, sesso VARCHAR(1) DEFAULT 'M', foto_url TEXT, telefono VARCHAR(50), email VARCHAR(255), ruolo VARCHAR(50) NOT NULL, qualifiche JSONB DEFAULT '{}', documento JSONB DEFAULT '{}', note TEXT, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())` });
+      results.tables_created.push('staff');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('staff: ' + e.message); }
+
+    // 5. Crea tabella team
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS team (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), season_id UUID NOT NULL, category_id UUID, nome VARCHAR(100) NOT NULL, colori_casa VARCHAR(50), colori_trasferta VARCHAR(50), venue_id UUID, allenatore_id UUID, dirigente_id UUID, preparatore_id UUID, portieri_id UUID, matricola_figc VARCHAR(100), iscritta_competizione UUID, note TEXT, created_at TIMESTAMP DEFAULT NOW())` });
+      results.tables_created.push('team');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('team: ' + e.message); }
+
+    // 6. Crea tabella team_player
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS team_player (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), team_id UUID NOT NULL, player_id UUID NOT NULL, numero_maglia INTEGER, ruolo_preferito VARCHAR(50), stato VARCHAR(50) DEFAULT 'Attivo', data_assegnazione DATE DEFAULT CURRENT_DATE, data_cessione DATE, note TEXT, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(team_id, player_id))` });
+      results.tables_created.push('team_player');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('team_player: ' + e.message); }
+
+    // 7. Crea tabella team_staff
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS team_staff (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), team_id UUID NOT NULL, staff_id UUID NOT NULL, ruolo_squadra VARCHAR(100) NOT NULL, data_assegnazione DATE DEFAULT CURRENT_DATE, data_cessione DATE, note TEXT, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(team_id, staff_id, ruolo_squadra))` });
+      results.tables_created.push('team_staff');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('team_staff: ' + e.message); }
+
+    // 8. Crea tabella match
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS match (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), team_id UUID NOT NULL, competition_id UUID, venue_id UUID, data_ora TIMESTAMP NOT NULL, avversario VARCHAR(200) NOT NULL, luogo VARCHAR(20) DEFAULT 'Casa', giornata INTEGER, gol_casa INTEGER DEFAULT 0, gol_ospite INTEGER DEFAULT 0, stato VARCHAR(30) DEFAULT 'Da disputare', archiviat BOOLEAN DEFAULT false, note TEXT, note_avversario TEXT, created_at TIMESTAMP DEFAULT NOW())` });
+      results.tables_created.push('match');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('match: ' + e.message); }
+
+    // 9. Crea tabella match_event
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS match_event (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), match_id UUID NOT NULL, tipo_evento VARCHAR(50) NOT NULL, minuto INTEGER, player_id UUID, player_id_secondario UUID, note TEXT, created_at TIMESTAMP DEFAULT NOW())` });
+      results.tables_created.push('match_event');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('match_event: ' + e.message); }
+
+    // 10. Crea tabella match_formation
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS match_formation (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), match_id UUID NOT NULL, team_player_id UUID NOT NULL, posizione VARCHAR(50), numero_maglia INTEGER, is_captain BOOLEAN DEFAULT false, is_vice_captain BOOLEAN DEFAULT false, is_starter BOOLEAN DEFAULT true, ordine INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())` });
+      results.tables_created.push('match_formation');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('match_formation: ' + e.message); }
+
+    // 11. Crea tabella convocation
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS convocation (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), match_id UUID NOT NULL, team_player_id UUID NOT NULL, convocato_da UUID, convocato_il DATE DEFAULT CURRENT_DATE, confermato BOOLEAN, presente BOOLEAN, note TEXT, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(match_id, team_player_id))` });
+      results.tables_created.push('convocation');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('convocation: ' + e.message); }
+
+    // 12. Crea tabella training
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS training (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), team_id UUID NOT NULL, venue_id UUID, data_ora TIMESTAMP NOT NULL, durata_minuti INTEGER DEFAULT 90, tipo VARCHAR(50), descrizione TEXT, note TEXT, created_at TIMESTAMP DEFAULT NOW())` });
+      results.tables_created.push('training');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('training: ' + e.message); }
+
+    // 13. Crea tabella training_attendance
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS training_attendance (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), training_id UUID NOT NULL, team_player_id UUID NOT NULL, presente BOOLEAN DEFAULT false, motivi_assenza TEXT, note TEXT, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(training_id, team_player_id))` });
+      results.tables_created.push('training_attendance');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('training_attendance: ' + e.message); }
+
+    // 14. Crea tabella match_statistics
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS match_statistics (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), match_id UUID NOT NULL, team_player_id UUID NOT NULL, minuti_giocati INTEGER DEFAULT 0, gol INTEGER DEFAULT 0, assist INTEGER DEFAULT 0, tiri INTEGER DEFAULT 0, tiri_in_porta INTEGER DEFAULT 0, passaggi INTEGER DEFAULT 0, passaggi_riusciti INTEGER DEFAULT 0, palloni_recuperati INTEGER DEFAULT 0, falli_subiti INTEGER DEFAULT 0, falli_commessi INTEGER DEFAULT 0, ammonizioni INTEGER DEFAULT 0, espulsioni INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(match_id, team_player_id))` });
+      results.tables_created.push('match_statistics');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('match_statistics: ' + e.message); }
+
+    // 15. Crea tabella document
+    try {
+      await supabase.rpc('exec_sql', { sql: `CREATE TABLE IF NOT EXISTS document (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), tipo VARCHAR(50) NOT NULL, entita_tipo VARCHAR(50) NOT NULL, entita_id UUID NOT NULL, file_url TEXT NOT NULL, nome_file VARCHAR(255), mime_type VARCHAR(100), dimensione INTEGER, data_upload TIMESTAMP DEFAULT NOW(), scadenza DATE, note TEXT)` });
+      results.tables_created.push('document');
+    } catch (e) { if (!e.message.includes('already exists')) results.errors.push('document: ' + e.message); }
+
+    // 16. Aggiungi colonne a stagione
+    try {
+      await supabase.rpc('exec_sql', { sql: `ALTER TABLE stagione ADD COLUMN IF NOT EXISTS attiva BOOLEAN DEFAULT false, ADD COLUMN IF NOT EXISTS data_inizio DATE, ADD COLUMN IF NOT EXISTS data_fine DATE, ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT false` });
+      results.tables_created.push('stagione (columns)');
+    } catch (e) { results.errors.push('stagione columns: ' + e.message); }
+
+    // 17. Aggiungi colonne a calciatore
+    try {
+      await supabase.rpc('exec_sql', { sql: `ALTER TABLE calciatore ADD COLUMN IF NOT EXISTS sesso VARCHAR(1) DEFAULT 'M', ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()` });
+      results.tables_created.push('calciatore (columns)');
+    } catch (e) { results.errors.push('calciatore columns: ' + e.message); }
+
+    // Seed data - categorie
+    try {
+      await supabase.rpc('exec_sql', { sql: `INSERT INTO category (id, nome, anno_da, anno_a, descrizione) VALUES 
+        ('c0000001-0000-0000-0000-000000000001', 'Under 14', 2011, 2012, 'Ragazzi nati 2011-2012'),
+        ('c0000002-0000-0000-0000-000000000002', 'Under 15', 2010, 2011, 'Ragazzi nati 2010-2011'),
+        ('c0000003-0000-0000-0000-000000000003', 'Under 16', 2009, 2010, 'Ragazzi nati 2009-2010'),
+        ('c0000004-0000-0000-0000-000000000004', 'Under 17', 2008, 2009, 'Ragazzi nati 2008-2009'),
+        ('c0000005-0000-0000-0000-000000000005', 'Under 18', 2007, 2008, 'Ragazzi nati 2007-2008'),
+        ('c0000006-0000-0000-0000-000000000006', 'Primavera', 2005, 2006, 'Giovani calciatori')
+        ON CONFLICT (id) DO NOTHING` });
+      results.seed_data.push('categories');
+    } catch (e) { results.errors.push('categories seed: ' + e.message); }
+
+    // Seed data - competizioni
+    try {
+      await supabase.rpc('exec_sql', { sql: `INSERT INTO competition (id, nome, tipo, regione, descrizione) VALUES 
+        ('cc000001-0000-0000-0000-000000000001', 'Campionato Regionale Lazio', 'Campionato', 'Lazio', 'Campionato regionale FIGC'),
+        ('cc000002-0000-0000-0000-000000000002', 'Coppa Lazio', 'Coppa', 'Lazio', 'Coppa regionale FIGC'),
+        ('cc000003-0000-0000-0000-000000000003', 'Campionato Nazionale U19', 'Campionato', 'Nazionale', 'Campionato federale under 19'),
+        ('cc000004-0000-0000-0000-000000000004', 'Torneo Friendlies', 'Amichevole', NULL, 'Partite amichevoli')
+        ON CONFLICT (id) DO NOTHING` });
+      results.seed_data.push('competitions');
+    } catch (e) { results.errors.push('competitions seed: ' + e.message); }
+
+    res.json({ success: true, results });
   } catch (err) {
+    console.error('Migration error:', err);
     res.status(500).json({ error: err.message });
   }
 });
