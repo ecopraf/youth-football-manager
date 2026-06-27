@@ -701,3 +701,12 @@ app.post('/api/admin/migrate-new-schema', authMiddleware, async (req, res) => {
 });
 
 module.exports = app;
+
+// Avvio server locale (solo se eseguito direttamente, non importato)
+if (require.main === module) {
+  const PORT = process.env.PORT || 3002;
+  app.listen(PORT, () => {
+    console.log(`\n🚀 Backend API avviato su http://localhost:${PORT}`);
+    console.log(`📡 Health check: http://localhost:${PORT}/api/health\n`);
+  });
+}
