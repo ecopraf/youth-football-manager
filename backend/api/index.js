@@ -690,12 +690,27 @@ app.delete('/api/squadre/:id', async (req, res) => { const sid = req.params.id; 
 app.get('/api/squadre/:squadraId/calciatori', async (req, res) => { const q = supabase.from('rosa').select('calciatore:calciatore_id(*), numero_maglia, ruolo, stato').eq('squadra_id', req.params.squadraId); const { data } = await q; res.json((data||[]).map(r => ({ id: r.calciatore.id, nome: r.calciatore.nome, cognome: r.calciatore.cognome, dataNascita: r.calciatore.data_nascita, telefono: r.calciatore.telefono, dataVisitaMedica: r.calciatore.data_visita_medica, matricolaFigc: r.calciatore.matricola_figc, tipoDocumento: r.calciatore.tipo_documento, numeroDocumento: r.calciatore.numero_documento, rilasciatoDa: r.calciatore.rilasciato_da, numeroMaglia: r.numero_maglia, ruolo: r.ruolo, stato: r.stato }))); });
 app.post('/api/squadre/:squadraId/calciatori', async (req, res) => { 
   const c = req.body; 
-  const { data: sq } = await supabase.from('squadra').select('stagione:stagione_id(workspace_id)').eq('id', req.params.squadraId).single();
+  // Usa inner join su stagione per ottenere workspace_id
+  const { data: sq } = await supabase.from('squadra').select('*, stagione:stagione_id(workspace_id)').eq('id', req.params.squadraId).single();
   const wsId = sq?.stagione?.workspace_id || '22222222-2222-2222-2222-222222222222';
   const { data: cal } = await supabase.from('calciatore').insert({ workspace_id: wsId, nome: c.nome, cognome: c.cognome, data_nascita: c.dataVisitaMedica, telefono: c.telefono, data_visita_medica: c.dataVisitaMedica, matricola_figc: c.matricolaFigc, tipo_documento: c.tipoDocumento, numero_documento: c.numeroDocumento, rilasciato_da: c.rilasciatoDa }).select().single(); 
   await supabase.from('rosa').insert({ squadra_id: req.params.squadraId, calciatore_id: cal.id, numero_maglia: c.numeroMaglia, ruolo: c.ruolo, stato: 'Attivo' }); 
   res.status(201).json(cal); 
 });
+// POST /api/squadre/:squadraId/calciatori-batch - Crea più giocatori velocemente
+app.post('/api/squadre/:squadraId/calciatori-batch', async (req, res) => { 
+  const { giocatori } = req.body;
+  const results = [];
+  for (const g of giocatori) {
+    const { data: cal } = await supabase.from('calciatore').insert({ workspace_id: '22222222-2222-2222-2222-222222222222', nome: g.nome, cognome: g.cognome, data_nascita: g.data_nascita, ruolo: g.ruolo }).select().single();
+    if (cal) {
+      await supabase.from('rosa').insert({ squadra_id: req.params.squadraId, calciatore_id: cal.id, numero_maglia: g.numero, ruolo: g.ruolo, stato: 'Attivo' });
+      results.push(cal);
+    }
+  }
+  res.status(201).json({ created: results.length, giocatori: results });
+});
+
 app.get('/api/squadre/:squadraId/scadenze-mediche', async (req, res) => { const { data: rosa } = await supabase.from('rosa').select('calciatore:calciatore_id(id, nome, cognome, data_visita_medica)').eq('squadra_id', req.params.squadraId); const oggi = new Date(); const scadenze = (rosa||[]).filter(r => r.calciatore.data_visita_medica).map(r => { const scadenza = new Date(r.calciatore.data_visita_medica); scadenza.setFullYear(scadenza.getFullYear()+1); return { id: r.calciatore.id, nome: r.calciatore.nome, cognome: r.calciatore.cognome, scadenza: scadenza.toISOString().split('T')[0], giorniRimanenti: Math.ceil((scadenza-oggi)/(1000*60*60*24)) }; }).filter(s => s.giorniRimanenti <= 30).sort((a,b) => a.giorniRimanenti-b.giorniRimanenti); res.json(scadenze); });
 app.get('/api/squadre/:squadraId/partite', async (req, res) => { const { data } = await supabase.from('partita').select('*').eq('squadra_id', req.params.squadraId).order('data_ora', { ascending: false }); res.json(data || []); });
 // GET /api/squadre/:squadraId/partite-future - Prossime partite
