@@ -57,6 +57,26 @@ youth-football-manager/
 
 ---
 
+## 🔑 Credenziali Accesso
+
+### Superadmin
+| Email | Password |
+|-------|----------|
+| coppola.raffaele@gmail.com | raffaele78 |
+
+### Utenti Production
+| Nome | Ruolo | Email | Password | Workspace |
+|------|-------|-------|----------|-----------|
+| Matteo Urilli | Allenatore | matteo@urilli.it | mister | DF Academy |
+| Francesco Annese | Admin | francesco@annese.it | annex | ACP Annex |
+
+### Demo
+| Email | Password |
+|-------|----------|
+| demo_yfm | demo_yfm |
+
+---
+
 ## 🚀 Setup Locale
 
 ### 1. Clonare il Repository

@@ -12,6 +12,19 @@
 - **Build ID**: `v3.14.<git-hash>`
 - **Deploy**: Manuale via API (NON automatico su push a main)
 
+## 🔑 Credenziali Sistema
+
+### Superadmin
+| Email | Password |
+|-------|----------|
+| coppola.raffaele@gmail.com | raffaele78 |
+
+### Utenti Production
+| Nome | Ruolo | Email | Password | Workspace |
+|------|-------|-------|----------|-----------|
+| Matteo Urilli | Allenatore | matteo@urilli.it | mister | DF Academy |
+| Francesco Annese | Admin | francesco@annese.it | annex | ACP Annex |
+
 ## ⚠️ ISTRUZIONI IMPORTANTI
 
 ### Git & Deploy

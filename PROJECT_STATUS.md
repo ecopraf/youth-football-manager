@@ -363,7 +363,29 @@ unction renderModule(container, data) {
 
 ---
 
-## 12. Workspace di Test - SSD New Team
+## 12. Utenti di Sistema
+
+### Superadmin
+| Ruolo | Email | Password | Note |
+|-------|-------|----------|------|
+| Superadmin | coppola.raffaele@gmail.com | raffaele78 | Sviluppatore/Owner |
+
+### Utenti di Test - Production
+
+| Nome | Ruolo | Email | Password | Workspace |
+|------|-------|-------|----------|-----------|
+| Matteo Urilli | Allenatore | matteo@urilli.it | mister | DF Academy |
+| Francesco Annese | Admin | francesco@annese.it | annex | ACP Annex |
+
+### Utenti di Test - Demo
+
+| Ruolo | Email | Password | Note |
+|-------|-------|----------|------|
+| Demo | demo_yfm | demo_yfm | Accesso rapido demo |
+
+---
+
+## 13. Workspace di Test - SSD New Team
 
 ### Creazione Workspace Test
 Per creare il workspace di test SSD New Team, eseguire lo script SQL:
