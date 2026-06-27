@@ -1,6 +1,16 @@
 -- ============================================================
 -- YOUTH FOOTBALL MANAGER - NUOVO SCHEMA DB
--- Versione: 1.0 - 2026-06-27
+-- Versione: 1.1 - 2026-06-27
+-- 
+-- STAGIONE 2025/26 - ANNI DI NASCITA:
+-- U14 = nati 2012
+-- U15 = nati 2011
+-- U16 = nati 2010
+-- U17 = nati 2009
+-- U18 = nati 2008
+-- U19 = nati 2007
+-- Juniores = nati 2007-2008
+-- Primavera = nati 2005-2006
 -- ============================================================
 
 -- 1. DROP TABELLE VECCHIE
@@ -18,12 +28,15 @@ DROP TABLE IF EXISTS configurazione_allenamento CASCADE;
 CREATE TABLE category (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome VARCHAR(100) NOT NULL,
+    tipo_campionato VARCHAR(50) DEFAULT 'Regionale',
     anno_da INTEGER NOT NULL,
     anno_a INTEGER NOT NULL,
     genere VARCHAR(10) DEFAULT 'M',
     descrizione TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+COMMENT ON COLUMN category.tipo_campionato IS 'Provinciale, Regionale, Elite, Pro';
 
 -- COMPETITION
 CREATE TABLE competition (
@@ -247,14 +260,30 @@ ALTER TABLE stagione ADD COLUMN IF NOT EXISTS is_default BOOLEAN DEFAULT false;
 ALTER TABLE calciatore ADD COLUMN IF NOT EXISTS sesso VARCHAR(1) DEFAULT 'M';
 ALTER TABLE calciatore ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 
--- 4. SEED DATA - CATEGORIE
-INSERT INTO category (id, nome, anno_da, anno_a, descrizione) VALUES
-    ('c0000001-0000-0000-0000-000000000001', 'Under 14', 2011, 2012, 'Ragazzi nati 2011-2012'),
-    ('c0000002-0000-0000-0000-000000000002', 'Under 15', 2010, 2011, 'Ragazzi nati 2010-2011'),
-    ('c0000003-0000-0000-0000-000000000003', 'Under 16', 2009, 2010, 'Ragazzi nati 2009-2010'),
-    ('c0000004-0000-0000-0000-000000000004', 'Under 17', 2008, 2009, 'Ragazzi nati 2008-2009'),
-    ('c0000005-0000-0000-0000-000000000005', 'Under 18', 2007, 2008, 'Ragazzi nati 2007-2008'),
-    ('c0000006-0000-0000-0000-000000000006', 'Primavera', 2005, 2006, 'Giovani calciatori');
+-- 4. SEED DATA - CATEGORIE (Stagione 2025/26)
+-- Anni di nascita: U14 = nati 2012, U15 = nati 2011, U16 = nati 2010, U17 = nati 2009, U18 = nati 2008, U19 = nati 2007/2006
+-- Tipo campionato: Provinciale, Regionale, Elite, Pro
+
+INSERT INTO category (id, nome, tipo_campionato, anno_da, anno_a, descrizione) VALUES
+    ('c0000001-0000-0000-0000-000000000001', 'Under 14 Provinciale', 'Provinciale', 2012, 2012, 'Ragazzi nati nel 2012'),
+    ('c0000002-0000-0000-0000-000000000002', 'Under 14 Regionale', 'Regionale', 2012, 2012, 'Ragazzi nati nel 2012'),
+    ('c0000003-0000-0000-0000-000000000003', 'Under 14 Elite', 'Elite', 2012, 2012, 'Ragazzi nati nel 2012'),
+    ('c0000004-0000-0000-0000-000000000004', 'Under 15 Provinciale', 'Provinciale', 2011, 2011, 'Ragazzi nati nel 2011'),
+    ('c0000005-0000-0000-0000-000000000005', 'Under 15 Regionale', 'Regionale', 2011, 2011, 'Ragazzi nati nel 2011'),
+    ('c0000006-0000-0000-0000-000000000006', 'Under 15 Elite', 'Elite', 2011, 2011, 'Ragazzi nati nel 2011'),
+    ('c0000007-0000-0000-0000-000000000007', 'Under 16 Provinciale', 'Provinciale', 2010, 2010, 'Ragazzi nati nel 2010'),
+    ('c0000008-0000-0000-0000-000000000008', 'Under 16 Regionale', 'Regionale', 2010, 2010, 'Ragazzi nati nel 2010'),
+    ('c0000009-0000-0000-0000-000000000009', 'Under 16 Elite', 'Elite', 2010, 2010, 'Ragazzi nati nel 2010'),
+    ('c0000010-0000-0000-0000-000000000010', 'Under 17 Provinciale', 'Provinciale', 2009, 2009, 'Ragazzi nati nel 2009'),
+    ('c0000011-0000-0000-0000-000000000011', 'Under 17 Regionale', 'Regionale', 2009, 2009, 'Ragazzi nati nel 2009'),
+    ('c0000012-0000-0000-0000-000000000012', 'Under 17 Elite', 'Elite', 2009, 2009, 'Ragazzi nati nel 2009'),
+    ('c0000013-0000-0000-0000-000000000013', 'Under 18 Provinciale', 'Provinciale', 2008, 2008, 'Ragazzi nati nel 2008'),
+    ('c0000014-0000-0000-0000-000000000014', 'Under 18 Regionale', 'Regionale', 2008, 2008, 'Ragazzi nati nel 2008'),
+    ('c0000015-0000-0000-0000-000000000015', 'Under 19 Regionale', 'Regionale', 2007, 2007, 'Ragazzi nati nel 2007'),
+    ('c0000016-0000-0000-0000-000000000016', 'Under 19 Pro', 'Pro', 2006, 2006, 'Ragazzi nati nel 2006'),
+    ('c0000017-0000-0000-0000-000000000017', 'Juniores Provinciale', 'Provinciale', 2007, 2008, 'Giovani 2007-2008'),
+    ('c0000018-0000-0000-0000-000000000018', 'Juniores Regionale', 'Regionale', 2007, 2008, 'Giovani 2007-2008'),
+    ('c0000019-0000-0000-0000-000000000019', 'Primavera', 'Regionale', 2005, 2006, 'Giovani calciatori 2005-2006');
 
 -- SEED DATA - COMPETIZIONI
 INSERT INTO competition (id, nome, tipo, regione, descrizione) VALUES
@@ -264,6 +293,8 @@ INSERT INTO competition (id, nome, tipo, regione, descrizione) VALUES
     ('cc000004-0000-0000-0000-000000000004', 'Torneo Friendlies', 'Amichevole', NULL, 'Partite amichevoli');
 
 -- 5. INDICI
+CREATE INDEX IF NOT EXISTS idx_category_tipo ON category(tipo_campionato);
+CREATE INDEX IF NOT EXISTS idx_category_anni ON category(anno_da, anno_a);
 CREATE INDEX IF NOT EXISTS idx_team_season ON team(season_id);
 CREATE INDEX IF NOT EXISTS idx_team_category ON team(category_id);
 CREATE INDEX IF NOT EXISTS idx_team_player_team ON team_player(team_id);
