@@ -1,7 +1,7 @@
 // Rilevamento automatico dell'ambiente
 export const API_BASE = (() => {
   const host = window.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3001/api';
+  if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3002/api';
   if (host.includes('app.github.dev')) return window.location.origin.replace(/-8080\./, '-3001.') + '/api';
   return 'https://youth-football-manager-backend.vercel.app/api';
 })();
