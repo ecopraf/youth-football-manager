@@ -166,10 +166,23 @@ export async function initWorkspaceSwitcherInSidebar() {
   // Se c'è solo 1 workspace reale, non mostrare lo switcher
   if (realWorkspaces.length <= 1) return;
   
-  const currentWsId = getSavedWorkspaceId() || realWorkspaces[0]?.id;
-  const currentWs = workspaces.find(w => w.id === currentWsId) || realWorkspaces[0];
+  // Usa il workspace già impostato in window.YFM, altrimenti quello salvato, altrimenti il primo
+  const savedWsId = getSavedWorkspaceId();
+  let currentWs = window.YFM.workspaceInfo;
+  
+  if (!currentWs) {
+    const currentWsId = savedWsId || realWorkspaces[0]?.id;
+    currentWs = workspaces.find(w => w.id === currentWsId) || realWorkspaces[0];
+  }
   
   if (!currentWs) return;
+  
+  // Sincronizza: assicura che window.YFM abbia il workspace corrente
+  window.YFM.workspaceInfo = currentWs;
+  window.YFM.activeWorkspaceId = currentWs.id;
+  if (!savedWsId) {
+    saveCurrentWorkspace(currentWs.id);
+  }
   
   // Crea il selettore nella sidebar
   const sidebarInfo = document.querySelector('.sidebar-info');

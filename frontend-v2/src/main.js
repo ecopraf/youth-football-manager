@@ -212,22 +212,32 @@ document.addEventListener('DOMContentLoaded', () => {
       loadAvailableWorkspaces().then(async (workspaces) => {
         const user = window.YFM.getUser();
         
-        // Superadmin: mostra selettore workspace iniziale
+        // Superadmin: mostra selettore workspace iniziale SOLO se non c'è già una selezione
         if (isSuperAdmin(user)) {
           const realWs = getRealWorkspaces(workspaces);
+          const savedWsId = getSavedWorkspaceId();
           
-          if (realWs.length > 1) {
-            // Mostra modal di selezione
+          // Verifica se c'è già un workspace salvato
+          const hasSavedWorkspace = savedWsId && realWs.find(w => w.id === savedWsId);
+          
+          if (!hasSavedWorkspace && realWs.length > 1) {
+            // Mostra modal di selezione solo se non c'è selezione salvata e ci sono più workspace
             const selectedWs = await showWorkspaceSelectorModal();
             if (selectedWs) {
+              saveCurrentWorkspace(selectedWs.id);
               window.YFM.workspaceInfo = selectedWs;
               window.YFM.activeWorkspaceId = selectedWs.id;
             }
-          } else if (realWs.length === 1) {
-            // Solo uno, usa quello
-            saveCurrentWorkspace(realWs[0].id);
-            window.YFM.workspaceInfo = realWs[0];
-            window.YFM.activeWorkspaceId = realWs[0].id;
+          } else if (realWs.length === 1 || hasSavedWorkspace) {
+            // Usa quello salvato o l'unico disponibile
+            const wsToUse = hasSavedWorkspace 
+              ? realWs.find(w => w.id === savedWsId) 
+              : realWs[0];
+            if (wsToUse) {
+              saveCurrentWorkspace(wsToUse.id);
+              window.YFM.workspaceInfo = wsToUse;
+              window.YFM.activeWorkspaceId = wsToUse.id;
+            }
           }
           
           // Inizializza switcher in sidebar
