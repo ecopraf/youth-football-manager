@@ -379,10 +379,248 @@ INSERT INTO match (team_id, competition_id, data_ora, avversario, luogo, giornat
     ('t0000005-0000-0000-0000-000000000005', 'cc000001-0000-0000-0000-000000000001', '2025-12-21 16:00:00', 'Brindisi U17', 'Casa', 15, 'Da disputare');
 
 -- ============================================================
--- VERIFICA
+-- 17. ALLENAMENTI (training) - 2 per team per settimana
 -- ============================================================
 
-SELECT 'Popolamento completato!' AS status;
+-- SSD New Team U15 - Allenamenti settimanali
+INSERT INTO training (team_id, venue_id, data_ora, durata_minuti, tipo, descrizione) VALUES
+    ('t0000003-0000-0000-0000-000000000003', 'f0000001-0000-0000-0000-000000000001', '2025-09-02 17:00:00', 90, 'Tattico', 'Schemi tattici e posizionamento'),
+    ('t0000003-0000-0000-0000-000000000003', 'f0000001-0000-0000-0000-000000000001', '2025-09-04 17:00:00', 90, 'Tecnico', 'Passaggi e controllo palla'),
+    ('t0000003-0000-0000-0000-000000000003', 'f0000001-0000-0000-0000-000000000001', '2025-09-09 17:00:00', 90, 'Fisico', 'Potenziamento muscolare'),
+    ('t0000003-0000-0000-0000-000000000003', 'f0000001-0000-0000-0000-000000000001', '2025-09-11 17:00:00', 90, 'Combinato', 'Situazioni di gioco'),
+    ('t0000003-0000-0000-0000-000000000003', 'f0000001-0000-0000-0000-000000000001', '2025-09-16 17:00:00', 90, 'Tattico', 'Transizioni offensive'),
+    ('t0000003-0000-0000-0000-000000000003', 'f0000001-0000-0000-0000-000000000001', '2025-09-18 17:00:00', 90, 'Tecnico', 'Tiro in porta'),
+    ('t0000003-0000-0000-0000-000000000003', 'f0000001-0000-0000-0000-000000000001', '2025-09-23 17:00:00', 90, 'Fisico', 'Resistenza e velocita'),
+    ('t0000003-0000-0000-0000-000000000003', 'f0000001-0000-0000-0000-000000000001', '2025-09-25 17:00:00', 90, 'Tattico', 'Difesa posizionale');
+
+-- SSD New Team U16 - Allenamenti settimanali
+INSERT INTO training (team_id, venue_id, data_ora, durata_minuti, tipo, descrizione) VALUES
+    ('t0000004-0000-0000-0000-000000000004', 'f0000001-0000-0000-0000-000000000001', '2025-09-02 18:30:00', 90, 'Tattico', 'Costruzione dal basso'),
+    ('t0000004-0000-0000-0000-000000000004', 'f0000001-0000-0000-0000-000000000001', '2025-09-04 18:30:00', 90, 'Tecnico', 'Dribbling e finte'),
+    ('t0000004-0000-0000-0000-000000000004', 'f0000001-0000-0000-0000-000000000001', '2025-09-09 18:30:00', 90, 'Combinato', 'Gestione palla sotto pressione'),
+    ('t0000004-0000-0000-0000-000000000004', 'f0000001-0000-0000-0000-000000000001', '2025-09-11 18:30:00', 90, 'Fisico', 'Agilita e rapidita'),
+    ('t0000004-0000-0000-0000-000000000004', 'f0000001-0000-0000-0000-000000000001', '2025-09-16 18:30:00', 90, 'Tattico', 'Corner e calci piazzati'),
+    ('t0000004-0000-0000-0000-000000000004', 'f0000001-0000-0000-0000-000000000001', '2025-09-18 18:30:00', 90, 'Tecnico', 'Passaggi in spazi stretti');
+
+-- DF Academy U15 - Allenamenti settimanali
+INSERT INTO training (team_id, venue_id, data_ora, durata_minuti, tipo, descrizione) VALUES
+    ('t0000002-0000-0000-0000-000000000002', 'f0000003-0000-0000-0000-000000000003', '2025-09-01 17:30:00', 90, 'Tattico', 'Organizzazione di gioco'),
+    ('t0000002-0000-0000-0000-000000000002', 'f0000003-0000-0000-0000-000000000003', '2025-09-03 17:30:00', 90, 'Tecnico', 'Controllo e prima touch'),
+    ('t0000002-0000-0000-0000-000000000002', 'f0000003-0000-0000-0000-000000000003', '2025-09-08 17:30:00', 90, 'Fisico', 'Preparazione atletica'),
+    ('t0000002-0000-0000-0000-000000000002', 'f0000003-0000-0000-0000-000000000003', '2025-09-10 17:30:00', 90, 'Combinato', 'Partitella a tema'),
+    ('t0000002-0000-0000-0000-000000000002', 'f0000003-0000-0000-0000-000000000003', '2025-09-15 17:30:00', 90, 'Tattico', 'Attacco posizionale'),
+    ('t0000002-0000-0000-0000-000000000002', 'f0000003-0000-0000-0000-000000000003', '2025-09-17 17:30:00', 90, 'Tecnico', 'Tecnica individuale');
+
+-- ACP Annex U16 - Allenamenti settimanali
+INSERT INTO training (team_id, venue_id, data_ora, durata_minuti, tipo, descrizione) VALUES
+    ('t0000001-0000-0000-0000-000000000001', 'f0000002-0000-0000-0000-000000000002', '2025-09-01 18:00:00', 90, 'Tattico', 'Modulo di gioco 4-3-3'),
+    ('t0000001-0000-0000-0000-000000000001', 'f0000002-0000-0000-0000-000000000002', '2025-09-03 18:00:00', 90, 'Tecnico', 'Esercizi sul possesso palla'),
+    ('t0000001-0000-0000-0000-000000000001', 'f0000002-0000-0000-0000-000000000002', '2025-09-08 18:00:00', 90, 'Combinato', 'Transizioni 1v1'),
+    ('t0000001-0000-0000-0000-000000000001', 'f0000002-0000-0000-0000-000000000002', '2025-09-10 18:00:00', 90, 'Fisico', 'Circuiti atletici'),
+    ('t0000001-0000-0000-0000-000000000001', 'f0000002-0000-0000-0000-000000000002', '2025-09-15 18:00:00', 90, 'Tattico', 'Difesa a zona'),
+    ('t0000001-0000-0000-0000-000000000001', 'f0000002-0000-0000-0000-000000000002', '2025-09-17 18:00:00', 90, 'Tecnico', 'Calci di punizione');
+
+-- ============================================================
+-- 18. PRESENZE ALLENAMENTI (training_attendance)
+-- ============================================================
+
+-- Presenze SSD New Team U15 (primi 4 allenamenti)
+INSERT INTO training_attendance (training_id, team_player_id, presente, motivi_assenza) 
+SELECT t.id, tp.id, 
+    CASE WHEN random() > 0.15 THEN true ELSE false END,
+    CASE WHEN random() <= 0.15 THEN 'Impegni scolastici' ELSE NULL END
+FROM training t
+CROSS JOIN team_player tp
+WHERE tp.team_id = 't0000003-0000-0000-0000-000000000003'
+AND t.team_id = 't0000003-0000-0000-0000-000000000003'
+AND t.data_ora <= '2025-09-12 23:59:59'
+ON CONFLICT (training_id, team_player_id) DO NOTHING;
+
+-- Presenze DF Academy U15
+INSERT INTO training_attendance (training_id, team_player_id, presente)
+SELECT t.id, tp.id, true
+FROM training t
+CROSS JOIN team_player tp
+WHERE tp.team_id = 't0000002-0000-0000-0000-000000000002'
+AND t.team_id = 't0000002-0000-0000-0000-000000000002'
+AND t.data_ora <= '2025-09-12 23:59:59'
+ON CONFLICT (training_id, team_player_id) DO NOTHING;
+
+-- Presenze ACP Annex U16
+INSERT INTO training_attendance (training_id, team_player_id, presente)
+SELECT t.id, tp.id, true
+FROM training t
+CROSS JOIN team_player tp
+WHERE tp.team_id = 't0000001-0000-0000-0000-000000000001'
+AND t.team_id = 't0000001-0000-0000-0000-000000000001'
+AND t.data_ora <= '2025-09-12 23:59:59'
+ON CONFLICT (training_id, team_player_id) DO NOTHING;
+
+-- ============================================================
+-- 19. DOCUMENTI (document) - Documenti giocatori
+-- ============================================================
+
+-- Documenti medici di esempio
+INSERT INTO document (tipo, entita_tipo, entita_id, file_url, nome_file, scadenza) VALUES
+    ('Certificato Medico', 'player', (SELECT id FROM player ORDER BY random() LIMIT 1), '/docs/medici/cert_001.pdf', 'Certificato medico 2025', '2026-06-30'),
+    ('Documento Identita', 'player', (SELECT id FROM player ORDER BY random() LIMIT 1), '/docs/documenti/doc_002.pdf', 'Carta identita', NULL),
+    ('Tesserino FIGC', 'player', (SELECT id FROM player ORDER BY random() LIMIT 1), '/docs/figc/tess_003.pdf', 'Tesserino federale', '2026-12-31'),
+    ('Modulo Privacy', 'player', (SELECT id FROM player ORDER BY random() LIMIT 1), '/docs/privacy/priv_004.pdf', 'Informativa privacy firmata', NULL),
+    ('Certificato Medico', 'player', (SELECT id FROM player ORDER BY random() LIMIT 1), '/docs/medici/cert_005.pdf', 'Certificato medico 2025', '2026-06-30');
+
+-- ============================================================
+-- 20. CONVOCAZIONI DI ESEMPIO (per partite future)
+-- ============================================================
+
+-- Convocazioni per SSD New Team U15 (solo alcune partite future)
+INSERT INTO convocation (match_id, team_player_id, convocato_da, presente)
+SELECT m.id, tp.id, 'st000001-0000-0000-0000-000000000001', NULL
+FROM match m
+CROSS JOIN team_player tp
+WHERE tp.team_id = 't0000003-0000-0000-0000-000000000003'
+AND m.team_id = 't0000003-0000-0000-0000-000000000003'
+AND m.stato = 'Da disputare'
+AND tp.is_primary = true
+LIMIT 55
+ON CONFLICT (match_id, team_player_id) DO NOTHING;
+
+-- Convocazioni per DF Academy U15
+INSERT INTO convocation (match_id, team_player_id, convocato_da, presente)
+SELECT m.id, tp.id, 'st000005-0000-0000-0000-000000000005', NULL
+FROM match m
+CROSS JOIN team_player tp
+WHERE tp.team_id = 't0000002-0000-0000-0000-000000000002'
+AND m.team_id = 't0000002-0000-0000-0000-000000000002'
+AND m.stato = 'Da disputare'
+AND tp.is_primary = true
+LIMIT 55
+ON CONFLICT (match_id, team_player_id) DO NOTHING;
+
+-- Convocazioni per ACP Annex U16
+INSERT INTO convocation (match_id, team_player_id, convocato_da, presente)
+SELECT m.id, tp.id, 'st000007-0000-0000-0000-000000000007', NULL
+FROM match m
+CROSS JOIN team_player tp
+WHERE tp.team_id = 't0000001-0000-0000-0000-000000000001'
+AND m.team_id = 't0000001-0000-0000-0000-000000000001'
+AND m.stato = 'Da disputare'
+AND tp.is_primary = true
+LIMIT 55
+ON CONFLICT (match_id, team_player_id) DO NOTHING;
+
+-- ============================================================
+-- 21. EVENTI PARTITA (match_event) - Esempi per partite concluse
+-- ============================================================
+
+-- Per simulare partite concluse, aggiorniamo alcune partite e aggiungiamo eventi
+-- Prima aggiorniamo lo stato di alcune partite
+UPDATE match SET stato = 'Terminata', gol_casa = 2, gol_ospite = 1 WHERE id IN (
+    (SELECT id FROM match WHERE team_id = 't0000003-0000-0000-0000-000000000003' ORDER BY data_ora LIMIT 1),
+    (SELECT id FROM match WHERE team_id = 't0000004-0000-0000-0000-000000000004' ORDER BY data_ora LIMIT 1),
+    (SELECT id FROM match WHERE team_id = 't0000002-0000-0000-0000-000000000002' ORDER BY data_ora LIMIT 1)
+);
+
+-- Eventi per SSD New Team U15 (partita 1)
+INSERT INTO match_event (match_id, tipo_evento, minuto, player_id, player_id_secondario)
+SELECT 
+    (SELECT id FROM match WHERE team_id = 't0000003-0000-0000-0000-000000000003' ORDER BY data_ora LIMIT 1),
+    tipo_evento, minuto, player_id, player_id_secondario
+FROM (VALUES
+    ('Gol', 15, NULL),
+    ('Gol', 32, NULL),
+    ('Assist', 32, NULL),
+    ('Ammonizione', 45, NULL),
+    ('Gol', 67, NULL),
+    ('Espulsione', 78, NULL)
+) AS e(tipo_evento, minuto, player_id)
+CROSS JOIN (SELECT id as player_id FROM team_player WHERE team_id = 't0000003-0000-0000-0000-000000000003' ORDER BY random() LIMIT 6) tp;
+
+-- Eventi per SSD New Team U16 (partita 1)
+INSERT INTO match_event (match_id, tipo_evento, minuto, player_id)
+SELECT 
+    (SELECT id FROM match WHERE team_id = 't0000004-0000-0000-0000-000000000004' ORDER BY data_ora LIMIT 1),
+    tipo_evento, minuto, player_id
+FROM (VALUES
+    ('Gol', 10),
+    ('Gol', 25),
+    ('Ammonizione', 38),
+    ('Gol', 55),
+    ('Assist', 55),
+    ('Gol', 80)
+) AS e(tipo_evento, minuto, player_id)
+CROSS JOIN (SELECT id as player_id FROM team_player WHERE team_id = 't0000004-0000-0000-0000-000000000004' ORDER BY random() LIMIT 6) tp;
+
+-- Eventi per DF Academy U15 (partita 1)
+INSERT INTO match_event (match_id, tipo_evento, minuto, player_id)
+SELECT 
+    (SELECT id FROM match WHERE team_id = 't0000002-0000-0000-0000-000000000002' ORDER BY data_ora LIMIT 1),
+    tipo_evento, minuto, player_id
+FROM (VALUES
+    ('Gol', 22),
+    ('Assist', 22),
+    ('Gol', 48),
+    ('Ammonizione', 60),
+    ('Gol', 75)
+) AS e(tipo_evento, minuto, player_id)
+CROSS JOIN (SELECT id as player_id FROM team_player WHERE team_id = 't0000002-0000-0000-0000-000000000002' ORDER BY random() LIMIT 5) tp;
+
+-- ============================================================
+-- 22. FORMAZIONI (match_formation) - Per partite concluse
+-- ============================================================
+
+-- Formazione SSD New Team U15
+INSERT INTO match_formation (match_id, team_player_id, posizione, numero_maglia, is_captain, is_starter)
+SELECT 
+    (SELECT id FROM match WHERE team_id = 't0000003-0000-0000-0000-000000000003' ORDER BY data_ora LIMIT 1),
+    id, posizione, numero_maglia, is_captain, is_starter
+FROM (
+    VALUES
+        ('Portiere', 1, true, true),
+        ('Difensore', 2, false, true),
+        ('Difensore', 3, false, true),
+        ('Difensore', 4, false, true),
+        ('Difensore', 5, false, true),
+        ('Centrocampista', 6, false, true),
+        ('Centrocampista', 7, false, true),
+        ('Centrocampista', 8, false, true),
+        ('Attaccante', 9, false, true),
+        ('Attaccante', 10, false, true),
+        ('Attaccante', 11, false, true),
+        ('Portiere', 12, false, false),
+        ('Difensore', 13, false, false),
+        ('Centrocampista', 14, false, false)
+) AS f(posizione, numero_maglia, is_captain, is_starter)
+CROSS JOIN (
+    SELECT id, numero_maglia FROM team_player 
+    WHERE team_id = 't0000003-0000-0000-0000-000000000003' 
+    ORDER BY random() LIMIT 14
+) tp
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 23. STATISTICHE PARTITA (match_statistics) - Per partite concluse
+-- ============================================================
+
+INSERT INTO match_statistics (match_id, team_player_id, minuti_giocati, gol, assist, tiri, passaggi, ammonizioni)
+SELECT 
+    (SELECT id FROM match WHERE team_id = 't0000003-0000-0000-0000-000000000003' ORDER BY data_ora LIMIT 1),
+    tp.id,
+    floor(random() * 45 + 45)::int,
+    floor(random() * 2)::int,
+    floor(random() * 2)::int,
+    floor(random() * 5)::int,
+    floor(random() * 30 + 20)::int,
+    floor(random() * 2)::int
+FROM team_player tp
+WHERE tp.team_id = 't0000003-0000-0000-0000-000000000003'
+LIMIT 11
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- VERIFICA FINALE
+-- ============================================================
+
+SELECT 'Popolamento COMPLETO!' AS status;
 
 SELECT 'Categorie:' AS info, COUNT(*) AS count FROM category;
 SELECT 'Competizioni:' AS info, COUNT(*) AS count FROM competition;
@@ -394,3 +632,10 @@ SELECT 'Team Staff:' AS info, COUNT(*) AS count FROM team_staff;
 SELECT 'Players:' AS info, COUNT(*) AS count FROM player;
 SELECT 'Team Players:' AS info, COUNT(*) AS count FROM team_player;
 SELECT 'Partite:' AS info, COUNT(*) AS count FROM match;
+SELECT 'Allenamenti:' AS info, COUNT(*) AS count FROM training;
+SELECT 'Presenze Allenamenti:' AS info, COUNT(*) AS count FROM training_attendance;
+SELECT 'Convocazioni:' AS info, COUNT(*) AS count FROM convocation;
+SELECT 'Documenti:' AS info, COUNT(*) AS count FROM document;
+SELECT 'Eventi Partita:' AS info, COUNT(*) AS count FROM match_event;
+SELECT 'Formazioni:' AS info, COUNT(*) AS count FROM match_formation;
+SELECT 'Statistiche Partita:' AS info, COUNT(*) AS count FROM match_statistics;
