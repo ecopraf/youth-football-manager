@@ -1,6 +1,6 @@
 -- ============================================================
 -- YOUTH FOOTBALL MANAGER - NUOVO SCHEMA DB
--- Versione: 1.2 - 2026-06-27
+-- Versione: 1.3 - 2026-06-27
 -- 
 -- STAGIONE 2025/26 - ANNI DI NASCITA:
 -- U14 = nati 2012
@@ -12,7 +12,12 @@
 -- Juniores = nati 2007-2008
 -- Primavera = nati 2005-2006
 --
--- NOTE IMPORTANTI:
+-- NOTE CATEGORIE:
+-- - Categoria con workspace_id = NULL -> globale (creata da superadmin)
+-- - Categoria con workspace_id valorizzato -> specifica del workspace
+-- - L'admin del workspace puo' creare categorie personalizzate
+--
+-- NOTE GIOCATORI:
 -- - Un giocatore (calciatore) puo' essere in piu' squadre
 -- - team_player.is_primary = TRUE: rosa principale
 -- - team_player.is_primary = FALSE: aggregazione temporanea
@@ -31,17 +36,22 @@ DROP TABLE IF EXISTS configurazione_allenamento CASCADE;
 -- 2. CREA TABELLE NUOVE
 
 -- CATEGORY
+-- Nota: workspace_id NULL = categoria globale (creata da superadmin)
+--       workspace_id valorizzato = categoria specifica del workspace (creata dall'admin del workspace)
 CREATE TABLE category (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id UUID REFERENCES workspace(id) ON DELETE CASCADE,
     nome VARCHAR(100) NOT NULL,
     tipo_campionato VARCHAR(50) DEFAULT 'Regionale',
     anno_da INTEGER NOT NULL,
     anno_a INTEGER NOT NULL,
     genere VARCHAR(10) DEFAULT 'M',
+    is_active BOOLEAN DEFAULT true,
     descrizione TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+COMMENT ON COLUMN category.workspace_id IS 'NULL = categoria globale, valorizzato = specifica del workspace';
 COMMENT ON COLUMN category.tipo_campionato IS 'Provinciale, Regionale, Elite, Pro';
 
 -- COMPETITION
@@ -304,6 +314,7 @@ INSERT INTO competition (id, nome, tipo, regione, descrizione) VALUES
     ('cc000004-0000-0000-0000-000000000004', 'Torneo Friendlies', 'Amichevole', NULL, 'Partite amichevoli');
 
 -- 5. INDICI
+CREATE INDEX IF NOT EXISTS idx_category_workspace ON category(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_category_tipo ON category(tipo_campionato);
 CREATE INDEX IF NOT EXISTS idx_category_anni ON category(anno_da, anno_a);
 CREATE INDEX IF NOT EXISTS idx_team_season ON team(season_id);
