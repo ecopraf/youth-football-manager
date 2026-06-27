@@ -690,10 +690,9 @@ app.delete('/api/squadre/:id', async (req, res) => { const sid = req.params.id; 
 app.get('/api/squadre/:squadraId/calciatori', async (req, res) => { const q = supabase.from('rosa').select('calciatore:calciatore_id(*), numero_maglia, ruolo, stato').eq('squadra_id', req.params.squadraId); const { data } = await q; res.json((data||[]).map(r => ({ id: r.calciatore.id, nome: r.calciatore.nome, cognome: r.calciatore.cognome, dataNascita: r.calciatore.data_nascita, telefono: r.calciatore.telefono, dataVisitaMedica: r.calciatore.data_visita_medica, matricolaFigc: r.calciatore.matricola_figc, tipoDocumento: r.calciatore.tipo_documento, numeroDocumento: r.calciatore.numero_documento, rilasciatoDa: r.calciatore.rilasciato_da, numeroMaglia: r.numero_maglia, ruolo: r.ruolo, stato: r.stato }))); });
 app.post('/api/squadre/:squadraId/calciatori', async (req, res) => { 
   const c = req.body; 
-  // Usa inner join su stagione per ottenere workspace_id
-  const { data: sq } = await supabase.from('squadra').select('*, stagione:stagione_id(workspace_id)').eq('id', req.params.squadraId).single();
-  const wsId = sq?.stagione?.workspace_id || '22222222-2222-2222-2222-222222222222';
-  const { data: cal } = await supabase.from('calciatore').insert({ workspace_id: wsId, nome: c.nome, cognome: c.cognome, data_nascita: c.dataVisitaMedica, telefono: c.telefono, data_visita_medica: c.dataVisitaMedica, matricola_figc: c.matricolaFigc, tipo_documento: c.tipoDocumento, numero_documento: c.numeroDocumento, rilasciato_da: c.rilasciatoDa }).select().single(); 
+  // Usa solo workspace di default per evitare timeout
+  const { data: cal, error } = await supabase.from('calciatore').insert({ workspace_id: '22222222-2222-2222-2222-222222222222', nome: c.nome, cognome: c.cognome, data_nascita: c.dataVisitaMedica, telefono: c.telefono, data_visita_medica: c.dataVisitaMedica, matricola_figc: c.matricolaFigc, tipo_documento: c.tipoDocumento, numero_documento: c.numeroDocumento, rilasciato_da: c.rilasciatoDa }).select().single(); 
+  if (error) return res.status(500).json({ error: error.message });
   await supabase.from('rosa').insert({ squadra_id: req.params.squadraId, calciatore_id: cal.id, numero_maglia: c.numeroMaglia, ruolo: c.ruolo, stato: 'Attivo' }); 
   res.status(201).json(cal); 
 });
@@ -986,6 +985,35 @@ app.get('/api/squadre/:squadraId/allenamenti/summary', async (req, res) => { try
 app.post('/api/squadre/:squadraId/importa-calendario', async (req, res) => { try { const { csvData } = req.body; if (!csvData || !Array.isArray(csvData)) return res.status(400).json({ error: 'Dati CSV non validi' }); let inserite = 0; for (const row of csvData) { if (row.length < 5) continue; const [data, ora, avversario, luogo, competizione, giornata] = row; const dataOra = data + 'T' + (ora || '10:00:00'); await supabase.from('partita').insert({ squadra_id: req.params.squadraId, data_ora: new Date(dataOra).toISOString(), avversario: avversario.trim(), luogo: luogo.trim(), competizione: competizione.trim(), giornata: giornata ? parseInt(giornata) : null }); inserite++; } res.json({ success: true, inserite }); } catch (err) { res.status(400).json({ error: err.message }); } });
 
 const PORT = process.env.PORT || 3002;
+
+// POST /api/rpc/crea_giocatori - Crea giocatori con SQL diretto
+app.post('/api/rpc/crea_giocatori', async (req, res) => {
+  const { giocatori, squadra_id } = req.body;
+  const results = [];
+  
+  for (const g of giocatori) {
+    const calId = require('crypto').randomUUID();
+    // Insert calciatore
+    const { error: err1 } = await supabase.rpc('exec_sql', {
+      sql: `INSERT INTO calciatore (id, workspace_id, nome, cognome, data_nascita) VALUES ('${calId}', '22222222-2222-2222-2222-222222222222', '${g.nome}', '${g.cognome}', '${g.data_nascita}')`
+    }).catch(() => null);
+    
+    if (!err1) {
+      // Insert rosa
+      await supabase.from('rosa').insert({
+        squadra_id,
+        calciatore_id: calId,
+        numero_maglia: g.numero,
+        ruolo: g.ruolo,
+        stato: 'Attivo'
+      });
+      results.push(calId);
+    }
+  }
+  
+  res.json({ created: results.length, ids: results });
+});
+
 app.listen(PORT, () => console.log("Backend YFM in ascolto su http://localhost:" + PORT));
 
 app.get('/api/squadre/:squadraId/disciplina', async (req, res) => {
