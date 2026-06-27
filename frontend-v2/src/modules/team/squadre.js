@@ -1,4 +1,5 @@
 import { apiFetch } from '../../services/api';
+import { getSavedWorkspaceId } from '../club/workspaceSwitcher';
 
 export async function loadSquadre(stagioneId) {
   // In demo mode, skip API call - use hardcoded DEMO_SQUADRE from main.js
@@ -14,15 +15,27 @@ export async function loadSquadre(stagioneId) {
       // Se passato stagioneId, usa quello
       allSquadre = await apiFetch(`/stagioni/${stagioneId}/squadre`);
     } else {
-      // Usa /auth/workspaces se loggato, altrimenti /workspaces
-      const isAuthenticated = localStorage.getItem('yfm_token');
-      const workspacesEndpoint = isAuthenticated ? '/auth/workspaces' : '/workspaces';
-      const workspaces = await apiFetch(workspacesEndpoint);
+      // Determina il workspace corrente
+      // 1. Usa quello già impostato in window.YFM.workspaceInfo
+      // 2. Oppure quello salvato in localStorage
+      // 3. Oppure il primo dalla lista
+      let currentWorkspace = window.YFM.workspaceInfo;
       
-      // Per ora prendi il primo workspace disponibile
-      const currentWorkspace = workspaces[0];
-      if (currentWorkspace) {
-        window.YFM.workspaceInfo = currentWorkspace;
+      if (!currentWorkspace) {
+        const savedWsId = getSavedWorkspaceId();
+        const workspaces = await apiFetch('/auth/workspaces');
+        
+        if (savedWsId) {
+          currentWorkspace = workspaces.find(w => w.id === savedWsId);
+        }
+        if (!currentWorkspace) {
+          currentWorkspace = workspaces[0];
+        }
+        
+        if (currentWorkspace) {
+          window.YFM.workspaceInfo = currentWorkspace;
+          window.YFM.activeWorkspaceId = currentWorkspace.id;
+        }
       }
       
       // Cerca stagioni del workspace e prendi quella attiva
