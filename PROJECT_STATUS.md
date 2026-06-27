@@ -332,3 +332,41 @@ unction renderModule(container, data) {
 ---
 
 *Ultimo aggiornamento: Giugno 2026*
+
+---
+
+## 12. Workspace di Test - SSD New Team
+
+### Creazione Workspace Test
+Per creare il workspace di test SSD New Team, eseguire lo script SQL:
+```
+SQL/ssd-new-team-full.sql
+```
+
+### Dati Inseriti
+
+| Elemento | Quantità | Note |
+|----------|----------|------|
+| Workspace | 1 | SSD New Team |
+| Stagione | 1 | 2025/26 |
+| Squadre | 6 | U14, U15, U16, U17, U18, U19 |
+| Giocatori | 108 | 18 per categoria |
+| Partite | 90 | 15 per categoria (10 archiviate + 5 future) |
+| Eventi | ~50 | Gol, assist, cartellini |
+| Allenamenti | 6 configurazioni | 2-3 sedute a settimana |
+| Utenti | 3 | Admin, Allenatore, Staff |
+
+### Credenziali Accesso
+
+| Ruolo | Email | Password |
+|-------|-------|----------|
+| Admin | admin@ssdnewteam.it | newteam_admin |
+| Allenatore | roberto.bianchi@ssdnewteam.it | newteam_admin |
+| Staff | staff@ssdnewteam.it | newteam_admin |
+
+### Caratteristiche Dati
+- **Giocatori**: Nomi reali italiani, date di nascita coerenti con categoria
+- **Partite**: Risultati realistici (vittorie/sconfitte/pareggi)
+- **Eventi**: Marcatori, assist, cartellini gialli/rossi
+- **Avversari**: Squadre reali del territorio romano
+- **Allenamenti**: Configurazione settimanale per ogni categoria
