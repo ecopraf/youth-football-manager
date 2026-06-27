@@ -1,6 +1,6 @@
 -- ============================================================
 -- YOUTH FOOTBALL MANAGER - NUOVO SCHEMA DB
--- Versione: 1.1 - 2026-06-27
+-- Versione: 1.2 - 2026-06-27
 -- 
 -- STAGIONE 2025/26 - ANNI DI NASCITA:
 -- U14 = nati 2012
@@ -11,6 +11,12 @@
 -- U19 = nati 2007
 -- Juniores = nati 2007-2008
 -- Primavera = nati 2005-2006
+--
+-- NOTE IMPORTANTI:
+-- - Un giocatore (calciatore) puo' essere in piu' squadre
+-- - team_player.is_primary = TRUE: rosa principale
+-- - team_player.is_primary = FALSE: aggregazione temporanea
+-- - team_player.stato: Attivo, Aggregato, Infortunato, Svincolato, Trasferito
 -- ============================================================
 
 -- 1. DROP TABELLE VECCHIE
@@ -104,19 +110,24 @@ CREATE TABLE team (
 );
 
 -- TEAM_PLAYER
+-- Nota: Un giocatore puo' essere assegnato a piu' squadre.
+-- is_primary=true indica la rosa principale, is_primary=false indica un'aggregazione.
 CREATE TABLE team_player (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     team_id UUID NOT NULL REFERENCES team(id) ON DELETE CASCADE,
     player_id UUID NOT NULL REFERENCES calciatore(id) ON DELETE RESTRICT,
+    is_primary BOOLEAN DEFAULT true,
     numero_maglia INTEGER,
     ruolo_preferito VARCHAR(50),
     stato VARCHAR(50) DEFAULT 'Attivo',
     data_assegnazione DATE DEFAULT CURRENT_DATE,
     data_cessione DATE,
     note TEXT,
-    created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(team_id, player_id)
+    created_at TIMESTAMP DEFAULT NOW()
 );
+
+COMMENT ON COLUMN team_player.is_primary IS 'TRUE = rosa principale, FALSE = aggregazione temporanea';
+COMMENT ON COLUMN team_player.stato IS 'Attivo, Aggregato, Infortunato, Svincolato, Trasferito';
 
 -- TEAM_STAFF
 CREATE TABLE team_staff (
