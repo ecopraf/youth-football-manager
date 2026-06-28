@@ -19,16 +19,20 @@ function getGitHash() {
 
 function generateBuildInfo() {
   const gitHash = getGitHash();
-  const buildId = `${SW_VERSION}.${gitHash}`;
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const timeStr = now.toISOString().slice(11, 19).replace(/:/g, '');
+  const buildId = `${SW_VERSION}.${dateStr}.${timeStr}.${gitHash}`;
   const buildInfo = `// Auto-generated build info
 // SW Version: ${SW_VERSION}
-// Git Hash: ${gitHash}
-// Date: ${new Date().toISOString()}
+// Build ID: ${buildId}
+// Date: ${now.toLocaleString('it-IT')}
 export const BUILD_INFO = {
   id: '${buildId}',
   version: '${SW_VERSION}',
   gitHash: '${gitHash}',
-  date: '${new Date().toISOString()}'
+  date: '${now.toISOString()}',
+  buildDate: '${now.toLocaleString('it-IT')}'
 };
 export const SW_VERSION = '${SW_VERSION}';
 `;
