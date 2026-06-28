@@ -263,14 +263,23 @@ function attachListeners(savedDate) {
             // Trova l'allenamento per questa data o creane uno nuovo
             let allenamento = window.YFM.demoAllenamenti?.find(a => a.data === date);
             if (!allenamento) {
-              allenamento = { id: `tr_${Date.now()}`, data: date, tipo: 'Demo', durata: 90, note: '' };
+              allenamento = { id: `tr_${Date.now()}`, data: date, tipo: 'Demo', durata: 90, presenze: presenti, assenti: assenti, note: '' };
               window.YFM.demoAllenamenti = window.YFM.demoAllenamenti || [];
               window.YFM.demoAllenamenti.unshift(allenamento);
+              // Aggiungi anche alla persistenza
+              if (!demoPersistence.data.training) demoPersistence.data.training = [];
+              demoPersistence.data.training.unshift(allenamento);
+            } else {
+              allenamento.presenze = presenti;
+              allenamento.assenti = assenti;
+              // Aggiorna anche nella persistenza
+              const persTraining = demoPersistence.data.training?.find(t => t.id === allenamento.id);
+              if (persTraining) {
+                persTraining.presenze = presenti;
+                persTraining.assenti = assenti;
+              }
             }
-            allenamento.presenze = presenti;
-            allenamento.assenti = assenti;
-            
-            demoPersistence.saveTrainingPresence(allenamento.id, { presenti, assenti });
+            demoPersistence._markDirty();
             console.log('DEBUG: Salvati ' + presenzeData.length + ' presenze in demo');
             
             // Aggiorna i dati locali

@@ -1,6 +1,7 @@
 import { apiFetch } from '../../services/api';
 import { formatDate, formatDateShort } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
+import demoPersistence from '../demo/DemoPersistence.js';
 
 export default async function loadReports() {
   const c = document.getElementById('pageContent');
@@ -155,15 +156,92 @@ async function generateReport() {
     return;
   }
 
+  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
+  
   showLoading('Generazione report...');
   try {
-    const report = await apiFetch('/partite/' + matchId + '/report');
+    let report;
+    if (isDemo) {
+      // Genera report localmente per demo
+      report = generateDemoMatchReport(matchId);
+    } else {
+      report = await apiFetch('/partite/' + matchId + '/report');
+    }
     hideLoading();
     renderReport(report);
   } catch (e) {
     hideLoading();
     alert('Errore nella generazione del report: ' + e.message);
   }
+}
+
+function generateDemoMatchReport(matchId) {
+  const match = window.YFM.demoMatches?.find(m => m.id === matchId);
+  const events = demoPersistence.getEvents(matchId) || window.YFM.demoEvents?.filter(e => e.match_id === matchId) || [];
+  const formation = demoPersistence.getFormation(matchId);
+  const players = window.YFM.allPlayers || [];
+  
+  // Calcola statistiche
+  const golFatti = events.filter(e => e.tipo === 'GOAL' && !e.autogol).length;
+  const golSubiti = events.filter(e => e.tipo === 'SUBITO' || (e.tipo === 'GOAL' && e.autogol)).length;
+  const assist = events.filter(e => e.tipo === 'ASSIST').length;
+  
+  // Costruisci lista giocatori con ruolo
+  let giocatori = [];
+  if (formation) {
+    // Estrai da formazione
+    if (formation.portiere) {
+      const p = players.find(pl => pl.id === formation.portiere);
+      if (p) giocatori.push({ ...p, ruolo: 'T' });
+    }
+    (formation.difensori || []).forEach(id => {
+      const p = players.find(pl => pl.id === id);
+      if (p) giocatori.push({ ...p, ruolo: 'T' });
+    });
+    (formation.centrocampisti || []).forEach(id => {
+      const p = players.find(pl => pl.id === id);
+      if (p) giocatori.push({ ...p, ruolo: 'T' });
+    });
+    (formation.attaccanti || []).forEach(id => {
+      const p = players.find(pl => pl.id === id);
+      if (p) giocatori.push({ ...p, ruolo: 'T' });
+    });
+    (formation.panchina || []).forEach(id => {
+      const p = players.find(pl => pl.id === id);
+      if (p) giocatori.push({ ...p, ruolo: 'P' });
+    });
+  } else {
+    // Usa tutti i giocatori senza ruolo specifico
+    giocatori = players.slice(0, 18).map(p => ({ ...p, ruolo: '' }));
+  }
+  
+  return {
+    partita: {
+      id: match?.id,
+      data: match?.data_ora || match?.data,
+      avversario: match?.avversario,
+      competizione: match?.competizione,
+      gol_casa: golFatti,
+      gol_trasferta: golSubiti
+    },
+    statistiche: {
+      golFatti,
+      golSubiti,
+      tiriTotali: Math.floor(Math.random() * 10) + 5,
+      tiriInPorta: Math.floor(Math.random() * 5) + 2,
+      possessi: Math.floor(Math.random() * 30) + 35,
+      passaggi: Math.floor(Math.random() * 200) + 300,
+      assist,
+      ammonizioni: events.filter(e => e.tipo === 'YELLOW').length,
+      espulsioni: events.filter(e => e.tipo === 'RED').length,
+      calciAngolo: Math.floor(Math.random() * 8) + 2,
+      fuorigioco: Math.floor(Math.random() * 5) + 1
+    },
+    giocatori,
+    eventoCronologico: events.sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0)),
+    formazione: formation || null,
+    votoMedio: 6.5
+  };
 }
 
 function renderReport(report) {
@@ -674,9 +752,16 @@ async function generatePlayerReport() {
   const playerId = document.getElementById('playerSelect').value;
   if (!playerId) return;
   
+  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
+  
   showLoading('Generazione report giocatore...');
   try {
-    const report = await apiFetch('/calciatori/' + playerId + '/report');
+    let report;
+    if (isDemo) {
+      report = generateDemoPlayerReport(playerId);
+    } else {
+      report = await apiFetch('/calciatori/' + playerId + '/report');
+    }
     renderPlayerReport(report);
     document.getElementById('btnPrintPlayerReport').style.display = 'inline-block';
   } catch (err) {
@@ -684,6 +769,60 @@ async function generatePlayerReport() {
   } finally {
     hideLoading();
   }
+}
+
+function generateDemoPlayerReport(playerId) {
+  const player = window.YFM.allPlayers?.find(p => p.id === playerId);
+  if (!player) return { giocatore: {}, stats: {}, storico: [] };
+  
+  // Calcola statistiche dagli eventi demo
+  const allEvents = demoPersistence.data.events || [];
+  const playerEvents = allEvents.filter(e => e.player_id === playerId || e.calciatorePrincipaleId === playerId);
+  
+  const gol = playerEvents.filter(e => e.tipo === 'GOAL').length;
+  const assist = playerEvents.filter(e => e.tipo === 'ASSIST').length;
+  const ammonizioni = playerEvents.filter(e => e.tipo === 'YELLOW').length;
+  const espulsioni = playerEvents.filter(e => e.tipo === 'RED').length;
+  
+  // Conta partite giocate (partite con eventi o dove è presente in formazione/convocazione)
+  const matchIds = new Set();
+  allEvents.forEach(e => matchIds.add(e.match_id));
+  Object.keys(demoPersistence.data.convocations || {}).forEach(mid => matchIds.add(mid));
+  Object.keys(demoPersistence.data.formations || {}).forEach(mid => matchIds.add(mid));
+  
+  const partiteGiocate = Math.max(playerEvents.length > 0 ? new Set(playerEvents.map(e => e.match_id)).size : 0, player?.presenze || 0);
+  
+  // Costruisci storico eventi per partita
+  const storicoByMatch = {};
+  playerEvents.forEach(e => {
+    const match = window.YFM.demoMatches?.find(m => m.id === e.match_id);
+    if (!storicoByMatch[e.match_id]) {
+      storicoByMatch[e.match_id] = {
+        match_id: e.match_id,
+        competizione: match?.competizione || 'Campionato',
+        partita: match?.avversario || 'Avversario',
+        data: match?.data_ora || match?.data || '',
+        giornata: match?.giornata || '',
+        eventi: []
+      };
+    }
+    storicoByMatch[e.match_id].eventi.push(e);
+  });
+  
+  return {
+    giocatore: player,
+    stats: {
+      partiteGiocate,
+      gol,
+      assist,
+      ammonizioni,
+      espulsioni
+    },
+    storico: Object.values(storicoByMatch).map(m => ({
+      ...m,
+      eventi: m.eventi.sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0))
+    }))
+  };
 }
 
 function renderPlayerReport(report) {

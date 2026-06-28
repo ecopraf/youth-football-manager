@@ -241,10 +241,12 @@ async function saveEventi(mid, modal, eventi, giocatori, isDemo = false) {
   try {
     if (isDemo) {
       // Salva eventi in persistenza demo
-      const existingEvents = demoPersistence.getEvents(mid) || [];
-      // Rimuovi eventi esistenti per questa partita
-      existingEvents.forEach(e => demoPersistence.removeEvent(e.id));
-      // Aggiungi nuovi eventi
+      // Rimuovi prima gli eventi esistenti per questa partita (filtrando per match_id)
+      if (demoPersistence.data.events) {
+        demoPersistence.data.events = demoPersistence.data.events.filter(e => e.match_id !== mid);
+      }
+      
+      // Aggiungi nuovi eventi con ID
       eventi.forEach(e => {
         demoPersistence.addEvent(mid, {
           player_id: e.principale_id,
@@ -260,9 +262,21 @@ async function saveEventi(mid, modal, eventi, giocatori, isDemo = false) {
       const golSubiti = eventi.filter(ev => ev.tipo === 'SUBITO' || (ev.tipo === 'GOAL' && ev.autogol)).length;
       demoPersistence.saveMatchResult(mid, golFatti, golSubiti);
       
+      // Aggiorna direttamente i dati in memoria per refresh immediato
+      if (window.YFM) {
+        window.YFM.demoEvents = demoPersistence.data.events || [];
+        // Aggiorna i match con i nuovi risultati
+        const match = window.YFM.demoMatches?.find(m => m.id === mid);
+        if (match) {
+          match.gol_casa = golFatti;
+          match.gol_trasferta = golSubiti;
+        }
+      }
+      
       hideLoading();
       modal.close();
       alert('✅ Eventi salvati in demo! (' + eventi.length + ' eventi)');
+      // Ricarica il calendario per mostrare i nuovi risultati
       if (window.YFM?.loadCalendar) window.YFM.loadCalendar();
     } else {
       await apiFetch('/partite/' + mid + '/eventi-batch', { method: 'DELETE' }).catch(() => {});
