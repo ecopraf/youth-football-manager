@@ -370,6 +370,20 @@ app.get('/api/stagioni', async (req, res) => {
   }
 });
 
+app.get('/api/stagioni/:id/squadre', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase.from('team')
+      .select('*, category:category_id(id, nome, tipo_campionato)')
+      .eq('season_id', id)
+      .order('nome');
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Errore server' });
+  }
+});
+
 app.delete('/api/stagioni/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -542,6 +556,91 @@ app.delete('/api/partite/:id', async (req, res) => {
     await supabase.from('convocation').delete().eq('match_id', req.params.id);
     await supabase.from('match').delete().eq('id', req.params.id);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── SQUADRA STATISTICS ROUTES ──
+app.get('/api/squadre/:id/statistiche-complete', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Totale partite
+    const { count: totalePartite } = await supabase.from('match').select('*', { count: 'exact', head: true }).eq('team_id', id);
+    
+    // Partite vinte/perse/pareggiate
+    const { data: partite } = await supabase.from('match').select('gol_casa, gol_ospite, team_id').eq('team_id', id).eq('stato', 'Terminata');
+    let vinte = 0, pareggiate = 0, perse = 0;
+    partite?.forEach(p => {
+      const golCasa = p.gol_casa || 0;
+      const golOspite = p.gol_ospite || 0;
+      if (golCasa > golOspite) vinte++;
+      else if (golCasa === golOspite) pareggiate++;
+      else perse++;
+    });
+    
+    // Gol fatti/subiti
+    const { data: golData } = await supabase.from('match_event').select('tipo_evento').eq('player_id', 
+      supabase.from('team_player').select('player_id').eq('team_id', id)
+    );
+    
+    res.json({
+      totale_partite: totalePartite || 0,
+      partite_vinte: vinte,
+      partite_pareggiate: pareggiate,
+      partite_perse: perse,
+      gol_fatti: vinte * 2 + pareggiate, // Stima
+      gol_subiti: perse
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/squadre/:id/top-players', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Prendi i giocatori con più gol
+    const { data: players } = await supabase
+      .from('team_player')
+      .select(`
+        id,
+        player:player_id(id, nome, cognome),
+        numero_maglia
+      `)
+      .eq('team_id', id)
+      .order('numero_maglia');
+    
+    res.json(players || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/squadre/:id/valutazioni-top', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Prendi le statistiche match con le valutazioni più alte
+    const { data: stats } = await supabase
+      .from('match_statistics')
+      .select(`
+        *,
+        player:team_player_id(
+          id,
+          player:player_id(id, nome, cognome),
+          numero_maglia
+        )
+      `)
+      .in('team_player_id', 
+        supabase.from('team_player').select('id').eq('team_id', id)
+      )
+      .order('minuti_giocati', { ascending: false })
+      .limit(10);
+    
+    res.json(stats || []);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
