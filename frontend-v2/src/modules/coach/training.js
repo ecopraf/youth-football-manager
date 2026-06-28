@@ -1,9 +1,25 @@
 import { apiFetch } from '../../services/api';
 import { formatDateShort, formatTime, getAvatarColor } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
-import demoPersistence from '../demo/DemoPersistence';
 
 let trainingData = null;
+
+// Sync wrapper for localStorage persistence (synchronous for simplicity)
+const Persist = {
+  STORAGE_KEY: 'yfm_demo_persistence',
+  get() {
+    try { return JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}'); } 
+    catch { return {}; }
+  },
+  set(data) {
+    try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data)); } 
+    catch {}
+  },
+  markDirty() {
+    // Re-save to trigger persistence
+    this.set(this.get());
+  }
+};
 
 export default async function loadTraining() {
   const c = document.getElementById('pageContent');
@@ -15,7 +31,51 @@ export default async function loadTraining() {
   
   if (isDemo) {
     // Usa i dati demo strutturati da window.YFM.demoAllenamenti
-    const allenamentiDemo = window.YFM.demoAllenamenti || [];
+    let allenamentiDemo = window.YFM.demoAllenamenti || [];
+    
+    // Se non ci sono allenamenti demo, creali con dati precaricati realistici
+    if (allenamentiDemo.length === 0) {
+      const tuttiGiocatori = window.YFM.allPlayers || [];
+      const tuttiId = tuttiGiocatori.map(g => g.id);
+      
+      // 2-3 assenti fittizi (casuali)
+      const assentiCasuali = tuttiId.sort(() => Math.random() - 0.5).slice(0, 3);
+      
+      // Crea 4 settimane di allenamenti (Martedì, Giovedì, Sabato)
+      const dateAllenamenti = [];
+      for (let w = -3; w <= 0; w++) {
+        const lunedi = new Date();
+        lunedi.setDate(lunedi.getDate() - lunedi.getDay() + 1 + (w * 7));
+        
+        // Martedì
+        dateAllenamenti.push(new Date(lunedi.getTime() + 2 * 24*60*60*1000).toISOString().split('T')[0]);
+        // Giovedì
+        dateAllenamenti.push(new Date(lunedi.getTime() + 4 * 24*60*60*1000).toISOString().split('T')[0]);
+        // Sabato
+        dateAllenamenti.push(new Date(lunedi.getTime() + 6 * 24*60*60*1000).toISOString().split('T')[0]);
+      }
+      
+      allenamentiDemo = dateAllenamenti.map((data, idx) => {
+        const assentiQuesto = assentiCasuali.filter((_, i) => (idx + i) % 3 !== 0);
+        return {
+          id: `demo_tr_${idx}`,
+          data: data,
+          tipo: 'Allenamento',
+          durata: 90,
+          presenze: tuttiId.filter(id => !assentiQuesto.includes(id)),
+          assenti: assentiQuesto,
+          note: ''
+        };
+      });
+      
+      // Salva in window.YFM
+      window.YFM.demoAllenamenti = allenamentiDemo;
+      
+      // Salva anche in persistenza
+      const pd = Persist.get();
+      pd.training = [...allenamentiDemo];
+      Persist.set(pd);
+    }
     
     config = window.YFM.demoConfig?.length > 0 ? window.YFM.demoConfig : [
       { id: 't1', giorno_settimana: 2, ora_inizio: '17:00', ora_fine: '19:00', luogo: 'Campo 1' },
@@ -255,8 +315,17 @@ function attachListeners(savedDate) {
   // Pulsanti elimina/edit configurazione
   document.querySelectorAll('.btn-del').forEach(b => {
     b.addEventListener('click', async () => {
-      await apiFetch('/allenamenti/config/' + b.dataset.tid, { method: 'DELETE' });
-      loadTraining();
+      if (!b.dataset.tid) return;
+      
+      if (isDemo) {
+        // Demo mode: elimina da window.YFM.demoConfig
+        window.YFM.demoConfig = (window.YFM.demoConfig || []).filter(c => c.id !== b.dataset.tid);
+        Persist.markDirty();
+        loadTraining();
+      } else {
+        await apiFetch('/allenamenti/config/' + b.dataset.tid, { method: 'DELETE' });
+        loadTraining();
+      }
     });
   });
   document.querySelectorAll('.btn-edit-train').forEach(b => {
@@ -306,19 +375,22 @@ function attachListeners(savedDate) {
               window.YFM.demoAllenamenti = window.YFM.demoAllenamenti || [];
               window.YFM.demoAllenamenti.unshift(allenamento);
               // Aggiungi anche alla persistenza
-              if (!demoPersistence.data.training) demoPersistence.data.training = [];
-              demoPersistence.data.training.unshift(allenamento);
+              const pd = Persist.get();
+              if (!pd.training) pd.training = [];
+              pd.training.unshift(allenamento);
+              Persist.set(pd);
             } else {
               allenamento.presenze = presenti;
               allenamento.assenti = assenti;
               // Aggiorna anche nella persistenza
-              const persTraining = demoPersistence.data.training?.find(t => t.id === allenamento.id);
+              const pd = Persist.get();
+              const persTraining = pd.training?.find(t => t.id === allenamento.id);
               if (persTraining) {
                 persTraining.presenze = presenti;
                 persTraining.assenti = assenti;
+                Persist.set(pd);
               }
             }
-            demoPersistence._markDirty();
             console.log('DEBUG: Salvati ' + presenzeData.length + ' presenze in demo');
             
             // Aggiorna i dati locali
@@ -492,7 +564,7 @@ function openTrainingForm(tid, g, i, f, l) {
           window.YFM.demoConfig = window.YFM.demoConfig || [];
           window.YFM.demoConfig.push(data);
         }
-        demoPersistence._markDirty();
+        Persist.markDirty();
         alert(tid ? '✅ Configurazione aggiornata!' : '✅ Configurazione salvata!');
       } else if (tid) {
         await apiFetch('/allenamenti/config/' + tid, { method: 'PUT', body: JSON.stringify(data) });

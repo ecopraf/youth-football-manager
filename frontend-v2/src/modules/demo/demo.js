@@ -1067,6 +1067,9 @@ class DemoManager {
             ✉️ Registrati Adesso
           </button>
           <div class="demo-completion-extra-actions">
+            <button class="demo-btn-continue" onclick="window.demoManager.closeCelebrationBanner()">
+              🔍 Continua a Esplorare
+            </button>
             <button class="demo-btn-reload" onclick="window.demoManager.resetDemo()">
               🔄 Ricarica Demo
             </button>
@@ -1277,6 +1280,15 @@ class DemoManager {
     
     // Mostra conferma
     alert('✅ Richiesta inviata! Ti contatteremo presto.');
+  }
+
+  closeCelebrationBanner() {
+    const banner = document.getElementById('demo-celebration');
+    if (banner) banner.remove();
+    // Reimposta missione completata per permettere altre interazioni
+    if (window.miniMissionManager) {
+      window.miniMissionManager.completedSteps.clear();
+    }
   }
 
   resetDemo() {
@@ -1661,6 +1673,7 @@ class DemoManager {
         margin-top: 8px;
         flex-wrap: nowrap;
       }
+      #demo-celebration .demo-btn-continue,
       #demo-celebration .demo-btn-reload,
       #demo-celebration .demo-btn-close {
         background: linear-gradient(135deg, #E74C3C, #C0392B);
@@ -1674,6 +1687,7 @@ class DemoManager {
         white-space: nowrap;
         transition: all 0.3s ease;
       }
+      #demo-celebration .demo-btn-continue:hover,
       #demo-celebration .demo-btn-reload:hover,
       #demo-celebration .demo-btn-close:hover {
         transform: translateY(-2px);
@@ -1697,7 +1711,8 @@ class DemoManager {
           width: 100%;
         }
         #demo-celebration .demo-btn-reload,
-        #demo-celebration .demo-btn-close {
+        #demo-celebration .demo-btn-close,
+        #demo-celebration .demo-btn-continue {
           width: 100%;
         }
       }

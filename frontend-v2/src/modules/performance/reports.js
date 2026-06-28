@@ -1,5 +1,5 @@
 import { apiFetch } from '../../services/api';
-import { formatDate, formatDateShort } from '../../utils/formatters';
+import { formatDate, formatDateShort, formatBirthDate } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 import demoPersistence from '../demo/DemoPersistence.js';
 
@@ -808,20 +808,46 @@ function generateDemoPlayerReport(playerId) {
   
   // Calcola statistiche dagli eventi demo
   const allEvents = demoPersistence.data.events || [];
-  const playerEvents = allEvents.filter(e => e.player_id === playerId || e.calciatorePrincipaleId === playerId);
+  let playerEvents = allEvents.filter(e => e.player_id === playerId || e.calciatorePrincipaleId === playerId);
+  
+  // Se non ci sono eventi salvati, genera dati fittizi demo
+  if (playerEvents.length === 0) {
+    const demoMatches = window.YFM.demoMatches || [];
+    const numPartite = Math.min(3, demoMatches.length);
+    playerEvents = [];
+    
+    for (let i = 0; i < numPartite; i++) {
+      const match = demoMatches[i];
+      if (!match) continue;
+      
+      // Genera eventi fittizi per ogni partita
+      const tipiEventi = ['GOAL', 'GOAL', 'GOAL', 'ASSIST', 'ASSIST', 'YELLOW'];
+      const minutiPossibili = [12, 23, 34, 45, 56, 67, 78, 89];
+      const numEventi = Math.floor(Math.random() * 3) + 1;
+      
+      for (let j = 0; j < numEventi; j++) {
+        playerEvents.push({
+          id: `de_${playerId}_${i}_${j}`,
+          match_id: match.id,
+          player_id: playerId,
+          tipo: tipiEventi[Math.floor(Math.random() * tipiEventi.length)],
+          minuto: minutiPossibili[Math.floor(Math.random() * minutiPossibili.length)],
+          autogoal: false
+        });
+      }
+    }
+  }
   
   const gol = playerEvents.filter(e => e.tipo === 'GOAL').length;
   const assist = playerEvents.filter(e => e.tipo === 'ASSIST').length;
   const ammonizioni = playerEvents.filter(e => e.tipo === 'YELLOW').length;
   const espulsioni = playerEvents.filter(e => e.tipo === 'RED').length;
   
-  // Conta partite giocate (partite con eventi o dove è presente in formazione/convocazione)
-  const matchIds = new Set();
-  allEvents.forEach(e => matchIds.add(e.match_id));
-  Object.keys(demoPersistence.data.convocations || {}).forEach(mid => matchIds.add(mid));
-  Object.keys(demoPersistence.data.formations || {}).forEach(mid => matchIds.add(mid));
-  
-  const partiteGiocate = Math.max(playerEvents.length > 0 ? new Set(playerEvents.map(e => e.match_id)).size : 0, player?.presenze || 0);
+  // Conta partite giocate
+  const partiteGiocate = Math.max(
+    new Set(playerEvents.map(e => e.match_id)).size,
+    player?.presenze || window.YFM.demoMatches?.length || 0
+  );
   
   // Costruisci storico eventi per partita
   const storicoByMatch = {};
@@ -837,12 +863,14 @@ function generateDemoPlayerReport(playerId) {
         eventi: []
       };
     }
-    // Assicura che ogni evento abbia un minuto
-    const eventoConMinuto = {
-      ...e,
-      minuto: e.minuto || e.min || '?'
-    };
-    storicoByMatch[e.match_id].eventi.push(eventoConMinuto);
+    // Assicura che ogni evento abbia un minuto valido
+    const minuto = e.minuto || e.min;
+    if (minuto !== undefined && minuto !== null) {
+      storicoByMatch[e.match_id].eventi.push({
+        ...e,
+        minuto: minuto
+      });
+    }
   });
   
   return {
@@ -902,7 +930,7 @@ function renderPlayerReport(report) {
       <div style="text-align:center;border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:16px;">
         <h1 style="margin:0;font-size:24px;">${report.giocatore.cognome || ''} ${report.giocatore.nome}</h1>
         <p style="margin:4px 0 0 0;color:#666;font-size:13px;">
-          ${report.giocatore.data_nascita ? 'Nato: ' + formatDate(report.giocatore.data_nascita) : ''}
+          ${report.giocatore.data_nascita ? 'Nato: ' + formatBirthDate(report.giocatore.data_nascita) : ''}
           ${report.giocatore.nazionalita ? ' | ' + report.giocatore.nazionalita : ''}
         </p>
       </div>

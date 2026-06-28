@@ -11,6 +11,13 @@ export function formatDateShort(d) {
   return new Date(d).toLocaleDateString('it-IT');
 }
 
+export function formatBirthDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('it-IT', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+}
+
 export function formatTime(t) {
   if (!t) return '';
   return t.slice(0, 5);
