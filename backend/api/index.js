@@ -510,30 +510,46 @@ app.get('/api/squadre/:squadraId/calciatori', async (req, res) => {
 app.post('/api/squadre/:squadraId/calciatori', async (req, res) => {
   try {
     const c = req.body;
-    const { data: cal, error } = await supabase.from('player').insert({
-      workspace_id: '22222222-2222-2222-2222-222222222222', nome: c.nome, cognome: c.cognome,
-      data_nascita: c.dataVisitaMedica, telefono: c.telefono, medical_cert_date: c.dataVisitaMedica,
-      matricola_figc: c.matricolaFigc, tipo_documento: c.tipoDocumento, numero_documento: c.numeroDocumento, rilasciato_da: c.rilasciatoDa
-    }).select().single();
+    
+    // Inserisci solo i campi che esistono nella tabella player
+    const playerData = {
+      nome: c.nome, 
+      cognome: c.cognome,
+      data_nascita: c.data_nascita || c.dataVisitaMedica,
+      telefono: c.telefono,
+      sesso: c.sesso || 'M'
+    };
+    
+    const { data: cal, error } = await supabase.from('player').insert(playerData).select().single();
     if (error) return res.status(500).json({ error: error.message });
-    await supabase.from('team_player').insert({ team_id: req.params.squadraId, player_id: cal.id, numero_maglia: c.numeroMaglia, ruolo: c.ruolo, stato: 'Attivo' });
+    
+    // Inserisci in team_player
+    await supabase.from('team_player').insert({ 
+      team_id: req.params.squadraId, 
+      player_id: cal.id, 
+      numero_maglia: c.numero_maglia || c.numeroMaglia, 
+      ruolo: c.ruolo, 
+      stato: 'Attivo' 
+    });
+    
     res.status(201).json(cal);
   } catch (err) {
+    console.error('POST calciatori error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 app.get('/api/squadre/:squadraId/scadenze-mediche', async (req, res) => {
   try {
-    const { data: rosa } = await supabase.from('team_player').select('calciatore:player_id(id, nome, cognome, medical_cert_date)').eq('team_id', req.params.squadraId);
-    const oggi = new Date();
-    const scadenze = (rosa || []).filter(r => r.calciatore.medical_cert_date).map(r => {
-      const scadenza = new Date(r.calciatore.medical_cert_date);
-      scadenza.setFullYear(scadenza.getFullYear() + 1);
-      return { id: r.calciatore.id, nome: r.calciatore.nome, cognome: r.calciatore.cognome, scadenza: scadenza.toISOString().split('T')[0], giorniRimanenti: Math.ceil((scadenza - oggi) / (1000 * 60 * 60 * 24)) };
-    }).filter(s => s.giorniRimanenti <= 30).sort((a, b) => a.giorniRimanenti - b.giorniRimanenti);
-    res.json(scadenze);
+    const { data: rosa } = await supabase
+      .from('team_player')
+      .select('calciatore:player_id(id, nome, cognome)')
+      .eq('team_id', req.params.squadraId);
+    
+    // Per ora restituisci array vuoto - non c'è campo medical_cert_date
+    res.json([]);
   } catch (err) {
+    console.error('scadenze-mediche error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -652,25 +668,36 @@ app.get('/api/squadre/:id/valutazioni-top', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Prendi le statistiche match con le valutazioni più alte
+    // Prima prendi gli ID dei team_player per questa squadra
+    const { data: teamPlayers } = await supabase
+      .from('team_player')
+      .select('id')
+      .eq('team_id', id);
+    
+    const teamPlayerIds = teamPlayers?.map(tp => tp.id) || [];
+    
+    if (teamPlayerIds.length === 0) {
+      return res.json([]);
+    }
+    
+    // Poi prendi le statistiche per quei giocatori
     const { data: stats } = await supabase
       .from('match_statistics')
       .select(`
         *,
-        player:team_player_id(
+        team_player:team_player_id(
           id,
           player:player_id(id, nome, cognome),
           numero_maglia
         )
       `)
-      .in('team_player_id', 
-        supabase.from('team_player').select('id').eq('team_id', id)
-      )
+      .in('team_player_id', teamPlayerIds)
       .order('minuti_giocati', { ascending: false })
       .limit(10);
     
     res.json(stats || []);
   } catch (err) {
+    console.error('valutazioni-top error:', err);
     res.status(500).json({ error: err.message });
   }
 });
