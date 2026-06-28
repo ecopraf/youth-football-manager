@@ -243,9 +243,20 @@ app.get('/api/auth/workspaces', authMiddleware, async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Non autenticato' });
-    const { data: user } = await supabase.from('users').select('workspace_id').eq('id', userId).single();
-    if (!user?.workspace_id) return res.json([]);
-    const { data: workspaces, error } = await supabase.from('workspace').select('id, nome, logo_url').eq('id', user.workspace_id);
+    
+    // Recupera utente con is_superadmin
+    const { data: user } = await supabase.from('users').select('workspace_id, is_superadmin').eq('id', userId).single();
+    if (!user) return res.json([]);
+    
+    // Superadmin vede TUTTI i workspace, utente normale solo il suo
+    let query = supabase.from('workspace').select('id, nome, logo_url');
+    
+    if (!user.is_superadmin && user.workspace_id) {
+      query = query.eq('id', user.workspace_id);
+    }
+    // Se è superadmin o non ha workspace_id, ritorna tutti i workspace
+    
+    const { data: workspaces, error } = await query;
     if (error) return res.status(400).json({ error: error.message });
     res.json(workspaces || []);
   } catch (err) {

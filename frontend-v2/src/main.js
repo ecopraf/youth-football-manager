@@ -212,8 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
       loadAvailableWorkspaces().then(async (workspaces) => {
         const user = window.YFM.getUser();
         
-        // Superadmin: mostra selettore workspace iniziale SOLO se non c'è già una selezione
         if (isSuperAdmin(user)) {
+          // Superadmin: mostra selettore workspace iniziale SOLO se non c'è già una selezione
           const realWs = getRealWorkspaces(workspaces);
           const savedWsId = getSavedWorkspaceId();
           
@@ -242,6 +242,17 @@ document.addEventListener('DOMContentLoaded', () => {
           
           // Inizializza switcher in sidebar
           setTimeout(() => initWorkspaceSwitcherInSidebar(), 100);
+        } else {
+          // Utente normale: usa il suo workspace_id dal profilo
+          const userWorkspaceId = user?.workspace_id;
+          if (userWorkspaceId) {
+            const userWs = workspaces.find(w => w.id === userWorkspaceId);
+            if (userWs) {
+              window.YFM.workspaceInfo = userWs;
+              window.YFM.activeWorkspaceId = userWs.id;
+              console.log('[MAIN] Workspace utente:', userWs.nome);
+            }
+          }
         }
         
         await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
