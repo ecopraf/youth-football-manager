@@ -184,46 +184,75 @@ function generateDemoMatchReport(matchId) {
   // Calcola statistiche
   const golFatti = events.filter(e => e.tipo === 'GOAL' && !e.autogol).length;
   const golSubiti = events.filter(e => e.tipo === 'SUBITO' || (e.tipo === 'GOAL' && e.autogol)).length;
-  const assist = events.filter(e => e.tipo === 'ASSIST').length;
+  const ammonizioni = events.filter(e => e.tipo === 'YELLOW').length;
+  const espulsioni = events.filter(e => e.tipo === 'RED').length;
   
-  // Costruisci lista giocatori con ruolo
+  // Costruisci eventi per timeline
+  const eventi = events.map(e => {
+    const p = players.find(pl => pl.id === e.player_id);
+    const s = players.find(pl => pl.id === e.second_player_id);
+    return {
+      tipo: e.tipo,
+      minuto: e.minuto || e.min || '?',
+      principale: p ? `${p.cognome} ${p.nome[0]}.` : 'Giocatore',
+      secondario: s ? `${s.cognome} ${s.nome[0]}.` : null
+    };
+  }).sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0));
+  
+  // Costruisci lista giocatori con ruolo e statistiche
   let giocatori = [];
   if (formation) {
-    // Estrai da formazione
-    if (formation.portiere) {
-      const p = players.find(pl => pl.id === formation.portiere);
-      if (p) giocatori.push({ ...p, ruolo: 'T' });
-    }
-    (formation.difensori || []).forEach(id => {
+    const addPlayer = (id, ruolo) => {
       const p = players.find(pl => pl.id === id);
-      if (p) giocatori.push({ ...p, ruolo: 'T' });
-    });
-    (formation.centrocampisti || []).forEach(id => {
-      const p = players.find(pl => pl.id === id);
-      if (p) giocatori.push({ ...p, ruolo: 'T' });
-    });
-    (formation.attaccanti || []).forEach(id => {
-      const p = players.find(pl => pl.id === id);
-      if (p) giocatori.push({ ...p, ruolo: 'T' });
-    });
-    (formation.panchina || []).forEach(id => {
-      const p = players.find(pl => pl.id === id);
-      if (p) giocatori.push({ ...p, ruolo: 'P' });
-    });
+      if (p) {
+        const pEvents = events.filter(e => e.player_id === id);
+        giocatori.push({
+          ...p,
+          ruolo,
+          gol: pEvents.filter(e => e.tipo === 'GOAL').length,
+          assist: pEvents.filter(e => e.tipo === 'ASSIST').length,
+          ammonizioni: pEvents.filter(e => e.tipo === 'YELLOW').length,
+          espulsioni: pEvents.filter(e => e.tipo === 'RED').length,
+          numeroMaglia: p.numero_maglia || 0
+        });
+      }
+    };
+    if (formation.portiere) addPlayer(formation.portiere, 'T');
+    (formation.difensori || []).forEach(id => addPlayer(id, 'T'));
+    (formation.centrocampisti || []).forEach(id => addPlayer(id, 'T'));
+    (formation.attaccanti || []).forEach(id => addPlayer(id, 'T'));
+    (formation.panchina || []).forEach(id => addPlayer(id, 'P'));
   } else {
     // Usa tutti i giocatori senza ruolo specifico
-    giocatori = players.slice(0, 18).map(p => ({ ...p, ruolo: '' }));
+    giocatori = players.slice(0, 18).map(p => ({
+      ...p,
+      ruolo: '',
+      gol: p.gol || 0,
+      assist: p.assist || 0,
+      ammonizioni: 0,
+      espulsioni: 0,
+      numeroMaglia: p.numero_maglia || 0
+    }));
   }
   
   return {
+    societa: window.YFM.workspaceInfo?.nome || 'ASD Green Academy',
     partita: {
       id: match?.id,
-      data: match?.data_ora || match?.data,
-      avversario: match?.avversario,
-      competizione: match?.competizione,
-      gol_casa: golFatti,
-      gol_trasferta: golSubiti
+      dataOra: match?.data_ora || match?.data,
+      avversario: match?.avversario || 'Avversario',
+      competizione: match?.competizione || 'Campionato',
+      giornata: match?.giornata,
+      luogo: match?.luogo || 'Casa'
     },
+    score: {
+      golCasa: golFatti || match?.gol_casa || 0,
+      golOspiti: golSubiti || match?.gol_trasferta || 0
+    },
+    eventi,
+    giocatori,
+    ammonizioni,
+    espulsioni,
     statistiche: {
       golFatti,
       golSubiti,
@@ -231,14 +260,9 @@ function generateDemoMatchReport(matchId) {
       tiriInPorta: Math.floor(Math.random() * 5) + 2,
       possessi: Math.floor(Math.random() * 30) + 35,
       passaggi: Math.floor(Math.random() * 200) + 300,
-      assist,
-      ammonizioni: events.filter(e => e.tipo === 'YELLOW').length,
-      espulsioni: events.filter(e => e.tipo === 'RED').length,
       calciAngolo: Math.floor(Math.random() * 8) + 2,
       fuorigioco: Math.floor(Math.random() * 5) + 1
     },
-    giocatori,
-    eventoCronologico: events.sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0)),
     formazione: formation || null,
     votoMedio: 6.5
   };
@@ -806,7 +830,12 @@ function generateDemoPlayerReport(playerId) {
         eventi: []
       };
     }
-    storicoByMatch[e.match_id].eventi.push(e);
+    // Assicura che ogni evento abbia un minuto
+    const eventoConMinuto = {
+      ...e,
+      minuto: e.minuto || e.min || '?'
+    };
+    storicoByMatch[e.match_id].eventi.push(eventoConMinuto);
   });
   
   return {

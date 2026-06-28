@@ -403,11 +403,16 @@ function openTrainingForm(tid, g, i, f, l) {
     </div>
     <div class="form-group" style="margin-top:12px;"><label>Luogo</label><input id="tfL" value="${l}"></div>`;
   
-  const footer = '<button class="btn btn-secondary modal-close-btn">Annulla</button><button class="btn btn-primary" id="saveBtn">' + (tid ? 'Aggiorna' : 'Salva') + '</button>';
-  
   const modal = document.createElement('div');
   modal.className = 'modal-overlay'; modal.id = 'currentModal';
-  modal.innerHTML = `<div class="modal-content" style="max-width:500px;"><div class="modal-header"><h2>${tid ? 'Modifica' : 'Nuovo'} Allenamento</h2><button class="modal-close-btn" id="modalCloseX">×</button></div><div class="modal-body">${content}</div><div class="modal-footer">${footer}</div></div>`;
+  modal.innerHTML = `<div class="modal-content" style="max-width:500px;">
+    <div class="modal-header"><h2>${tid ? 'Modifica' : 'Nuovo'} Allenamento</h2><button class="modal-close-btn" id="modalCloseX">×</button></div>
+    <div class="modal-body">${content}</div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary modal-close-btn">Annulla</button>
+      <button class="btn btn-primary" id="saveBtn">${tid ? 'Aggiorna' : 'Salva'}</button>
+    </div>
+  </div>`;
   document.body.appendChild(modal);
   
   const close = () => { const m = document.getElementById('currentModal'); if (m) m.remove(); };
@@ -415,23 +420,42 @@ function openTrainingForm(tid, g, i, f, l) {
   // Assicura che gli eventi siano aggiunti dopo il rendering
   setTimeout(() => {
     const closeBtn = document.getElementById('modalCloseX');
-    const annullaBtn = modal.querySelector('.modal-close-btn');
+    const annullaBtn = document.getElementById('currentModal')?.querySelector('.modal-close-btn');
     if (closeBtn) closeBtn.addEventListener('click', close);
     if (annullaBtn) annullaBtn.addEventListener('click', close);
-  }, 10);
-  
-  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    // Fallback: chiudi al click su overlay
+    const modalEl = document.getElementById('currentModal');
+    if (modalEl) {
+      modalEl.addEventListener('click', e => { if (e.target === modalEl) close(); });
+    }
+  }, 50);
   
   document.getElementById('saveBtn').addEventListener('click', async () => {
+    const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
     const data = {
+      id: tid || `cfg_${Date.now()}`,
       giorno_settimana: parseInt(document.getElementById('tfG').value),
       ora_inizio: document.getElementById('tfI').value,
       ora_fine: document.getElementById('tfF').value,
       luogo: document.getElementById('tfL').value
     };
+    
     showLoading();
     try {
-      if (tid) {
+      if (isDemo) {
+        // Demo mode: gestisci localmente
+        if (tid) {
+          // Aggiorna esistente
+          const idx = window.YFM.demoConfig?.findIndex(c => c.id === tid);
+          if (idx >= 0) window.YFM.demoConfig[idx] = data;
+        } else {
+          // Nuovo
+          window.YFM.demoConfig = window.YFM.demoConfig || [];
+          window.YFM.demoConfig.push(data);
+        }
+        demoPersistence._markDirty();
+        alert(tid ? '✅ Configurazione aggiornata!' : '✅ Configurazione salvata!');
+      } else if (tid) {
         await apiFetch('/allenamenti/config/' + tid, { method: 'PUT', body: JSON.stringify(data) });
       } else {
         await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/config', { method: 'POST', body: JSON.stringify(data) });
