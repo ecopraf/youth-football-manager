@@ -832,6 +832,184 @@ app.get('/api/calciatori/:id/stats-current', async (req, res) => {
   }
 });
 
+// ── TRAINING ATTENDANCE ROUTES ──
+
+// Get training config
+app.get('/api/squadre/:squadraId/allenamenti/config', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('allenamento_config')
+      .select('*')
+      .eq('team_id', req.params.squadraId)
+      .order('giorno_settimana');
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Save training config
+app.post('/api/squadre/:squadraId/allenamenti/config', async (req, res) => {
+  try {
+    const config = { ...req.body, team_id: req.params.squadraId };
+    const { data, error } = await supabase
+      .from('allenamento_config')
+      .insert(config)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update training config
+app.put('/api/allenamenti/config/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('allenamento_config')
+      .update(req.body)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete training config
+app.delete('/api/allenamenti/config/:id', async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('allenamento_config')
+      .delete()
+      .eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get training attendance (presenze)
+app.get('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('presenza_allenamento')
+      .select(`
+        *,
+        giocatore:calciatore_id (
+          id, nome, cognome, ruolo
+        )
+      `)
+      .eq('team_id', req.params.squadraId)
+      .order('data', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Save/update training attendance
+app.post('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
+  try {
+    const { calciatoreId, data, presente, motivo_assenza, note } = req.body;
+    
+    // Check if exists
+    const { data: existing } = await supabase
+      .from('presenza_allenamento')
+      .select('id')
+      .eq('team_id', req.params.squadraId)
+      .eq('calciatore_id', calciatoreId)
+      .eq('data', data)
+      .single();
+    
+    if (existing) {
+      // Update
+      const { data: updated, error } = await supabase
+        .from('presenza_allenamento')
+        .update({ presente, motivo_assenza: motivo_assenza || null, note })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      res.json(updated);
+    } else {
+      // Insert
+      const { data: inserted, error } = await supabase
+        .from('presenza_allenamento')
+        .insert({
+          team_id: req.params.squadraId,
+          calciatore_id: calciatoreId,
+          data,
+          presente,
+          motivo_assenza: motivo_assenza || null,
+          note
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      res.json(inserted);
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get training summary (stats per player)
+app.get('/api/squadre/:squadraId/allenamenti/summary', async (req, res) => {
+  try {
+    const { data: presenze } = await supabase
+      .from('presenza_allenamento')
+      .select('*')
+      .eq('team_id', req.params.squadraId);
+    
+    const { data: giocatori } = await supabase
+      .from('calciatore')
+      .select('id, nome, cognome')
+      .eq('team_id', req.params.squadraId);
+    
+    const summary = {};
+    (giocatori || []).forEach(g => {
+      const playerPres = (presenze || []).filter(p => p.calciatore_id === g.id);
+      const presenti = playerPres.filter(p => p.presente).length;
+      const assenti = playerPres.filter(p => !p.presente).length;
+      summary[g.id] = {
+        id: g.id,
+        nome: g.nome,
+        cognome: g.cognome,
+        totali: playerPres.length,
+        presenti,
+        assenti,
+        assentiSett: 0
+      };
+    });
+    
+    // Calculate weekly absences
+    const now = new Date();
+    const inizioSett = new Date(now);
+    inizioSett.setDate(now.getDate() - now.getDay() + 1);
+    const fineSett = new Date(inizioSett);
+    fineSett.setDate(inizioSett.getDate() + 6);
+    
+    (presenze || []).forEach(p => {
+      const dataPres = new Date(p.data);
+      if (dataPres >= inizioSett && dataPres <= fineSett && !p.presente && summary[p.calciatore_id]) {
+        summary[p.calciatore_id].assentiSett++;
+      }
+    });
+    
+    res.json({ summary, settimana: { da: inizioSett.toISOString().split('T')[0], a: fineSett.toISOString().split('T')[0] } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── MIGRATION ENDPOINT - Crea nuovo schema ──
 app.post('/api/admin/migrate-new-schema', authMiddleware, async (req, res) => {
   try {
