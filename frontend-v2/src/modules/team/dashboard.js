@@ -15,9 +15,20 @@ export default async function loadDashboard() {
     stats = window.YFM.demoStats || { punti: 0, partiteGiocate: 0, vittorie: 0, pareggi: 0, sconfitte: 0, golFatti: 0, golSubiti: 0, differenzaReti: 0 };
     top = window.YFM.demoTopPlayers || { marcatori: [], assistmen: [], presenze: [] };
     topValutazioni = { topGiocatori: [] };
-    // Filtra partite future
-    const futureMatches = (window.YFM.demoMatches || []).filter(p => p.stato === 'Da disputare');
+    // Filtra partite future e passate
+    const demoMatches = window.YFM.demoMatches || [];
+    const futureMatches = demoMatches.filter(p => p.stato === 'Da disputare');
+    const pastMatches = demoMatches.filter(p => p.stato === 'Terminata');
     partiteFuture = futureMatches;
+    // Aggiungi risultati alle stats
+    stats.risultati = pastMatches.map(m => ({
+      id: m.id,
+      avversario: m.avversario,
+      luogo: m.luogo,
+      dataOra: m.data_ora,
+      golFatti: m.gol_casa,
+      golSubiti: m.gol_trasferta
+    }));
   } else {
     try {
       [stats, top, topValutazioni, partiteFuture] = await Promise.all([

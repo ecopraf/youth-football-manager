@@ -400,8 +400,35 @@ window.copySocialComment = function() {
 // ── REPORT STAGIONALE ──
 async function generateSeasonalReport() {
   showLoading('Generazione report stagionale...');
+  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
+  
   try {
-    const report = await apiFetch('/squadre/' + window.YFM.squadraId + '/report-stagionale');
+    let report;
+    if (isDemo) {
+      // Genera report demo
+      const stats = window.YFM.demoStats || {};
+      const s = window.YFM.getSquadra();
+      report = {
+        societa: window.YFM.workspaceInfo?.nome || 'ASD Green Academy',
+        squadra: { categoria: s.categoria || 'Primavera' },
+        stagione: '2025/26',
+        punti: stats.punti || 34,
+        partiteGiocate: stats.partiteGiocate || 14,
+        vittorie: stats.vittorie || 10,
+        pareggi: stats.pareggi || 4,
+        sconfitte: stats.sconfitte || 0,
+        golFatti: stats.golFatti || 38,
+        golSubiti: stats.golSubiti || 12,
+        migliorMarcatore: window.YFM.demoTopPlayers?.marcatori?.[0] || { nome: 'Giovanni', cognome: 'Marroni', gol: 12 },
+        migliorAssistman: window.YFM.demoTopPlayers?.assistmen?.[0] || { nome: 'Simone', cognome: 'Arancioni', assist: 8 },
+        topPresenze: window.YFM.demoTopPlayers?.presenze?.[0] || { nome: 'Luca', cognome: 'Bianchi', presenze: 14 },
+        ammonizioni: 18,
+        espulsioni: 2,
+        capienzeMedie: 45
+      };
+    } else {
+      report = await apiFetch('/squadre/' + window.YFM.squadraId + '/report-stagionale');
+    }
     renderSeasonalReport(report);
     document.getElementById('btnPrintSeasonalReport').style.display = 'inline-block';
   } catch (err) {

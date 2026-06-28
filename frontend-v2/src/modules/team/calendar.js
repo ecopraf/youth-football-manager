@@ -6,17 +6,32 @@ let allMatches = [];
 
 export default async function loadCalendar() {
   const c = document.getElementById('pageContent');
-  try {
-    const [matches, stats] = await Promise.all([
-      apiFetch('/squadre/' + window.YFM.squadraId + '/partite'),
-      apiFetch('/squadre/' + window.YFM.squadraId + '/statistiche-complete').catch(() => ({ risultati: [] }))
-    ]);
-    allMatches = matches;
-    window.YFM.allMatches = matches;
+  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
+  
+  let matches = [];
+  let stats = { risultati: [] };
+  
+  if (isDemo) {
+    // Usa i dati demo
+    matches = window.YFM.demoMatches || [];
+    stats = window.YFM.demoStats || { risultati: [] };
+  } else {
+    try {
+      [matches, stats] = await Promise.all([
+        apiFetch('/squadre/' + window.YFM.squadraId + '/partite'),
+        apiFetch('/squadre/' + window.YFM.squadraId + '/statistiche-complete').catch(() => ({ risultati: [] }))
+      ]);
+    } catch (err) {
+      console.error('Errore caricamento calendario:', err);
+    }
+  }
+  
+  allMatches = matches;
+  window.YFM.allMatches = matches;
 
-    const now = new Date();
+  const now = new Date();
     
-    // Separa future e passate
+// Separa future e passate
     const futureMatches = matches
       .filter(m => new Date(m.data_ora) >= now)
       .sort((a, b) => new Date(a.data_ora) - new Date(b.data_ora));

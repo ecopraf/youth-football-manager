@@ -33,14 +33,14 @@ const DEMO_SQUADRE = [
 // Partite demo
 const DEMO_PARTITE = [
   // Prossime partite
-  { id: 'm001', avversario: 'Roma Academy', luogo: 'Trasferta', data_ora: '2026-07-05T15:30:00', competizione: 'Campionato Primavera', stato: 'Da disputare' },
-  { id: 'm002', avversario: 'Lazio Youth', luogo: 'Casa', data_ora: '2026-07-12T16:00:00', competizione: 'Campionato Primavera', stato: 'Da disputare' },
+  { id: 'm001', avversario: 'Roma Academy', luogo: 'Trasferta', data_ora: '2026-07-05T15:30:00', competizione: 'Campionato Primavera', stato: 'Da disputare', giornata: 16 },
+  { id: 'm002', avversario: 'Lazio Youth', luogo: 'Casa', data_ora: '2026-07-12T16:00:00', competizione: 'Campionato Primavera', stato: 'Da disputare', giornata: 17 },
   // Partite terminate
-  { id: 'm003', avversario: 'Inter Academy', luogo: 'Casa', data_ora: '2026-06-20T15:00:00', competizione: 'Campionato Primavera', stato: 'Terminata', gol_casa: 3, gol_trasferta: 1 },
-  { id: 'm004', avversario: 'Milan Youth', luogo: 'Trasferta', data_ora: '2026-06-13T15:00:00', competizione: 'Campionato Primavera', stato: 'Terminata', gol_casa: 2, gol_trasferta: 2 },
-  { id: 'm005', avversario: 'Juventus Academy', luogo: 'Casa', data_ora: '2026-06-06T15:00:00', competizione: 'Campionato Primavera', stato: 'Terminata', gol_casa: 4, gol_trasferta: 0 },
-  { id: 'm006', avversario: 'Napoli Academy', luogo: 'Trasferta', data_ora: '2026-05-30T15:00:00', competizione: 'Campionato Primavera', stato: 'Terminata', gol_casa: 1, gol_trasferta: 2 },
-  { id: 'm007', avversario: 'Fiorentina Youth', luogo: 'Casa', data_ora: '2026-05-23T15:00:00', competizione: 'Campionato Primavera', stato: 'Terminata', gol_casa: 5, gol_trasferta: 1 },
+  { id: 'm003', avversario: 'Inter Academy', luogo: 'Casa', data_ora: '2026-06-20T15:00:00', competizione: 'Campionato Primavera', stato: 'Terminata', gol_casa: 3, gol_trasferta: 1, giornata: 15 },
+  { id: 'm004', avversario: 'Milan Youth', luogo: 'Trasferta', data_ora: '2026-06-13T15:00:00', competizione: 'Campionato Primavera', stato: 'Terminata', gol_casa: 2, gol_trasferta: 2, giornata: 14 },
+  { id: 'm005', avversario: 'Juventus Academy', luogo: 'Casa', data_ora: '2026-06-06T15:00:00', competizione: 'Campionato Primavera', stato: 'Terminata', gol_casa: 4, gol_trasferta: 0, giornata: 13 },
+  { id: 'm006', avversario: 'Napoli Academy', luogo: 'Trasferta', data_ora: '2026-05-30T15:00:00', competizione: 'Campionato Primavera', stato: 'Terminata', gol_casa: 1, gol_trasferta: 2, giornata: 12 },
+  { id: 'm007', avversario: 'Fiorentina Youth', luogo: 'Casa', data_ora: '2026-05-23T15:00:00', competizione: 'Campionato Primavera', stato: 'Terminata', gol_casa: 5, gol_trasferta: 1, giornata: 11 },
 ];
 
 // Eventi partite demo (gol, assist)
