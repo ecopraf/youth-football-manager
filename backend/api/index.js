@@ -495,14 +495,28 @@ app.delete('/api/squadre/:id', authMiddleware, async (req, res) => {
 // ── GIOCATORI ROUTES ──
 app.get('/api/squadre/:squadraId/calciatori', async (req, res) => {
   try {
-    const { data } = await supabase.from('team_player').select('calciatore:player_id(*), numero_maglia, ruolo, stato').eq('team_id', req.params.squadraId);
+    const { data } = await supabase
+      .from('team_player')
+      .select('calciatore:player_id(*), numero_maglia, ruolo_preferito, stato')
+      .eq('team_id', req.params.squadraId);
     res.json((data || []).map(r => ({
-      id: r.calciatore.id, nome: r.calciatore.nome, cognome: r.calciatore.cognome, data_nascita: r.calciatore.data_nascita,
-      telefono: r.calciatore.telefono, medical_cert_date: r.calciatore.medical_cert_date, matricola_figc: r.calciatore.matricola_figc,
-      tipo_documento: r.calciatore.tipo_documento, numero_documento: r.calciatore.numero_documento, rilasciato_da: r.calciatore.rilasciato_da,
-      numero_maglia: r.numero_maglia, ruolo: r.ruolo, stato: r.stato
+      id: r.calciatore.id, 
+      nome: r.calciatore.nome, 
+      cognome: r.calciatore.cognome, 
+      data_nascita: r.calciatore.data_nascita,
+      telefono: r.calciatore.telefono, 
+      data_visita_medica: r.calciatore.data_visita_medica,
+      scadenza_visita_medica: r.calciatore.scadenza_visita_medica,
+      matricola_figc: r.calciatore.matricola_figc,
+      tipo_documento: r.calciatore.tipo_documento, 
+      numero_documento: r.calciatore.numero_documento, 
+      rilasciato_da: r.calciatore.rilasciato_da,
+      numero_maglia: r.numero_maglia, 
+      ruolo: r.ruolo_preferito, 
+      stato: r.stato
     })));
   } catch (err) {
+    console.error('GET calciatori error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -520,7 +534,7 @@ app.post('/api/squadre/:squadraId/calciatori', async (req, res) => {
       telefono: c.telefono,
       email: c.email,
       foto_url: c.foto_url,
-      ruolo_principale: c.ruolo_principale,
+      ruolo_principale: c.ruolo || c.ruolo_principale, // ruolo è il campo dal frontend
       piede_preferito: c.piede_preferito,
       altezza: c.altezza,
       peso: c.peso,
@@ -547,7 +561,7 @@ app.post('/api/squadre/:squadraId/calciatori', async (req, res) => {
       team_id: req.params.squadraId,
       player_id: cal.id,
       numero_maglia: c.numero_maglia,
-      ruolo_preferito: c.ruolo_preferito,
+      ruolo_preferito: c.ruolo || c.ruolo_principale, // ruolo dal frontend
       stato: c.stato || 'Attivo',
       data_assegnazione: new Date().toISOString().split('T')[0]
     };
