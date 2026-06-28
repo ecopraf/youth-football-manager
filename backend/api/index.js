@@ -525,32 +525,35 @@ app.post('/api/squadre/:squadraId/calciatori', async (req, res) => {
   try {
     const c = req.body;
     
+    // Helper per convertire stringa vuota in null per campi DATE
+    const toDate = (val) => val && val.trim() ? val.trim() : null;
+    
     // Inserisci giocatore con tutti i campi dalla scheda
     const playerData = {
       nome: c.nome,
       cognome: c.cognome,
       data_nascita: c.data_nascita,
       sesso: c.sesso || 'M',
-      telefono: c.telefono,
-      email: c.email,
-      foto_url: c.foto_url,
-      ruolo_principale: c.ruolo || c.ruolo_principale, // ruolo è il campo dal frontend
-      piede_preferito: c.piede_preferito,
-      altezza: c.altezza,
-      peso: c.peso,
-      note: c.note,
+      telefono: c.telefono || null,
+      email: c.email || null,
+      foto_url: c.foto_url || null,
+      ruolo_principale: c.ruolo || c.ruolo_principale,
+      piede_preferito: c.piede_preferito || null,
+      altezza: c.altezza || null,
+      peso: c.peso || null,
+      note: c.note || null,
       // Campi nuovi
-      luogo_nascita: c.luogo_nascita,
-      nazionalita: c.nazionalita,
-      residenza: c.residenza,
-      matricola_figc: c.matricola_figc,
-      tipo_documento: c.tipo_documento,
-      numero_documento: c.numero_documento,
-      rilasciato_da: c.rilasciato_da,
-      data_visita_medica: c.data_visita_medica,
-      scadenza_visita_medica: c.scadenza_visita_medica,
-      tesserato_dal: c.tesserato_dal,
-      tesserato_fino_al: c.tesserato_fino_al
+      luogo_nascita: c.luogo_nascita || null,
+      nazionalita: c.nazionalita || null,
+      residenza: c.residenza || null,
+      matricola_figc: c.matricola_figc || null,
+      tipo_documento: c.tipo_documento || null,
+      numero_documento: c.numero_documento || null,
+      rilasciato_da: c.rilasciato_da || null,
+      data_visita_medica: toDate(c.data_visita_medica),
+      scadenza_visita_medica: toDate(c.scadenza_visita_medica),
+      tesserato_dal: toDate(c.tesserato_dal),
+      tesserato_fino_al: toDate(c.tesserato_fino_al)
     };
     
     const { data: cal, error } = await supabase.from('player').insert(playerData).select().single();
@@ -561,7 +564,7 @@ app.post('/api/squadre/:squadraId/calciatori', async (req, res) => {
       team_id: req.params.squadraId,
       player_id: cal.id,
       numero_maglia: c.numero_maglia,
-      ruolo_preferito: c.ruolo || c.ruolo_principale, // ruolo dal frontend
+      ruolo_preferito: c.ruolo || c.ruolo_principale,
       stato: c.stato || 'Attivo',
       data_assegnazione: new Date().toISOString().split('T')[0]
     };
@@ -767,12 +770,49 @@ app.get('/api/calciatori/:id', async (req, res) => {
 
 app.put('/api/calciatori/:id', async (req, res) => {
   try {
-    const { nome, cognome, data_nascita, telefono, email, medical_cert_date, matricola_figc, tipo_documento, numero_documento, rilasciato_da, peso, altezza, piede_preferito } = req.body;
-    const { data, error } = await supabase.from('player').update({ nome, cognome, data_nascita, telefono, email, medical_cert_date, matricola_figc, tipo_documento, numero_documento, rilasciato_da, peso, altezza, piede_preferito }).eq('id', req.params.id).select().single();
+    const c = req.body;
+    
+    // Helper per convertire stringa vuota in null per campi DATE
+    const toDate = (val) => val && val.trim() ? val.trim() : null;
+    
+    const updateData = {
+      nome: c.nome,
+      cognome: c.cognome,
+      data_nascita: c.data_nascita,
+      telefono: c.telefono || null,
+      email: c.email || null,
+      ruolo_principale: c.ruolo || c.ruolo_principale || null,
+      piede_preferito: c.piede_preferito || null,
+      altezza: c.altezza || null,
+      peso: c.peso || null,
+      matricola_figc: c.matricola_figc || null,
+      tipo_documento: c.tipo_documento || null,
+      numero_documento: c.numero_documento || null,
+      rilasciato_da: c.rilasciato_da || null,
+      data_visita_medica: toDate(c.data_visita_medica),
+      scadenza_visita_medica: toDate(c.scadenza_visita_medica),
+      luogo_nascita: c.luogo_nascita || null,
+      nazionalita: c.nazionalita || null,
+      residenza: c.residenza || null,
+      note: c.note || null
+    };
+    
+    const { data, error } = await supabase.from('player').update(updateData).eq('id', req.params.id).select().single();
     if (error) return res.status(400).json({ error: error.message });
+    
+    // Aggiorna anche team_player se necessario
+    if (c.numero_maglia || c.ruolo || c.stato) {
+      await supabase.from('team_player').update({
+        numero_maglia: c.numero_maglia || null,
+        ruolo_preferito: c.ruolo || null,
+        stato: c.stato || null
+      }).eq('player_id', req.params.id);
+    }
+    
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: 'Errore server' });
+    console.error('PUT calciatori error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
