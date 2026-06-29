@@ -1,7 +1,6 @@
 import { apiFetch } from '../../services/api';
 import { formatDate, formatDateShort, formatBirthDate } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
-import demoPersistence from '../demo/DemoPersistence.js';
 
 export default async function loadReports() {
   const c = document.getElementById('pageContent');
@@ -90,15 +89,8 @@ export default async function loadReports() {
 }
 
 async function loadPlayerList() {
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-  
   try {
-    let players;
-    if (isDemo) {
-      players = window.YFM.allPlayers || [];
-    } else {
-      players = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori');
-    }
+    const players = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori');
     
     // Ordina alfabeticamente per cognome + nome
     const sortedPlayers = (players || []).sort((a, b) => {
@@ -119,15 +111,8 @@ async function loadPlayerList() {
 }
 
 async function loadMatchList() {
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-  
   try {
-    let partite;
-    if (isDemo) {
-      partite = window.YFM.demoMatches || [];
-    } else {
-      partite = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite');
-    }
+    const partite = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite');
     
     const select = document.getElementById('reportMatchSelect');
     
@@ -156,116 +141,15 @@ async function generateReport() {
     return;
   }
 
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-  
   showLoading('Generazione report...');
   try {
-    let report;
-    if (isDemo) {
-      // Genera report localmente per demo
-      report = generateDemoMatchReport(matchId);
-    } else {
-      report = await apiFetch('/partite/' + matchId + '/report');
-    }
+    const report = await apiFetch('/partite/' + matchId + '/report');
     hideLoading();
     renderReport(report);
   } catch (e) {
     hideLoading();
     alert('Errore nella generazione del report: ' + e.message);
   }
-}
-
-function generateDemoMatchReport(matchId) {
-  const match = window.YFM.demoMatches?.find(m => m.id === matchId);
-  const events = demoPersistence.getEvents(matchId) || window.YFM.demoEvents?.filter(e => e.match_id === matchId) || [];
-  const formation = demoPersistence.getFormation(matchId);
-  const players = window.YFM.allPlayers || [];
-  
-  // Calcola statistiche
-  const golFatti = events.filter(e => e.tipo === 'GOAL' && !e.autogol).length;
-  const golSubiti = events.filter(e => e.tipo === 'SUBITO' || (e.tipo === 'GOAL' && e.autogol)).length;
-  const ammonizioni = events.filter(e => e.tipo === 'YELLOW').length;
-  const espulsioni = events.filter(e => e.tipo === 'RED').length;
-  
-  // Costruisci eventi per timeline
-  const eventi = events.map(e => {
-    const p = players.find(pl => pl.id === e.player_id);
-    const s = players.find(pl => pl.id === e.second_player_id);
-    return {
-      tipo: e.tipo,
-      minuto: e.minuto || e.min || '?',
-      principale: p ? `${p.cognome} ${p.nome[0]}.` : 'Giocatore',
-      secondario: s ? `${s.cognome} ${s.nome[0]}.` : null
-    };
-  }).sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0));
-  
-  // Costruisci lista giocatori con ruolo e statistiche
-  let giocatori = [];
-  if (formation) {
-    const addPlayer = (id, ruolo) => {
-      const p = players.find(pl => pl.id === id);
-      if (p) {
-        const pEvents = events.filter(e => e.player_id === id);
-        giocatori.push({
-          ...p,
-          ruolo,
-          gol: pEvents.filter(e => e.tipo === 'GOAL').length,
-          assist: pEvents.filter(e => e.tipo === 'ASSIST').length,
-          ammonizioni: pEvents.filter(e => e.tipo === 'YELLOW').length,
-          espulsioni: pEvents.filter(e => e.tipo === 'RED').length,
-          numeroMaglia: p.numero_maglia || 0
-        });
-      }
-    };
-    if (formation.portiere) addPlayer(formation.portiere, 'T');
-    (formation.difensori || []).forEach(id => addPlayer(id, 'T'));
-    (formation.centrocampisti || []).forEach(id => addPlayer(id, 'T'));
-    (formation.attaccanti || []).forEach(id => addPlayer(id, 'T'));
-    (formation.panchina || []).forEach(id => addPlayer(id, 'P'));
-  } else {
-    // Usa tutti i giocatori senza ruolo specifico
-    giocatori = players.slice(0, 18).map(p => ({
-      ...p,
-      ruolo: '',
-      gol: p.gol || 0,
-      assist: p.assist || 0,
-      ammonizioni: 0,
-      espulsioni: 0,
-      numeroMaglia: p.numero_maglia || 0
-    }));
-  }
-  
-  return {
-    societa: window.YFM.workspaceInfo?.nome || 'ASD Green Academy',
-    partita: {
-      id: match?.id,
-      dataOra: match?.data_ora || match?.data,
-      avversario: match?.avversario || 'Avversario',
-      competizione: match?.competizione || 'Campionato',
-      giornata: match?.giornata,
-      luogo: match?.luogo || 'Casa'
-    },
-    score: {
-      golCasa: golFatti || match?.gol_casa || 0,
-      golOspiti: golSubiti || match?.gol_trasferta || 0
-    },
-    eventi,
-    giocatori,
-    ammonizioni,
-    espulsioni,
-    statistiche: {
-      golFatti,
-      golSubiti,
-      tiriTotali: Math.floor(Math.random() * 10) + 5,
-      tiriInPorta: Math.floor(Math.random() * 5) + 2,
-      possessi: Math.floor(Math.random() * 30) + 35,
-      passaggi: Math.floor(Math.random() * 200) + 300,
-      calciAngolo: Math.floor(Math.random() * 8) + 2,
-      fuorigioco: Math.floor(Math.random() * 5) + 1
-    },
-    formazione: formation || null,
-    votoMedio: 6.5
-  };
 }
 
 function renderReport(report) {
@@ -525,39 +409,9 @@ window.copySocialComment = function() {
 // ── REPORT STAGIONALE ──
 async function generateSeasonalReport() {
   showLoading('Generazione report stagionale...');
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
   
   try {
-    let report;
-    if (isDemo) {
-      // Genera report demo
-      const stats = window.YFM.demoStats || {};
-      const topPlayers = window.YFM.demoTopPlayers || {};
-      const matches = window.YFM.demoMatches || [];
-      const s = window.YFM.getSquadra();
-      report = {
-        societa: window.YFM.workspaceInfo?.nome || 'ASD Green Academy',
-        squadra: { categoria: s?.categoria || 'Primavera' },
-        stagione: '2025/26',
-        punti: stats.punti || 34,
-        partiteGiocate: stats.partiteGiocate || 14,
-        vittorie: stats.vittorie || 10,
-        pareggi: stats.pareggi || 4,
-        sconfitte: stats.sconfitte || 0,
-        golFatti: stats.golFatti || 38,
-        golSubiti: stats.golSubiti || 12,
-        differenzaReti: stats.differenzaReti || 26,
-        topMarcatori: topPlayers.marcatori || [],
-        topAssist: topPlayers.assistmen || [],
-        topPresenze: topPlayers.presenze || [],
-        partite: matches,
-        ammonizioni: 18,
-        espulsioni: 2,
-        capienzeMedie: 45
-      };
-    } else {
-      report = await apiFetch('/squadre/' + window.YFM.squadraId + '/report-stagionale');
-    }
+    const report = await apiFetch('/squadre/' + window.YFM.squadraId + '/report-stagionale');
     renderSeasonalReport(report);
     document.getElementById('btnPrintSeasonalReport').style.display = 'inline-block';
   } catch (err) {
@@ -783,16 +637,9 @@ async function generatePlayerReport() {
   const playerId = document.getElementById('playerSelect').value;
   if (!playerId) return;
   
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-  
   showLoading('Generazione report giocatore...');
   try {
-    let report;
-    if (isDemo) {
-      report = generateDemoPlayerReport(playerId);
-    } else {
-      report = await apiFetch('/calciatori/' + playerId + '/report');
-    }
+    const report = await apiFetch('/calciatori/' + playerId + '/report');
     renderPlayerReport(report);
     document.getElementById('btnPrintPlayerReport').style.display = 'inline-block';
   } catch (err) {
@@ -800,93 +647,6 @@ async function generatePlayerReport() {
   } finally {
     hideLoading();
   }
-}
-
-function generateDemoPlayerReport(playerId) {
-  const player = window.YFM.allPlayers?.find(p => p.id === playerId);
-  if (!player) return { giocatore: {}, stats: {}, storico: [] };
-  
-  // Calcola statistiche dagli eventi demo
-  const allEvents = demoPersistence.data.events || [];
-  let playerEvents = allEvents.filter(e => e.player_id === playerId || e.calciatorePrincipaleId === playerId);
-  
-  // Se non ci sono eventi salvati, genera dati fittizi demo
-  if (playerEvents.length === 0) {
-    const demoMatches = window.YFM.demoMatches || [];
-    const numPartite = Math.min(3, demoMatches.length);
-    playerEvents = [];
-    
-    for (let i = 0; i < numPartite; i++) {
-      const match = demoMatches[i];
-      if (!match) continue;
-      
-      // Genera eventi fittizi per ogni partita
-      const tipiEventi = ['GOAL', 'GOAL', 'GOAL', 'ASSIST', 'ASSIST', 'YELLOW'];
-      const minutiPossibili = [12, 23, 34, 45, 56, 67, 78, 89];
-      const numEventi = Math.floor(Math.random() * 3) + 1;
-      
-      for (let j = 0; j < numEventi; j++) {
-        playerEvents.push({
-          id: `de_${playerId}_${i}_${j}`,
-          match_id: match.id,
-          player_id: playerId,
-          tipo: tipiEventi[Math.floor(Math.random() * tipiEventi.length)],
-          minuto: minutiPossibili[Math.floor(Math.random() * minutiPossibili.length)],
-          autogoal: false
-        });
-      }
-    }
-  }
-  
-  const gol = playerEvents.filter(e => e.tipo === 'GOAL').length;
-  const assist = playerEvents.filter(e => e.tipo === 'ASSIST').length;
-  const ammonizioni = playerEvents.filter(e => e.tipo === 'YELLOW').length;
-  const espulsioni = playerEvents.filter(e => e.tipo === 'RED').length;
-  
-  // Conta partite giocate
-  const partiteGiocate = Math.max(
-    new Set(playerEvents.map(e => e.match_id)).size,
-    player?.presenze || window.YFM.demoMatches?.length || 0
-  );
-  
-  // Costruisci storico eventi per partita
-  const storicoByMatch = {};
-  playerEvents.forEach(e => {
-    const match = window.YFM.demoMatches?.find(m => m.id === e.match_id);
-    if (!storicoByMatch[e.match_id]) {
-      storicoByMatch[e.match_id] = {
-        match_id: e.match_id,
-        competizione: match?.competizione || 'Campionato',
-        partita: match?.avversario || 'Avversario',
-        data: match?.data_ora || match?.data || '',
-        giornata: match?.giornata || '',
-        eventi: []
-      };
-    }
-    // Assicura che ogni evento abbia un minuto valido
-    const minuto = e.minuto || e.min;
-    if (minuto !== undefined && minuto !== null) {
-      storicoByMatch[e.match_id].eventi.push({
-        ...e,
-        minuto: minuto
-      });
-    }
-  });
-  
-  return {
-    giocatore: player,
-    stats: {
-      partiteGiocate,
-      gol,
-      assist,
-      ammonizioni,
-      espulsioni
-    },
-    storico: Object.values(storicoByMatch).map(m => ({
-      ...m,
-      eventi: m.eventi.sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0))
-    }))
-  };
 }
 
 function renderPlayerReport(report) {

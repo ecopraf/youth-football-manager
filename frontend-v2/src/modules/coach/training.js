@@ -4,193 +4,28 @@ import { showLoading, hideLoading } from '../../utils/ui';
 
 let trainingData = null;
 
-// Sync wrapper for localStorage persistence (synchronous for simplicity)
-const Persist = {
-  STORAGE_KEY: 'yfm_demo_persistence',
-  get() {
-    try { return JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}'); } 
-    catch { return {}; }
-  },
-  set(data) {
-    try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data)); } 
-    catch {}
-  },
-  markDirty() {
-    // Re-save to trigger persistence
-    this.set(this.get());
-  }
-};
-
 export default async function loadTraining() {
   const c = document.getElementById('pageContent');
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
   
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-  
   let config, presenze, giocatori, sumData, materiale;
   
-  if (isDemo) {
-    // Usa i dati demo strutturati da window.YFM.demoAllenamenti
-    let allenamentiDemo = window.YFM.demoAllenamenti || [];
-    
-    // Se non ci sono allenamenti demo, creali con dati precaricati realistici
-    if (allenamentiDemo.length === 0) {
-      const tuttiGiocatori = window.YFM.allPlayers || [];
-      const tuttiId = tuttiGiocatori.map(g => g.id);
-      
-      // 2-3 assenti fittizi (casuali)
-      const assentiCasuali = tuttiId.sort(() => Math.random() - 0.5).slice(0, 3);
-      
-      // Crea 4 settimane di allenamenti (Martedì, Giovedì, Sabato)
-      const dateAllenamenti = [];
-      for (let w = -3; w <= 0; w++) {
-        const lunedi = new Date();
-        lunedi.setDate(lunedi.getDate() - lunedi.getDay() + 1 + (w * 7));
-        
-        // Martedì
-        dateAllenamenti.push(new Date(lunedi.getTime() + 2 * 24*60*60*1000).toISOString().split('T')[0]);
-        // Giovedì
-        dateAllenamenti.push(new Date(lunedi.getTime() + 4 * 24*60*60*1000).toISOString().split('T')[0]);
-        // Sabato
-        dateAllenamenti.push(new Date(lunedi.getTime() + 6 * 24*60*60*1000).toISOString().split('T')[0]);
-      }
-      
-      allenamentiDemo = dateAllenamenti.map((data, idx) => {
-        const assentiQuesto = assentiCasuali.filter((_, i) => (idx + i) % 3 !== 0);
-        return {
-          id: `demo_tr_${idx}`,
-          data: data,
-          tipo: 'Allenamento',
-          durata: 90,
-          presenze: tuttiId.filter(id => !assentiQuesto.includes(id)),
-          assenti: assentiQuesto,
-          note: ''
-        };
-      });
-      
-      // Salva in window.YFM
-      window.YFM.demoAllenamenti = allenamentiDemo;
-      
-      // Salva anche in persistenza
-      const pd = Persist.get();
-      pd.training = [...allenamentiDemo];
-      Persist.set(pd);
-    }
-    
-    config = window.YFM.demoConfig?.length > 0 ? window.YFM.demoConfig : [
-      { id: 't1', giorno_settimana: 2, ora_inizio: '17:00', ora_fine: '19:00', luogo: 'Campo 1' },
-      { id: 't2', giorno_settimana: 4, ora_inizio: '17:00', ora_fine: '19:00', luogo: 'Campo 1' },
-      { id: 't3', giorno_settimana: 6, ora_inizio: '10:00', ora_fine: '12:00', luogo: 'Campo 1' }
-    ];
-    
-    // Calcola il summary DAGLI ALLENAMENTI esistenti
-    const tuttiGiocatori = window.YFM.allPlayers || [];
-    const numGiocatori = tuttiGiocatori.length;
-    
-    // Per ogni giocatore, conta presenze/assenti totali
-    const summaryPerGiocatore = {};
-    tuttiGiocatori.forEach(g => {
-      summaryPerGiocatore[g.id] = { totali: 0, presenti: 0, assenti: 0, assentiSett: 0 };
-    });
-    
-    // I giorni configurati
-    const giorniConfigurati = config.map(c => c.giorno_settimana);
-    
-    // Settimana corrente (ultimi 7 giorni)
-    const now = new Date();
-    const inizioSett = new Date(now);
-    inizioSett.setDate(now.getDate() - now.getDay() + 1); // Lunedì
-    const fineSett = new Date(inizioSett);
-    fineSett.setDate(inizioSett.getDate() + 6); // Domenica
-    
-    // Processa ogni allenamento
-    allenamentiDemo.forEach(a => {
-      const dataAllenamento = new Date(a.data);
-      const giornoSett = dataAllenamento.getDay();
-      
-      // Solo allenamenti nei giorni configurati
-      if (!giorniConfigurati.includes(giornoSett)) return;
-      
-      const presIds = Array.isArray(a.presenze) ? a.presenze : [];
-      const assIds = Array.isArray(a.assenti) ? a.assenti : [];
-      
-      tuttiGiocatori.forEach(g => {
-        summaryPerGiocatore[g.id].totali++;
-        if (presIds.includes(g.id)) {
-          summaryPerGiocatore[g.id].presenti++;
-        } else if (assIds.includes(g.id)) {
-          summaryPerGiocatore[g.id].assenti++;
-          // È assente in questa settimana?
-          if (dataAllenamento >= inizioSett && dataAllenamento <= fineSett) {
-            summaryPerGiocatore[g.id].assentiSett++;
-          }
-        } else {
-          // Presunto presente (non in lista assenti)
-          summaryPerGiocatore[g.id].presenti++;
-        }
-      });
-    });
-    
-    presenze = [];
-    // Converte allenamenti demo in presenze per compatibilità
-    allenamentiDemo.forEach(a => {
-      tuttiGiocatori.forEach(p => {
-        const presente = a.presenze.includes(p.id);
-        const assente = a.assenti.includes(p.id);
-        presenze.push({
-          id: `pr_${a.id}_${p.id}`,
-          player_id: p.id,
-          nome: p.nome,
-          cognome: p.cognome,
-          data: a.data,
-          presente: presente,
-          assenza_giustificata: assente && Math.random() > 0.5
-        });
-      });
-    });
-    
-    giocatori = tuttiGiocatori;
-    
-    // Usa summaryPerGiocatore già calcolato (per giocatore)
-    sumData = {
-      summary: summaryPerGiocatore,
-      settimana: {
-        da: inizioSett.toISOString().split('T')[0],
-        a: fineSett.toISOString().split('T')[0],
-        totale: numGiocatori,
-        presenti: Object.values(summaryPerGiocatore).reduce((s, g) => s + g.presenti, 0),
-        assenti: Object.values(summaryPerGiocatore).reduce((s, g) => s + g.assenti, 0)
-      }
-    };
-    
-    materiale = [
-      { id: 'm1', titolo: 'Paletti', descrizione: 'Paletti per esercitazioni', tipo: 'link', url: '#' },
-      { id: 'm2', titolo: 'Coni', descrizione: 'Coni segnaletici', tipo: 'link', url: '#' },
-      { id: 'm3', titolo: 'Palloni', descrizione: 'Palloni da allenamento', tipo: 'link', url: '#' },
-      { id: 'm4', titolo: 'Sacchi porta goal', descrizione: 'Sacchi porta goal portatili', tipo: 'link', url: '#' }
-    ];
+  try {
+    const ts = Date.now();
+    [config, presenze, giocatori, sumData, materiale] = await Promise.all([
+      apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/config?_=' + ts).catch(() => []),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze?_=' + ts).catch(() => []),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori?_=' + ts).catch(() => []),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/summary?_=' + ts).catch(() => ({ summary: {}, settimana: {} })),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/materiale?_=' + ts).catch(() => [])
+    ]);
     
     window.YFM.allPlayers = giocatori;
     trainingData = { config, presenze, giocatori, summary: sumData.summary || {}, settimana: sumData.settimana || {}, materiale: materiale || [] };
+    
     renderTraining(c);
-  } else {
-    try {
-      const ts = Date.now();
-      [config, presenze, giocatori, sumData, materiale] = await Promise.all([
-        apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/config?_=' + ts).catch(() => []),
-        apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze?_=' + ts).catch(() => []),
-        apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori?_=' + ts).catch(() => []),
-        apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/summary?_=' + ts).catch(() => ({ summary: {}, settimana: {} })),
-        apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/materiale?_=' + ts).catch(() => [])
-      ]);
-      
-      window.YFM.allPlayers = giocatori;
-      trainingData = { config, presenze, giocatori, summary: sumData.summary || {}, settimana: sumData.settimana || {}, materiale: materiale || [] };
-      
-      renderTraining(c);
-    } catch (e) {
-      c.innerHTML = '<div class="error-box">' + e.message + '</div>';
-    }
+  } catch (e) {
+    c.innerHTML = '<div class="error-box">' + e.message + '</div>';
   }
 }
 
@@ -317,15 +152,8 @@ function attachListeners(savedDate) {
     b.addEventListener('click', async () => {
       if (!b.dataset.tid) return;
       
-      if (isDemo) {
-        // Demo mode: elimina da window.YFM.demoConfig
-        window.YFM.demoConfig = (window.YFM.demoConfig || []).filter(c => c.id !== b.dataset.tid);
-        Persist.markDirty();
-        loadTraining();
-      } else {
-        await apiFetch('/allenamenti/config/' + b.dataset.tid, { method: 'DELETE' });
-        loadTraining();
-      }
+      await apiFetch('/allenamenti/config/' + b.dataset.tid, { method: 'DELETE' });
+      loadTraining();
     });
   });
   document.querySelectorAll('.btn-edit-train').forEach(b => {
@@ -358,112 +186,30 @@ function attachListeners(savedDate) {
           });
         });
         
-        const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-        
-        console.log('DEBUG: Dati da salvare:', presenzeData);
         showLoading();
         try {
-          if (isDemo) {
-            // Demo mode: salva in persistenza
-            const presenti = presenzeData.filter(p => p.presente).map(p => p.calciatoreId);
-            const assenti = presenzeData.filter(p => !p.presente).map(p => p.calciatoreId);
-            
-            // Trova l'allenamento per questa data o creane uno nuovo
-            let allenamento = window.YFM.demoAllenamenti?.find(a => a.data === date);
-            if (!allenamento) {
-              allenamento = { id: `tr_${Date.now()}`, data: date, tipo: 'Demo', durata: 90, presenze: presenti, assenti: assenti, note: '' };
-              window.YFM.demoAllenamenti = window.YFM.demoAllenamenti || [];
-              window.YFM.demoAllenamenti.unshift(allenamento);
-              // Aggiungi anche alla persistenza
-              const pd = Persist.get();
-              if (!pd.training) pd.training = [];
-              pd.training.unshift(allenamento);
-              Persist.set(pd);
-            } else {
-              allenamento.presenze = presenti;
-              allenamento.assenti = assenti;
-              // Aggiorna anche nella persistenza
-              const pd = Persist.get();
-              const persTraining = pd.training?.find(t => t.id === allenamento.id);
-              if (persTraining) {
-                persTraining.presenze = presenti;
-                persTraining.assenti = assenti;
-                Persist.set(pd);
-              }
-            }
-            console.log('DEBUG: Salvati ' + presenzeData.length + ' presenze in demo');
-            
-            // Aggiorna i dati locali
-            presenzeData.forEach(np => {
-              const idx = trainingData.presenze.findIndex(p => p.calciatoreId === np.calciatoreId && p.data === np.data);
-              if (idx >= 0) {
-                trainingData.presenze[idx] = np;
-              } else {
-                trainingData.presenze.push(np);
-              }
-            });
-            
-            // Ricalcola summary
-            const giorniPresenze = {};
-            (window.YFM.demoAllenamenti || []).forEach(a => {
-              const giorno = new Date(a.data).getDay();
-              if (!giorniPresenze[giorno]) {
-                giorniPresenze[giorno] = { totale: 0, presenti: 0, assenti: 0 };
-              }
-              giorniPresenze[giorno].totale = trainingData.giocatori.length;
-              giorniPresenze[giorno].presenti = a.presenze.length;
-              giorniPresenze[giorno].assenti = a.assenti.length;
-            });
-            trainingData.summary = giorniPresenze;
-            trainingData.settimana = {
-              totale: trainingData.giocatori.length,
-              presenti: presenzeData.filter(p => p.presente).length,
-              assenti: presenzeData.filter(p => !p.presente).length
-            };
-            
-            hideLoading();
-            alert('✅ Presenze salvate in demo!');
-            renderTraining(document.getElementById('pageContent'));
-          } else {
-            // Normal mode: salva su server
-            var saved = 0;
-            for (var i = 0; i < presenzeData.length; i++) {
-              var p = presenzeData[i];
-              try {
-                await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze', {
-                  method: 'POST',
-                  body: JSON.stringify({ calciatoreId: p.calciatoreId, data: p.data, presente: p.presente, note: p.note })
-                });
-                saved++;
-              } catch(e) {
-                console.error('Errore salvataggio giocatore:', p.calciatoreId, e);
-              }
-            }
-            console.log('DEBUG: Salvati ' + saved + '/' + presenzeData.length + ' giocatori');
-            // Aggiorna i dati locali immediatamente
-            presenzeData.forEach(function(np) {
-              var idx = trainingData.presenze.findIndex(function(p) {
-                return p.calciatoreId === np.calciatoreId && p.data === np.data;
-              });
-              if (idx >= 0) {
-                trainingData.presenze[idx] = np;
-              } else {
-                trainingData.presenze.push(np);
-              }
-            });
-            hideLoading();
-            // Ricarica solo il summary dal server
+          var saved = 0;
+          for (var i = 0; i < presenzeData.length; i++) {
+            var p = presenzeData[i];
             try {
-              var sumData = await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/summary?_=' + Date.now());
-              trainingData.summary = sumData.summary || {};
-              trainingData.settimana = sumData.settimana || {};
-            } catch(e) { console.warn('Summary non aggiornato:', e); }
-            // Ridisegna la UI con i dati aggiornati
-            renderTraining(document.getElementById('pageContent'));
+              await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze', {
+                method: 'POST',
+                body: JSON.stringify({ calciatoreId: p.calciatoreId, data: p.data, presente: p.presente, note: p.note })
+              });
+              saved++;
+            } catch(e) {
+              console.error('Errore salvataggio giocatore:', p.calciatoreId, e);
+            }
           }
+          hideLoading();
+          try {
+            var sumData = await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/summary?_=' + Date.now());
+            trainingData.summary = sumData.summary || {};
+            trainingData.settimana = sumData.settimana || {};
+          } catch(e) { console.warn('Summary non aggiornato:', e); }
+          renderTraining(document.getElementById('pageContent'));
         } catch (e) {
           hideLoading();
-          console.error('DEBUG: Errore salvataggio:', e);
           alert('Errore durante il salvataggio: ' + e.message);
         }
       });
@@ -542,7 +288,6 @@ function openTrainingForm(tid, g, i, f, l) {
   }, 50);
   
   document.getElementById('saveBtn').addEventListener('click', async () => {
-    const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
     const data = {
       id: tid || `cfg_${Date.now()}`,
       giorno_settimana: parseInt(document.getElementById('tfG').value),
@@ -553,20 +298,7 @@ function openTrainingForm(tid, g, i, f, l) {
     
     showLoading();
     try {
-      if (isDemo) {
-        // Demo mode: gestisci localmente
-        if (tid) {
-          // Aggiorna esistente
-          const idx = window.YFM.demoConfig?.findIndex(c => c.id === tid);
-          if (idx >= 0) window.YFM.demoConfig[idx] = data;
-        } else {
-          // Nuovo
-          window.YFM.demoConfig = window.YFM.demoConfig || [];
-          window.YFM.demoConfig.push(data);
-        }
-        Persist.markDirty();
-        alert(tid ? '✅ Configurazione aggiornata!' : '✅ Configurazione salvata!');
-      } else if (tid) {
+      if (tid) {
         await apiFetch('/allenamenti/config/' + tid, { method: 'PUT', body: JSON.stringify(data) });
       } else {
         await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/config', { method: 'POST', body: JSON.stringify(data) });
