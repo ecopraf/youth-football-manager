@@ -118,6 +118,34 @@ function renderCalendarPage(c, matches, stats) {
       animation: blink-pallino 1s infinite;
       vertical-align: middle;
     }
+    
+    /* === LAYOUT MOBILE (< 640px) === */
+    @media (max-width: 639px) {
+      .match-card-wrapper {
+        padding-top: 32px !important;
+      }
+      .desktop-actions {
+        top: 4px !important;
+        right: 4px !important;
+      }
+      .action-buttons {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 4px !important;
+      }
+      .action-buttons button {
+        font-size: 11px !important;
+        padding: 6px 4px !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+      .match-teams {
+        max-width: 160px !important;
+        font-size: 13px !important;
+      }
+    }
   </style>`;
 
   html += `
@@ -177,10 +205,11 @@ function renderCalendarPage(c, matches, stats) {
 }
 
 function attachCardListeners() {
-  document.querySelectorAll('.btn-editm').forEach(b => {
+  // Desktop actions (in position absolute)
+  document.querySelectorAll('.desktop-actions .btn-editm').forEach(b => {
   b.addEventListener('click', (e) => { e.stopPropagation(); openMatchForm(b.dataset.mid); });
   });
-  document.querySelectorAll('.btn-del').forEach(b => {
+  document.querySelectorAll('.desktop-actions .btn-del').forEach(b => {
   b.addEventListener('click', (e) => { e.stopPropagation(); deleteMatch(b.dataset.mid); });
   });
 }
@@ -192,13 +221,27 @@ export function renderMatchCard(m, stats, isNext = false, nextStep = null) {
   const isPast = new Date(m.data_ora) < new Date();
   const isArchiviata = m.archiviata === true || m.archiviata === 'true';
   
-  // Stile per partite archiviate (elegante grigio/marrone) - SOLO icona 📦
+  // Stile per partite archiviate
   const archivedStyle = isArchiviata ? 'opacity:0.75;border-left:4px solid #8B7355 !important;background:#F5F5F0 !important;' : '';
-  const archivedIcon = isArchiviata ? '📦 ' : '';
+  const archivedIcon = isArchiviata ? '📦' : '';
 
   // Estrai gol (da stats o da dati diretti partita)
   const golFatti = r?.golFatti ?? m.gol_casa ?? null;
   const golSubiti = r?.golSubiti ?? m.gol_trasferta ?? null;
+
+  // Badge Risultato con icona
+  let resultBadge = '';
+  if (hasResult && golFatti !== null && golSubiti !== null) {
+    let icon, color, bgColor;
+    if (golFatti > golSubiti) {
+      icon = '✅'; color = '#27AE60'; bgColor = '#e8f5e9';
+    } else if (golFatti < golSubiti) {
+      icon = '❌'; color = '#E74C3C'; bgColor = '#ffebee';
+    } else {
+      icon = '🤝'; color = '#F39C12'; bgColor = '#fff8e1';
+    }
+    resultBadge = `<span style="background:${bgColor};color:${color};padding:2px 8px;border-radius:6px;font-weight:bold;font-size:14px;border:1px solid ${color};">${golFatti} - ${golSubiti} ${icon}</span>`;
+  }
 
   // Badge Casa/Trasferta
   const luogoBadge = m.luogo === 'Casa' 
@@ -209,79 +252,70 @@ export function renderMatchCard(m, stats, isNext = false, nextStep = null) {
   const giornataBadge = m.giornata ? `<span style="background:#E9ECEF;padding:1px 6px;border-radius:6px;font-size:11px;">${m.giornata}</span>` : '';
   const compBadge = m.competizione ? `<span style="background:#E9ECEF;padding:1px 6px;border-radius:6px;font-size:11px;">${m.competizione}</span>` : '';
   
-  let L = `
-  <div class="match-date">${archivedIcon}${formatDate(m.data_ora)}</div>
-  <div class="match-teams">${window.YFM.getSocietaName()} vs ${m.avversario}</div>
-  <div class="match-info" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-    ${luogoBadge} ${giornataBadge} ${compBadge}
-  </div>`;
-
-  let R = '';
+  // === LAYOUT DESKTOP ===
+  // Riga 1: Data + Badge Giornata + Badge Competizione + Badge Luogo
+  // Riga 2: Nome Squadre + Result Badge (stessa riga)
+  // Riga 3: Tutti i pulsanti azione (stessa riga)
+  // Riga 4: Edit/Delete in alto a destra (piccoli)
   
-  // ===== PARTE SINISTRA: Risultato/Dettaglio =====
-  if (hasResult && golFatti !== null && golSubiti !== null) {
-  const color = golFatti > golSubiti ? '#27AE60' : golFatti === golSubiti ? '#F39C12' : '#E74C3C';
-  // Pallino e LIVE lampeggianti per partite in corso
-  const liveIndicator = !isPast ? `
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-      <span class="live-dot" style="background:#E74C3C;"></span>
-      <span class="live-text" style="color:#E74C3C;font-size:10px;font-weight:bold;">LIVE</span>
-    </div>` : '';
-  R += `<div style="text-align:center;cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')" title="Dettaglio">${liveIndicator}<div style="font-size:22px;font-weight:bold;color:${color};">${golFatti} - ${golSubiti}</div></div>`;
-  } else if (!isPast) {
-  // Partita futura senza risultato: mostra pulsante Risultato
-  R += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">📊 Risultato</button>`;
-  } else {
-  // Partita passata senza risultato: mostra dettaglio
-  R += `<span style="color:var(--gray);cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')">Dettaglio</span>`;
-  }
+  let desktopHTML = `
+  <div class="match-date">${archivedIcon ? archivedIcon + ' ' : ''}${formatDate(m.data_ora)}</div>
+  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
+    ${giornataBadge} ${compBadge} ${luogoBadge}
+  </div>
+  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
+    <span class="match-teams" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;">${window.YFM.getSocietaName()} vs ${m.avversario}</span>
+    ${resultBadge}
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;" class="action-buttons">`;
 
-  // ===== PULSANTI: Logica corretta =====
+  // === PULSANTI AZIONE ===
+  // Future: Convocazione, Formazione, Distinta, Eventi (se ha risultato), Note
+  // Giocate: Convocazione, Formazione, Distinta, Archivia (se con risultato), Note
+  // Archiviate: Convocazione, Formazione, Distinta, Sblocca, Note
   
-  // Partite future: tutti i pulsanti modificabili
   if (!isPast) {
-  // Formazione - UN SOLO pulsante
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openNoteAvversario('${m.id}')">📝 Note</button>`;
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',false)">📋 Convoca</button>`;
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Distinta</button>`;
-  
-  // Se ha già un risultato ma non è archiviata: mostra pulsante per modificare eventi
-  if (hasResult && !isArchiviata) {
-    R += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">✏️ Eventi</button>`;
-  }
-  
-  } else if (isPast && hasResult && !isArchiviata) {
-  // Partita passata con risultato ma non archiviata: mostra pulsante Archivia
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Conv.</button>`;
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Dist.</button>`;
-  R += `<button class="btn btn-secondary btn-small" style="background:#8B7355;color:white;border-color:#8B7355;" onclick="event.stopPropagation();archiveMatch('${m.id}')">📦 Archivia</button>`;
-  
-  } else if (isPast && !hasResult) {
-  // Partita passata senza risultato
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Conv.</button>`;
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Dist.</button>`;
+    // Partite future
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',false)">📋 Convocazione</button>`;
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Distinta</button>`;
+    if (hasResult) {
+      desktopHTML += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">⚽ Eventi</button>`;
+    }
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openNoteAvversario('${m.id}')">📝 Note</button>`;
+  } else if (isPast && !isArchiviata) {
+    // Partite giocate (non archiviate)
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Convocazione</button>`;
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Distinta</button>`;
+    if (hasResult) {
+      desktopHTML += `<button class="btn btn-secondary btn-small" style="background:#8B7355;color:white;border-color:#8B7355;" onclick="event.stopPropagation();archiveMatch('${m.id}')">📦 Archivia</button>`;
+    }
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openNoteAvversario('${m.id}')">📝 Note</button>`;
   } else {
-  // Partite archiviate: solo consultazione
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Conv.</button>`;
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Dist.</button>`;
+    // Partite archiviate
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Convocazione</button>`;
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Distinta</button>`;
+    desktopHTML += `<button class="btn btn-secondary btn-small" style="background:#6B5B4F;color:white;border-color:#6B5B4F;" onclick="event.stopPropagation();unarchiveMatch('${m.id}')">🔓 Sblocca</button>`;
+    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openNoteAvversario('${m.id}')">📝 Note</button>`;
   }
   
-  // Edit e Elimina - nascondi SOLO per partite archiviate
+  desktopHTML += `</div>`;
+
+  // === PULSANTI EDIT/DELETE (DESKTOP - piccoli in alto a destra) ===
+  let actionButtons = '';
   if (!isArchiviata) {
-  R += `<button class="btn btn-secondary btn-small btn-editm" data-mid="${m.id}">✏️</button>`;
-  R += `<button class="btn btn-secondary btn-small btn-danger btn-del" data-mid="${m.id}">🗑️</button>`;
-  } else {
-  // Partita archiviata: mostra solo pulsante Sblocca
-  R += `<button class="btn btn-secondary btn-small" style="background:#6B5B4F;color:white;border-color:#6B5B4F;" onclick="event.stopPropagation();unarchiveMatch('${m.id}')">🔓 Sblocca</button>`;
+    actionButtons = `
+    <div class="desktop-actions" style="position:absolute;top:8px;right:8px;display:flex;gap:4px;">
+      <button class="btn btn-secondary btn-small btn-editm" data-mid="${m.id}" title="Modifica" style="padding:4px 8px;">✏️</button>
+      <button class="btn btn-secondary btn-small btn-danger btn-del" data-mid="${m.id}" title="Elimina" style="padding:4px 8px;">🗑️</button>
+    </div>`;
   }
 
-  return `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;${archivedStyle}">
-  <div style="flex:1;min-width:220px;">${L}</div>
-  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">${R}</div>
+  return `<div class="match-card-wrapper" style="position:relative;${archivedStyle}">
+    ${actionButtons}
+    ${desktopHTML}
   </div>`;
 }
 
