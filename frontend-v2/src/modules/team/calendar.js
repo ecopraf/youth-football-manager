@@ -3,6 +3,7 @@ import { formatDate, formatDateShort } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 
 let allMatches = [];
+let matchSteps = {};
 
 export default async function loadCalendar() {
   const c = document.getElementById('pageContent');
@@ -15,11 +16,57 @@ export default async function loadCalendar() {
     allMatches = matches;
     window.YFM.allMatches = matches;
     
+    await preloadMatchSteps(matches);
     renderCalendarPage(c, matches, stats);
   } catch (e) {
     c.innerHTML = '<div class="error-box">' + e.message + '</div>';
   }
 }
+
+async function preloadMatchSteps(matches) {
+  const now = new Date();
+  const futureMatches = matches.filter(m => new Date(m.data_ora) >= now);
+  for (const m of futureMatches) {
+    matchSteps[m.id] = await getNextStep(m.id);
+  }
+}
+
+async function getNextStep(matchId) {
+  try {
+    const convResp = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/convocati').catch(() => null);
+    const hasConvocazione = convResp && Array.isArray(convResp) && convResp.length > 0;
+    
+    const formResp = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/formazione').catch(() => null);
+    const hasFormazione = formResp && Object.keys(formResp).length > 0;
+    
+    const distResp = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/distinta').catch(() => null);
+    const hasDistinta = distResp && Array.isArray(distResp) && distResp.length > 0;
+    
+    const match = allMatches.find(m => m.id === matchId);
+    const hasRisultato = match && match.gol_casa !== null && match.gol_casa !== undefined;
+    
+    const eventiResp = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/eventi').catch(() => null);
+    const hasEventi = eventiResp && Array.isArray(eventiResp) && eventiResp.length > 0;
+    
+    if (!hasConvocazione) return 'convocazione';
+    if (!hasFormazione) return 'formazione';
+    if (!hasDistinta) return 'distinta';
+    if (!hasRisultato) return 'risultato';
+    if (!hasEventi) return 'eventi';
+    return null;
+  } catch (e) {
+    console.warn('Errore getNextStep:', e);
+    return 'convocazione';
+  }
+}
+
+const stepColors = {
+  convocazione: { color: '#007bff', icon: '📋', label: 'Convocazione' },
+  formazione: { color: '#17a2b8', icon: '👥', label: 'Formazione' },
+  distinta: { color: '#fd7e14', icon: '📄', label: 'Distinta' },
+  risultato: { color: '#28a745', icon: '📊', label: 'Risultato' },
+  eventi: { color: '#6f42c1', icon: '⚽', label: 'Eventi' }
+};
 
 function renderCalendarPage(c, matches, stats) {
 
@@ -38,7 +85,7 @@ function renderCalendarPage(c, matches, stats) {
   const nextMatch = futureMatches.length > 0 ? futureMatches[0] : null;
   const otherFutureMatches = futureMatches.slice(1);
 
-  // Stili CSS per LIVE lampeggiante
+  // Stili CSS per LIVE e pallino lampeggiante
   let html = `<style>
     @keyframes pulse-live {
       0%, 100% { opacity: 1; transform: scale(1); }
@@ -48,6 +95,10 @@ function renderCalendarPage(c, matches, stats) {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.3; }
     }
+    @keyframes blink-pallino {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.8); }
+    }
     .live-dot {
       width: 8px;
       height: 8px;
@@ -56,6 +107,16 @@ function renderCalendarPage(c, matches, stats) {
     }
     .live-text {
       animation: blink-text 1s ease-in-out infinite;
+    }
+    .pallino-blink {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #007bff;
+      border-radius: 50%;
+      margin-right: 4px;
+      animation: blink-pallino 1s infinite;
+      vertical-align: middle;
     }
   </style>`;
 
@@ -70,10 +131,17 @@ function renderCalendarPage(c, matches, stats) {
 
   // PROSSIMA PARTITA in evidenza
   if (nextMatch) {
+    const nextStep = matchSteps[nextMatch.id];
+    const stepInfo = nextStep ? stepColors[nextStep] : null;
+    const stepBadge = stepInfo ? `<span class="pallino-blink"></span><span style="color:${stepInfo.color};font-size:12px;font-weight:600;">${stepInfo.icon} ${stepInfo.label}</span>` : '';
+    
     html += `
       <div class="card" style="margin-bottom:20px;border-left:4px solid var(--green);background:#E8F8F0;">
-        <h3 class="section-title">⚽ PROSSIMA PARTITA</h3>
-        ${renderMatchCard(nextMatch, stats, true)}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <h3 class="section-title" style="margin:0;">⚽ PROSSIMA PARTITA</h3>
+          ${stepBadge}
+        </div>
+        ${renderMatchCard(nextMatch, stats, true, nextStep)}
       </div>`;
   }
 
@@ -81,7 +149,13 @@ function renderCalendarPage(c, matches, stats) {
   if (otherFutureMatches.length > 0) {
     html += `<h3 class="section-title" style="margin:20px 0 12px 0;">📅 Prossime Partite</h3>`;
     otherFutureMatches.forEach(m => {
-      html += `<div class="card" style="margin-bottom:12px;">${renderMatchCard(m, stats)}</div>`;
+      const step = matchSteps[m.id];
+      const hasAction = step !== null && step !== undefined;
+      const stepInfo = step ? stepColors[step] : null;
+      const stepBadge = stepInfo ? `<span class="pallino-blink"></span><span style="color:${stepInfo.color};font-size:11px;font-weight:600;">${stepInfo.icon}</span>` : '';
+      const highlightStyle = hasAction ? 'border-left:3px solid #007bff;' : '';
+      
+      html += `<div class="card" style="margin-bottom:12px;${highlightStyle}">${stepBadge}${renderMatchCard(m, stats, false, step)}</div>`;
     });
   }
 
@@ -109,7 +183,7 @@ function attachCardListeners() {
   });
 }
 
-export function renderMatchCard(m, stats, isNext = false) {
+export function renderMatchCard(m, stats, isNext = false, nextStep = null) {
   // Cerca risultato in stats o usa dati diretti dalla partita (demo mode)
   const r = (stats?.risultati || []).find(x => x.id === m.id);
   const hasResult = !!(r || (m.gol_casa !== undefined && m.gol_trasferta !== undefined));
