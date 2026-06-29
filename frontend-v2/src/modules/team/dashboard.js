@@ -89,19 +89,26 @@ export default async function loadDashboard() {
     return '<div class="top-section"><h3 class="top-section-title">' + title + '</h3><div class="players-row">' + boxes.join('') + '</div></div>';
   };
   
-  // Badge helper per competizione
-  const getCompetitionBadge = (tipoEvento, dettaglio) => {
+  // Badge helper per competizione - VERSIONE MIGLIORATA
+  const getCompetitionBadge = (tipoEvento) => {
     const badges = {
-      campionato: { icon: '🏆', color: '#28a745', label: 'CAMP' },
-      coppa: { icon: '🏅', color: '#fd7e14', label: 'COPPA' },
-      torneo: { icon: '🎯', color: '#007bff', label: 'TOR' },
-      amichevole: { icon: '🤝', color: '#6c757d', label: 'AMIC' }
+      campionato: { icon: '🏆', bg: '#e8f5e9', color: '#28a745', label: 'Campionato' },
+      coppa: { icon: '🏅', bg: '#fff3e0', color: '#fd7e14', label: 'Coppa' },
+      torneo: { icon: '🎯', bg: '#e3f2fd', color: '#007bff', label: 'Torneo' },
+      amichevole: { icon: '🤝', bg: '#f5f5f5', color: '#6c757d', label: 'Amichevole' }
     };
     const badge = badges[tipoEvento] || badges.amichevole;
-    return `<span style="display:inline-flex;align-items:center;gap:3px;background:${badge.color};color:white;font-size:9px;font-weight:700;padding:3px 6px;border-radius:4px;letter-spacing:0.5px;">${badge.icon} ${badge.label}</span>`;
+    return `<span style="display:inline-flex;align-items:center;gap:4px;background:${badge.bg};border:1px solid ${badge.color};color:${badge.color};font-size:10px;font-weight:600;padding:4px 8px;border-radius:6px;">${badge.icon} ${badge.label}</span>`;
   };
   
-  // Render results - NUOVA VERSIONE MIGLIORATA
+  // Helper per stile risultato colorato
+  const getResultStyle = (gf, gs) => {
+    if (gf > gs) return { bg: '#e8f5e9', color: '#28a745', label: 'V' };
+    if (gf < gs) return { bg: '#ffebee', color: '#dc3545', label: 'S' };
+    return { bg: '#fff8e1', color: '#b8860b', label: 'P' };
+  };
+  
+  // Render results - VERSIONE MIGLIORATA 2
   const renderResults = () => {
     const risultati = (stats.risultati || []).slice(0, 5);
     if (risultati.length === 0) return '<p style="color:var(--gray);text-align:center;padding:20px;">Nessuna partita disputata</p>';
@@ -111,12 +118,11 @@ export default async function loadDashboard() {
     const gs5 = ultimi5.reduce((sum, r) => sum + (r.golSubiti || 0), 0);
     const dr5 = gf5 - gs5;
     
-    // NUOVO: Trend con risultati sotto V/P/S
+    // Trend con risultati sotto V/P/S
     const trendHtml = ultimi5.map(r => {
-      const esito = r.golFatti > r.golSubiti ? 'V' : r.golFatti === r.golSubiti ? 'P' : 'S';
-      const color = r.golFatti > r.golSubiti ? '#27AE60' : r.golFatti === r.golSubiti ? '#F39C12' : '#E74C3C';
+      const style = getResultStyle(r.golFatti, r.golSubiti);
       return `<div style="text-align:center;">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:${color};color:white;font-size:13px;font-weight:bold;border-radius:10px;margin-bottom:4px;">${esito}</span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:${style.color};color:white;font-size:13px;font-weight:bold;border-radius:10px;margin-bottom:4px;">${style.label}</span>
         <div style="font-size:11px;font-weight:600;color:white;background:rgba(0,0,0,0.25);padding:2px 8px;border-radius:4px;">${r.golFatti}-${r.golSubiti}</div>
       </div>`;
     }).join('<span style="color:rgba(255,255,255,0.4);margin:0 10px;align-self:center;font-size:18px;">—</span>');
@@ -133,25 +139,31 @@ export default async function loadDashboard() {
       '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 16px;text-align:center;min-width:60px;">' +
       '<div style="font-size:22px;font-weight:bold;color:' + (dr5 >= 0 ? '#4ade80' : '#f87171') + ';">' + (dr5 >= 0 ? '+' : '') + dr5 + '</div><div style="font-size:10px;color:rgba(255,255,255,0.8);">Diff. Reti</div></div></div></div>';
     
-    // NUOVA LISTA PARTITE CON BADGE
+    // LISTA PARTITE CON LAYOUT 2 RIGHE
     const matchesHtml = risultati.map(r => {
       const isCasa = r.luogo === 'Casa';
       const icon = isCasa ? '🏠' : '✈️';
       const badgeColor = r.badgeAvversario || '#888';
-      const resultColor = r.golFatti > r.golSubiti ? '#27AE60' : r.golFatti === r.golSubiti ? '#F39C12' : '#E74C3C';
-      const competitionBadge = getCompetitionBadge(r.tipoEvento, r.dettaglioCompetizione);
+      const resultStyle = getResultStyle(r.golFatti, r.golSubiti);
+      const competitionBadge = getCompetitionBadge(r.tipoEvento);
       
       return `<div class="match-item" onclick="window.YFM.openMatchDetail('${r.id}')">
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-          ${competitionBadge}
-          <span style="font-size:10px;color:#888;font-weight:500;min-width:28px;">${r.dettaglioCompetizione || '-'}</span>
-          <span style="font-size:10px;color:#666;">${formatDateShort(r.dataOra)}</span>
-          <span style="font-size:11px;">${icon}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #eee;margin-bottom:8px;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            ${competitionBadge}
+            <span style="font-size:10px;color:#666;background:#f5f5f5;padding:3px 8px;border-radius:4px;font-weight:500;">${r.dettaglioCompetizione || '-'}</span>
+          </div>
+          <span style="font-size:10px;color:#888;">${formatDateShort(r.dataOra)}</span>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-          <span style="width:8px;height:8px;border-radius:50%;background:${badgeColor};flex-shrink:0;"></span>
-          <span style="font-size:12px;color:#333;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.avversario}</span>
-          <span style="font-size:16px;font-weight:bold;color:${resultColor};background:#f8f8f8;padding:4px 12px;border-radius:8px;margin-left:auto;flex-shrink:0;">${r.golFatti} - ${r.golSubiti}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+            <span style="font-size:14px;">${icon}</span>
+            <span style="width:12px;height:12px;border-radius:50%;background:${badgeColor};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);flex-shrink:0;"></span>
+            <span style="font-size:13px;font-weight:500;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.avversario}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+            <span style="font-size:14px;font-weight:bold;color:${resultStyle.color};background:${resultStyle.bg};padding:6px 14px;border-radius:8px;border:1px solid ${resultStyle.color};">${r.golFatti} - ${r.golSubiti}</span>
+          </div>
         </div>
       </div>`;
     }).join('');
