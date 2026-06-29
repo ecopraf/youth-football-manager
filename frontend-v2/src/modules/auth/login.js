@@ -317,7 +317,6 @@ export default async function loadLogin() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const errorDiv = document.getElementById('loginError');
-    const isDemo = email === 'demo_yfm' || email === 'demo_yfm@yfm.it';
     
     showLoading('Accesso in corso...');
     errorDiv.style.display = 'none';
@@ -332,22 +331,11 @@ export default async function loadLogin() {
       localStorage.setItem('yfm_token', res.token);
       localStorage.setItem('yfm_user', JSON.stringify(res.user));
       
-      // Se è login demo, marca la sessione
-      if (isDemo) {
-        localStorage.setItem('yfm_demo_session', 'active');
-      }
-      
       window.YFM.setUser(res.user);
-      
-      // Pulisci URL da parametri demo
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
       
       // IMPOSTA IL WORKSPACE PRIMA DI CARICARE LE SQUADRE
       const user = res.user;
       if (user?.workspace_id) {
-        // Per utenti normali, imposta direttamente il workspace dal profilo
-        // Il backend /api/auth/workspaces restituirà solo il workspace dell'utente
         const { loadAvailableWorkspaces } = await import('../../modules/club/workspaceSwitcher');
         const workspaces = await loadAvailableWorkspaces();
         const userWorkspace = workspaces.find(w => w.id === user.workspace_id);
@@ -366,11 +354,6 @@ export default async function loadLogin() {
         await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
       } catch (e) {
         console.warn('Errore caricamento dati:', e);
-      }
-      
-      // Inizializza demo se è sessione demo
-      if (isDemo && window.demoManager) {
-        window.demoManager.init();
       }
       
       hideLoading();

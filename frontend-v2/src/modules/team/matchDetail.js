@@ -1,47 +1,21 @@
 import { apiFetch } from '../../services/api';
 import { formatDate } from '../../utils/formatters';
-import demoPersistence from '../demo/DemoPersistence';
 
 export async function openMatchDetail(mid) {
   const content = '<div id="detailInner"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>';
   const footer = '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>';
   const modal = createModal('📋 Dettaglio Partita', content, footer, '900px');
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
 
   try {
     let d, p, eventi, golCasa, golOspiti, ammonizioni, espulsioni;
     
-    if (isDemo) {
-      // Trova la partita nei dati demo
-      const match = (window.YFM.demoMatches || []).find(m => m.id === mid);
-      if (!match) {
-        document.getElementById('detailInner').innerHTML = '<p>Partita non trovata.</p>';
-        return;
-      }
-      golCasa = match.gol_casa || 0;
-      golOspiti = match.gol_trasferta || 0;
-      // Usa eventi dalla persistenza o dai dati demo originali
-      eventi = (demoPersistence.getEvents(mid) || []).length > 0 
-        ? demoPersistence.getEvents(mid)
-        : (window.YFM.demoEvents || []).filter(e => e.match_id === mid && e.player_id);
-      ammonizioni = eventi.filter(e => e.tipo === 'YELLOW').length;
-      espulsioni = eventi.filter(e => e.tipo === 'RED').length;
-      p = {
-        data_ora: match.data_ora,
-        avversario: match.avversario,
-        luogo: match.luogo,
-        giornata: match.giornata,
-        competizione: match.competizione
-      };
-    } else {
-      d = await apiFetch('/partite/' + mid + '/dettaglio');
-      p = d.partita;
-      eventi = d.eventi || [];
-      golCasa = d.golCasa || 0;
-      golOspiti = d.golOspiti || 0;
-      ammonizioni = eventi.filter(e => e.tipo === 'YELLOW').length;
-      espulsioni = eventi.filter(e => e.tipo === 'RED').length;
-    }
+    d = await apiFetch('/partite/' + mid + '/dettaglio');
+    p = d.partita;
+    eventi = d.eventi || [];
+    golCasa = d.golCasa || 0;
+    golOspiti = d.golOspiti || 0;
+    ammonizioni = eventi.filter(e => e.tipo === 'YELLOW').length;
+    espulsioni = eventi.filter(e => e.tipo === 'RED').length;
     
     const resultBg = golCasa > golOspiti ? 'linear-gradient(135deg, #27AE60, #2ecc71)' : golCasa === golOspiti ? 'linear-gradient(135deg, #F39C12, #f1c40f)' : 'linear-gradient(135deg, #E74C3C, #c0392b)';
     const resultLabel = golCasa > golOspiti ? 'Vittoria!' : golCasa === golOspiti ? 'Pareggio' : 'Sconfitta';

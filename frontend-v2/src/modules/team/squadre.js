@@ -2,13 +2,6 @@ import { apiFetch } from '../../services/api';
 import { getSavedWorkspaceId } from '../club/workspaceSwitcher';
 
 export async function loadSquadre(stagioneId) {
-  // In demo mode, skip API call - use hardcoded DEMO_SQUADRE from main.js
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-  if (isDemo) {
-    console.log('[loadSquadre] Demo mode - skipping API');
-    return; // Squadre sono già impostate in initDemoSession()
-  }
-  
   console.log('[loadSquadre] Starting...', { stagioneId, workspaceInfo: window.YFM.workspaceInfo });
   
   try {

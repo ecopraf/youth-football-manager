@@ -18,42 +18,7 @@ export async function loadPlayerDetail(container, playerId) {
     let valutazioni = null;
     let allSquadre = [];
 
-    // Supporto modalità demo
-    const isDemoMode = window.YFM && (typeof window.YFM.isDemo === 'function' ? window.YFM.isDemo() : window.YFM.demoMode);
-    
-    if (isDemoMode) {
-      // Trova giocatore nei dati demo
-      player = window.YFM.allPlayers?.find(p => p.id === playerId);
-      if (!player) {
-        throw new Error('Giocatore non trovato in demo');
-      }
-      
-      // Genera statistiche demo basate sul giocatore
-      currentSeasonStats = {
-        partite: 2,
-        gol: player.id === 'c007' ? 3 : player.id === 'c009' ? 2 : player.id === 'c011' ? 1 : 0,
-        assist: player.id === 'c008' ? 2 : 0,
-        media_voto: (6 + Math.random() * 2).toFixed(1)
-      };
-      
-      // Partite recenti demo
-      lastMatches = [
-        { id: 'p001', data: '2025-09-21', avversario: 'FC Torres', gol: 2, assist: 1, voto: 7.0 },
-        { id: 'p002', data: '2025-09-14', avversario: 'ASD Azzurri Roma', gol: 1, assist: 0, voto: 6.5 }
-      ];
-      
-      // Carriera demo
-      career = [
-        { stagione: '2024/25', partite: 15, gol: 5, media_voto: 6.2 },
-        { stagione: '2023/24', partite: 12, gol: 3, media_voto: 5.9 }
-      ];
-      
-      hideLoading();
-      renderPlayerDetail(container, { player, currentSeasonStats, career, lastMatches, valutazioni, allSquadre });
-      return;
-    }
-
-    // Modalità normale - chiama API
+    // Carica dati dal backend
     player = await apiFetch('/calciatori/' + playerId + '?squadraId=' + window.YFM.squadraId);
 
     try {

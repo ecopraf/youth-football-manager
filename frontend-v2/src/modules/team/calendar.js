@@ -1,23 +1,11 @@
 import { apiFetch } from '../../services/api';
 import { formatDate, formatDateShort } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
-import demoPersistence from '../demo/DemoPersistence';
 
 let allMatches = [];
 
 export default async function loadCalendar() {
   const c = document.getElementById('pageContent');
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-  
-  // In demo mode, use in-memory data
-  if (isDemo) {
-    const matches = window.YFM.demoMatches || [];
-    const stats = { risultati: [] };
-    allMatches = matches;
-    window.YFM.allMatches = matches;
-    renderCalendarPage(c, matches, stats);
-    return;
-  }
   
   try {
     const [matches, stats] = await Promise.all([
@@ -215,14 +203,8 @@ window.archiveMatch = async function(id) {
   if (!confirm('Archiviare questa partita? La partita verrà spostata nelle partite giocate e non sarà più possibile modificare eventi, formazione e convocazioni.')) return;
   showLoading();
   try {
-    const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-    if (isDemo) {
-      demoPersistence.archiveMatch(id);
-      loadCalendar();
-    } else {
-      await apiFetch('/partite/' + id + '/archivia', { method: 'PUT' });
-      loadCalendar();
-    }
+    await apiFetch('/partite/' + id + '/archivia', { method: 'PUT' });
+    loadCalendar();
   } catch (e) { alert(e.message); }
   finally { hideLoading(); }
 };
@@ -231,14 +213,8 @@ window.unarchiveMatch = async function(id) {
   if (!confirm('Sbloccare questa partita? Sarà possibile modificare eventi, formazione e convocazioni.')) return;
   showLoading();
   try {
-    const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-    if (isDemo) {
-      demoPersistence.unarchiveMatch(id);
-      loadCalendar();
-    } else {
-      await apiFetch('/partite/' + id + '/sblocca', { method: 'PUT' });
-      loadCalendar();
-    }
+    await apiFetch('/partite/' + id + '/sblocca', { method: 'PUT' });
+    loadCalendar();
   } catch (e) { alert(e.message); }
   finally { hideLoading(); }
 };

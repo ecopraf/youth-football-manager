@@ -4,26 +4,12 @@ export default async function loadStats() {
   const c = document.getElementById('pageContent');
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
 
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-  
   let disciplina = [];
   
-  if (isDemo) {
-    // Dati demo disciplina (giocatori con cartellini)
-    disciplina = (window.YFM.allPlayers || []).map(p => ({
-      id: p.id,
-      nome: p.nome,
-      cognome: p.cognome,
-      ammonizioni: Math.floor(Math.random() * 3),
-      espulsioni: Math.random() > 0.9 ? 1 : 0,
-      squalifiche: 0
-    })).filter(p => p.ammonizioni > 0 || p.espulsioni > 0);
-  } else {
-    try {
-      disciplina = await apiFetch('/squadre/' + window.YFM.squadraId + '/disciplina');
-    } catch (err) {
-      console.error('Errore caricamento disciplina:', err);
-    }
+  try {
+    disciplina = await apiFetch('/squadre/' + window.YFM.squadraId + '/disciplina');
+  } catch (err) {
+    console.error('Errore caricamento disciplina:', err);
   }
   
   const totAmmonizioni = (disciplina || []).reduce((s, p) => s + p.ammonizioni, 0);

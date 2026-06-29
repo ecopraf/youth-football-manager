@@ -1,65 +1,37 @@
 import { apiFetch } from '../../services/api.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
-import demoPersistence from '../demo/DemoPersistence';
 
 export async function openValutazioni(mid) {
-  const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-  const match = (isDemo ? window.YFM.demoMatches : window.YFM.allMatches)?.find(m => m.id === mid) || {};
+  const match = window.YFM.allMatches?.find(m => m.id === mid) || {};
   
-  // Carica formazione o convocati
   let formazione = [];
   
-  if (isDemo) {
-    // Demo mode: usa dati dalla persistenza o dai dati demo originali
-    const formazioneSalvata = demoPersistence.getFormation(mid);
-    const tuttiGiocatori = window.YFM.allPlayers || [];
-    
-    if (formazioneSalvata) {
-      // Estrai giocatori dalla formazione salvata
-      const allIds = [formazioneSalvata.portiere, ...(formazioneSalvata.difensori || []), ...(formazioneSalvata.centrocampisti || []), ...(formazioneSalvata.attaccanti || [])];
-      formazione = allIds.map(id => {
-        const g = tuttiGiocatori.find(p => p.id === id);
-        return g ? { id: g.id, calciatore_id: g.id, nome: g.nome || '', cognome: g.cognome || '', posizione: 'Convocato' } : null;
-      }).filter(Boolean);
-    } else {
-      // Usa convocazioni demo
-      const convocazioneIds = demoPersistence.getConvocation(mid) || window.YFM.demoConvocazioni?.[mid] || [];
-      formazione = convocazioneIds.map(id => {
-        const g = tuttiGiocatori.find(p => p.id === id);
-        return g ? { id: g.id, calciatore_id: g.id, nome: g.nome || '', cognome: g.cognome || '', posizione: 'Convocato' } : null;
-      }).filter(Boolean);
-    }
-  } else {
+  try {
+    const res = await apiFetch('/partite/' + mid + '/formazione');
+    formazione = Array.isArray(res) ? res : [];
+  } catch(e) {}
+  
+  if (formazione.length === 0) {
     try {
-      const res = await apiFetch('/partite/' + mid + '/formazione');
-      formazione = Array.isArray(res) ? res : [];
+      const convRes = await apiFetch('/partite/' + mid + '/convocazioni');
+      const convocati = (convRes.convocazioni || []).filter(c => c.presente);
+      if (convocati.length > 0) {
+        const rosaRes = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
+        const rosaMap = {};
+        (rosaRes || []).forEach(g => { rosaMap[g.id] = g; });
+        formazione = convocati.map(c => {
+          const g = rosaMap[c.calciatoreId] || {};
+          return { id: c.calciatoreId, calciatore_id: c.calciatoreId, nome: g.nome || '', cognome: g.cognome || '', posizione: 'Convocato' };
+        });
+      }
     } catch(e) {}
-    
-    if (formazione.length === 0) {
-      try {
-        const convRes = await apiFetch('/partite/' + mid + '/convocazioni');
-        const convocati = (convRes.convocazioni || []).filter(c => c.presente);
-        if (convocati.length > 0) {
-          const rosaRes = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
-          const rosaMap = {};
-          (rosaRes || []).forEach(g => { rosaMap[g.id] = g; });
-          formazione = convocati.map(c => {
-            const g = rosaMap[c.calciatoreId] || {};
-            return { id: c.calciatoreId, calciatore_id: c.calciatoreId, nome: g.nome || '', cognome: g.cognome || '', posizione: 'Convocato' };
-          });
-        }
-      } catch(e) {}
-    }
   }
   
-  // Carica valutazioni esistenti (per ora non persistite in demo)
   let valutazioniMap = {};
-  if (!isDemo) {
-    try {
-      const valRes = await apiFetch('/partite/' + mid + '/valutazioni');
-      (valRes.valutazioni || []).forEach(v => { valutazioniMap[v.calciatore_id] = v; });
-    } catch(e) {}
-  }
+  try {
+    const valRes = await apiFetch('/partite/' + mid + '/valutazioni');
+    (valRes.valutazioni || []).forEach(v => { valutazioniMap[v.calciatore_id] = v; });
+  } catch(e) {}
   
   formazione.sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
   

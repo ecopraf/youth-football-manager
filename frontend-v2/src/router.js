@@ -10,7 +10,7 @@ export function initRouter() {
     matchDetail: () => import('./modules/team/matchDetail.js'),
     convocazioni: () => import('./modules/team/convocazioni.js'),
     formazione: () => import('./modules/team/formazione.js'),
-    formation: () => import('./modules/team/formazione.js'), // alias inglese
+    formation: () => import('./modules/team/formazione.js'),
     playerDetail: () => import('./modules/team/playerDetail.js'),
     training: () => import('./modules/coach/training.js'),
     stats: () => import('./modules/performance/stats.js'),
@@ -18,8 +18,6 @@ export function initRouter() {
     settings: () => import('./modules/club/settings.js')
   };
 
-  // ── AUTH HELPERS ──
-  
   window.YFM.isAuthenticated = function() {
     const token = localStorage.getItem('yfm_token');
     if (!token) return false;
@@ -35,10 +33,6 @@ export function initRouter() {
     }
   };
 
-  window.YFM.isDemo = function() {
-    return localStorage.getItem('yfm_demo_session') === 'active';
-  };
-  
   window.YFM.isGuest = function() {
     return !!localStorage.getItem('yfm_guest') && !localStorage.getItem('yfm_token');
   };
@@ -111,19 +105,15 @@ export function initRouter() {
   window.YFM.navigateTo = async (page, params) => {
     console.log('[ROUTER] navigateTo chiamato con:', page);
     
-    // Pagine pubbliche (senza auth)
     const publicPages = ['login', 'guest'];
     
-    // Verifica accesso
     if (!publicPages.includes(page)) {
-      const isDemo = window.YFM.isDemo();
       const isGuest = window.YFM.isGuest();
       const isAuthenticated = window.YFM.isAuthenticated();
       
-      console.log('[ROUTER] Controlli - isDemo:', isDemo, 'isGuest:', isGuest, 'isAuthenticated:', isAuthenticated);
+      console.log('[ROUTER] Controlli - isGuest:', isGuest, 'isAuthenticated:', isAuthenticated);
       
-      // Demo e Guest possono accedere a tutte le pagine
-      if (!isDemo && !isGuest && !isAuthenticated) {
+      if (!isGuest && !isAuthenticated) {
         console.log('[ROUTER] Redirect a login');
         window.YFM.navigateTo('login');
         return;
@@ -136,19 +126,6 @@ export function initRouter() {
     
     window.YFM.currentPage = page;
 
-    // Aggiorna mini missioni per la nuova pagina (demo mode)
-    // DISABILITATO: mini missions panel rimosso, solo badge globale
-    // if (window.YFM.isDemo && window.YFM.isDemo() && window.miniMissionManager) {
-    //   setTimeout(() => window.miniMissionManager.init(page), 800);
-    // }
-    
-    // Mostra tooltip marketing per ogni pagina (demo mode)
-    if (window.YFM.isDemo && window.YFM.isDemo() && window.demoManager) {
-      setTimeout(() => window.demoManager.showTooltipForPage(page), 1000);
-      // Attiva tooltip sugli elementi chiave
-      setTimeout(() => window.demoManager.setupPageHighlights(page), 1500);
-    }
-    
     document.querySelectorAll('.sidebar-nav a').forEach(link => {
       link.classList.toggle('active', link.dataset.page === page);
     });
@@ -156,7 +133,6 @@ export function initRouter() {
     try {
       const module = await window.YFM.pages[page]();
       if (module.default) {
-        // Passa i parametri al modulo se necessario
         if (params) {
           window.YFM.pageParams = params;
         }
@@ -165,13 +141,8 @@ export function initRouter() {
       if (window.YFM && typeof window.YFM.adjustPageTitleForMobile === 'function') {
         window.YFM.adjustPageTitleForMobile();
       }
-      // Aggiorna UI dopo caricamento pagina
       if (window.YFM.updateUserUI) {
         window.YFM.updateUserUI();
-      }
-      // Track demo mission se attivo
-      if (window.demoManager && window.demoManager.isDemo) {
-        window.demoManager.trackPageVisit(page);
       }
     } catch (error) {
       container.innerHTML = `<div class="error-box">Errore nel caricamento di ${page}: ${error.message}</div>`;

@@ -5,11 +5,6 @@
 
 import { apiFetch } from '../../services/api.js';
 
-const DEMO_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
-
-// ID workspace demo da escludere
-const DEMO_IDS = [DEMO_WORKSPACE_ID];
-
 let cachedWorkspaces = null;
 
 /**
@@ -26,13 +21,6 @@ export async function loadAvailableWorkspaces() {
     console.error('Errore caricamento workspaces:', e);
     return [];
   }
-}
-
-/**
- * Filtra i workspace: esclude quelli demo
- */
-export function getRealWorkspaces(workspaces) {
-  return workspaces.filter(ws => !DEMO_IDS.includes(ws.id));
 }
 
 /**
@@ -63,14 +51,13 @@ export function isSuperAdmin(user) {
  */
 export async function showWorkspaceSelectorModal() {
   const workspaces = await loadAvailableWorkspaces();
-  const realWorkspaces = getRealWorkspaces(workspaces);
   
-  if (realWorkspaces.length === 0) {
-    return workspaces[0] || null;
+  if (workspaces.length === 0) {
+    return null;
   }
   
-  if (realWorkspaces.length === 1) {
-    const ws = realWorkspaces[0];
+  if (workspaces.length === 1) {
+    const ws = workspaces[0];
     saveCurrentWorkspace(ws.id);
     return ws;
   }
@@ -119,7 +106,7 @@ export async function showWorkspaceSelectorModal() {
         <div class="ws-options">
     `;
     
-    realWorkspaces.forEach(ws => {
+    workspaces.forEach(ws => {
       const city = ws.città || ws.citta || '';
       const email = ws.email || '';
       const initial = (ws.nome || 'S')[0].toUpperCase();
@@ -161,18 +148,17 @@ export async function initWorkspaceSwitcherInSidebar() {
   if (!user || !isSuperAdmin(user)) return;
   
   const workspaces = await loadAvailableWorkspaces();
-  const realWorkspaces = getRealWorkspaces(workspaces);
   
-  // Se c'è solo 1 workspace reale, non mostrare lo switcher
-  if (realWorkspaces.length <= 1) return;
+  // Se c'è solo 1 workspace, non mostrare lo switcher
+  if (workspaces.length <= 1) return;
   
   // Usa il workspace già impostato in window.YFM, altrimenti quello salvato, altrimenti il primo
   const savedWsId = getSavedWorkspaceId();
   let currentWs = window.YFM.workspaceInfo;
   
   if (!currentWs) {
-    const currentWsId = savedWsId || realWorkspaces[0]?.id;
-    currentWs = workspaces.find(w => w.id === currentWsId) || realWorkspaces[0];
+    const currentWsId = savedWsId || workspaces[0]?.id;
+    currentWs = workspaces.find(w => w.id === currentWsId) || workspaces[0];
   }
   
   if (!currentWs) return;
@@ -231,7 +217,7 @@ export async function initWorkspaceSwitcherInSidebar() {
   
   // Popola dropdown
   const dropdown = document.getElementById('wsSidebarDropdown');
-  realWorkspaces.forEach(ws => {
+  workspaces.forEach(ws => {
     const isActive = ws.id === currentWs.id;
     const city = ws.città || ws.citta || '';
     dropdown.insertAdjacentHTML('beforeend', `
