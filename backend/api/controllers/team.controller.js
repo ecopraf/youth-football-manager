@@ -1,5 +1,77 @@
 const supabase = require('../db/supabase');
 
+// Helper functions per badge e dettagli competizione
+function determineTipoEvento(competizione) {
+  if (!competizione) return 'amichevole';
+  const c = competizione.toLowerCase();
+  if (c.includes('coppa') || c.includes('cop')) return 'coppa';
+  if (c.includes('torneo') || c.includes('torn')) return 'torneo';
+  if (c.includes('amichev') || c.includes('amic')) return 'amichevole';
+  return 'campionato';
+}
+
+function determineDettaglio(competizione, giornata) {
+  if (!competizione) return '-';
+  const c = competizione.toLowerCase();
+  
+  if (c.includes('coppa') || c.includes('cop')) {
+    // Per coppa, ritorna il turno se presente (es. QF, SF, F)
+    if (giornata && isNaN(parseInt(giornata))) return String(giornata);
+    return '-';
+  }
+  if (c.includes('torneo') || c.includes('torn')) {
+    // Per torneo, mostra giornata o "-"
+    return giornata ? 'G.' + giornata : '-';
+  }
+  // Per campionato, mostra sempre G.XX
+  return 'G.' + String(giornata || '-');
+}
+
+// Genera colore stabile per avversario basato su hash
+function generateBadgeColor(avversario) {
+  if (!avversario) return '#888888';
+  
+  // Colori predefiniti per club comuni
+  const clubColors = {
+    'inter': '#0068A8',
+    'inter academy': '#0068A8',
+    'inter youth': '#0068A8',
+    'milan': '#FF0000',
+    'milan academy': '#FF0000',
+    'milan junior': '#FF0000',
+    'juventus': '#000000',
+    'juventus academy': '#000000',
+    'juventus youth': '#000000',
+    'roma': '#8E0015',
+    'roma academy': '#8E0015',
+    'lazio': '#87D8F7',
+    'lazio youth': '#87D8F7',
+    'napoli': '#12A0D7',
+    'napoli youth': '#12A0D7',
+    'atalanta': '#1E71B8',
+    'atalanta academy': '#1E71B8',
+    'fiorentina': '#482E92',
+    'fiorentina academy': '#482E92'
+  };
+  
+  const normalized = avversario.toLowerCase().trim();
+  if (clubColors[normalized]) return clubColors[normalized];
+  
+  // Genera colore hash stabile per club non riconosciuti
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    hash = normalized.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  const colors = [
+    '#3498DB', '#E74C3C', '#9B59B6', '#1ABC9C', 
+    '#F39C12', '#2ECC71', '#E91E63', '#00BCD4',
+    '#8BC34A', '#FF5722', '#607D8B', '#795548'
+  ];
+  
+  return colors[Math.abs(hash) % colors.length];
+}
+
 const teamController = {
   // GET /api/squadre - Lista tutte le squadre
   getAll: async (req, res) => {
@@ -283,6 +355,27 @@ const teamController = {
       const golFatti = giocate.reduce((sum, p) => sum + (p.luogo === 'Casa' ? p.gol_casa : p.gol_ospite), 0);
       const golSubiti = giocate.reduce((sum, p) => sum + (p.luogo === 'Casa' ? p.gol_ospite : p.gol_casa), 0);
       
+      // Calcola tipo_evento, dettaglio_competizione e badge_avversario per ogni partita
+      const risultati = giocate.map(p => {
+        const tipoEvento = determineTipoEvento(p.competizione);
+        const dettaglioCompetizione = determineDettaglio(p.competizione, p.giornata);
+        const badgeAvversario = generateBadgeColor(p.avversario);
+        
+        return {
+          id: p.id,
+          avversario: p.avversario,
+          luogo: p.luogo,
+          dataOra: p.data_ora,
+          golFatti: p.luogo === 'Casa' ? p.gol_casa : p.gol_ospite,
+          golSubiti: p.luogo === 'Casa' ? p.gol_ospite : p.gol_casa,
+          giornata: p.giornata,
+          competizione: p.competizione,
+          tipoEvento,
+          dettaglioCompetizione,
+          badgeAvversario
+        };
+      }).sort((a, b) => new Date(b.dataOra) - new Date(a.dataOra));
+      
       res.json({
         partiteTotali: partite?.length || 0,
         partiteGiocate: giocate.length,
@@ -292,7 +385,8 @@ const teamController = {
         golFatti,
         golSubiti,
         differenzaReti: golFatti - golSubiti,
-        punti: vinte.length * 3 + pareggiate.length
+        punti: vinte.length * 3 + pareggiate.length,
+        risultati
       });
     } catch (err) {
       console.error('Get statistics error:', err);

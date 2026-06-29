@@ -16,7 +16,7 @@ export default async function loadDashboard() {
     ]);
   } catch (err) {
     console.error('Dashboard load error:', err);
-    stats = { punti: 0, partiteGiocate: 0, vittorie: 0, pareggi: 0, sconfitte: 0, golFatti: 0, golSubiti: 0, differenzaReti: 0 };
+    stats = { punti: 0, partiteGiocate: 0, vittorie: 0, pareggi: 0, sconfitte: 0, golFatti: 0, golSubiti: 0, differenzaReti: 0, risultati: [] };
     top = { marcatori: [], assistmen: [], presenze: [] };
     topValutazioni = { topGiocatori: [] };
     partiteFuture = [];
@@ -89,7 +89,19 @@ export default async function loadDashboard() {
     return '<div class="top-section"><h3 class="top-section-title">' + title + '</h3><div class="players-row">' + boxes.join('') + '</div></div>';
   };
   
-  // Render results
+  // Badge helper per competizione
+  const getCompetitionBadge = (tipoEvento, dettaglio) => {
+    const badges = {
+      campionato: { icon: '🏆', color: '#28a745', label: 'CAMP' },
+      coppa: { icon: '🏅', color: '#fd7e14', label: 'COPPA' },
+      torneo: { icon: '🎯', color: '#007bff', label: 'TOR' },
+      amichevole: { icon: '🤝', color: '#6c757d', label: 'AMIC' }
+    };
+    const badge = badges[tipoEvento] || badges.amichevole;
+    return `<span style="display:inline-flex;align-items:center;gap:3px;background:${badge.color};color:white;font-size:9px;font-weight:700;padding:3px 6px;border-radius:4px;letter-spacing:0.5px;">${badge.icon} ${badge.label}</span>`;
+  };
+  
+  // Render results - NUOVA VERSIONE MIGLIORATA
   const renderResults = () => {
     const risultati = (stats.risultati || []).slice(0, 5);
     if (risultati.length === 0) return '<p style="color:var(--gray);text-align:center;padding:20px;">Nessuna partita disputata</p>';
@@ -99,17 +111,21 @@ export default async function loadDashboard() {
     const gs5 = ultimi5.reduce((sum, r) => sum + (r.golSubiti || 0), 0);
     const dr5 = gf5 - gs5;
     
+    // NUOVO: Trend con risultati sotto V/P/S
     const trendHtml = ultimi5.map(r => {
       const esito = r.golFatti > r.golSubiti ? 'V' : r.golFatti === r.golSubiti ? 'P' : 'S';
       const color = r.golFatti > r.golSubiti ? '#27AE60' : r.golFatti === r.golSubiti ? '#F39C12' : '#E74C3C';
-      return '<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;background:' + color + ';color:white;font-size:12px;font-weight:bold;border-radius:8px;">' + esito + '</span>';
-    }).join('<span style="color:#ddd;margin:0 6px;">—</span>');
+      return `<div style="text-align:center;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:${color};color:white;font-size:13px;font-weight:bold;border-radius:10px;margin-bottom:4px;">${esito}</span>
+        <div style="font-size:11px;font-weight:600;color:white;background:rgba(0,0,0,0.25);padding:2px 8px;border-radius:4px;">${r.golFatti}-${r.golSubiti}</div>
+      </div>`;
+    }).join('<span style="color:rgba(255,255,255,0.4);margin:0 10px;align-self:center;font-size:18px;">—</span>');
     
     const trendBox = '<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:14px;padding:16px;margin-bottom:16px;">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
       '<span style="color:white;font-size:11px;font-weight:600;opacity:0.9;">ANDAMENTO ULTIME 5</span></div>' +
-      '<div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;">' + trendHtml + '</div>' +
-      '<div style="display:flex;justify-content:center;gap:16px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.2);">' +
+      '<div style="display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;margin-bottom:14px;">' + trendHtml + '</div>' +
+      '<div style="display:flex;justify-content:center;gap:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2);">' +
       '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 16px;text-align:center;min-width:60px;">' +
       '<div style="font-size:22px;font-weight:bold;color:white;">' + gf5 + '</div><div style="font-size:10px;color:rgba(255,255,255,0.8);">Gol Fatti</div></div>' +
       '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 16px;text-align:center;min-width:60px;">' +
@@ -117,18 +133,27 @@ export default async function loadDashboard() {
       '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 16px;text-align:center;min-width:60px;">' +
       '<div style="font-size:22px;font-weight:bold;color:' + (dr5 >= 0 ? '#4ade80' : '#f87171') + ';">' + (dr5 >= 0 ? '+' : '') + dr5 + '</div><div style="font-size:10px;color:rgba(255,255,255,0.8);">Diff. Reti</div></div></div></div>';
     
+    // NUOVA LISTA PARTITE CON BADGE
     const matchesHtml = risultati.map(r => {
       const isCasa = r.luogo === 'Casa';
-      const resultColor = r.golFatti > r.golSubiti ? '#27AE60' : r.golFatti === r.golSubitti ? '#F39C12' : '#E74C3C';
       const icon = isCasa ? '🏠' : '✈️';
-      return '<div class="match-item" onclick="window.YFM.openMatchDetail(\'' + r.id + '\')">' +
-        '<div style="display:flex;align-items:center;gap:10px;">' +
-        '<span style="font-size:10px;color:#667eea;font-weight:600;min-width:24px;">G.' + String(r.giornata || '-').padStart(2,'0') + '</span>' +
-        '<span style="font-size:11px;color:var(--gray);">' + formatDateShort(r.dataOra) + '</span>' +
-        '<span style="font-size:12px;">' + icon + '</span></div>' +
-        '<div style="display:flex;align-items:center;gap:8px;">' +
-        '<span style="font-size:12px;color:var(--gray);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + r.avversario + '</span>' +
-        '<span style="font-size:15px;font-weight:bold;color:' + resultColor + ';background:#f8f8f8;padding:4px 10px;border-radius:8px;">' + r.golFatti + ' - ' + r.golSubiti + '</span></div></div>';
+      const badgeColor = r.badgeAvversario || '#888';
+      const resultColor = r.golFatti > r.golSubiti ? '#27AE60' : r.golFatti === r.golSubiti ? '#F39C12' : '#E74C3C';
+      const competitionBadge = getCompetitionBadge(r.tipoEvento, r.dettaglioCompetizione);
+      
+      return `<div class="match-item" onclick="window.YFM.openMatchDetail('${r.id}')">
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          ${competitionBadge}
+          <span style="font-size:10px;color:#888;font-weight:500;min-width:28px;">${r.dettaglioCompetizione || '-'}</span>
+          <span style="font-size:10px;color:#666;">${formatDateShort(r.dataOra)}</span>
+          <span style="font-size:11px;">${icon}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${badgeColor};flex-shrink:0;"></span>
+          <span style="font-size:12px;color:#333;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.avversario}</span>
+          <span style="font-size:16px;font-weight:bold;color:${resultColor};background:#f8f8f8;padding:4px 12px;border-radius:8px;margin-left:auto;flex-shrink:0;">${r.golFatti} - ${r.golSubiti}</span>
+        </div>
+      </div>`;
     }).join('');
     
     return trendBox + matchesHtml;
@@ -167,7 +192,7 @@ export default async function loadDashboard() {
     '.bottom-grid { display:grid; gap:20px; grid-template-columns:1fr; }' +
     '@media (min-width: 900px) { .bottom-grid { grid-template-columns: 1.5fr 1fr !important; } }' +
     '.result-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
-    '.match-item { display:flex; align-items:center; justify-content:space-between; padding:10px 8px; border-radius:10px; margin-bottom:6px; transition: all 0.2s ease; cursor:pointer; background:#fafafa; }' +
+    '.match-item { display:flex; align-items:center; justify-content:space-between; padding:10px 8px; border-radius:10px; margin-bottom:6px; transition: all 0.2s ease; cursor:pointer; background:#fafafa; flex-wrap:wrap; gap:8px; }' +
     '.match-item:hover { background:#f0f0f0; transform: translateX(5px); }' +
     '.staff-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
     '.staff-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }' +
