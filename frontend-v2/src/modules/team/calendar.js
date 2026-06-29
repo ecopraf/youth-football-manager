@@ -136,9 +136,11 @@ function renderCalendarPage(c, matches, stats) {
     const stepBadge = stepInfo ? `<span class="pallino-blink"></span><span style="color:${stepInfo.color};font-size:12px;font-weight:600;">${stepInfo.icon} ${stepInfo.label}</span>` : '';
     
     html += `
-      <div class="card" style="margin-bottom:20px;border-left:4px solid var(--green);background:#E8F8F0;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <h3 class="section-title" style="margin:0;">⚽ PROSSIMA PARTITA</h3>
+      <div class="card" style="margin-bottom:20px;border-left:4px solid #28a745;background:linear-gradient(135deg, #E8F8F0 0%, #D4F1E0 100%);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+          <h3 style="margin:0;color:#155724;">
+            <span style="background:#28a745;color:white;padding:2px 10px;border-radius:10px;font-size:12px;margin-right:8px;">🟢 PROSSIMA</span>
+          </h3>
           ${stepBadge}
         </div>
         ${renderMatchCard(nextMatch, stats, true, nextStep)}
@@ -147,7 +149,7 @@ function renderCalendarPage(c, matches, stats) {
 
   // ALTRE PARTITE FUTURE
   if (otherFutureMatches.length > 0) {
-    html += `<h3 class="section-title" style="margin:20px 0 12px 0;">📅 Prossime Partite</h3>`;
+    html += `<div style="margin:20px 0 12px 0;"><span style="background:#D1ECF1;color:#0C5460;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;">📅 IN ARRIVO</span></div>`;
     otherFutureMatches.forEach(m => {
       const step = matchSteps[m.id];
       const hasAction = step !== null && step !== undefined;
@@ -161,7 +163,7 @@ function renderCalendarPage(c, matches, stats) {
 
   // PARTITE GIOCATE
   if (pastMatches.length > 0) {
-    html += `<h3 class="section-title" style="margin:20px 0 12px 0;">🏆 Partite Giocate</h3>`;
+    html += `<div style="margin:20px 0 12px 0;"><span style="background:#E9ECEF;color:#495057;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;">🏆 GIOCATE</span></div>`;
     pastMatches.forEach(m => {
       html += `<div class="card" style="margin-bottom:12px;">${renderMatchCard(m, stats)}</div>`;
     });
@@ -198,10 +200,21 @@ export function renderMatchCard(m, stats, isNext = false, nextStep = null) {
   const golFatti = r?.golFatti ?? m.gol_casa ?? null;
   const golSubiti = r?.golSubiti ?? m.gol_trasferta ?? null;
 
+  // Badge Casa/Trasferta
+  const luogoBadge = m.luogo === 'Casa' 
+    ? '<span style="background:#D4EDDA;color:#155724;padding:1px 6px;border-radius:6px;font-size:11px;">🏠 Casa</span>'
+    : '<span style="background:#FFF3CD;color:#856404;padding:1px 6px;border-radius:6px;font-size:11px;">✈️ Trasferta</span>';
+  
+  // Badge Giornata e Competizione
+  const giornataBadge = m.giornata ? `<span style="background:#E9ECEF;padding:1px 6px;border-radius:6px;font-size:11px;">${m.giornata}</span>` : '';
+  const compBadge = m.competizione ? `<span style="background:#E9ECEF;padding:1px 6px;border-radius:6px;font-size:11px;">${m.competizione}</span>` : '';
+  
   let L = `
   <div class="match-date">${archivedIcon}${formatDate(m.data_ora)}</div>
   <div class="match-teams">${window.YFM.getSocietaName()} vs ${m.avversario}</div>
-  <div class="match-info">${m.giornata ? 'Giornata ' + m.giornata + ' - ' : ''}${m.competizione} · ${m.luogo}</div>`;
+  <div class="match-info" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+    ${luogoBadge} ${giornataBadge} ${compBadge}
+  </div>`;
 
   let R = '';
   
@@ -228,7 +241,7 @@ export function renderMatchCard(m, stats, isNext = false, nextStep = null) {
   // Partite future: tutti i pulsanti modificabili
   if (!isPast) {
   // Formazione - UN SOLO pulsante
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">👥 Formazione</button>`;
+  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openNoteAvversario('${m.id}')">📝 Note</button>`;
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',false)">📋 Convoca</button>`;
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Distinta</button>`;
@@ -240,19 +253,19 @@ export function renderMatchCard(m, stats, isNext = false, nextStep = null) {
   
   } else if (isPast && hasResult && !isArchiviata) {
   // Partita passata con risultato ma non archiviata: mostra pulsante Archivia
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">👥 Formazione</button>`;
+  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Conv.</button>`;
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Dist.</button>`;
   R += `<button class="btn btn-secondary btn-small" style="background:#8B7355;color:white;border-color:#8B7355;" onclick="event.stopPropagation();archiveMatch('${m.id}')">📦 Archivia</button>`;
   
   } else if (isPast && !hasResult) {
   // Partita passata senza risultato
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">👥 Formazione</button>`;
+  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Conv.</button>`;
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Dist.</button>`;
   } else {
   // Partite archiviate: solo consultazione
-  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">👥 Formazione</button>`;
+  R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Conv.</button>`;
   R += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Dist.</button>`;
   }
