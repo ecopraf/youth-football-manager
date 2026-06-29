@@ -123,9 +123,9 @@ Macro-aree funzionali:
 
 | Modulo | Percorso | Descrizione |
 |--------|----------|-------------|
-| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze |
+| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze, badge competizione, risultati colorati |
 | Rosa | `modules/team/roster.js` | CRUD giocatori, scadenze mediche, filtri |
-| Calendario | `modules/team/calendar.js` | CRUD partite, prossima in evidenza, archiviazione |
+| Calendario | `modules/team/calendar.js` | CRUD partite, pallino lampeggiante prossimo passo, badge sezioni pill, archiviazione |
 | Convocazioni | `modules/team/convocazioni.js` | Vincoli min/max, PDF, sola lettura se archiviata |
 | Distinta | `modules/team/distinta.js` | Layout FIGC, 24 righe, staff, stampa PDF |
 | Match Detail | `modules/team/matchDetail.js` | Eventi, timeline per tempo, statistiche |
@@ -151,6 +151,9 @@ Macro-aree funzionali:
 | Auth FASE 1 | bdedf42 | Sistema ruoli, gestione utenti, link guest |
 | Dashboard Aggiornata | bdedf42 | Prossima partita in evidenza, trend, top players |
 | Accessibilità | bdedf42 | Tooltip su tutte le icone |
+| Dashboard Badge Competizione | dd364a3, 61a3f87 | Badge colorati competizione, risultati colorati V/P/S, pallino avversario |
+| Calendario Pallino Lampeggiante | 634ec74, 0310aa0 | Indicatore prossimo passo con animazione, badge sezioni pill |
+| Demo Mode Rimosso | 1b11426, 12bb78a | Rimosso sistema demo dal frontend principale |
 
 ### ⏸️ SOSPESI
 
@@ -438,11 +441,12 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
-| bdedf42 | FIX: Dashboard aggiornata con prossima partita, tooltip accessibilità |
-| 4b7c9e6 | FIX: Query order by id invece di created_at (colonna non esiste) |
-| 4fed908 | DEBUG: Aggiunto logging in /auth/users per diagnosticare |
-| 542f267 | FIX: Lista utenti, guest link, copy clipboard |
-| 7fc2bce | FIX: Router guest link, main.js cleanup, logout button header |
+| 0310aa0 | feat: UI calendario migliorata (badge sezioni pill, badge luogo colorati) |
+| 634ec74 | feat: pallino lampeggiante calendario per prossimo passo |
+| 61a3f87 | feat: stile dashboard migliorato con badge colorati |
+| dd364a3 | feat: dashboard con badge competizione e risultati colorati |
+| 1b11426 | feat: rimosso demo mode dal frontend |
+| 12bb78a | feat: rimosso demo mode dal frontend |
 
 ---
 

@@ -8,8 +8,8 @@
 - **Repo**: https://github.com/ecopraf/youth-football-manager
 
 ## Info
-- **Versione**: v3.14
-- **Build ID**: `v3.14.<git-hash>`
+- **Versione**: v3.15
+- **Build ID**: `v3.15.<git-hash>`
 - **Deploy**: Manuale via API (NON automatico su push a main)
 
 ## 🔑 Credenziali Sistema
@@ -185,99 +185,137 @@ Esempio: `004_add_player_fields.sql` aggiunge i campi mancanti alla tabella play
 
 ---
 
-## 🎭 Modalità Demo
+---
 
-### Attivazione
-La modalità demo si attiva quando un utente clicca "Entra in Demo" sulla pagina di login. Viene impostato `localStorage.setItem('yfm_demo_session', 'active')`.
+## 🎯 Funzionalità Dashboard
 
-### Struttura Dati Demo (`frontend-v2/src/main.js`)
+### Ultimi Risultati - Layout Migliorato
 
-```javascript
-// Dati demo sono costanti definite all'inizio del file
-const DEMO_WORKSPACE = { id: '...', nome: 'ASD Green Academy', ... };
-const DEMO_SQUADRE = [{ id: '...', nome: 'Green Academy', categoria: 'Primavera', ... }];
-const DEMO_CALCIATORI = [{ id: 'c001', nome: 'Alessandro', cognome: 'Rossi', ... }, ...];
-const DEMO_PARTITE = [{ id: 'm001', avversario: 'Roma Academy', gol_casa: 3, gol_trasferta: 1, ... }, ...];
-const DEMO_EVENTI = [{ match_id: 'm003', player_id: 'c007', tipo: 'GOAL', minuto: 15 }, ...];
-const DEMO_STATISTICHE = { punti: 34, vittorie: 10, pareggi: 4, sconfitte: 0, ... };
-const DEMO_TOP_PLAYERS = { marcatori: [...], assistmen: [...], presenze: [...] };
-const DEMO_CONVOCAZIONI = { m001: ['c001', 'c002', ...], m002: [...] };
-const DEMO_FORMAZIONI = { m003: { portiere: 'c001', difensori: [...], ... }, ... };
-const DEMO_ALLENAMENTI = [{ id: 'a001', data: '2026-06-26', tipo: 'Tattico', presenze: [...], assenti: [...], ... }];
+La dashboard mostra le ultime 5 partite con le seguenti informazioni:
+
+#### Trend Ultime 5
+```
+┌─────────────────────────────────────────────────────┐
+│ ANDAMENTO ULTIME 5                                  │
+│    [V]      [P]      [V]      [S]      [V]       │
+│   3-1      2-2      4-0      1-2      3-1       │
+│  GF:12    GS:6     Diff:+6                          │
+└─────────────────────────────────────────────────────┘
 ```
 
-### Init Demo Session (`initDemoSession()`)
-```javascript
-window.YFM.workspaceInfo = DEMO_WORKSPACE;
-window.YFM.allSquadre = DEMO_SQUADRE;
-window.YFM.squadraId = DEMO_SQUADRE[0].id; // Primavera
-window.YFM.allPlayers = DEMO_CALCIATORI;
-window.YFM.demoMatches = DEMO_PARTITE;
-window.YFM.demoEvents = DEMO_EVENTI;
-window.YFM.demoStats = DEMO_STATISTICHE;
-window.YFM.demoTopPlayers = DEMO_TOP_PLAYERS;
-window.YFM.demoConvocazioni = DEMO_CONVOCAZIONI;
-window.YFM.demoFormazioni = DEMO_FORMAZIONI;
-window.YFM.demoAllenamenti = DEMO_ALLENAMENTI;
+#### Lista Partite con Badge
+```
+┌─────────────────────────────────────────────────────┐
+│ 🏆 Campionato  G.15                    20/06     │
+│ 🏠 ●🔵 Inter Academy                    3 - 1     │
+└─────────────────────────────────────────────────────┘
 ```
 
-### Moduli con Supporto Demo
-Ogni modulo verifica `localStorage.getItem('yfm_demo_session') === 'active'` e usa i dati da `window.YFM.*`:
-- `dashboard.js` - usa `demoStats`
-- `calendar.js` - usa `demoMatches` (con `gol_casa`, `gol_trasferta`)
-- `roster.js` - usa `allPlayers`
-- `training.js` - usa `demoAllenamenti`
-- `matchDetail.js` - usa `demoMatches`, `demoEvents`
-- `reports.js` - usa `demoStats`, `demoTopPlayers`, `demoMatches`
+#### Badge Competizione
+| Tipo | Badge | Colore |
+|------|-------|--------|
+| Campionato | 🏆 Campionato | Verde (#e8f5e9 / #28a745) |
+| Coppa | 🏅 Coppa | Arancione (#fff3e0 / #fd7e14) |
+| Torneo | 🎯 Torneo | Blu (#e3f2fd / #007bff) |
+| Amichevole | 🤝 Amichevole | Grigio (#f5f5f5 / #6c757d) |
 
-### Nota su Partite e Risultati
-Le partite demo hanno i campi `gol_casa` e `gol_trasferta` direttamente nell'oggetto partita (non in un oggetto stats separato). Il renderer `renderMatchCard()` cerca prima in `stats?.risultati` e poi usa i valori diretti dalla partita.
+#### Badge Risultato Colorato
+- **Vittoria**: Sfondo verde chiaro (#e8f5e9), bordo verde (#28a745)
+- **Pareggio**: Sfondo giallo chiaro (#fff8e1), bordo giallo scuro (#b8860b)
+- **Sconfitta**: Sfondo rosso chiaro (#ffebee), bordo rosso (#dc3545)
 
-### ID Squadra Demo
-- **Primavera**: `00000000-0000-0000-0000-000000000010`
-- **Allievi B**: `00000000-0000-0000-0000-000000000011`
-- **Workspace Demo**: `00000000-0000-0000-0000-000000000001`
+#### Badge Avversario
+Pallino colorato (8x8px) con ombra per identificare visivamente l'avversario.
 
-### Persistenza Demo (`DemoPersistence.js`)
-Le modifiche in modalità demo vengono salvate in `localStorage` sotto la chiave `yfm_demo_persistence`.
+---
 
-**Cosa viene persistito:**
-- `matches` - Partite con risultati
-- `matchResults` - Risultati partite (gol fatti/subiti)
-- `events` - Eventi partita (gol, assist, cartellini)
-- `formations` - Formazioni salvate
-- `convocations` - Convocazioni per partita
-- `training` - Allenamenti con presenze
-- `players` - Giocatori aggiunti/modificati
+## 🎯 Funzionalità Calendario
 
-**API DemoPersistence:**
-```javascript
-window.YFM.demoPersistence.saveMatchResult(matchId, golCasa, golOspiti)
-window.YFM.demoPersistence.addEvent(matchId, { tipo, minuto, player_id })
-window.YFM.demoPersistence.getEvents(matchId)
-window.YFM.demoPersistence.saveFormation(matchId, formation)
-window.YFM.demoPersistence.saveConvocation(matchId, playerIds)
-window.YFM.demoPersistence.saveTrainingPresence(trainingId, { presenti, assenti })
-window.YFM.demoPersistence.addPlayer(player)
-window.YFM.demoPersistence.updatePlayer(playerId, updates)
-window.YFM.demoPersistence.reset() // Pulisce tutti i dati
+### Pallino Lampeggiante per Prossimo Passo
+
+Il calendario mostra un pallino 🔵 lampeggiante accanto alla partita che richiede azione.
+
+#### Logica Determinazione Passo
+| Condizione | Step restituito |
+|------------|-----------------|
+| Nessuna convocazione | `convocazione` |
+| Convocazione esistente, no formazione | `formazione` |
+| Formazione salvata, no distinta | `distinta` |
+| Distinta presente, no risultato | `risultato` |
+| Risultato inserito, no eventi | `eventi` |
+| Tutto completato | `null` |
+
+#### Colori Step
+| Step | Colore | Icona |
+|------|--------|-------|
+| Convocazione | 🔵 `#007bff` | 📋 |
+| Formazione | 🩵 `#17a2b8` | 🏟️ |
+| Distinta | 🟠 `#fd7e14` | 📄 |
+| Risultato | 🟢 `#28a745` | 📊 |
+| Eventi | 🟣 `#6f42c1` | ⚽ |
+
+#### UI Calendario
+```
+┌─────────────────────────────────────────────────────┐
+│ 🟢 PROSSIMA    🔵📋 Convocazione                  │
+│─────────────────────────────────────────────────────│
+│ 25 Gen 2025                                        │
+│ ASD Green Academy vs Juventus                      │
+│ 🏠 Casa  G.15  Campionato Primavera A              │
+└─────────────────────────────────────────────────────┘
+
+📅 IN ARRIVO
+┌─────────────────────────────────────────────────────┐
+│ 🔵🏟️  G.16  vs  Inter Academy                    │
+└─────────────────────────────────────────────────────┘
+
+🏆 GIOCATE
+┌─────────────────────────────────────────────────────┐
+│ 18 Gen 2025                                        │
+│ ASD Green Academy vs Milan                          │
+│ ✈️ Trasferta  G.14  Campionato Primavera A   3-1  │
+└─────────────────────────────────────────────────────┘
 ```
 
-**Riferimento in window.YFM:**
-```javascript
-window.YFM.demoPersistence // Istanza singleton
-```
+#### Badge Sezioni Calendario
+- **Prossima Partita**: 🟢 PROSSIMA (verde)
+- **In Arrivo**: 📅 IN ARRIVO (blu chiaro)
+- **Giocate**: 🏆 GIOCATE (grigio)
 
-### Reset Dati Demo
-Per resettare tutti i dati demo persistenti e tornare ai valori originali:
+---
+
+## 🏗️ Endpoint API Key
+
+- `/api/stagioni/:id/squadre` → restituisce squadre per stagione con category join
+- `/api/squadre/:id/calciatori` → GET: lista giocatori, POST: aggiungi giocatore
+- `/api/squadre/:id/scadenze-mediche` → giocatori con certificato in scadenza (30 giorni)
+- `/api/squadre/:id/statistiche-complete` → statistiche squadre con array `risultati`
+- `/api/squadre/:id/top-players` → top marcatori/assist/presenze
+- `/api/squadre/:id/partite/:id/convocati` → lista convocati
+- `/api/squadre/:id/partite/:id/formazione` → formazione salvata
+- `/api/squadre/:id/partite/:id/distinta` → distinta partita
+- `/api/squadre/:id/partite/:id/eventi` → eventi partita
+
+### Schema Risultato Partita (in `statistiche-complete`)
 ```javascript
-window.YFM.demoPersistence.reset()
-location.reload()
+{
+  id: 'uuid',
+  avversario: 'Inter Academy',
+  luogo: 'Casa',
+  dataOra: '2026-06-20T15:00:00Z',
+  golFatti: 3,
+  golSubiti: 1,
+  giornata: 15,
+  competizione: 'Campionato Primavera A',
+  tipoEvento: 'campionato',           // campionato | coppa | torneo | amichevole
+  dettaglioCompetizione: 'G.15',      // G.15, QF, SF, F
+  badgeAvversario: '#0068A8'           // colore esadecimale
+}
 ```
 
 ---
 
-## 🧪 Test Modalità Demo
+## 🧪 Test Applicazione
 
 ### Avvio Frontend Locale
 ```bash
@@ -289,43 +327,16 @@ Frontend disponibile su: http://localhost:8080 (o porta successiva)
 
 ### Flusso Test Completo
 1. Apri browser → http://localhost:8080
-2. Clicca "🎮 Avvia Demo"
+2. Login con credenziali utente
 3. Testa sequenzialmente:
-   - **Dashboard**: verifica statistiche e top giocatori
-   - **Rosa**: verifica lista 18 giocatori con filtri
-   - **Calendario**: verifica partite con risultati
-   - **Convocazioni**: verifica lista giocatori (BUG comune: lista vuota)
+   - **Dashboard**: verifica statistiche, trend ultimi 5, badge competizione
+   - **Rosa**: verifica lista giocatori con filtri
+   - **Calendario**: verifica pallino lampeggiante, badge sezioni, badge luogo
+   - **Convocazioni**: verifica lista giocatori per partita
    - **Formazione**: verifica caricamento convocati
-   - **Risultato**: verifica lista giocatori per eventi (BUG comune: lista vuota)
+   - **Risultato**: verifica lista giocatori per eventi
    - **Allenamenti**: verifica date e tabella presenze
    - **Report**: verifica generazione report
-
-### Bug Comuni e Correzioni
-
-#### 1. Lista Giocatori Vuota in Convoca/Formazione/Risultato
-Se i giocatori non appaiono nei dropdown:
-- Verificare che `window.YFM.allPlayers` sia popolato
-- Verificare che `window.YFM.demoConvocazioni[mid]` esista per la partita
-- In `convocazioni.js`, `formazione.js`, `resultForm.js` controllare il fallback:
-
-```javascript
-// Pattern corretto per caricare giocatori in demo mode
-const isDemo = localStorage.getItem('yfm_demo_session') === 'active';
-if (isDemo) {
-  // Prova prima da demoConvocazioni
-  let giocatoriIds = window.YFM.demoConvocazioni?.[mid] || [];
-  // Fallback: usa tutti i giocatori se non ci sono convocazioni
-  if (giocatoriIds.length === 0) {
-    giocatoriIds = window.YFM.allPlayers?.map(p => p.id) || [];
-  }
-}
-```
-
-#### 2. Persistenza Non Funziona
-Verificare che:
-- `DemoPersistence.js` sia importato in `main.js`
-- `window.YFM.demoPersistence` sia inizializzato
-- I metodi `saveConvocation()`, `saveFormation()`, etc. siano chiamati
 
 ### Commit e Push
 ```bash

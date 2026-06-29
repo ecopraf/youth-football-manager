@@ -19,8 +19,8 @@ Questo progetto è ottimizzato per lavorare con agenti AI. Prima di iniziare qua
 1. Leggi `.agents/` per contesto completo
 2. Analizza il task e crea un piano
 3. Implementa seguendo coding standards
-4. Commit con messaggio descrittivo + build ID
-5. Push → deploy automatico su Vercel
+4. Commit con messaggio descrittivo
+5. Push → deploy (verificare se automatico o manuale)
 
 ---
 
@@ -51,9 +51,7 @@ youth-football-manager/
 ## Link Utili
 
 - **App**: https://youth-football-manager.vercel.app
-- **Landing**: https://youth-football-manager.vercel.app (root)
 - **Backend API**: https://youth-football-manager-backend.vercel.app
-- **Demo**: https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1
 
 ---
 
@@ -69,18 +67,6 @@ youth-football-manager/
 |------|-------|-------|----------|-----------|
 | Matteo Urilli | Allenatore | matteo@urilli.it | mister | DF Academy |
 | Francesco Annese | Admin | francesco@annese.it | annex | ACP Annex |
-
-### Demo (ModalitГ  Demo Interattiva)
-| Accesso | Password |
-|---------|----------|
-| "Entra in Demo" (pulsante) | - |
-
-La modalitГ  demo include:
-- Dati di esempio realistici (giocatori, partite, statistiche)
-- Sistema di mini-missioni guidate per pagina
-- PossibilitГ  di provare tutte le funzionalitГ  (salvate in locale)
-
-**Link diretto demo**: https://youth-football-manager.vercel.app/login?demo_email=demo_yfm&demo_password=demo_yfm&auto_login=1
 
 ---
 
@@ -116,11 +102,6 @@ npm install
 npm run dev
 # Frontend disponibile su http://localhost:5173
 ```
-
-### 5. Accedere all'App Locale
-
-1. Apri http://localhost:5173
-2. Usa le credenziali demo o registrati
 
 ---
 
@@ -158,85 +139,30 @@ git checkout main
 ```bash
 cd frontend-v2
 npm run build
-# Output: Build ID: v3.14.<git-hash>
+# Output: Build ID: v3.15.<git-hash>
 # Output in frontend-v2/dist/
 ```
 
-### Preview build locale
-```bash
-npm run preview
-```
-
 ### Deploy su Vercel
-Il deploy è **automatico**: ogni push su `main` triggera un rebuild su Vercel.
-- Frontend: ~1-2 minuti
-- Backend: ~1-2 minuti
+Il deploy può essere automatico o manuale a seconda delle impostazioni del progetto.
 
 ### Verificare Versioni
 
 **Backend**:
 ```bash
 curl https://youth-football-manager-backend.vercel.app/api/health
-# Risposta: {"status":"ok","version":"3.14",...}
 ```
 
 **Frontend**: 
-- Apri l'app → Login footer o Sidebar footer → `build: v3.14.<hash>`
-- Build ID = Versione SW + Git commit hash
+- Apri l'app → Login footer o Sidebar footer → `build: v3.15.<hash>`
 
 ---
 
 ## 🔢 Sistema Build ID
 
-Il build ID identifica univocamente ogni release: `v3.14.<git-hash>`
+Il build ID identifica univocamente ogni release: `v3.15.<git-hash>`
 
 **Formato**: `v<major>.<minor>.<commit-hash>`
-
-| Dove | Build ID |
-|------|----------|
-| Locale | `v3.14.62f56e8` (dal terminale dopo `npm run build`) |
-| Produzione | `v3.14.62f56e8` (stesso commit, stessa UI) |
-
-### Workflow Git con Build ID
-
-```bash
-# 1. Fai le tue modifiche al codice
-
-# 2. Verifica cosa cambierà
-git status
-
-# 3. Build locale (genera il build ID)
-cd frontend-v2
-npm run build
-# Nota il Build ID: v3.14.XXXXXXX
-
-# 4. Torna alla root e committa
-cd ..
-git add .
-git commit -m "feat: descrizione - build v3.14.XXXXXXX"
-
-# 5. Push - triggera deploy automatico
-git push origin main
-
-# 6. Verifica dopo ~2 minuti
-# - Backend: curl https://youth-football-manager-backend.vercel.app/api/health
-# - Frontend: Login → footer `build: v3.14.XXXXXXX`
-```
-
-### Risoluzione Problemi Pull
-
-Se hai errori con `build-info.js` durante il pull:
-
-```bash
-# Rimuovi file generato localmente
-rm frontend-v2/src/build-info.js frontend-v2/build-info.js 2>/dev/null
-
-# Poi pull
-git pull origin main
-
-# Ricompila
-cd frontend-v2 && npm run build
-```
 
 ---
 
@@ -253,9 +179,8 @@ frontend-v2/src/
 │   ├── auth/          # Login, guest
 │   ├── admin/         # Gestione utenti
 │   ├── team/          # Dashboard, roster, calendar, etc.
-│   ├── coach/         # Allenamenti
-│   ├── performance/   # Stats, reports
-│   ├── demo/          # Sistema demo (tooltip, highlight)
+│   ├── coach/          # Allenamenti
+│   ├── performance/    # Stats, reports
 │   └── club/          # Impostazioni
 └── components/
     └── layout/        # Sidebar, header
@@ -287,10 +212,6 @@ backend/api/
 - Bottoni: `10px`
 - Input: `8px`
 
-### Effetti
-- Hover lift: `transform: translateY(-8px)`
-- Box shadow hover: `0 15px 30px rgba(0,0,0,0.2)`
-
 ---
 
 ## 📝 Convenzioni Commit
@@ -305,7 +226,7 @@ style: stili (CSS)
 
 Esempio:
 ```bash
-git commit -m "fix: correggi tooltip sidebar in demo mode"
+git commit -m "feat: migliora UI dashboard con badge competizione"
 ```
 
 ---
@@ -340,5 +261,5 @@ Il backend sarà disponibile su **http://localhost:3001**
 - ✅ Report PDF partita/stagionale
 - ✅ Sistema auth con ruoli
 - ✅ Link guest temporanei
-- ✅ Demo mode interattiva con mini-missioni e tooltip guidati
-- ✅ Dashboard con top players
+- ✅ Dashboard con trend ultimi 5 e badge competizione
+- ✅ Calendario con pallino lampeggiante per prossimo passo
