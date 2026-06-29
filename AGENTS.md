@@ -254,28 +254,60 @@ Il calendario mostra un pallino 🔵 lampeggiante accanto alla partita che richi
 | Risultato | 🟢 `#28a745` | 📊 |
 | Eventi | 🟣 `#6f42c1` | ⚽ |
 
-#### UI Calendario
+#### UI Calendario (Desktop)
 ```
 ┌─────────────────────────────────────────────────────┐
 │ 🟢 PROSSIMA    🔵📋 Convocazione                  │
 │─────────────────────────────────────────────────────│
-│ 25 Gen 2025                                        │
-│ ASD Green Academy vs Juventus                      │
-│ 🏠 Casa  G.15  Campionato Primavera A              │
+│ 📦 25 Gen 2025                                        │
+│ [G.15] [Campionato] [🏠 Casa]                      │
+│ ASD Green Academy vs Juventus    3-1 ✅             │
+│                                                     │
+│ [📋 Convocazione][🏟️ Formazione][📄 Distinta]     │
+│ [📝 Note]                          [✏️][🗑️]         │
 └─────────────────────────────────────────────────────┘
 
 📅 IN ARRIVO
 ┌─────────────────────────────────────────────────────┐
-│ 🔵🏟️  G.16  vs  Inter Academy                    │
+│ [G.16] [Campionato] [✈️ Trasferta]                 │
+│ ASD Green vs Inter Academy         [📊 Risultato]    │
+│                                                     │
+│ [📋][🏟️][📄][📝]                  [✏️][🗑️]         │
 └─────────────────────────────────────────────────────┘
 
 🏆 GIOCATE
 ┌─────────────────────────────────────────────────────┐
 │ 18 Gen 2025                                        │
-│ ASD Green Academy vs Milan                          │
-│ ✈️ Trasferta  G.14  Campionato Primavera A   3-1  │
+│ [G.14] [Campionato] [✈️ Trasferta]                 │
+│ ASD Green Academy vs Milan        1-3 ❌            │
+│                                                     │
+│ [📋][🏟️][📄][📦 Archivia][📝]   [✏️][🗑️]         │
 └─────────────────────────────────────────────────────┘
 ```
+
+#### UI Calendario (Mobile <640px)
+```
+┌──────────────────────────┐
+│ [G.15] [🏠]             │
+│ 📦                      │
+│ 25/01/2025              │
+│ Green vs Juventus        │
+│ ASD vs Juventus 3-1 ✅  │
+│         [✏️][🗑️]        │
+│ ┌────┬────┬────┐        │
+│ │📋  │🏟️  │📄  │        │
+│ ├────┼────┼────┤        │
+│ │📝  │    │    │        │
+│ └────┴────┴────┘        │
+└──────────────────────────┘
+```
+
+#### Badge Risultato Colorato
+| Esito | Badge | Colore |
+|-------|-------|--------|
+| Vittoria | 3-1 ✅ | Verde `#27AE60` |
+| Sconfitta | 1-3 ❌ | Rosso `#E74C3C` |
+| Pareggio | 2-2 🤝 | Giallo `#F39C12` |
 
 #### Badge Sezioni Calendario
 - **Prossima Partita**: 🟢 PROSSIMA (verde)
@@ -347,3 +379,12 @@ git push
 ```
 
 **NOTA**: Non dimenticare di disabilitare deploy Vercel prima di push se richiesto.
+#### Pulsanti Calendario per Tipo Partita
+| Tipo | Pulsanti Visibili |
+|------|-------------------|
+| Future | Convocazione, Formazione, Distinta, Eventi*, Note, Edit, Delete |
+| Giocate (con risultato) | Convocazione, Formazione, Distinta, Archivia, Note, Edit, Delete |
+| Giocate (senza risultato) | Convocazione, Formazione, Distinta, Note, Edit, Delete |
+| Archiviate | Convocazione, Formazione, Distinta, Sblocca, Note |
+
+*Eventi: solo se la partita ha gia un risultato
