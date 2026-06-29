@@ -170,55 +170,47 @@ Macro-aree funzionali:
 ---
 
 
-## 5. ModalitГ  Demo Interattiva вњ… COMPLETATA
+## 5. Demo Standalone ✅
 
-### Panoramica
-La modalitГ  demo permette di esplorare l'applicazione senza bisogno di account o backend. Include dati di esempio realistici e un sistema di mini-missioni per guidare l'utente.
+> ⚠️ **Nota**: La demo interattiva è ora un **repository separato** (`youth-football-manager-demo`) con deploy indipendente.
 
-### Attivazione
-La modalitГ  demo si attiva cliccando "Entra in Demo" nella pagina di login. Viene impostato `localStorage.setItem('yfm_demo_session', 'active')`.
+### Demo Standalone
+- **URL**: https://youth-football-manager-demo.vercel.app
+- **Repository**: https://github.com/ecopraf/youth-football-manager-demo
+- **Landing Page**: https://yfm-landing.vercel.app
 
-### Struttura File
+### Differenza con la Demo nel Progetto Principale
 
-| File | Descrizione |
-|------|-------------|
-| `modules/demo/demo.js` | DemoManager + MiniMissionManager (2138 righe) |
-| `modules/demo/DemoPersistence.js` | Persistenza dati demo in localStorage |
+| Aspetto | Progetto Principale | Demo Standalone |
+|---------|---------------------|-----------------|
+| Backend | Richiesto (Supabase) | Non richiesto |
+| Dati | Salvati su DB | Salvati in localStorage |
+| Deploy | Vercel + Backend | Solo Vercel (frontend) |
+| Uso | Produzione reale | Prova senza account |
 
-### Componenti Demo
-
-| Componente | Descrizione |
-|------------|-------------|
-| **DemoManager** | Gestisce sessione, navigazione, tooltip e progressi |
-| **MiniMissionManager** | Missioni guidate per pagina con completamento automatico |
-| **DemoPersistence** | Salva modifiche in localStorage durante la demo |
-
-### Mini Missioni per Pagina
-
-| Pagina | Steps | Trigger |
-|--------|-------|---------|
-| Dashboard | Esplora dashboard | page_view |
-| Rosa | Esplora rosa | page_view |
-| Calendario | Esplora calendario | page_view |
-| Allenamenti | Esplora allenamenti | page_view |
-| Statistiche | Esplora statistiche | auto_complete |
-| Report | Esplora, genera report, scarica PDF | click |
-
-### Dati Demo
+### Dati Demo Precaricati (Standalone)
 
 | Tipo | Contenuto |
 |------|-----------|
 | Workspace | ASD Green Academy (Roma) |
-| Squadre | Primavera, Allievi B |
-| Giocatori | 20+ giocatori con stats |
+| Squadre | Under 19, Under 17 |
+| Giocatori | 20 giocatori con stats |
 | Partite | 7 partite (2 future, 5 terminate) |
 | Eventi | Gol, assist per partite terminate |
 | Convocazioni | Per partite future |
 | Formazioni | Per partite terminate |
+| Allenamenti | 30 sessioni storiche precaricate |
 | Statistiche | Punti, V/P/S, GF/GS, DR |
 | Top Players | Marcatori, assist, presenze |
 
-### Persistenza Demo
+### Struttura File Demo Standalone
+
+| File | Percorso | Descrizione |
+|------|----------|-------------|
+| `demo.js` | `demo/frontend/src/modules/demo/demo.js` | DemoManager + MiniMissionManager |
+| `DemoPersistence.js` | `demo/frontend/src/modules/demo/DemoPersistence.js` | Persistenza localStorage |
+
+### Persistenza Demo Standalone
 
 Le modifiche vengono salvate in `localStorage` sotto la chiave `yfm_demo_persistence`:
 
@@ -228,24 +220,26 @@ window.YFM.demoPersistence.addEvent(matchId, { tipo, minuto, player_id })
 window.YFM.demoPersistence.saveFormation(matchId, formation)
 window.YFM.demoPersistence.saveConvocation(matchId, playerIds)
 window.YFM.demoPersistence.saveTrainingPresence(trainingId, { presenti, assenti })
-window.YFM.demoPersistence.addPlayer(player)
+window.YFM.demoPersistence.initTrainingHistory(giocatori) // 30 sessioni precaricate
 window.YFM.demoPersistence.reset() // Resetta tutti i dati
 ```
 
-### Reset Dati Demo
+### Riepilogo Presenze Allenamenti (Demo Standalone)
 
-```javascript
-window.YFM.demoPersistence.reset()
-location.reload()
-```
+La sezione "Riepilogo Presenze" mostra:
+- Numero totale sessioni per giocatore
+- Presenze totali
+- Assenze totali
+- Percentuale presenze
+- Assenze nell'ultima settimana
 
 ### ID Speciali Demo
 
 | Tipo | ID |
 |------|-----|
 | Workspace Demo | `00000000-0000-0000-0000-000000000001` |
-| Squadra Primavera | `00000000-0000-0000-0000-000000000010` |
-| Squadra Allievi B | `00000000-0000-0000-0000-000000000011` |
+| Squadra Under 19 | `00000000-0000-0000-0000-000000000010` |
+| Squadra Under 17 | `00000000-0000-0000-0000-000000000011` |
 
 ---
 
@@ -407,7 +401,14 @@ unction renderModule(container, data) {
 
 ## 11. Deploy
 
-### Frontend (Vercel)
+### Progetti Collegati
+
+| Progetto | URL | Repository |
+|----------|-----|------------|
+| **Demo Standalone** | https://youth-football-manager-demo.vercel.app | `youth-football-manager-demo` |
+| **Landing Page** | https://yfm-landing.vercel.app | `youth-football-manager-demo` |
+
+### Frontend Principale (Vercel)
 - **URL**: https://youth-football-manager.vercel.app
 - Root Directory: `frontend-v2`
 - Build: `npm run build`
@@ -424,6 +425,12 @@ unction renderModule(container, data) {
 
 ### Database (Supabase)
 - **URL**: https://csxdlxbhcnyfppojwwzy.supabase.co
+
+### Accesso Demo
+Per provare l'applicazione senza account, usa la **Demo Standalone**:
+- **URL**: https://youth-football-manager-demo.vercel.app
+- Dati precaricati: 20 giocatori, 7 partite, 30 sessioni allenamento
+- Tutti i dati in localStorage (nessun backend richiesto)
 
 ---
 
