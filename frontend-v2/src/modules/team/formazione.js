@@ -140,7 +140,8 @@ function renderFormazioneEdit(mid, match, giocatoriConvocati, formMap) {
   html += '<div><h4 style="margin-bottom:8px;">Panchina <span id="cntRiserve" style="font-size:12px;color:var(--gray);"></span></h4>';
   giocatoriConvocati.forEach(g => {
     const f = formMap[g.id];
-    const checked = f && f.posizione === 'Panchina' ? ' checked' : '';
+    // Default: se non c'è formazione esistente, tutti in panchina
+    const checked = f ? (f.posizione === 'Panchina' ? ' checked' : '') : ' checked';
     html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><input type="checkbox"' + checked + ' data-pid="' + g.id + '" class="form-check-pan" style="accent-color:var(--orange);"><span style="flex:1;">' + g.nome + ' ' + g.cognome + ' <span style="color:var(--gray);font-size:12px;">(' + g.ruolo + ')</span></span><input type="number" value="' + (f ? f.numeroMaglia : (g.numeroMaglia || g.numero_maglia || 99)) + '" data-pid="' + g.id + '" class="form-num-pan" style="width:50px;padding:4px;" placeholder="N."></div>';
   });
   html += '</div></div>';
