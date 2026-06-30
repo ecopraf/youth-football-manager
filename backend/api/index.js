@@ -214,12 +214,14 @@ app.delete('/api/auth/users/:id', authMiddleware, async (req, res) => {
 
 app.post('/api/auth/guest-link', authMiddleware, async (req, res) => {
   try {
-    const { workspace_id, expires_in_hours = 24 } = req.body;
+    const { tipo = 'genitore', squadre_accesso = [], expires_in_hours = 720 } = req.body;
     const token = require('crypto').randomBytes(32).toString('hex');
-    const expires_at = new Date(Date.now() + expires_in_hours * 60 * 60 * 1000).toISOString();
-    const { data, error } = await supabase.from('guest_link').insert({ token, workspace_id, expires_at }).select().single();
+    const scadenza = new Date(Date.now() + expires_in_hours * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabase.from('guest_token').insert({
+      token, utente_id: req.user.id, tipo, squadre_accesso, scadenza
+    }).select().single();
     if (error) return res.status(400).json({ error: error.message });
-    res.status(201).json({ token: data.token, expires_at: data.expires_at, url: `/guest/${data.token}` });
+    res.status(201).json({ token: data.token, scadenza: data.scadenza, tipo: data.tipo, url: `/guest/${data.token}` });
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
   }
@@ -227,7 +229,7 @@ app.post('/api/auth/guest-link', authMiddleware, async (req, res) => {
 
 app.get('/api/auth/guest-links', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('guest_link').select('*').gte('expires_at', new Date().toISOString()).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('guest_token').select('*').gte('scadenza', new Date().toISOString()).order('created_at', { ascending: false });
     if (error) return res.status(400).json({ error: error.message });
     res.json({ links: data || [] });
   } catch (err) {
@@ -238,7 +240,7 @@ app.get('/api/auth/guest-links', authMiddleware, async (req, res) => {
 app.delete('/api/auth/guest-link/:token', authMiddleware, async (req, res) => {
   try {
     const { token } = req.params;
-    const { error } = await supabase.from('guest_link').delete().eq('token', token);
+    const { error } = await supabase.from('guest_token').delete().eq('token', token);
     if (error) return res.status(400).json({ error: error.message });
     res.json({ success: true });
   } catch (err) {
@@ -249,9 +251,9 @@ app.delete('/api/auth/guest-link/:token', authMiddleware, async (req, res) => {
 app.get('/api/guest/:token', async (req, res) => {
   try {
     const { token } = req.params;
-    const { data, error } = await supabase.from('guest_link').select('*, workspace:workspace_id(id, nome)').eq('token', token).gte('expires_at', new Date().toISOString()).single();
+    const { data, error } = await supabase.from('guest_token').select('*').eq('token', token).gte('scadenza', new Date().toISOString()).single();
     if (error || !data) return res.status(404).json({ error: 'Link non valido o scaduto' });
-    res.json({ workspace: data.workspace });
+    res.json({ token: data.token, tipo: data.tipo, squadre_accesso: data.squadre_accesso });
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
   }
@@ -463,13 +465,17 @@ app.delete('/api/squadre/:id', authMiddleware, async (req, res) => {
     const sid = req.params.id;
     const { data: partite } = await supabase.from('match').select('id').eq('team_id', sid);
     for (const p of (partite || [])) {
-      await supabase.from('formazione_partita').delete().eq('match_id', p.id);
+      await supabase.from('match_formation').delete().eq('match_id', p.id);
       await supabase.from('convocation').delete().eq('match_id', p.id);
       await supabase.from('match_event').delete().eq('match_id', p.id);
     }
     await supabase.from('match').delete().eq('team_id', sid);
-    await supabase.from('presenza_allenamento').delete().eq('team_id', sid);
-    await supabase.from('configurazione_allenamento').delete().eq('team_id', sid);
+    // Elimina training e attendance
+    const { data: trainings } = await supabase.from('training').select('id').eq('team_id', sid);
+    for (const t of (trainings || [])) {
+      await supabase.from('training_attendance').delete().eq('training_id', t.id);
+    }
+    await supabase.from('training').delete().eq('team_id', sid);
     await supabase.from('team_player').delete().eq('team_id', sid);
     await supabase.from('team').delete().eq('id', sid);
     res.json({ success: true });
@@ -638,7 +644,7 @@ app.put('/api/partite/:id', authMiddleware, async (req, res) => {
 app.delete('/api/partite/:id', authMiddleware, async (req, res) => {
   try {
     await supabase.from('match_event').delete().eq('match_id', req.params.id);
-    await supabase.from('formazione_partita').delete().eq('match_id', req.params.id);
+    await supabase.from('match_formation').delete().eq('match_id', req.params.id);
     await supabase.from('convocation').delete().eq('match_id', req.params.id);
     await supabase.from('match').delete().eq('id', req.params.id);
     res.json({ success: true });
@@ -831,128 +837,198 @@ app.get('/api/calciatori/:id/stats-current', async (req, res) => {
   }
 });
 
-// ── TRAINING ATTENDANCE ROUTES ──
+// ── TRAINING ROUTES ──
 
-// Get training config
+// Get training sessions for a team (settimana tipo = sessioni ricorrenti)
 app.get('/api/squadre/:squadraId/allenamenti/config', async (req, res) => {
   try {
+    // Restituisce le sessioni di allenamento della squadra ordinate per data
     const { data, error } = await supabase
-      .from('allenamento_config')
+      .from('training')
       .select('*')
       .eq('team_id', req.params.squadraId)
-      .order('giorno_settimana');
-    if (error) throw error;
-    res.json(data || []);
+      .order('data_ora', { ascending: true });
+    if (error) return res.status(400).json({ error: error.message });
+    // Mappa i dati nel formato atteso dal frontend (giorno_settimana, ora_inizio, ora_fine, luogo)
+    const config = (data || []).map(t => {
+      const d = new Date(t.data_ora);
+      return {
+        id: t.id,
+        giorno_settimana: d.getDay(),
+        ora_inizio: String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'),
+        ora_fine: null,
+        luogo: t.descrizione || '',
+        tipo: t.tipo,
+        team_id: t.team_id
+      };
+    });
+    // Deduplica per giorno_settimana (prende il primo di ogni giorno come "config")
+    const seen = {};
+    const unique = config.filter(c => {
+      if (seen[c.giorno_settimana]) return false;
+      seen[c.giorno_settimana] = true;
+      return true;
+    });
+    res.json(unique);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Save training config
-app.post('/api/squadre/:squadraId/allenamenti/config', async (req, res) => {
+// Create training session
+app.post('/api/squadre/:squadraId/allenamenti/config', authMiddleware, async (req, res) => {
   try {
-    const config = { ...req.body, team_id: req.params.squadraId };
-    const { data, error } = await supabase
-      .from('allenamento_config')
-      .insert(config)
-      .select()
-      .single();
-    if (error) throw error;
+    const { giorno_settimana, ora_inizio, ora_fine, luogo } = req.body;
+    // Crea una sessione training per il prossimo giorno della settimana indicato
+    const now = new Date();
+    const targetDay = parseInt(giorno_settimana);
+    const currentDay = now.getDay();
+    let daysUntil = targetDay - currentDay;
+    if (daysUntil <= 0) daysUntil += 7;
+    const targetDate = new Date(now);
+    targetDate.setDate(now.getDate() + daysUntil);
+    const [h, m] = (ora_inizio || '17:00').split(':');
+    targetDate.setHours(parseInt(h), parseInt(m), 0, 0);
+    
+    const { data, error } = await supabase.from('training').insert({
+      team_id: req.params.squadraId,
+      data_ora: targetDate.toISOString(),
+      durata_minuti: 90,
+      tipo: 'Allenamento',
+      descrizione: luogo || null
+    }).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    // Restituisci nel formato config atteso dal frontend
+    res.json({
+      id: data.id,
+      giorno_settimana: targetDay,
+      ora_inizio: ora_inizio,
+      ora_fine: ora_fine,
+      luogo: luogo || '',
+      team_id: data.team_id
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update training session
+app.put('/api/allenamenti/config/:id', authMiddleware, async (req, res) => {
+  try {
+    const { giorno_settimana, ora_inizio, luogo } = req.body;
+    const updateData = {};
+    if (luogo !== undefined) updateData.descrizione = luogo;
+    if (ora_inizio) {
+      // Aggiorna ora nella data_ora esistente
+      const { data: existing } = await supabase.from('training').select('data_ora').eq('id', req.params.id).single();
+      if (existing) {
+        const d = new Date(existing.data_ora);
+        const [h, m] = ora_inizio.split(':');
+        d.setHours(parseInt(h), parseInt(m), 0, 0);
+        updateData.data_ora = d.toISOString();
+      }
+    }
+    const { data, error } = await supabase.from('training').update(updateData).eq('id', req.params.id).select().single();
+    if (error) return res.status(400).json({ error: error.message });
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Update training config
-app.put('/api/allenamenti/config/:id', async (req, res) => {
+// Delete training session
+app.delete('/api/allenamenti/config/:id', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('allenamento_config')
-      .update(req.body)
-      .eq('id', req.params.id)
-      .select()
-      .single();
-    if (error) throw error;
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Delete training config
-app.delete('/api/allenamenti/config/:id', async (req, res) => {
-  try {
-    const { error } = await supabase
-      .from('allenamento_config')
-      .delete()
-      .eq('id', req.params.id);
-    if (error) throw error;
+    // Prima elimina le presenze associate
+    await supabase.from('training_attendance').delete().eq('training_id', req.params.id);
+    const { error } = await supabase.from('training').delete().eq('id', req.params.id);
+    if (error) return res.status(400).json({ error: error.message });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get training attendance (presenze)
+// Get training attendance (presenze) - mappa su training_attendance
 app.get('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
   try {
+    // Prendi tutte le sessioni training della squadra
+    const { data: trainings } = await supabase.from('training').select('id, data_ora').eq('team_id', req.params.squadraId);
+    const trainingIds = (trainings || []).map(t => t.id);
+    if (trainingIds.length === 0) return res.json([]);
+    
+    // Prendi le presenze per quelle sessioni
     const { data, error } = await supabase
-      .from('presenza_allenamento')
-      .select(`
-        *,
-        giocatore:calciatore_id (
-          id, nome, cognome, ruolo
-        )
-      `)
-      .eq('team_id', req.params.squadraId)
-      .order('data', { ascending: false });
-    if (error) throw error;
-    res.json(data || []);
+      .from('training_attendance')
+      .select('*, training:training_id(id, data_ora, team_id)')
+      .in('training_id', trainingIds);
+    if (error) return res.status(400).json({ error: error.message });
+    
+    // Mappa nel formato atteso dal frontend (calciatore_id, data, presente)
+    // Serve risolvere team_player_id → player_id
+    const tpIds = [...new Set((data || []).map(d => d.team_player_id))];
+    let tpMap = {};
+    if (tpIds.length > 0) {
+      const { data: tps } = await supabase.from('team_player').select('id, player_id').in('id', tpIds);
+      (tps || []).forEach(tp => { tpMap[tp.id] = tp.player_id; });
+    }
+    
+    const result = (data || []).map(d => ({
+      id: d.id,
+      calciatore_id: tpMap[d.team_player_id] || d.team_player_id,
+      data: d.training?.data_ora ? d.training.data_ora.split('T')[0] : null,
+      presente: d.presente,
+      motivo_assenza: d.motivi_assenza,
+      note: d.note,
+      team_id: d.training?.team_id
+    }));
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Save/update training attendance
-app.post('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
+app.post('/api/squadre/:squadraId/allenamenti/presenze', authMiddleware, async (req, res) => {
   try {
-    const { calciatoreId, data, presente, motivo_assenza, note } = req.body;
+    const { calciatoreId, data, presente, note } = req.body;
     
-    // Check if exists
-    const { data: existing } = await supabase
-      .from('presenza_allenamento')
-      .select('id')
-      .eq('team_id', req.params.squadraId)
-      .eq('calciatore_id', calciatoreId)
-      .eq('data', data)
-      .single();
+    // Trova il team_player_id
+    const { data: tp } = await supabase.from('team_player').select('id').eq('player_id', calciatoreId).eq('team_id', req.params.squadraId).single();
+    if (!tp) return res.status(400).json({ error: 'Giocatore non in rosa' });
+    
+    // Trova o crea la sessione training per quella data
+    const dataInizio = data + 'T00:00:00';
+    const dataFine = data + 'T23:59:59';
+    let { data: training } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId).gte('data_ora', dataInizio).lte('data_ora', dataFine).limit(1).single();
+    
+    if (!training) {
+      // Crea sessione training per quella data
+      const { data: newTraining, error: tErr } = await supabase.from('training').insert({
+        team_id: req.params.squadraId,
+        data_ora: data + 'T17:00:00',
+        durata_minuti: 90,
+        tipo: 'Allenamento'
+      }).select().single();
+      if (tErr) return res.status(400).json({ error: tErr.message });
+      training = newTraining;
+    }
+    
+    // Upsert attendance
+    const { data: existing } = await supabase.from('training_attendance').select('id').eq('training_id', training.id).eq('team_player_id', tp.id).single();
     
     if (existing) {
-      // Update
-      const { data: updated, error } = await supabase
-        .from('presenza_allenamento')
-        .update({ presente, motivo_assenza: motivo_assenza || null, note })
-        .eq('id', existing.id)
-        .select()
-        .single();
-      if (error) throw error;
+      const { data: updated, error } = await supabase.from('training_attendance').update({ presente, motivi_assenza: !presente ? (note || 'Assente') : null }).eq('id', existing.id).select().single();
+      if (error) return res.status(400).json({ error: error.message });
       res.json(updated);
     } else {
-      // Insert
-      const { data: inserted, error } = await supabase
-        .from('presenza_allenamento')
-        .insert({
-          team_id: req.params.squadraId,
-          calciatore_id: calciatoreId,
-          data,
-          presente,
-          motivo_assenza: motivo_assenza || null,
-          note
-        })
-        .select()
-        .single();
-      if (error) throw error;
+      const { data: inserted, error } = await supabase.from('training_attendance').insert({
+        training_id: training.id,
+        team_player_id: tp.id,
+        presente,
+        motivi_assenza: !presente ? (note || 'Assente') : null
+      }).select().single();
+      if (error) return res.status(400).json({ error: error.message });
       res.json(inserted);
     }
   } catch (err) {
@@ -963,22 +1039,28 @@ app.post('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
 // Get training summary (stats per player)
 app.get('/api/squadre/:squadraId/allenamenti/summary', async (req, res) => {
   try {
-    const { data: presenze } = await supabase
-      .from('presenza_allenamento')
-      .select('*')
-      .eq('team_id', req.params.squadraId);
+    // Prendi sessioni training
+    const { data: trainings } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId);
+    const trainingIds = (trainings || []).map(t => t.id);
     
-    // Usa team_player + player per ottenere i giocatori della squadra
+    // Prendi presenze
+    let presenze = [];
+    if (trainingIds.length > 0) {
+      const { data } = await supabase.from('training_attendance').select('*').in('training_id', trainingIds);
+      presenze = data || [];
+    }
+    
+    // Prendi giocatori della squadra
     const { data: teamPlayers } = await supabase
       .from('team_player')
-      .select('player_id, calciatore:player_id(id, nome, cognome)')
+      .select('id, player_id, calciatore:player_id(id, nome, cognome)')
       .eq('team_id', req.params.squadraId);
     
     const summary = {};
     (teamPlayers || []).forEach(tp => {
       const g = tp.calciatore;
       if (!g) return;
-      const playerPres = (presenze || []).filter(p => p.calciatore_id === g.id);
+      const playerPres = presenze.filter(p => p.team_player_id === tp.id);
       const presenti = playerPres.filter(p => p.presente).length;
       const assenti = playerPres.filter(p => !p.presente).length;
       summary[g.id] = {
@@ -992,19 +1074,36 @@ app.get('/api/squadre/:squadraId/allenamenti/summary', async (req, res) => {
       };
     });
     
-    // Calculate weekly absences
+    // Calcola assenze settimanali
     const now = new Date();
     const inizioSett = new Date(now);
     inizioSett.setDate(now.getDate() - now.getDay() + 1);
     const fineSett = new Date(inizioSett);
     fineSett.setDate(inizioSett.getDate() + 6);
     
-    (presenze || []).forEach(p => {
-      const dataPres = new Date(p.data);
-      if (dataPres >= inizioSett && dataPres <= fineSett && !p.presente && summary[p.calciatore_id]) {
-        summary[p.calciatore_id].assentiSett++;
-      }
+    // Prendi training di questa settimana
+    const weekTrainings = (trainings || []).filter(t => {
+      // Non possiamo filtrare senza data_ora qui, lo facciamo con query dedicata
+      return true;
     });
+    
+    // Per le assenze settimanali serve sapere quali training sono in questa settimana
+    if (trainingIds.length > 0) {
+      const { data: weekT } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId).gte('data_ora', inizioSett.toISOString()).lte('data_ora', fineSett.toISOString());
+      const weekIds = (weekT || []).map(t => t.id);
+      if (weekIds.length > 0) {
+        const weekPresenze = presenze.filter(p => weekIds.includes(p.training_id) && !p.presente);
+        // Mappa team_player_id → player_id per lookup nel summary
+        const tpToPlayer = {};
+        (teamPlayers || []).forEach(tp => { tpToPlayer[tp.id] = tp.calciatore?.id; });
+        weekPresenze.forEach(p => {
+          const playerId = tpToPlayer[p.team_player_id];
+          if (playerId && summary[playerId]) {
+            summary[playerId].assentiSett++;
+          }
+        });
+      }
+    }
     
     res.json({ summary, settimana: { da: inizioSett.toISOString().split('T')[0], a: fineSett.toISOString().split('T')[0] } });
   } catch (err) {
@@ -1200,13 +1299,18 @@ app.get('/api/squadre/:squadraId/partite/:matchId/convocati', async (req, res) =
 app.post('/api/partite/:matchId/convocazioni', authMiddleware, async (req, res) => {
   try {
     const { calciatoreId, presente } = req.body;
-    const { data: existing } = await supabase.from('convocation').select('id').eq('match_id', req.params.matchId).eq('player_id', calciatoreId).single();
+    // Trova il team_player_id dal player_id
+    const { data: tp } = await supabase.from('team_player').select('id').eq('player_id', calciatoreId).limit(1).single();
+    const teamPlayerId = tp ? tp.id : null;
+    if (!teamPlayerId) return res.status(400).json({ error: 'Giocatore non trovato nella rosa' });
+    
+    const { data: existing } = await supabase.from('convocation').select('id').eq('match_id', req.params.matchId).eq('team_player_id', teamPlayerId).single();
     if (existing) {
       const { data, error } = await supabase.from('convocation').update({ presente }).eq('id', existing.id).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.json(data);
     } else {
-      const { data, error } = await supabase.from('convocation').insert({ match_id: req.params.matchId, player_id: calciatoreId, presente }).select().single();
+      const { data, error } = await supabase.from('convocation').insert({ match_id: req.params.matchId, team_player_id: teamPlayerId, presente }).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.json(data);
     }
@@ -1218,7 +1322,7 @@ app.post('/api/partite/:matchId/convocazioni', authMiddleware, async (req, res) 
 // ── FORMAZIONE ──
 app.get('/api/squadre/:squadraId/partite/:matchId/formazione', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('formazione_partita').select('*').eq('match_id', req.params.matchId);
+    const { data, error } = await supabase.from('match_formation').select('*').eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
     res.json(data || []);
   } catch (err) {
@@ -1228,7 +1332,7 @@ app.get('/api/squadre/:squadraId/partite/:matchId/formazione', async (req, res) 
 
 app.get('/api/partite/:matchId/formazione', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('formazione_partita').select('*').eq('match_id', req.params.matchId);
+    const { data, error } = await supabase.from('match_formation').select('*').eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
     res.json(data || []);
   } catch (err) {
@@ -1283,7 +1387,7 @@ app.post('/api/partite/:matchId/evento-item', authMiddleware, async (req, res) =
 // ── DISTINTA ──
 app.get('/api/squadre/:squadraId/partite/:matchId/distinta', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('formazione_partita').select('*').eq('match_id', req.params.matchId);
+    const { data, error } = await supabase.from('match_formation').select('*').eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
     res.json(data || []);
   } catch (err) {
