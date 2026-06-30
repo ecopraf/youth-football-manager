@@ -1,16 +1,58 @@
 import { apiFetch } from '../../services/api';
-import { getAvatarColor } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 
 const RUOLO_ACR = { 'Portiere': 'POR', 'Difensore': 'DIF', 'Centrocampista': 'CEN', 'Attaccante': 'ATT' };
 
+const MODULI = {
+  '4-3-3': { label: '4-3-3', rows: [1, 4, 3, 3] },
+  '4-4-2': { label: '4-4-2', rows: [1, 4, 4, 2] },
+  '3-5-2': { label: '3-5-2', rows: [1, 3, 5, 2] },
+  '3-4-3': { label: '3-4-3', rows: [1, 3, 4, 3] },
+  '4-2-3-1': { label: '4-2-3-1', rows: [1, 4, 2, 3, 1] },
+  '4-5-1': { label: '4-5-1', rows: [1, 4, 5, 1] },
+  '5-3-2': { label: '5-3-2', rows: [1, 5, 3, 2] },
+  '4-1-4-1': { label: '4-1-4-1', rows: [1, 4, 1, 4, 1] },
+};
+
+const PITCH_CSS = `
+.pitch-container { display:flex; gap:16px; flex-wrap:wrap; }
+.pitch-panel { flex:1; min-width:240px; }
+.pitch-roster { flex:0 0 200px; max-height:420px; overflow-y:auto; }
+@media (max-width:768px) {
+  .pitch-container { flex-direction:column; }
+  .pitch-roster { max-height:none; overflow-y:visible; background:#fff; border-radius:12px; padding:10px; border:1px solid #eee; margin-top:8px; }
+}
+.pitch { width:100%; max-width:340px; aspect-ratio:2/3; margin:0 auto; background:linear-gradient(180deg,#2d8a4e 0%,#1a6b38 100%); border-radius:12px; position:relative; overflow:hidden; border:3px solid #1a5c30; touch-action:none; }
+.pitch::before { content:''; position:absolute; top:50%; left:8%; right:8%; height:1px; background:rgba(255,255,255,0.25); }
+.pitch::after { content:''; position:absolute; top:50%; left:50%; width:50px; height:50px; border:1px solid rgba(255,255,255,0.25); border-radius:50%; transform:translate(-50%,-50%); }
+.pitch-slot { position:absolute; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.12); border:2px dashed rgba(255,255,255,0.35); display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%); transition:background 0.2s,border 0.2s,box-shadow 0.2s; cursor:default; user-select:none; }
+.pitch-slot.occupied { background:white; border:2px solid #667eea; cursor:grab; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
+.pitch-slot.occupied.free-move { cursor:move; }
+.pitch-slot.drag-over { background:rgba(102,126,234,0.4); border-color:white; transform:translate(-50%,-50%) scale(1.12); }
+.pitch-slot .slot-num { font-size:13px; font-weight:700; color:#667eea; pointer-events:none; }
+.pitch-slot .slot-name { position:absolute; bottom:-14px; font-size:7px; color:white; font-weight:600; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,0.9); pointer-events:none; }
+.roster-item { display:flex; align-items:center; gap:6px; padding:6px 8px; margin-bottom:3px; background:#f8f9fa; border-radius:8px; cursor:grab; border:1px solid #eee; transition:all 0.2s; font-size:11px; }
+.roster-item.placed { opacity:0.3; pointer-events:none; }
+.roster-item .r-num { width:22px; height:22px; background:#667eea; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0; }
+.roster-item .r-name { font-weight:500; flex:1; }
+.roster-item .r-role { font-size:9px; color:#888; }
+.modulo-select { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:10px; }
+.modulo-btn { padding:5px 10px; border-radius:8px; border:1px solid #dee2e6; background:white; cursor:pointer; font-size:11px; font-weight:600; transition:all 0.2s; }
+.modulo-btn:hover { border-color:#667eea; background:#f0f4ff; }
+.modulo-btn.active { background:#667eea; color:white; border-color:#667eea; }
+.bench-section { margin-top:10px; padding-top:10px; border-top:1px solid #eee; }
+.bench-section h5 { margin:0 0 6px; font-size:11px; color:#666; }
+.pitch-readonly .pitch-slot.occupied { cursor:default; }
+@media (max-width:640px) { .pitch { max-width:260px; } .pitch-slot { width:30px; height:30px; } .pitch-slot .slot-num { font-size:10px; } .pitch-slot .slot-name { font-size:6px; bottom:-11px; } .roster-item { padding:5px 6px; font-size:10px; } .roster-item .r-num { width:18px; height:18px; font-size:8px; } .modulo-btn { padding:4px 8px; font-size:10px; } }
+`;
+
 export async function openFormazioneForm(mid) {
-  const match = window.YFM.allMatches?.find(m => m.id === mid) || {};
+  const match = (window.YFM.allMatches || []).find(m => m.id === mid) || {};
   const isArchiviata = match.archiviata === true || match.archiviata === 'true';
-  
-  let convocazioni = [], formazioneEsistente = [], giocatori = [];
-  
-  [convocazioni, formazioneEsistente, giocatori] = await Promise.all([
+
+  let convocazioni = [], formazioneSalvata = null, giocatori = [];
+
+  [convocazioni, formazioneSalvata, giocatori] = await Promise.all([
     apiFetch('/partite/' + mid + '/convocazioni').catch(() => []),
     apiFetch('/partite/' + mid + '/formazione').catch(() => []),
     apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => [])
@@ -24,236 +66,227 @@ export async function openFormazioneForm(mid) {
     return a.cognome.localeCompare(b.cognome);
   });
 
-  const formMap = {};
-  (formazioneEsistente || []).forEach(f => { formMap[f.calciatoreId] = f; });
+  // Converti formazione API in formato interno
+  const formazione = convertApiFormation(formazioneSalvata, giocatori);
 
   if (isArchiviata) {
-    renderFormazioneReadOnly(match, giocatoriConvocati, formMap, isArchiviata);
+    renderPitchReadOnly(match, giocatoriConvocati, formazione, giocatori);
   } else {
-    renderFormazioneEdit(mid, match, giocatoriConvocati, formMap);
+    renderPitchEdit(mid, match, giocatoriConvocati, formazione, giocatori);
   }
 }
 
-// ==================== VISTA SOLA LETTURA (ARCHIVIATE) ====================
-function renderFormazioneReadOnly(match, giocatori, formMap, isArchiviata) {
-  const titolari = [], riserve = [];
-  giocatori.forEach(g => {
-    const f = formMap[g.id];
-    if (f?.posizione === 'Titolare') titolari.push(g);
-    else if (f?.posizione === 'Panchina') riserve.push(g);
-  });
+function convertApiFormation(apiData, allPlayers) {
+  if (!apiData || !Array.isArray(apiData) || apiData.length === 0) return null;
+  const titolari = apiData.filter(f => f.posizione === 'Titolare' || f.is_starter);
+  const riserve = apiData.filter(f => f.posizione === 'Panchina' || !f.is_starter);
+  const portiere = titolari.find(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Portiere'; });
+  return {
+    modulo: '4-3-3',
+    portiere: portiere?.calciatoreId || titolari[0]?.calciatoreId,
+    difensori: titolari.filter(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Difensore'; }).map(f => f.calciatoreId),
+    centrocampisti: titolari.filter(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Centrocampista'; }).map(f => f.calciatoreId),
+    attaccanti: titolari.filter(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Attaccante'; }).map(f => f.calciatoreId),
+    riserve: riserve.map(f => f.calciatoreId),
+    positions: {}
+  };
+}
 
-  let html = '<style>';
-  html += '.fro{padding:16px;}';
-  html += '.fro-header{text-align:center;padding:16px;background:#f8f9fa;border-radius:12px;margin-bottom:20px;}';
-  html += '.fro-header h3{margin:0 0 4px;font-size:18px;}';
-  html += '.fro-header p{margin:0;font-size:13px;color:#888;}';
-  html += '.fro-section{margin-bottom:20px;}';
-  html += '.fro-section h4{margin:0 0 12px;font-size:14px;color:#333;display:flex;align-items:center;gap:8px;}';
-  html += '.fro-count{background:#667eea;color:white;padding:2px 8px;border-radius:10px;font-size:11px;}';
-  html += '.fro-list{display:flex;flex-wrap:wrap;gap:8px;}';
-  html += '.fro-player{display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border-radius:10px;border:1px solid #eee;min-width:180px;}';
-  html += '.fro-player:hover{border-color:#667eea;}';
-  html += '.fro-num{width:32px;height:32px;background:#667eea;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;}';
-  html += '.fro-name{font-weight:600;font-size:13px;}';
-  html += '.fro-role{font-size:11px;color:#888;}';
-  html += '.fro-empty{text-align:center;padding:40px;color:#888;font-size:14px;}';
-  html += '.fro-archived{background:#8B7355;color:white;padding:8px 16px;border-radius:10px;margin-bottom:20px;display:inline-block;font-weight:600;}';
-  html += '</style>';
+function renderPitchReadOnly(match, giocatoriConvocati, formazione, allPlayers) {
+  const modulo = formazione?.modulo || '4-3-3';
+  const titolariIds = formazione ? [formazione.portiere, ...(formazione.difensori||[]), ...(formazione.centrocampisti||[]), ...(formazione.attaccanti||[])].filter(Boolean) : [];
+  const riserveIds = formazione?.riserve || [];
 
-  html += '<div class="fro">';
-  if (isArchiviata) {
-    html += '<div style="text-align:center;"><span class="fro-archived">📦 Partita Archiviata</span></div>';
+  let html = `<style>${PITCH_CSS}</style><div class="pitch-readonly">`;
+  html += `<div style="text-align:center;margin-bottom:12px;"><span style="background:#667eea;color:white;padding:4px 12px;border-radius:8px;font-size:13px;font-weight:600;">Modulo: ${modulo}</span></div>`;
+  html += `<div class="pitch" id="pitchField">${buildPitchSlots(modulo, titolariIds, allPlayers, formazione?.positions)}</div>`;
+  if (riserveIds.length > 0) {
+    html += `<div class="bench-section"><h5>🪑 Panchina (${riserveIds.length})</h5><div style="display:flex;flex-wrap:wrap;gap:6px;">`;
+    riserveIds.forEach(id => { const g = allPlayers.find(p => p.id === id); if (g) html += `<span style="background:#f0f0f0;padding:4px 10px;border-radius:6px;font-size:11px;">${g.numero_maglia||'?'} ${g.cognome}</span>`; });
+    html += `</div></div>`;
   }
-  html += '<div class="fro-header">';
-  html += '<h3>👥 Formazione Schierata</h3>';
-  html += '<p>' + window.YFM.getSocietaName() + ' vs ' + match.avversario + '</p>';
-  html += '</div>';
-
-  // TITOLARI
-  html += '<div class="fro-section">';
-  html += '<h4>⚽ Titolari <span class="fro-count">' + titolari.length + '</span></h4>';
-  if (titolari.length === 0) {
-    html += '<div class="fro-empty">Nessun titolare registrato</div>';
-  } else {
-    html += '<div class="fro-list">';
-    titolari.forEach(g => {
-      const f = formMap[g.id];
-      const num = f?.numeroMaglia || g.numero_maglia || '-';
-      const acr = RUOLO_ACR[g.ruolo] || g.ruolo?.substring(0, 3) || '';
-      html += '<div class="fro-player">';
-      html += '<div class="fro-num">' + num + '</div>';
-      html += '<div>';
-      html += '<div class="fro-name">' + g.cognome + ' ' + g.nome + '</div>';
-      html += '<div class="fro-role">' + acr + '</div>';
-      html += '</div></div>';
-    });
-    html += '</div>';
-  }
-  html += '</div>';
-
-  // RISERVE
-  html += '<div class="fro-section">';
-  html += '<h4>🪑 Panchina <span class="fro-count">' + riserve.length + '</span></h4>';
-  if (riserve.length === 0) {
-    html += '<div class="fro-empty">Nessuna riserva</div>';
-  } else {
-    html += '<div class="fro-list">';
-    riserve.forEach(g => {
-      const f = formMap[g.id];
-      const num = f?.numeroMaglia || g.numero_maglia || '-';
-      const acr = RUOLO_ACR[g.ruolo] || g.ruolo?.substring(0, 3) || '';
-      html += '<div class="fro-player">';
-      html += '<div class="fro-num" style="background:#999;">' + num + '</div>';
-      html += '<div>';
-      html += '<div class="fro-name">' + g.cognome + ' ' + g.nome + '</div>';
-      html += '<div class="fro-role">' + acr + '</div>';
-      html += '</div></div>';
-    });
-    html += '</div>';
-  }
-  html += '</div>';
-
-  html += '</div>';
-
+  html += `</div>`;
   const footer = '<button class="btn btn-secondary" id="modalCancelBtn">Chiudi</button>';
-  const modal = createModal('👥 Formazione - ' + match.avversario, html, footer, '800px');
-  
+  const modal = createModal('👥 Formazione - ' + match.avversario, html, footer, '500px');
   document.getElementById('modalCancelBtn').addEventListener('click', () => modal.close());
 }
 
-// ==================== FORM EDITABILE (FUTURE) ====================
-function renderFormazioneEdit(mid, match, giocatoriConvocati, formMap) {
-  let html = '<p style="margin-bottom:16px;"><strong>Formazione - ' + window.YFM.getSocietaName() + ' vs ' + match.avversario + '</strong></p>';
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">';
+function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers) {
+  const savedModulo = formazione?.modulo || '4-3-3';
+  const titolariIds = formazione ? [formazione.portiere, ...(formazione.difensori||[]), ...(formazione.centrocampisti||[]), ...(formazione.attaccanti||[])].filter(Boolean) : [];
 
-  // Titolari
-  html += '<div><h4 style="margin-bottom:8px;">Titolari <span id="cntTitolari" style="font-size:12px;color:var(--gray);"></span></h4>';
+  let html = `<style>${PITCH_CSS}</style>`;
+  html += `<p style="margin-bottom:8px;font-size:13px;color:#666;">Trascina i giocatori dalla lista al campo.</p>`;
+  html += `<div class="modulo-select" id="moduloSelect">`;
+  Object.keys(MODULI).forEach(k => { html += `<button class="modulo-btn${k===savedModulo?' active':''}" data-modulo="${k}">${k}</button>`; });
+  html += `</div><div class="pitch-container">`;
+  html += `<div class="pitch-panel"><div class="pitch" id="pitchField">${buildPitchSlots(savedModulo, titolariIds, allPlayers, formazione?.positions)}</div>`;
+  html += `<div id="pitchCount" style="text-align:center;margin-top:8px;font-size:12px;font-weight:600;color:#667eea;">${titolariIds.length}/11 titolari</div></div>`;
+  html += `<div class="pitch-roster" id="rosterList"><h5 style="margin:0 0 8px;font-size:12px;color:#333;">📋 Convocati</h5>`;
   giocatoriConvocati.forEach(g => {
-    const f = formMap[g.id];
-    const checked = f && f.posizione === 'Titolare' ? ' checked' : '';
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><input type="checkbox"' + checked + ' data-pid="' + g.id + '" class="form-check-tit" style="accent-color:var(--green);"><span style="flex:1;">' + g.nome + ' ' + g.cognome + ' <span style="color:var(--gray);font-size:12px;">(' + g.ruolo + ')</span></span><input type="number" value="' + (f ? f.numeroMaglia : (g.numero_maglia || g.numero_maglia || 99)) + '" data-pid="' + g.id + '" class="form-num-tit" style="width:50px;padding:4px;" placeholder="N."></div>';
+    const num = g.numero_maglia || '?';
+    const placed = titolariIds.includes(g.id) ? ' placed' : '';
+    html += `<div class="roster-item${placed}" draggable="true" data-pid="${g.id}" data-num="${num}" data-name="${g.cognome}"><div class="r-num">${num}</div><div class="r-name">${g.cognome} ${g.nome}</div><div class="r-role">${RUOLO_ACR[g.ruolo]||''}</div></div>`;
   });
-  html += '</div>';
+  html += `</div></div>`;
 
-  // Panchina
-  html += '<div><h4 style="margin-bottom:8px;">Panchina <span id="cntRiserve" style="font-size:12px;color:var(--gray);"></span></h4>';
-  giocatoriConvocati.forEach(g => {
-    const f = formMap[g.id];
-    // Default: se non c'è formazione esistente, tutti in panchina
-    const checked = f ? (f.posizione === 'Panchina' ? ' checked' : '') : ' checked';
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;"><input type="checkbox"' + checked + ' data-pid="' + g.id + '" class="form-check-pan" style="accent-color:var(--orange);"><span style="flex:1;">' + g.nome + ' ' + g.cognome + ' <span style="color:var(--gray);font-size:12px;">(' + g.ruolo + ')</span></span><input type="number" value="' + (f ? f.numeroMaglia : (g.numero_maglia || g.numero_maglia || 99)) + '" data-pid="' + g.id + '" class="form-num-pan" style="width:50px;padding:4px;" placeholder="N."></div>';
-  });
-  html += '</div></div>';
+  const footer = '<button class="btn btn-secondary" id="modalCancelBtn">Annulla</button><button class="btn btn-primary" id="saveFormBtn">💾 Salva</button>';
+  const modal = createModal('👥 Formazione - ' + match.avversario, html, footer, '850px');
 
-  const footer = '<button class="btn btn-secondary" id="modalCancelBtn">Annulla</button><button class="btn btn-primary" id="saveFormBtn">💾 Salva Formazione</button>';
-  const modal = createModal('👥 Formazione', html, footer, '800px');
+  let currentModulo = savedModulo;
+  let slotAssignments = {};
+  let customPositions = formazione?.positions ? {...formazione.positions} : {};
+  titolariIds.forEach((id, i) => { slotAssignments[i] = id; });
 
-  // Mutua esclusione e contatori
-  const updateCounters = () => {
-    const titChecked = document.querySelectorAll('#currentModal .form-check-tit:checked').length;
-    const panChecked = document.querySelectorAll('#currentModal .form-check-pan:checked').length;
-    
-    // Conta portieri titolari
-    let portieriTitolari = 0;
-    document.querySelectorAll('#currentModal .form-check-tit:checked').forEach(cb => {
-      const g = giocatoriConvocati.find(x => x.id === cb.dataset.pid);
-      if (g && g.ruolo === 'Portiere') portieriTitolari++;
+  document.querySelectorAll('#moduloSelect .modulo-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#moduloSelect .modulo-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentModulo = btn.dataset.modulo;
+      const totalSlots = MODULI[currentModulo].rows.reduce((a,b)=>a+b,0);
+      const newA = {}; Object.values(slotAssignments).forEach((pid,i) => { if(i<totalSlots) newA[i]=pid; });
+      slotAssignments = newA; customPositions = {};
+      refreshPitch();
     });
-    
-    let warning = '';
-    if (titChecked === 11 && portieriTitolari === 0) warning = ' ⚠️ Serve 1 portiere!';
-    if (portieriTitolari > 1) warning = ' ⚠️ Max 1 portiere!';
-    
-    document.getElementById('cntTitolari').innerHTML = titChecked + '/11 titolari' + (warning ? '<span style="color:#E74C3C;font-weight:600;">' + warning + '</span>' : '');
-    document.getElementById('cntRiserve').textContent = panChecked + ' riserve';
+  });
+
+  setupDragDrop(slotAssignments, allPlayers, refreshPitch, customPositions);
+
+  function refreshPitch() {
+    const field = document.getElementById('pitchField');
+    if (field) field.innerHTML = buildPitchSlotsFromState(currentModulo, slotAssignments, allPlayers, customPositions);
+    updateRosterState(slotAssignments);
+    const n = Object.keys(slotAssignments).length;
+    const cnt = document.getElementById('pitchCount');
+    if (cnt) cnt.textContent = `${n}/11 titolari`;
     const saveBtn = document.getElementById('saveFormBtn');
-    if (saveBtn) {
-      const valid = titChecked === 11 && portieriTitolari === 1;
-      saveBtn.disabled = !valid;
-      saveBtn.style.opacity = valid ? '1' : '0.5';
-    }
-    document.querySelectorAll('#currentModal .form-check-tit:not(:checked)').forEach(cb => { cb.disabled = titChecked >= 11; });
-  };
-
-  document.querySelectorAll('#currentModal .form-check-tit').forEach(cbTit => {
-    cbTit.addEventListener('change', () => {
-      if (cbTit.checked) {
-        const pan = document.querySelector('#currentModal .form-check-pan[data-pid="' + cbTit.dataset.pid + '"]');
-        if (pan) pan.checked = false;
-      } else {
-        const pan = document.querySelector('#currentModal .form-check-pan[data-pid="' + cbTit.dataset.pid + '"]');
-        if (pan) pan.checked = true;
-      }
-      updateCounters();
-    });
-  });
-
-  document.querySelectorAll('#currentModal .form-check-pan').forEach(cbPan => {
-    cbPan.addEventListener('change', () => {
-      if (cbPan.checked) {
-        const tit = document.querySelector('#currentModal .form-check-tit[data-pid="' + cbPan.dataset.pid + '"]');
-        if (tit) tit.checked = false;
-      }
-      updateCounters();
-    });
-  });
-
-  updateCounters();
+    if (saveBtn) { saveBtn.disabled = n !== 11; saveBtn.style.opacity = n === 11 ? '1' : '0.5'; }
+    setupDragDrop(slotAssignments, allPlayers, refreshPitch, customPositions);
+  }
 
   document.getElementById('saveFormBtn').addEventListener('click', async () => {
-    const titolariIds = [];
-    const riserveIds = [];
-    
-    document.querySelectorAll('#currentModal .form-check-tit:checked').forEach(cb => {
-      titolariIds.push(cb.dataset.pid);
-    });
-    document.querySelectorAll('#currentModal .form-check-pan:checked').forEach(cb => {
-      riserveIds.push(cb.dataset.pid);
-    });
+    const placed = Object.values(slotAssignments);
+    if (placed.length !== 11) { alert('⚠️ Posiziona 11 giocatori!'); return; }
+    const portieri = placed.filter(id => { const g = allPlayers.find(p=>p.id===id); return g?.ruolo==='Portiere'; });
+    if (portieri.length !== 1) { alert('⚠️ Serve esattamente 1 portiere titolare!'); return; }
 
-    const assegnati = new Set([...titolariIds, ...riserveIds]);
-    const nonAssegnati = giocatoriConvocati.filter(g => !assegnati.has(g.id));
-    if (nonAssegnati.length > 0 && !confirm('Ci sono ' + nonAssegnati.length + ' convocati non assegnati. Procedere?')) return;
+    const riserve = giocatoriConvocati.filter(g => !placed.includes(g.id)).map(g => g.id);
+    const formazione = [];
+    placed.forEach((pid, i) => {
+      formazione.push({ calciatoreId: pid, numeroMaglia: allPlayers.find(p=>p.id===pid)?.numero_maglia || 99, posizione: 'Titolare', capitano: false, viceCapitano: false });
+    });
+    riserve.forEach(pid => {
+      formazione.push({ calciatoreId: pid, numeroMaglia: allPlayers.find(p=>p.id===pid)?.numero_maglia || 99, posizione: 'Panchina', capitano: false, viceCapitano: false });
+    });
 
     showLoading();
     try {
-      const formazione = [];
-      document.querySelectorAll('#currentModal .form-check-tit:checked').forEach(cb => {
-        const pid = cb.dataset.pid;
-        const numInput = document.querySelector('#currentModal .form-num-tit[data-pid="' + pid + '"]');
-        formazione.push({ calciatoreId: pid, numeroMaglia: parseInt(numInput?.value) || giocatoriConvocati.find(g => g.id === pid)?.numeroMaglia || 99, posizione: 'Titolare', capitano: false, viceCapitano: false });
-      });
-      document.querySelectorAll('#currentModal .form-check-pan:checked').forEach(cb => {
-        const pid = cb.dataset.pid;
-        const numInput = document.querySelector('#currentModal .form-num-pan[data-pid="' + pid + '"]');
-        formazione.push({ calciatoreId: pid, numeroMaglia: parseInt(numInput?.value) || giocatoriConvocati.find(g => g.id === pid)?.numeroMaglia || 99, posizione: 'Panchina', capitano: false, viceCapitano: false });
-      });
-
       await apiFetch('/partite/' + mid + '/formazione', { method: 'PUT', body: JSON.stringify({ formazione }) });
-      hideLoading();
-      modal.close();
+      hideLoading(); modal.close();
       alert('✅ Formazione salvata!');
       if (window.YFM?.loadCalendar) window.YFM.loadCalendar();
-    } catch (e) {
-      hideLoading();
-      alert('Errore: ' + e.message);
+    } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
+  });
+
+  document.getElementById('modalCancelBtn').addEventListener('click', () => modal.close());
+}
+
+function buildPitchSlots(modulo, titolariIds, allPlayers, positions) {
+  const assignments = {}; titolariIds.forEach((id,i) => { assignments[i]=id; });
+  return buildPitchSlotsFromState(modulo, assignments, allPlayers, positions||{});
+}
+
+function buildPitchSlotsFromState(modulo, assignments, allPlayers, customPositions) {
+  const rows = (MODULI[modulo]||MODULI['4-3-3']).rows;
+  let html = '', slotIdx = 0;
+  rows.forEach((count, rowIndex) => {
+    const totalRows = rows.length;
+    const yPercent = 90 - (rowIndex * (75/(totalRows-1)));
+    for (let i = 0; i < count; i++) {
+      const xPercent = count===1 ? 50 : 15 + (i*(70/(count-1)));
+      const custom = customPositions?.[slotIdx];
+      const finalX = custom ? custom.x : xPercent;
+      const finalY = custom ? custom.y : yPercent;
+      const pid = assignments[slotIdx];
+      const player = pid ? allPlayers.find(p=>p.id===pid) : null;
+      const occupied = player ? ' occupied' : '';
+      const num = player ? (player.numero_maglia||'?') : '';
+      const name = player ? player.cognome : '';
+      html += `<div class="pitch-slot${occupied}" data-slot="${slotIdx}" style="top:${finalY}%;left:${finalX}%;"><span class="slot-num">${num}</span><span class="slot-name">${name}</span></div>`;
+      slotIdx++;
     }
+  });
+  return html;
+}
+
+function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
+  let draggedPid = null, draggedFromSlot = null;
+
+  document.querySelectorAll('.roster-item[draggable]').forEach(item => {
+    item.addEventListener('dragstart', (e) => { draggedPid = item.dataset.pid; draggedFromSlot = null; item.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    item.addEventListener('dragend', () => { item.classList.remove('dragging'); draggedPid = null; });
+  });
+
+  document.querySelectorAll('.pitch-slot.occupied').forEach(slot => {
+    slot.setAttribute('draggable', 'true');
+    slot.addEventListener('dragstart', (e) => { draggedPid = assignments[parseInt(slot.dataset.slot)]; draggedFromSlot = parseInt(slot.dataset.slot); e.dataTransfer.effectAllowed = 'move'; });
+    slot.addEventListener('dragend', () => { draggedPid = null; draggedFromSlot = null; });
+  });
+
+  document.querySelectorAll('.pitch-slot').forEach(slot => {
+    slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('drag-over'); });
+    slot.addEventListener('dragleave', () => { slot.classList.remove('drag-over'); });
+    slot.addEventListener('drop', (e) => {
+      e.preventDefault(); slot.classList.remove('drag-over');
+      const targetIdx = parseInt(slot.dataset.slot);
+      if (!draggedPid) return;
+      const existingPid = assignments[targetIdx];
+      if (draggedFromSlot !== null) {
+        delete assignments[draggedFromSlot];
+        if (existingPid) assignments[draggedFromSlot] = existingPid;
+      } else {
+        if (existingPid) delete assignments[targetIdx];
+        Object.keys(assignments).forEach(k => { if (assignments[k]===draggedPid) delete assignments[k]; });
+      }
+      if (!draggedFromSlot && Object.keys(assignments).length >= 11 && !existingPid) { draggedPid=null; return; }
+      assignments[targetIdx] = draggedPid;
+      draggedPid = null; draggedFromSlot = null;
+      refresh();
+    });
+  });
+
+  const rosterEl = document.getElementById('rosterList');
+  if (rosterEl) {
+    rosterEl.addEventListener('dragover', (e) => e.preventDefault());
+    rosterEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (draggedFromSlot !== null && draggedPid) { delete assignments[draggedFromSlot]; draggedPid=null; draggedFromSlot=null; refresh(); }
+    });
+  }
+
+  // Free move (pointer drag su slot occupati)
+  const pitch = document.getElementById('pitchField');
+  if (!pitch) return;
+  document.querySelectorAll('.pitch-slot.occupied').forEach(slot => {
+    let moving = false;
+    slot.addEventListener('pointerdown', (e) => { if (e.pointerType==='mouse'&&e.button!==0) return; moving=true; slot.classList.add('free-move'); slot.setPointerCapture(e.pointerId); });
+    slot.addEventListener('pointermove', (e) => { if(!moving) return; e.preventDefault(); const rect=pitch.getBoundingClientRect(); slot.style.left=Math.max(5,Math.min(95,((e.clientX-rect.left)/rect.width)*100))+'%'; slot.style.top=Math.max(5,Math.min(95,((e.clientY-rect.top)/rect.height)*100))+'%'; });
+    slot.addEventListener('pointerup', (e) => { if(!moving) return; moving=false; slot.classList.remove('free-move'); slot.releasePointerCapture(e.pointerId); const rect=pitch.getBoundingClientRect(); customPositions[parseInt(slot.dataset.slot)]={x:Math.max(5,Math.min(95,((e.clientX-rect.left)/rect.width)*100)),y:Math.max(5,Math.min(95,((e.clientY-rect.top)/rect.height)*100))}; });
   });
 }
 
-function createModal(title, content, footer, maxW = '600px') {
-  const existing = document.getElementById('currentModal');
-  if (existing) existing.remove();
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.id = 'currentModal';
-  modal.innerHTML = '<div class="modal-content" style="max-width:' + maxW + ';"><div class="modal-header"><h2>' + title + '</h2><button class="modal-close-btn" id="modalCloseX">×</button></div><div class="modal-body">' + content + '</div>' + (footer ? '<div class="modal-footer">' + footer + '</div>' : '') + '</div>';
+function updateRosterState(assignments) {
+  const placedIds = new Set(Object.values(assignments));
+  document.querySelectorAll('.roster-item').forEach(item => { item.classList.toggle('placed', placedIds.has(item.dataset.pid)); });
+}
+
+function createModal(title, content, footer, maxW='600px') {
+  const existing = document.getElementById('currentModal'); if (existing) existing.remove();
+  const modal = document.createElement('div'); modal.className='modal-overlay'; modal.id='currentModal';
+  modal.innerHTML = `<div class="modal-content" style="max-width:${maxW};"><div class="modal-header"><h2>${title}</h2><button class="modal-close-btn" id="modalCloseX">×</button></div><div class="modal-body">${content}</div>${footer?'<div class="modal-footer">'+footer+'</div>':''}</div>`;
   document.body.appendChild(modal);
-  const close = () => { const m = document.getElementById('currentModal'); if (m) m.remove(); };
+  const close = () => { const m=document.getElementById('currentModal'); if(m) m.remove(); };
   document.getElementById('modalCloseX').addEventListener('click', close);
-  modal.addEventListener('click', e => { if (e.target === modal) close(); });
-  const cancelBtn = document.getElementById('modalCancelBtn');
-  if (cancelBtn) cancelBtn.addEventListener('click', close);
-  return { modal, closeModal: close, close };
+  modal.addEventListener('click', e => { if(e.target===modal) close(); });
+  return { modal, close };
 }
