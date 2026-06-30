@@ -1643,6 +1643,41 @@ app.post('/api/squadre/:squadraId/training-by-date', authMiddleware, async (req,
   }
 });
 
+// ── TRAINING TEMPLATES ──
+app.get('/api/squadre/:squadraId/training-templates', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('training_template').select('*').eq('team_id', req.params.squadraId).order('created_at', { ascending: false });
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/squadre/:squadraId/training-templates', authMiddleware, async (req, res) => {
+  try {
+    const { nome, programma } = req.body;
+    if (!nome || !programma) return res.status(400).json({ error: 'Nome e programma richiesti' });
+    const { data, error } = await supabase.from('training_template').insert({
+      team_id: req.params.squadraId, nome, programma, created_by: req.user.id
+    }).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/training-templates/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('training_template').delete().eq('id', req.params.id);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = app;
 
 // Avvio server locale (solo se eseguito direttamente, non importato)

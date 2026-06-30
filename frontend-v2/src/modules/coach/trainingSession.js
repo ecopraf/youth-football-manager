@@ -62,13 +62,16 @@ async function saveProgrammaToApi(date, programma) {
     }
   } catch(e) { console.error('Errore salvataggio programma:', e); }
 }
-function getTemplates() {
-  try { return JSON.parse(localStorage.getItem('yfm_training_templates') || '[]'); } catch { return []; }
+// Template via API (condivisi nel workspace)
+async function getTemplates() {
+  try {
+    return await apiFetch('/squadre/' + window.YFM.squadraId + '/training-templates');
+  } catch { return []; }
 }
-function saveTemplate(nome, programma) {
-  const templates = getTemplates();
-  templates.push({ nome, programma, created: new Date().toISOString() });
-  localStorage.setItem('yfm_training_templates', JSON.stringify(templates));
+async function saveTemplate(nome, programma) {
+  await apiFetch('/squadre/' + window.YFM.squadraId + '/training-templates', {
+    method: 'POST', body: JSON.stringify({ nome, programma })
+  });
 }
 
 export async function renderSession(date, trainingData) {
@@ -226,11 +229,15 @@ export function attachSessionListeners(date, trainingData, onSave) {
 
   // Salva
   document.getElementById('btnSaveSession')?.addEventListener('click', () => saveSession(date, trainingData, onSave));
-  document.getElementById('btnSaveTemplate')?.addEventListener('click', () => {
+  document.getElementById('btnSaveTemplate')?.addEventListener('click', async () => {
     const nome = prompt('Nome del template:');
     if (!nome) return;
-    saveTemplate(nome, collectProgramma());
-    alert('✅ Template "' + nome + '" salvato!');
+    showLoading();
+    try {
+      await saveTemplate(nome, collectProgramma());
+      hideLoading();
+      alert('✅ Template "' + nome + '" salvato!');
+    } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
   });
   document.getElementById('btnApplyTemplate')?.addEventListener('click', () => applyTemplateUI(date, trainingData, onSave));
 }
@@ -344,8 +351,8 @@ async function saveSession(date, trainingData, onSave) {
   }
 }
 
-function applyTemplateUI(date, trainingData, onSave) {
-  const templates = getTemplates();
+async function applyTemplateUI(date, trainingData, onSave) {
+  const templates = await getTemplates();
   if (templates.length === 0) { alert('Nessun template salvato.\nSalva prima una seduta come template.'); return; }
   const choice = prompt('Template disponibili:\n' + templates.map((t, i) => `${i+1}. ${t.nome}`).join('\n') + '\n\nInserisci il numero:');
   if (!choice) return;
