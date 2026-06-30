@@ -1449,9 +1449,53 @@ app.get('/api/squadre/:squadraId/partite/:matchId/formazione', async (req, res) 
 
 app.get('/api/partite/:matchId/formazione', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('match_formation').select('*').eq('match_id', req.params.matchId);
+    const { data, error } = await supabase.from('match_formation').select('*, team_player:team_player_id(player_id)').eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
-    res.json(data || []);
+    // Mappa per il frontend: calciatoreId, posizione, numeroMaglia
+    const result = (data || []).map(f => ({
+      ...f,
+      calciatoreId: f.team_player?.player_id || f.team_player_id,
+      posizione: f.is_starter ? 'Titolare' : 'Panchina',
+      numeroMaglia: f.numero_maglia
+    }));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/partite/:matchId/formazione', authMiddleware, async (req, res) => {
+  try {
+    const { formazione } = req.body;
+    if (!formazione || !Array.isArray(formazione)) return res.status(400).json({ error: 'Dati mancanti' });
+    
+    // Mappa player_id → team_player_id
+    const playerIds = formazione.map(f => f.calciatoreId);
+    const { data: tps } = await supabase.from('team_player').select('id, player_id').in('player_id', playerIds);
+    const playerToTp = {};
+    (tps || []).forEach(tp => { playerToTp[tp.player_id] = tp.id; });
+    
+    // Delete existing
+    await supabase.from('match_formation').delete().eq('match_id', req.params.matchId);
+    
+    // Insert batch
+    const inserts = formazione.filter(f => playerToTp[f.calciatoreId]).map((f, i) => ({
+      match_id: req.params.matchId,
+      team_player_id: playerToTp[f.calciatoreId],
+      posizione: f.posizione === 'Titolare' ? 'Titolare' : 'Panchina',
+      numero_maglia: f.numeroMaglia || null,
+      is_starter: f.posizione === 'Titolare',
+      is_captain: f.capitano || false,
+      is_vice_captain: f.viceCapitano || false,
+      ordine: i
+    }));
+    
+    if (inserts.length > 0) {
+      const { error } = await supabase.from('match_formation').insert(inserts);
+      if (error) return res.status(400).json({ error: error.message });
+    }
+    
+    res.json({ success: true, saved: inserts.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
