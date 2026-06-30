@@ -604,8 +604,10 @@ app.get('/api/squadre/:squadraId/scadenze-mediche', async (req, res) => {
 // ── PARTITE ROUTES ──
 app.get('/api/squadre/:squadraId/partite', async (req, res) => {
   try {
-    const { data } = await supabase.from('match').select('*').eq('team_id', req.params.squadraId).order('data_ora', { ascending: false });
-    res.json(data || []);
+    const { data } = await supabase.from('match').select('*, competition:competition_id(id, nome)').eq('team_id', req.params.squadraId).order('data_ora', { ascending: false });
+    // Mappa competition.nome → competizione per retrocompatibilità frontend
+    const result = (data || []).map(m => ({ ...m, competizione: m.competition?.nome || null }));
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -614,8 +616,9 @@ app.get('/api/squadre/:squadraId/partite', async (req, res) => {
 app.get('/api/squadre/:squadraId/partite-future', async (req, res) => {
   try {
     const now = new Date().toISOString();
-    const { data } = await supabase.from('match').select('*').eq('team_id', req.params.squadraId).gte('data_ora', now).order('data_ora', { ascending: true }).limit(5);
-    res.json(data || []);
+    const { data } = await supabase.from('match').select('*, competition:competition_id(id, nome)').eq('team_id', req.params.squadraId).gte('data_ora', now).order('data_ora', { ascending: true }).limit(5);
+    const result = (data || []).map(m => ({ ...m, competizione: m.competition?.nome || null }));
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -624,7 +627,13 @@ app.get('/api/squadre/:squadraId/partite-future', async (req, res) => {
 app.post('/api/squadre/:squadraId/partite', authMiddleware, async (req, res) => {
   try {
     const p = req.body;
-    const { data } = await supabase.from('match').insert({ team_id: req.params.squadraId, data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, competizione: p.competizione, giornata: p.giornata }).select().single();
+    // Se il frontend passa 'competizione' come testo, cerca il competition_id
+    let competition_id = null;
+    if (p.competizione) {
+      const { data: comp } = await supabase.from('competition').select('id').ilike('nome', '%' + p.competizione + '%').limit(1).single();
+      if (comp) competition_id = comp.id;
+    }
+    const { data } = await supabase.from('match').insert({ team_id: req.params.squadraId, data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, competition_id, giornata: p.giornata }).select().single();
     res.status(201).json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -634,7 +643,14 @@ app.post('/api/squadre/:squadraId/partite', authMiddleware, async (req, res) => 
 app.put('/api/partite/:id', authMiddleware, async (req, res) => {
   try {
     const p = req.body;
-    await supabase.from('match').update({ data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, competizione: p.competizione, giornata: p.giornata }).eq('id', req.params.id);
+    let competition_id = undefined;
+    if (p.competizione) {
+      const { data: comp } = await supabase.from('competition').select('id').ilike('nome', '%' + p.competizione + '%').limit(1).single();
+      competition_id = comp ? comp.id : null;
+    }
+    const updateData = { data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, giornata: p.giornata };
+    if (competition_id !== undefined) updateData.competition_id = competition_id;
+    await supabase.from('match').update(updateData).eq('id', req.params.id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -658,8 +674,8 @@ app.get('/api/squadre/:id/statistiche-complete', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Partite terminate con risultato
-    const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, competizione').eq('team_id', id).not('gol_casa', 'is', null).order('data_ora', { ascending: false });
+    // Partite terminate con risultato (stato = 'Terminata' o archiviata)
+    const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, competition:competition_id(nome), giornata').eq('team_id', id).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora', { ascending: false });
     
     let vinte = 0, pareggiate = 0, perse = 0, golFatti = 0, golSubiti = 0;
     const risultati = [];
@@ -677,7 +693,7 @@ app.get('/api/squadre/:id/statistiche-complete', async (req, res) => {
         dataOra: p.data_ora,
         avversario: p.avversario,
         luogo: p.luogo,
-        competizione: p.competizione,
+        competizione: p.competition?.nome || null,
         golFatti: gc,
         golSubiti: go
       });
@@ -1405,12 +1421,18 @@ app.post('/api/squadre/:squadraId/importa-calendario', authMiddleware, async (re
       if (row.length < 3) continue;
       const [data, ora, avversario, luogo, competizione, giornata] = row;
       const dataOra = new Date(`${data}T${ora || '15:00'}:00`).toISOString();
+      // Cerca competition_id se specificata
+      let comp_id = null;
+      if (competizione) {
+        const { data: comp } = await supabase.from('competition').select('id').ilike('nome', '%' + competizione + '%').limit(1).single();
+        if (comp) comp_id = comp.id;
+      }
       const { error } = await supabase.from('match').insert({
         team_id: req.params.squadraId,
         data_ora: dataOra,
         avversario: avversario || 'Avversario',
         luogo: luogo || 'Casa',
-        competizione: competizione || null,
+        competition_id: comp_id,
         giornata: parseInt(giornata) || null
       });
       if (!error) inserite++;
