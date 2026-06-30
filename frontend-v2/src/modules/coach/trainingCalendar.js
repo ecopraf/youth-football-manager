@@ -64,7 +64,7 @@ export function renderCalendar(config, presenze) {
 
   for (let day = 1; day <= giorniMese; day++) {
     const date = new Date(currentYear, currentMonth, day);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = currentYear + '-' + String(currentMonth+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
     const dayOfWeek = date.getDay();
     const isToday = dateStr === oggiStr;
     const isSelected = dateStr === selectedDate;
