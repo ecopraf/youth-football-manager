@@ -3,7 +3,17 @@ import { formatDateShort } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 
 export async function openNoteAvversario(mid) {
-  const match = window.YFM.allMatches.find(m => m.id === mid) || {};
+  // Cerca la partita in allMatches, altrimenti carica dall'API
+  let match = (window.YFM.allMatches || []).find(m => m.id === mid);
+  if (!match) {
+    try {
+      const resp = await apiFetch('/partite/' + mid + '/dettaglio');
+      match = resp.match || {};
+    } catch(e) {
+      match = {};
+    }
+  }
+  
   const inherited = getNoteAvversario(match);
   const note = match.note_avversario || inherited.text || '';
 

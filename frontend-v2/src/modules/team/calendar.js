@@ -231,7 +231,15 @@ export function renderMatchCard(m, stats, isNext = false, nextStep = null) {
 
   // Badge Risultato con icona
   let resultBadge = '';
-  if (hasResult && golFatti !== null && golSubiti !== null) {
+  if (!isPast && hasResult && golFatti !== null && golSubiti !== null) {
+    // Partita futura con risultato = IN CORSO / LIVE
+    const color = golFatti > golSubiti ? '#27AE60' : golFatti === golSubiti ? '#F39C12' : '#E74C3C';
+    resultBadge = `<span style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')">`+
+      `<span class="live-dot" style="background:#E74C3C;"></span>` +
+      `<span class="live-text" style="color:#E74C3C;font-size:10px;font-weight:bold;">LIVE</span>` +
+      `<span style="font-size:16px;font-weight:bold;color:${color};">${golFatti} - ${golSubiti}</span>` +
+      `</span>`;
+  } else if (hasResult && golFatti !== null && golSubiti !== null) {
     let icon, color, bgColor;
     if (golFatti > golSubiti) {
       icon = '✅'; color = '#27AE60'; bgColor = '#e8f5e9';
@@ -240,7 +248,7 @@ export function renderMatchCard(m, stats, isNext = false, nextStep = null) {
     } else {
       icon = '🤝'; color = '#F39C12'; bgColor = '#fff8e1';
     }
-    resultBadge = `<span style="background:${bgColor};color:${color};padding:2px 8px;border-radius:6px;font-weight:bold;font-size:14px;border:1px solid ${color};">${golFatti} - ${golSubiti} ${icon}</span>`;
+    resultBadge = `<span style="background:${bgColor};color:${color};padding:2px 8px;border-radius:6px;font-weight:bold;font-size:14px;border:1px solid ${color};cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')">${golFatti} - ${golSubiti} ${icon}</span>`;
   }
 
   // Badge Casa/Trasferta

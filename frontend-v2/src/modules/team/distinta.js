@@ -12,11 +12,73 @@ export async function openDistinta(mid, staffOverrides) {
   
   let curStaff = null;
   try {
-    const data = await apiFetch('/partite/' + mid + '/distinta');
+    let data = await apiFetch('/partite/' + mid + '/distinta');
+    
+    // Se non c'è formazione, usa i convocati
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      // Prova a caricare i convocati
+      const convResp = await apiFetch('/partite/' + mid + '/convocazioni').catch(() => []);
+      const convocati = (Array.isArray(convResp) ? convResp : []).filter(c => c.presente === true || c.presente === null);
+      
+      if (convocati.length === 0) {
+        document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Nessun convocato per questa partita. Salva prima le convocazioni.</div>';
+        return;
+      }
+      
+      // Carica rosa per avere i dati anagrafici
+      const rosa = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
+      const rosaMap = {};
+      rosa.forEach(g => { rosaMap[g.id] = g; });
+      
+      // Risolvi team_player_id → player data
+      const tpIds = convocati.map(c => c.team_player_id).filter(Boolean);
+      let tpMap = {};
+      if (tpIds.length > 0) {
+        const tpResp = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
+        tpResp.forEach(g => { tpMap[g.id] = g; });
+      }
+      
+      // Costruisci formazione dai convocati in ordine alfabetico
+      const formazioneDaConvocati = rosa
+        .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''))
+        .map(g => ({
+          id: g.id,
+          nome: g.nome,
+          cognome: g.cognome,
+          numeroMaglia: g.numero_maglia,
+          dataNascita: g.data_nascita,
+          matricolaFigc: g.matricola_figc,
+          tipoDocumento: g.tipo_documento,
+          numeroDocumento: g.numero_documento,
+          rilasciatoDa: g.rilasciato_da,
+          capitano: false,
+          viceCapitano: false
+        }));
+      
+      data = { formazione: formazioneDaConvocati, partita: null, staff: {} };
+    }
+    
+    // Se data è un array (dalla formazione API), wrappalo
+    if (Array.isArray(data)) {
+      data = { formazione: data, partita: null, staff: {} };
+    }
+    
+    // Carica dati partita se mancanti
+    if (!data.partita) {
+      const match = window.YFM.allMatches?.find(m => m.id === mid);
+      data.partita = match ? {
+        avversario: match.avversario,
+        dataOra: match.data_ora,
+        competizione: match.competizione || '',
+        giornata: match.giornata,
+        luogo: match.luogo
+      } : { avversario: '...', dataOra: new Date().toISOString(), competizione: '', giornata: null, luogo: '' };
+    }
+    
     curStaff = staffOverrides || data.staff || {};
     renderDistinta(data, curStaff);
   } catch (e) {
-    document.getElementById('distintaInner').innerHTML = '<div class="error-box">Formazione non disponibile</div>';
+    document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Nessun convocato per questa partita. Salva prima le convocazioni.</div>';
   }
   
   document.getElementById('printBtn').addEventListener('click', () => {

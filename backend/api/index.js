@@ -680,6 +680,7 @@ app.put('/api/partite/:id', authMiddleware, async (req, res) => {
     }
     const updateData = { data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, giornata: p.giornata };
     if (competition_id !== undefined) updateData.competition_id = competition_id;
+    if (p.noteAvversario !== undefined) updateData.note_avversario = p.noteAvversario;
     await supabase.from('match').update(updateData).eq('id', req.params.id);
     res.json({ success: true });
   } catch (err) {
