@@ -216,9 +216,6 @@ async function saveEventi(mid, modal, eventi, giocatori) {
   }
 }
 
-
-}
-
 function createModal(title, content, footer, maxW) {
   const existing = document.getElementById('currentModal');
   if (existing) existing.remove();

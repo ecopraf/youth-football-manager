@@ -11,6 +11,19 @@ export function formatDateShort(d) {
   return new Date(d).toLocaleDateString('it-IT');
 }
 
+export function formatDateCompact(d) {
+  if (!d) return '';
+  const date = new Date(d);
+  const giorni = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+  const mesi = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+  const giorno = giorni[date.getDay()];
+  const num = date.getDate();
+  const mese = mesi[date.getMonth()];
+  const ore = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${giorno} ${num} ${mese} · ${ore}:${min}`;
+}
+
 export function formatBirthDate(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('it-IT', {
@@ -20,6 +33,11 @@ export function formatBirthDate(d) {
 
 export function formatTime(t) {
   if (!t) return '';
+  // Se è un ISO datetime, estrai ore:minuti
+  if (t.includes('T')) {
+    const date = new Date(t);
+    return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+  }
   return t.slice(0, 5);
 }
 

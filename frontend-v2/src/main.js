@@ -33,13 +33,14 @@ window.YFM.getSocietaName = () => {
 };
 
 window.YFM.handleLogout = function() {
-  console.log('[LOGOUT] Starting...');
   localStorage.removeItem('yfm_token');
   localStorage.removeItem('yfm_user');
   localStorage.removeItem('yfm_guest');
   localStorage.removeItem('yfm_active_workspace');
+  localStorage.removeItem('yfm_demo_session');
+  localStorage.removeItem('yfm_demo_user');
   resetWorkspaceCache();
-  window.location.href = '/landing.html';
+  window.location.href = '/';
 };
 
 window.YFM.loadCalendar = async () => {

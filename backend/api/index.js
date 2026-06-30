@@ -64,7 +64,7 @@ const authMiddleware = async (req, res, next) => {
 };
 
 // Export supabase e JWT_SECRET per i moduli
-module.exports = { app, supabase, JWT_SECRET, authMiddleware };
+// NOTA: module.exports finale sovrascrive questo, usare require diretto se necessario
 
 // ============================================================
 // ROUTES - Integrazione moduli nel file principale
@@ -106,24 +106,36 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.post('/api/auth/register', async (req, res) => {
+// Registrazione: solo admin e superadmin possono creare nuovi utenti
+app.post('/api/auth/register', authMiddleware, async (req, res) => {
   try {
+    // Verifica permessi: solo admin o superadmin
+    if (!req.user.is_superadmin && req.user.ruolo !== 'admin') {
+      return res.status(403).json({ error: 'Solo admin possono registrare nuovi utenti' });
+    }
+    
     const { email, password, nome, cognome, ruolo, workspace_id } = req.body;
     if (!email || !password || !nome || !cognome) return res.status(400).json({ error: 'Tutti i campi sono richiesti' });
+    
+    // Non permettere la creazione di superadmin
+    if (ruolo === 'superadmin' && !req.user.is_superadmin) {
+      return res.status(403).json({ error: 'Solo superadmin può creare altri superadmin' });
+    }
     
     const { data: existing } = await supabase.from('users').select('id').eq('email', email.toLowerCase()).single();
     if (existing) return res.status(409).json({ error: 'Email già registrata' });
     
     const password_hash = await bcrypt.hash(password, 10);
     const { data: newUser, error } = await supabase.from('users').insert({
-      email: email.toLowerCase(), password_hash, nome, cognome, ruolo: ruolo || 'admin',
-      workspace_id: workspace_id || '00000000-0000-0000-0000-000000000001', is_active: true
+      email: email.toLowerCase(), password_hash, nome, cognome, 
+      ruolo: ruolo || 'allenatore',
+      workspace_id: workspace_id || req.user.workspace_id,
+      is_active: true
     }).select().single();
     
     if (error) return res.status(400).json({ error: error.message });
     
-    const token = jwt.sign({ userId: newUser.id, email: newUser.email, ruolo: newUser.ruolo, workspace_id: newUser.workspace_id }, JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { id: newUser.id, nome: newUser.nome, cognome: newUser.cognome, email: newUser.email, ruolo: newUser.ruolo, workspace_id: newUser.workspace_id } });
+    res.status(201).json({ success: true, user: { id: newUser.id, nome: newUser.nome, cognome: newUser.cognome, email: newUser.email, ruolo: newUser.ruolo, workspace_id: newUser.workspace_id } });
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
   }
@@ -370,45 +382,19 @@ app.get('/api/stagioni', async (req, res) => {
   }
 });
 
-// DEBUG: Test endpoint per verificare route
-app.get('/api/debug/routes', (req, res) => {
-  const routes = [];
-  app._router.stack.forEach((middleware) => {
-    if (middleware.route) {
-      routes.push({
-        path: middleware.route.path,
-        methods: Object.keys(middleware.route.methods)
-      });
-    } else if (middleware.name === 'router') {
-      middleware.handle.stack.forEach((handler) => {
-        if (handler.route) {
-          routes.push({
-            path: handler.route.path,
-            methods: Object.keys(handler.route.methods)
-          });
-        }
-      });
-    }
-  });
-  res.json({ routes: routes.filter(r => r.path.includes('stagioni')) });
-});
 
 app.get('/api/stagioni/:id/squadre', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('[DEBUG] /api/stagioni/:id/squadre called with id:', id);
     const { data, error } = await supabase.from('team')
       .select('*, category:category_id(id, nome, tipo_campionato)')
       .eq('season_id', id)
       .order('nome');
     if (error) {
-      console.error('[DEBUG] Supabase error:', error);
       return res.status(400).json({ error: error.message });
     }
-    console.log('[DEBUG] Returning teams:', data?.length);
     res.json(data || []);
   } catch (err) {
-    console.error('[DEBUG] Catch error:', err);
     res.status(500).json({ error: 'Errore server' });
   }
 });
@@ -521,7 +507,7 @@ app.get('/api/squadre/:squadraId/calciatori', async (req, res) => {
   }
 });
 
-app.post('/api/squadre/:squadraId/calciatori', async (req, res) => {
+app.post('/api/squadre/:squadraId/calciatori', authMiddleware, async (req, res) => {
   try {
     const c = req.body;
     
@@ -629,7 +615,7 @@ app.get('/api/squadre/:squadraId/partite-future', async (req, res) => {
   }
 });
 
-app.post('/api/squadre/:squadraId/partite', async (req, res) => {
+app.post('/api/squadre/:squadraId/partite', authMiddleware, async (req, res) => {
   try {
     const p = req.body;
     const { data } = await supabase.from('match').insert({ team_id: req.params.squadraId, data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, competizione: p.competizione, giornata: p.giornata }).select().single();
@@ -639,7 +625,7 @@ app.post('/api/squadre/:squadraId/partite', async (req, res) => {
   }
 });
 
-app.put('/api/partite/:id', async (req, res) => {
+app.put('/api/partite/:id', authMiddleware, async (req, res) => {
   try {
     const p = req.body;
     await supabase.from('match').update({ data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, competizione: p.competizione, giornata: p.giornata }).eq('id', req.params.id);
@@ -649,7 +635,7 @@ app.put('/api/partite/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/partite/:id', async (req, res) => {
+app.delete('/api/partite/:id', authMiddleware, async (req, res) => {
   try {
     await supabase.from('match_event').delete().eq('match_id', req.params.id);
     await supabase.from('formazione_partita').delete().eq('match_id', req.params.id);
@@ -666,32 +652,45 @@ app.get('/api/squadre/:id/statistiche-complete', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Totale partite
-    const { count: totalePartite } = await supabase.from('match').select('*', { count: 'exact', head: true }).eq('team_id', id);
+    // Partite terminate con risultato
+    const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, competizione').eq('team_id', id).not('gol_casa', 'is', null).order('data_ora', { ascending: false });
     
-    // Partite vinte/perse/pareggiate
-    const { data: partite } = await supabase.from('match').select('gol_casa, gol_ospite, team_id').eq('team_id', id).eq('stato', 'Terminata');
-    let vinte = 0, pareggiate = 0, perse = 0;
-    partite?.forEach(p => {
-      const golCasa = p.gol_casa || 0;
-      const golOspite = p.gol_ospite || 0;
-      if (golCasa > golOspite) vinte++;
-      else if (golCasa === golOspite) pareggiate++;
+    let vinte = 0, pareggiate = 0, perse = 0, golFatti = 0, golSubiti = 0;
+    const risultati = [];
+    
+    (partite || []).forEach(p => {
+      const gc = p.gol_casa || 0;
+      const go = p.gol_ospite || 0;
+      golFatti += gc;
+      golSubiti += go;
+      if (gc > go) vinte++;
+      else if (gc === go) pareggiate++;
       else perse++;
+      risultati.push({
+        id: p.id,
+        dataOra: p.data_ora,
+        avversario: p.avversario,
+        luogo: p.luogo,
+        competizione: p.competizione,
+        golFatti: gc,
+        golSubiti: go
+      });
     });
     
-    // Gol fatti/subiti
-    const { data: golData } = await supabase.from('match_event').select('tipo_evento').eq('player_id', 
-      supabase.from('team_player').select('player_id').eq('team_id', id)
-    );
+    const partiteGiocate = (partite || []).length;
+    const punti = vinte * 3 + pareggiate;
+    const differenzaReti = golFatti - golSubiti;
     
     res.json({
-      totale_partite: totalePartite || 0,
-      partite_vinte: vinte,
-      partite_pareggiate: pareggiate,
-      partite_perse: perse,
-      gol_fatti: vinte * 2 + pareggiate, // Stima
-      gol_subiti: perse
+      punti,
+      partiteGiocate,
+      vittorie: vinte,
+      pareggi: pareggiate,
+      sconfitte: perse,
+      golFatti,
+      golSubiti,
+      differenzaReti,
+      risultati
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -768,7 +767,7 @@ app.get('/api/calciatori/:id', async (req, res) => {
   }
 });
 
-app.put('/api/calciatori/:id', async (req, res) => {
+app.put('/api/calciatori/:id', authMiddleware, async (req, res) => {
   try {
     const c = req.body;
     
@@ -969,13 +968,16 @@ app.get('/api/squadre/:squadraId/allenamenti/summary', async (req, res) => {
       .select('*')
       .eq('team_id', req.params.squadraId);
     
-    const { data: giocatori } = await supabase
-      .from('calciatore')
-      .select('id, nome, cognome')
+    // Usa team_player + player per ottenere i giocatori della squadra
+    const { data: teamPlayers } = await supabase
+      .from('team_player')
+      .select('player_id, calciatore:player_id(id, nome, cognome)')
       .eq('team_id', req.params.squadraId);
     
     const summary = {};
-    (giocatori || []).forEach(g => {
+    (teamPlayers || []).forEach(tp => {
+      const g = tp.calciatore;
+      if (!g) return;
       const playerPres = (presenze || []).filter(p => p.calciatore_id === g.id);
       const presenti = playerPres.filter(p => p.presente).length;
       const assenti = playerPres.filter(p => !p.presente).length;
@@ -1149,6 +1151,219 @@ app.post('/api/admin/migrate-new-schema', authMiddleware, async (req, res) => {
     res.json({ success: true, results });
   } catch (err) {
     console.error('Migration error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── ARCHIVIA / SBLOCCA PARTITA ──
+app.put('/api/partite/:id/archivia', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('match').update({ archiviata: true }).eq('id', req.params.id);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/partite/:id/sblocca', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('match').update({ archiviata: false }).eq('id', req.params.id);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── CONVOCAZIONI ──
+app.get('/api/partite/:matchId/convocazioni', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('convocation').select('*').eq('match_id', req.params.matchId);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/squadre/:squadraId/partite/:matchId/convocati', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('convocation').select('*').eq('match_id', req.params.matchId).eq('presente', true);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/partite/:matchId/convocazioni', authMiddleware, async (req, res) => {
+  try {
+    const { calciatoreId, presente } = req.body;
+    const { data: existing } = await supabase.from('convocation').select('id').eq('match_id', req.params.matchId).eq('player_id', calciatoreId).single();
+    if (existing) {
+      const { data, error } = await supabase.from('convocation').update({ presente }).eq('id', existing.id).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data);
+    } else {
+      const { data, error } = await supabase.from('convocation').insert({ match_id: req.params.matchId, player_id: calciatoreId, presente }).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data);
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── FORMAZIONE ──
+app.get('/api/squadre/:squadraId/partite/:matchId/formazione', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('formazione_partita').select('*').eq('match_id', req.params.matchId);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/partite/:matchId/formazione', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('formazione_partita').select('*').eq('match_id', req.params.matchId);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── EVENTI PARTITA ──
+app.get('/api/squadre/:squadraId/partite/:matchId/eventi', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('match_event').select('*').eq('match_id', req.params.matchId).order('minuto');
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/partite/:matchId/dettaglio', async (req, res) => {
+  try {
+    const { data: match } = await supabase.from('match').select('*').eq('id', req.params.matchId).single();
+    const { data: eventi } = await supabase.from('match_event').select('*').eq('match_id', req.params.matchId).order('minuto');
+    res.json({ match, eventi: eventi || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/partite/:matchId/eventi-batch', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('match_event').delete().eq('match_id', req.params.matchId);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/partite/:matchId/evento-item', authMiddleware, async (req, res) => {
+  try {
+    const { tipo, minuto, calciatorePrincipaleId } = req.body;
+    const insertData = { match_id: req.params.matchId, tipo_evento: tipo, minuto };
+    if (calciatorePrincipaleId) insertData.player_id = calciatorePrincipaleId;
+    const { data, error } = await supabase.from('match_event').insert(insertData).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DISTINTA ──
+app.get('/api/squadre/:squadraId/partite/:matchId/distinta', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('formazione_partita').select('*').eq('match_id', req.params.matchId);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── IMPORT CALENDARIO CSV ──
+app.post('/api/squadre/:squadraId/importa-calendario', authMiddleware, async (req, res) => {
+  try {
+    const { csvData } = req.body;
+    if (!csvData || !Array.isArray(csvData)) return res.status(400).json({ error: 'Dati CSV mancanti' });
+    let inserite = 0;
+    for (const row of csvData) {
+      if (row.length < 3) continue;
+      const [data, ora, avversario, luogo, competizione, giornata] = row;
+      const dataOra = new Date(`${data}T${ora || '15:00'}:00`).toISOString();
+      const { error } = await supabase.from('match').insert({
+        team_id: req.params.squadraId,
+        data_ora: dataOra,
+        avversario: avversario || 'Avversario',
+        luogo: luogo || 'Casa',
+        competizione: competizione || null,
+        giornata: parseInt(giornata) || null
+      });
+      if (!error) inserite++;
+    }
+    res.json({ success: true, inserite });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── MOVE PLAYER ──
+app.post('/api/calciatori/:id/move', authMiddleware, async (req, res) => {
+  try {
+    const { fromSquadraId, toSquadraId } = req.body;
+    const playerId = req.params.id;
+    // Aggiorna team_player: cambia team_id
+    const { error } = await supabase.from('team_player').update({ team_id: toSquadraId }).eq('player_id', playerId).eq('team_id', fromSquadraId);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── MATERIALE ALLENAMENTI ──
+app.get('/api/squadre/:squadraId/allenamenti/materiale', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('training_material').select('*').eq('team_id', req.params.squadraId).order('created_at', { ascending: false });
+    if (error) {
+      // Tabella potrebbe non esistere ancora
+      return res.json([]);
+    }
+    res.json(data || []);
+  } catch (err) {
+    res.json([]);
+  }
+});
+
+app.post('/api/squadre/:squadraId/allenamenti/materiale', authMiddleware, async (req, res) => {
+  try {
+    const { titolo, descrizione, tipo, url } = req.body;
+    const { data, error } = await supabase.from('training_material').insert({
+      team_id: req.params.squadraId, titolo, descrizione, tipo, url
+    }).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/allenamenti/materiale/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('training_material').delete().eq('id', req.params.id);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

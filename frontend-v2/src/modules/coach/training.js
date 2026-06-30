@@ -235,7 +235,7 @@ function renderPresenzeForDate(date) {
   const sorted = [...giocatori].sort((a, b) => a.cognome.localeCompare(b.cognome));
   
   list.innerHTML = sorted.map(g => {
-    const p = presenze.find(x => x.calciatoreId === g.id && x.data === date);
+    const p = presenze.find(x => (x.calciatore_id || x.calciatoreId) === g.id && x.data === date);
     return `
       <div class="convocation-item">
         <input type="checkbox" ${p && !p.presente ? 'checked' : ''} data-pid="${g.id}" class="pres-check" style="width:20px;height:20px;cursor:pointer;accent-color:#E74C3C;">

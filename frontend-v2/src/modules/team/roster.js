@@ -60,7 +60,7 @@ function renderRoster(c, players, scadenze) {
   
   toolbarHtml += '<button class="btn btn-primary" id="btnAdd">+ Aggiungi</button></div></div>';
 
-  let scadenzeHtml = scadenze.length > 0 ? '<div class="card" style="margin-bottom:20px;border-left:4px solid #F39C12;"><h3>⚠️ Certificati in scadenza</h3>' + scadenze.map(x => '<div>' + x.nome + ' ' + x.cognome + ' - ' + formatDateShort(x.scadenza) + ' (' + x.giorniRimanenti + 'gg)</div>').join('') + '</div>' : '';
+  let scadenzeHtml = scadenze.length > 0 ? '<div class="card" style="margin-bottom:20px;border-left:4px solid #F39C12;"><h3>⚠️ Certificati in scadenza</h3>' + scadenze.map(x => '<div>' + x.nome + ' ' + x.cognome + ' - ' + formatDateShort(x.scadenza) + ' (' + (x.giorni_rimanenti || x.giorniRimanenti) + 'gg)</div>').join('') + '</div>' : '';
 
   let gridsHtml = '';
   ruoli.forEach(r => {

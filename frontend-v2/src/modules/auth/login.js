@@ -3,21 +3,6 @@ import { showLoading, hideLoading } from '../../utils/ui';
 import { BUILD_INFO } from '../../build-info';
 
 export default async function loadLogin() {
-  // Pulisci URL da eventuali parametri vecchi/invalidi
-  const urlParams = new URLSearchParams(window.location.search);
-  const refCode = urlParams.get('ref');
-  const hasDemoParams = urlParams.has('demo_email') || urlParams.has('auto_login');
-  
-  // Salva referral code dall URL se presente
-  if (refCode) {
-    localStorage.setItem('referralCode', refCode);
-  }
-  
-  // Pulisci URL da parametri demo vecchi (non più usati)
-  if (hasDemoParams || window.location.search.includes('demo_')) {
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-  
   const c = document.getElementById('pageContent');
   
   // Se già loggato, reindirizza
@@ -27,216 +12,181 @@ export default async function loadLogin() {
   }
 
   c.innerHTML = `
-    <div class="auth-container">
-      <div class="auth-card">
-        <div class="auth-header">
-          <img src="/assets/app-icon.png" alt="Youth Football Manager" class="app-icon-login">
-          <h1>Youth Football Manager</h1>
-          <p>Accedi al tuo account</p>
+    <div class="login-container">
+      <div class="login-welcome">
+        <img src="/assets/app-icon.png" alt="Youth Football Manager" class="login-icon">
+        <h1>Youth Football Manager</h1>
+        <p class="login-subtitle">La piattaforma digitale per allenatori di calcio giovanile</p>
+        
+        <div class="login-features">
+          <div class="login-feature">
+            <span class="feature-icon">👥</span>
+            <span>Gestione Rosa</span>
+          </div>
+          <div class="login-feature">
+            <span class="feature-icon">📅</span>
+            <span>Calendario Partite</span>
+          </div>
+          <div class="login-feature">
+            <span class="feature-icon">🏃</span>
+            <span>Allenamenti</span>
+          </div>
+          <div class="login-feature">
+            <span class="feature-icon">📈</span>
+            <span>Statistiche</span>
+          </div>
         </div>
         
-        <form id="loginForm" class="auth-form">
+        <form id="loginForm" class="login-form">
           <div class="form-group">
             <label for="email">Email</label>
-            <input type="email" id="email" placeholder=" tua@email.com" required>
+            <input type="email" id="email" placeholder="tua@email.com" required>
           </div>
           
           <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" placeholder=" La tua password" required>
+            <input type="password" id="password" placeholder="La tua password" required>
           </div>
           
           <div id="loginError" class="error-message" style="display:none;"></div>
           
-          <button type="submit" class="btn btn-primary">🔐 Accedi</button>
-          <button type="button" id="startDemoBtn" class="btn btn-demo">🎮 Avvia Demo</button>
+          <button type="submit" class="btn-login-submit">
+            🔐 Accedi
+          </button>
         </form>
         
-        <div class="auth-footer">
-          <p>Non hai un account? <a href="#" id="showRegister">Registrati</a></p>
-        </div>
+        <p class="login-note">
+          Non hai un account? Contatta il tuo amministratore.
+        </p>
         
-        <div class="build-info" style="text-align:center;padding:8px;font-size:10px;color:#999;">
-          build: ${BUILD_INFO.id}
-        </div>
-      </div>
-      
-      <!-- Form Registrazione (nascosto) -->
-      <div class="auth-card" id="registerCard" style="display:none;">
-        <div class="auth-header">
-          <img src="/assets/app-icon.png" alt="Youth Football Manager" class="app-icon-login">
-          <h1>Youth Football Manager</h1>
-          <p>Crea un nuovo account</p>
-        </div>
-        
-        <form id="registerForm" class="auth-form">
-          <div class="form-group">
-            <label for="regNome">Nome *</label>
-            <input type="text" id="regNome" placeholder=" Il tuo nome" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="regCognome">Cognome</label>
-            <input type="text" id="regCognome" placeholder=" Il tuo cognome">
-          </div>
-          
-          <div class="form-group">
-            <label for="regEmail">Email *</label>
-            <input type="email" id="regEmail" placeholder=" tua@email.com" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="regPassword">Password *</label>
-            <input type="password" id="regPassword" placeholder=" Min 6 caratteri" minlength="6" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="regRuolo">Ruolo</label>
-            <select id="regRuolo">
-              <option value="allenatore">Allenatore</option>
-              <option value="staff">Staff</option>
-              <option value="admin">Amministratore</option>
-            </select>
-          </div>
-          
-          <div id="registerError" class="error-message" style="display:none;"></div>
-          
-          <button type="submit" class="btn btn-primary btn-full">Registrati</button>
-        </form>
-        
-        <div class="auth-footer">
-          <p>Hai già un account? <a href="#" id="showLogin">Accedi</a></p>
-        </div>
-        
-        <div class="build-info" style="text-align:center;padding:8px;font-size:10px;color:#999;">
+        <div class="build-info">
           build: ${BUILD_INFO.id}
         </div>
       </div>
     </div>
     
     <style>
-      .auth-container {
+      .login-container {
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: 60vh;
+        min-height: 70vh;
         padding: 20px;
       }
-      .auth-card {
+      .login-welcome {
         background: white;
-        border-radius: 16px;
-        padding: 40px;
+        border-radius: 24px;
+        padding: 48px;
         width: 100%;
-        max-width: 400px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-      }
-      .auth-header {
+        max-width: 500px;
+        box-shadow: 0 12px 48px rgba(0,0,0,0.12);
         text-align: center;
+      }
+      .login-icon {
+        width: 120px;
+        height: 120px;
+        object-fit: contain;
+        border-radius: 24px !important;
+        box-shadow: 0 8px 30px rgba(102,126,234,0.3);
+        margin: 0 auto 24px auto;
+        display: block;
+      }
+      .login-welcome h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0 0 12px 0;
+        color: #1a1a2e;
+      }
+      .login-subtitle {
+        color: #666;
+        font-size: 16px;
+        margin: 0 0 32px 0;
+      }
+      .login-features {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 32px;
+      }
+      .login-feature {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        background: #f8f9ff;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #444;
+      }
+      .feature-icon {
+        font-size: 20px;
+      }
+      .login-form {
+        text-align: left;
         margin-bottom: 24px;
       }
-      .auth-header img {
-        border-radius: 16px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        display: block;
-        margin: 0 auto;
-      }
-      .app-icon-login {
-        width: 100px;
-        height: 100px;
-        object-fit: contain;
-        border-radius: 20px !important;
-        box-shadow: 0 8px 25px rgba(102,126,234,0.3) !important;
-        display: block !important;
-        margin: 0 auto !important;
-      }
-      .auth-header h1 {
-        font-size: 22px;
-        font-weight: 700;
-        margin: 12px 0 8px 0;
-        color: var(--primary);
-      }
-      .auth-header p {
-        color: #666;
-        margin: 0;
-      }
-      .auth-form .form-group {
+      .login-form .form-group {
         margin-bottom: 16px;
       }
-      .auth-form label {
+      .login-form label {
         display: block;
         font-weight: 500;
         margin-bottom: 6px;
         color: #333;
-      }
-      .auth-form input,
-      .auth-form select {
-        width: 100%;
-        padding: 12px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
         font-size: 14px;
-        box-sizing: border-box;
       }
-      .auth-form input:focus {
+      .login-form input {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1.5px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 15px;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+      }
+      .login-form input:focus {
         outline: none;
         border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
       }
-      .btn-full {
+      .btn-login-submit {
         width: 100%;
-        padding: 14px;
-        font-size: 16px;
-        margin-top: 8px;
-      }
-      .btn-primary, .btn-demo {
-        width: 100%;
-        max-width: 280px;
-        margin: 8px auto;
-        display: block;
-        text-align: center;
-        padding: 14px 24px;
-        border-radius: 12px;
-        font-size: 15px;
+        padding: 18px 32px;
+        border-radius: 14px;
+        font-size: 17px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.3s ease;
-      }
-      .btn-primary {
         background: linear-gradient(135deg, #667eea, #764ba2);
         color: white;
         border: none;
-        box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+        box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
       }
-      .btn-primary:hover {
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 8px 25px rgba(102,126,234,0.5);
+      .btn-login-submit:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(102,126,234,0.5);
       }
-      .btn-primary:active {
-        transform: translateY(-1px) scale(1);
+      .btn-login-submit:active {
+        transform: translateY(-1px);
       }
-      .btn-demo {
-        background: transparent;
-        color: #667eea;
-        border: 2px solid #667eea;
-        box-shadow: none;
+      .login-note {
+        margin-top: 0;
+        font-size: 13px;
+        color: #999;
+        line-height: 1.5;
       }
-      .btn-demo:hover {
-        background: #667eea;
-        color: white;
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 8px 25px rgba(102,126,234,0.5);
-      }
-      .btn-demo:active {
-        transform: translateY(-1px) scale(1);
-      }
-      .auth-footer {
+      .build-info {
         text-align: center;
-        margin-top: 24px;
-        color: #666;
-      }
-      .auth-footer a {
-        color: #667eea;
-        text-decoration: none;
-        font-weight: 500;
+        padding: 8px;
+        font-size: 10px;
+        color: #ccc;
+        margin-top: 16px;
+        font-family: monospace;
       }
       .error-message {
         background: #fee;
@@ -245,71 +195,18 @@ export default async function loadLogin() {
         border-radius: 8px;
         margin-bottom: 12px;
         font-size: 14px;
+        text-align: center;
+      }
+      @media (max-width: 480px) {
+        .login-welcome {
+          padding: 32px 24px;
+        }
+        .login-features {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   `;
-
-  // Toggle tra login e register
-  document.getElementById('showRegister').addEventListener('click', (e) => {
-    e.preventDefault();
-    // Apri form richiesta demo invece del form registrazione standard
-    if (window.demoManager) {
-      window.demoManager.showRegistrationForm();
-    } else {
-      document.querySelector('.auth-card').style.display = 'none';
-      document.getElementById('registerCard').style.display = 'block';
-    }
-  });
-
-  document.getElementById('showLogin').addEventListener('click', (e) => {
-    e.preventDefault();
-    document.getElementById('registerCard').style.display = 'none';
-    document.querySelector('.auth-card').style.display = 'block';
-  });
-
-  // Avvia demo - senza login, modalita guidata
-  document.getElementById('startDemoBtn').addEventListener('click', () => {
-    console.log('[DEMO] Click su Avvia Demo');
-    
-    // Pulisci URL da parametri
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
-
-    // Imposta flag demo senza token reale
-    localStorage.setItem('yfm_demo_session', 'active');
-    localStorage.setItem('yfm_demo_user', JSON.stringify({
-      id: 'demo',
-      nome: 'Demo',
-      cognome: 'Utente',
-      ruolo: 'allenatore',
-      email: 'demo@yfm.it'
-    }));
-
-    console.log('[DEMO] Sessione demo impostata, localStorage:', {
-      demo_session: localStorage.getItem('yfm_demo_session'),
-      demo_user: localStorage.getItem('yfm_demo_user')
-    });
-
-    // Naviga alla dashboard
-    console.log('[DEMO] window.YFM disponibile:', !!window.YFM);
-    console.log('[DEMO] window.YFM.navigateTo disponibile:', !!(window.YFM && window.YFM.navigateTo));
-    
-    if (window.YFM && window.YFM.navigateTo) {
-      console.log('[DEMO] Ricarico pagina per inizializzazione corretta');
-      // Ricarica la pagina principale così main.js può inizializzare tutto correttamente
-      window.location.href = '/';
-    } else {
-      console.log('[DEMO] YFM non pronto, attendo...');
-      const checkYFM = setInterval(() => {
-        if (window.YFM && window.YFM.navigateTo) {
-          clearInterval(checkYFM);
-          console.log('[DEMO] YFM pronto, ricarico pagina');
-          window.location.href = '/';
-        }
-      }, 100);
-      setTimeout(() => clearInterval(checkYFM), 3000);
-    }
-  });
 
   // Login form
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -331,9 +228,13 @@ export default async function loadLogin() {
       localStorage.setItem('yfm_token', res.token);
       localStorage.setItem('yfm_user', JSON.stringify(res.user));
       
+      // Rimuovi eventuali residui demo
+      localStorage.removeItem('yfm_demo_session');
+      localStorage.removeItem('yfm_demo_user');
+      
       window.YFM.setUser(res.user);
       
-      // IMPOSTA IL WORKSPACE PRIMA DI CARICARE LE SQUADRE
+      // Imposta il workspace prima di caricare le squadre
       const user = res.user;
       if (user?.workspace_id) {
         const { loadAvailableWorkspaces } = await import('../../modules/club/workspaceSwitcher');
@@ -342,7 +243,6 @@ export default async function loadLogin() {
         if (userWorkspace) {
           window.YFM.workspaceInfo = userWorkspace;
           window.YFM.activeWorkspaceId = userWorkspace.id;
-          console.log('[Login] Workspace impostato:', userWorkspace.nome);
         }
       }
       
@@ -352,44 +252,11 @@ export default async function loadLogin() {
       
       try {
         await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
-      } catch (e) {
-        console.warn('Errore caricamento dati:', e);
+      } catch (loadErr) {
+        console.warn('Errore caricamento dati post-login:', loadErr);
       }
       
       hideLoading();
-      window.YFM.navigateTo('dashboard');
-    } catch (err) {
-      hideLoading();
-      errorDiv.textContent = err.message;
-      errorDiv.style.display = 'block';
-    }
-  });
-
-  // Register form
-  document.getElementById('registerForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nome = document.getElementById('regNome').value;
-    const cognome = document.getElementById('regCognome').value;
-    const email = document.getElementById('regEmail').value;
-    const password = document.getElementById('regPassword').value;
-    const ruolo = document.getElementById('regRuolo').value;
-    const errorDiv = document.getElementById('registerError');
-    
-    showLoading('Registrazione...');
-    errorDiv.style.display = 'none';
-    
-    try {
-      const res = await apiFetch('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ email, password, nome, cognome, ruolo, referralCode: localStorage.getItem('referralCode') })
-      });
-      
-      // Salva token e user info
-      localStorage.setItem('yfm_token', res.token);
-      localStorage.setItem('yfm_user', JSON.stringify(res.user));
-      
-      hideLoading();
-      window.YFM.setUser(res.user);
       window.YFM.navigateTo('dashboard');
     } catch (err) {
       hideLoading();
