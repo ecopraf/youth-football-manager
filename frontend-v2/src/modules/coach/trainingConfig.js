@@ -21,7 +21,7 @@ export function renderConfig(config) {
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;">
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="background:#667eea;color:white;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${giorni[c.giorno_settimana]}</span>
-              <span style="font-size:13px;">${formatTime(c.ora_inizio)} - ${formatTime(c.ora_fine)}</span>
+              <span style="font-size:13px;">${formatTime(c.ora_inizio)}${c.ora_fine ? ' - ' + formatTime(c.ora_fine) : ''}</span>
               <span style="font-size:12px;color:#6c757d;">${c.luogo || ''}</span>
             </div>
             <div style="display:flex;gap:4px;">

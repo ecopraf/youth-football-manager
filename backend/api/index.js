@@ -927,34 +927,32 @@ app.get('/api/calciatori/:id/stats-current', async (req, res) => {
 // Get training sessions for a team (settimana tipo = sessioni ricorrenti)
 app.get('/api/squadre/:squadraId/allenamenti/config', async (req, res) => {
   try {
-    // Restituisce le sessioni di allenamento della squadra ordinate per data
     const { data, error } = await supabase
       .from('training')
       .select('*')
       .eq('team_id', req.params.squadraId)
       .order('data_ora', { ascending: true });
     if (error) return res.status(400).json({ error: error.message });
-    // Mappa i dati nel formato atteso dal frontend (giorno_settimana, ora_inizio, ora_fine, luogo)
-    const config = (data || []).map(t => {
-      const d = new Date(t.data_ora);
-      return {
-        id: t.id,
-        giorno_settimana: d.getDay(),
-        ora_inizio: String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'),
-        ora_fine: null,
-        luogo: t.descrizione || '',
-        tipo: t.tipo,
-        team_id: t.team_id
-      };
-    });
     // Deduplica per giorno_settimana (prende il primo di ogni giorno come "config")
     const seen = {};
-    const unique = config.filter(c => {
-      if (seen[c.giorno_settimana]) return false;
-      seen[c.giorno_settimana] = true;
-      return true;
+    const config = [];
+    (data || []).forEach(t => {
+      const d = new Date(t.data_ora);
+      const giorno = d.getDay();
+      if (!seen[giorno]) {
+        seen[giorno] = true;
+        config.push({
+          id: t.id,
+          giorno_settimana: giorno,
+          ora_inizio: String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'),
+          ora_fine: null,
+          luogo: '',
+          tipo: t.tipo,
+          team_id: t.team_id
+        });
+      }
     });
-    res.json(unique);
+    res.json(config);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

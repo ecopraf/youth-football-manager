@@ -117,10 +117,26 @@ export function attachCalendarListeners() {
   });
 }
 
-export function selectTodayIfTraining(config) {
+export function selectTodayIfTraining(config, presenze) {
   const oggi = new Date();
   const oggiStr = oggi.toISOString().split('T')[0];
   const giorniConfigurati = (config || []).map(c => c.giorno_settimana);
-  if (giorniConfigurati.includes(oggi.getDay())) selectedDate = oggiStr;
+  if (giorniConfigurati.includes(oggi.getDay())) {
+    selectedDate = oggiStr;
+  }
+  // Se non ci sono presenze nel mese corrente, naviga all'ultimo mese con dati
+  const datePresenze = (presenze || []).map(p => p.data).filter(Boolean);
+  const meseCorrente = oggi.getFullYear() * 12 + oggi.getMonth();
+  const hasDatiMeseCorrente = datePresenze.some(d => {
+    const dd = new Date(d);
+    return dd.getFullYear() * 12 + dd.getMonth() === meseCorrente;
+  });
+  if (!hasDatiMeseCorrente && datePresenze.length > 0) {
+    // Vai all'ultimo mese con presenze
+    const ultima = datePresenze.sort().pop();
+    const d = new Date(ultima);
+    currentMonth = d.getMonth();
+    currentYear = d.getFullYear();
+  }
   return selectedDate;
 }
