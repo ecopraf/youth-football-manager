@@ -12,7 +12,7 @@ export async function openDistinta(mid, staffOverrides) {
   
   let curStaff = null;
   try {
-    let data = await apiFetch('/partite/' + mid + '/distinta');
+    let data = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + mid + '/distinta');
     
     // Se non c'è formazione, usa i convocati
     if (!data || !Array.isArray(data) || data.length === 0) {
@@ -196,7 +196,13 @@ function renderDistinta(d, staff) {
   const c = document.getElementById('distintaInner');
   if (!c) return;
   
-  const t = (d.formazione || []).sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
+  // Ordina: titolari per numero maglia, poi riserve per numero maglia
+  const t = (d.formazione || []).sort((a, b) => {
+    const aIsTit = a.posizione === 'Titolare' ? 0 : 1;
+    const bIsTit = b.posizione === 'Titolare' ? 0 : 1;
+    if (aIsTit !== bIsTit) return aIsTit - bIsTit;
+    return (a.numeroMaglia || 99) - (b.numeroMaglia || 99);
+  });
   const dt = new Date(d.partita.dataOra);
   const s = staff || {};
   const righe = [];

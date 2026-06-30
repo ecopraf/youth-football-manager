@@ -1581,9 +1581,35 @@ app.post('/api/partite/:matchId/evento-item', authMiddleware, async (req, res) =
 // ── DISTINTA ──
 app.get('/api/squadre/:squadraId/partite/:matchId/distinta', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('match_formation').select('*').eq('match_id', req.params.matchId);
-    if (error) return res.status(400).json({ error: error.message });
-    res.json(data || []);
+    // Prendi formazione con dati giocatore
+    const { data: formazione } = await supabase.from('match_formation')
+      .select('*, team_player:team_player_id(player_id, player:player_id(nome, cognome, data_nascita, matricola_figc, tipo_documento, numero_documento, rilasciato_da))')
+      .eq('match_id', req.params.matchId)
+      .order('is_starter', { ascending: false })
+      .order('ordine');
+    
+    if (formazione && formazione.length > 0) {
+      // Mappa nel formato atteso dalla distinta
+      const result = formazione.map(f => ({
+        id: f.team_player?.player_id || f.team_player_id,
+        calciatoreId: f.team_player?.player_id || f.team_player_id,
+        nome: f.team_player?.player?.nome || '',
+        cognome: f.team_player?.player?.cognome || '',
+        dataNascita: f.team_player?.player?.data_nascita || null,
+        matricolaFigc: f.team_player?.player?.matricola_figc || null,
+        tipoDocumento: f.team_player?.player?.tipo_documento || null,
+        numeroDocumento: f.team_player?.player?.numero_documento || null,
+        rilasciatoDa: f.team_player?.player?.rilasciato_da || null,
+        numeroMaglia: f.numero_maglia,
+        posizione: f.is_starter ? 'Titolare' : 'Panchina',
+        capitano: f.is_captain,
+        viceCapitano: f.is_vice_captain
+      }));
+      return res.json(result);
+    }
+    
+    // Se non c'è formazione, restituisci array vuoto (la distinta userà i convocati)
+    res.json([]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

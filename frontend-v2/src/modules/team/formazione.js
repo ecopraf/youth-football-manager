@@ -233,7 +233,8 @@ function renderFormazioneEdit(mid, match, giocatoriConvocati, formMap) {
       await apiFetch('/partite/' + mid + '/formazione', { method: 'PUT', body: JSON.stringify({ formazione }) });
       hideLoading();
       modal.close();
-      alert('✅ Formazione salvata! La distinta è aggiornata.');
+      alert('✅ Formazione salvata!');
+      if (window.YFM?.loadCalendar) window.YFM.loadCalendar();
     } catch (e) {
       hideLoading();
       alert('Errore: ' + e.message);
