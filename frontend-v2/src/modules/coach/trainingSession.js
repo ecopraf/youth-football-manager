@@ -38,14 +38,29 @@ const MOTIVI_ASSENZA = [
 
 let currentFasi = [];
 
-// Persistenza programma in localStorage
-function getProgramma(date) {
-  const key = `yfm_training_program_${window.YFM.squadraId}_${date}`;
-  try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; }
+// Persistenza programma via API
+async function getProgramma(date) {
+  try {
+    const resp = await apiFetch('/squadre/' + window.YFM.squadraId + '/training-by-date/' + date);
+    return resp.programma || {};
+  } catch { return {}; }
 }
-function saveProgramma(date, programma) {
-  const key = `yfm_training_program_${window.YFM.squadraId}_${date}`;
-  localStorage.setItem(key, JSON.stringify(programma));
+async function saveProgrammaToApi(date, programma) {
+  try {
+    // Cerca training esistente per questa data
+    const resp = await apiFetch('/squadre/' + window.YFM.squadraId + '/training-by-date/' + date);
+    if (resp.training) {
+      // Aggiorna
+      await apiFetch('/training/' + resp.training.id + '/programma', {
+        method: 'PUT', body: JSON.stringify({ programma })
+      });
+    } else {
+      // Crea nuovo
+      await apiFetch('/squadre/' + window.YFM.squadraId + '/training-by-date', {
+        method: 'POST', body: JSON.stringify({ date, programma })
+      });
+    }
+  } catch(e) { console.error('Errore salvataggio programma:', e); }
 }
 function getTemplates() {
   try { return JSON.parse(localStorage.getItem('yfm_training_templates') || '[]'); } catch { return []; }
@@ -56,7 +71,7 @@ function saveTemplate(nome, programma) {
   localStorage.setItem('yfm_training_templates', JSON.stringify(templates));
 }
 
-export function renderSession(date, trainingData) {
+export async function renderSession(date, trainingData) {
   if (!date) {
     return `<div style="text-align:center;padding:40px;color:#6c757d;">
       <p style="font-size:16px;">📅 Seleziona un giorno dal calendario</p>
@@ -76,8 +91,8 @@ export function renderSession(date, trainingData) {
   const presentiCount = sorted.length - assentiIds.length;
   const assentiCount = assentiIds.length;
 
-  // Programma salvato
-  const programma = getProgramma(date);
+  // Programma dal DB
+  const programma = date ? await getProgramma(date) : {};
   const tipo = programma.tipo || '';
   const obiettivo = programma.obiettivo || '';
   const materialeUsato = programma.materiale || [];
@@ -300,8 +315,8 @@ function collectProgramma() {
 async function saveSession(date, trainingData, onSave) {
   if (!date) return;
 
-  // Salva programma in localStorage
-  saveProgramma(date, collectProgramma());
+  // Salva programma via API + presenze
+  saveProgrammaToApi(date, collectProgramma());
 
   // Salva presenze via API
   const presenzeToSave = [];

@@ -69,7 +69,7 @@ function renderPage(c) {
 
     <!-- Dettaglio Seduta Selezionata -->
     <div class="card" style="margin-bottom:16px;" id="sessionContainer">
-      ${renderSession(getSelectedDate(), trainingData)}
+      <div class="loading"><div class="spinner"></div>Caricamento...</div>
     </div>
 
     <!-- Settimana Tipo (collassabile) -->
@@ -80,13 +80,18 @@ function renderPage(c) {
   `;
 
   attachCalendarListeners();
-  attachSessionListeners(getSelectedDate(), trainingData, () => loadTraining());
   attachConfigListeners(trainingData, () => loadTraining());
+
+  // Carica sessione in modo asincrono
+  renderSessionSection(getSelectedDate());
 }
 
 function renderSessionSection(date) {
   const container = document.getElementById('sessionContainer');
   if (!container) return;
-  container.innerHTML = renderSession(date, trainingData);
-  attachSessionListeners(date, trainingData, () => loadTraining());
+  container.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
+  renderSession(date, trainingData).then(html => {
+    container.innerHTML = html;
+    attachSessionListeners(date, trainingData, () => loadTraining());
+  });
 }

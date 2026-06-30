@@ -1569,6 +1569,80 @@ app.delete('/api/allenamenti/materiale/:id', authMiddleware, async (req, res) =>
   }
 });
 
+// ── PROGRAMMA SEDUTA (salva/legge JSON nel campo note della tabella training) ──
+app.get('/api/training/:trainingId/programma', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('training').select('id, note, tipo, durata_minuti').eq('id', req.params.trainingId).single();
+    if (error || !data) return res.json({ programma: null });
+    // Il programma è salvato nel campo note con prefisso JSON::
+    let programma = null;
+    if (data.note && data.note.startsWith('JSON::')) {
+      try { programma = JSON.parse(data.note.substring(6)); } catch(e) {}
+    }
+    res.json({ programma, tipo: data.tipo, durata_minuti: data.durata_minuti });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/training/:trainingId/programma', authMiddleware, async (req, res) => {
+  try {
+    const { programma } = req.body;
+    const noteValue = programma ? 'JSON::' + JSON.stringify(programma) : null;
+    const updateData = { note: noteValue };
+    if (programma?.tipo) updateData.tipo = programma.tipo;
+    if (programma?.fasi) {
+      const durata = programma.fasi.reduce((s, f) => s + (f.durata || 0), 0);
+      if (durata > 0) updateData.durata_minuti = durata;
+    }
+    const { error } = await supabase.from('training').update(updateData).eq('id', req.params.trainingId);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Endpoint per ottenere/creare training per una data specifica
+app.get('/api/squadre/:squadraId/training-by-date/:date', async (req, res) => {
+  try {
+    const { squadraId, date } = req.params;
+    const dataInizio = date + 'T00:00:00';
+    const dataFine = date + 'T23:59:59';
+    const { data } = await supabase.from('training').select('*').eq('team_id', squadraId).gte('data_ora', dataInizio).lte('data_ora', dataFine).limit(1).single();
+    if (data) {
+      let programma = null;
+      if (data.note && data.note.startsWith('JSON::')) {
+        try { programma = JSON.parse(data.note.substring(6)); } catch(e) {}
+      }
+      res.json({ training: data, programma });
+    } else {
+      res.json({ training: null, programma: null });
+    }
+  } catch (err) {
+    res.json({ training: null, programma: null });
+  }
+});
+
+app.post('/api/squadre/:squadraId/training-by-date', authMiddleware, async (req, res) => {
+  try {
+    const { date, programma } = req.body;
+    const noteValue = programma ? 'JSON::' + JSON.stringify(programma) : null;
+    const durata = programma?.fasi ? programma.fasi.reduce((s, f) => s + (f.durata || 0), 0) : 90;
+    const { data, error } = await supabase.from('training').insert({
+      team_id: req.params.squadraId,
+      data_ora: date + 'T17:00:00',
+      durata_minuti: durata,
+      tipo: programma?.tipo || 'Allenamento',
+      note: noteValue
+    }).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ training: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = app;
 
 // Avvio server locale (solo se eseguito direttamente, non importato)
