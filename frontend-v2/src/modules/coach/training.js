@@ -16,18 +16,21 @@ export default async function loadTraining() {
 
   try {
     const ts = Date.now();
-    const [config, presenze, giocatori, sumData] = await Promise.all([
+    const [config, presenze, giocatori, sumData, partite] = await Promise.all([
       apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/config?_=' + ts).catch(() => []),
       apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze?_=' + ts).catch(() => []),
       apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori?_=' + ts).catch(() => []),
-      apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/summary?_=' + ts).catch(() => ({ summary: {}, settimana: {} }))
+      apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/summary?_=' + ts).catch(() => ({ summary: {}, settimana: {} })),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/partite').catch(() => [])
     ]);
 
     window.YFM.allPlayers = giocatori;
+    window.YFM.allMatches = partite;
     trainingData = {
       config,
       giocatori,
       presenze,
+      partite,
       summary: sumData.summary || {},
       settimana: sumData.settimana || {}
     };
@@ -50,7 +53,7 @@ function renderPage(c) {
   window._trainingRefreshCalendar = () => {
     const calEl = document.getElementById('trainingCalendar');
     if (calEl) {
-      calEl.innerHTML = renderCalendar(config, presenze, window.YFM.allMatches || []);
+      calEl.innerHTML = renderCalendar(config, presenze, trainingData.partite || []);
       attachCalendarListeners();
     }
   };
@@ -63,7 +66,7 @@ function renderPage(c) {
     <!-- Calendario Mensile -->
     <div class="card" style="margin-bottom:16px;">
       <div id="trainingCalendar">
-        ${renderCalendar(config, presenze, window.YFM.allMatches || [])}
+        ${renderCalendar(config, presenze, partite)}
       </div>
     </div>
 
