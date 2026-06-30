@@ -20,12 +20,11 @@ export function renderCalendar(config, presenze, matches) {
   const dateConPresenze = new Set();
   (presenze || []).forEach(p => { if (p.data) dateConPresenze.add(p.data); });
 
-  // Date con partite
+  // Date con partite (usa split per evitare shift UTC)
   const datePartite = {};
   (matches || []).forEach(m => {
     if (m.data_ora) {
-      const d = new Date(m.data_ora);
-      const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      const dateStr = m.data_ora.split('T')[0];
       datePartite[dateStr] = m;
     }
   });
@@ -51,7 +50,8 @@ export function renderCalendar(config, presenze, matches) {
     .cal-day.has-training:hover { background:#dcfce7; }
     .cal-day.has-presenze { cursor:pointer; background:#d1fae5; }
     .cal-day.has-presenze:hover { background:#a7f3d0; }
-    .cal-day.has-match { background:#fff7ed; cursor:default; }
+    .cal-day.has-match { background:#fff7ed; cursor:default; border:1px solid #fed7aa; }
+    .cal-match-info { font-size:8px; color:#c2410c; line-height:1.2; margin-top:2px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
     .cal-day.is-today { border:2px solid #667eea; font-weight:700; color:#667eea; }
     .cal-day.is-selected { background:#667eea !important; color:white !important; border-radius:8px; }
     .cal-day.is-selected .cal-dot { background:white !important; }
@@ -94,15 +94,17 @@ export function renderCalendar(config, presenze, matches) {
     let dotHtml = '';
     if (hasMatch) {
       const m = datePartite[dateStr];
-      dotHtml = `<span class="cal-dot match" title="⚽ ${m.avversario || 'Partita'}"></span>`;
+      const luogoIcon = m.luogo === 'Casa' ? '🏠' : '✈️';
+      const info = `${luogoIcon} ${m.avversario || 'Partita'}${m.giornata ? ' (G.' + m.giornata + ')' : ''}`;
+      dotHtml = `<span class="cal-match-info">${info}</span>`;
     } else if (hasPresenze) {
       dotHtml = '<span class="cal-dot registered"></span>';
     } else if (isProgrammed) {
       dotHtml = '<span class="cal-dot programmed"></span>';
     }
 
-    // Cliccabile se è un giorno programmato o ha presenze (non partite)
-    const clickable = isProgrammed || hasPresenze;
+    // Cliccabile se è un giorno programmato o ha presenze (NON nei giorni partita)
+    const clickable = !hasMatch && (isProgrammed || hasPresenze);
     const dataAttr = clickable ? `data-date="${dateStr}"` : '';
 
     html += `<div class="${classes}" ${dataAttr}>${day}${dotHtml}</div>`;
@@ -112,7 +114,7 @@ export function renderCalendar(config, presenze, matches) {
   html += `<div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:#6c757d;flex-wrap:wrap;">
     <span><span class="cal-dot registered" style="display:inline-block;vertical-align:middle;margin-right:4px;"></span> Presenze registrate</span>
     <span><span class="cal-dot programmed" style="display:inline-block;vertical-align:middle;margin-right:4px;"></span> Programmato</span>
-    <span><span class="cal-dot match" style="display:inline-block;vertical-align:middle;margin-right:4px;"></span> Partita</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:3px;vertical-align:middle;margin-right:4px;"></span> Partita</span>
     <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border:2px solid #667eea;border-radius:4px;display:inline-block;"></span> Oggi</span>
   </div>`;
 
