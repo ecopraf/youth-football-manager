@@ -26,8 +26,8 @@ const PITCH_CSS = `
 .pitch::before { content:''; position:absolute; top:50%; left:8%; right:8%; height:1px; background:rgba(255,255,255,0.25); }
 .pitch::after { content:''; position:absolute; top:50%; left:50%; width:50px; height:50px; border:1px solid rgba(255,255,255,0.25); border-radius:50%; transform:translate(-50%,-50%); }
 .pitch-slot { position:absolute; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.12); border:2px dashed rgba(255,255,255,0.35); display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%); transition:background 0.2s,border 0.2s,box-shadow 0.2s; cursor:default; user-select:none; }
-.pitch-slot.occupied { background:white; border:2px solid #667eea; cursor:grab; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
-.pitch-slot.occupied.free-move { cursor:move; }
+.pitch-slot.occupied { background:white; border:2px solid #667eea; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.3); }
+.pitch-slot.occupied:active { cursor:grabbing; }
 .pitch-slot.drag-over { background:rgba(102,126,234,0.4); border-color:white; transform:translate(-50%,-50%) scale(1.12); }
 .pitch-slot .slot-num { font-size:13px; font-weight:700; color:#667eea; pointer-events:none; }
 .pitch-slot .slot-name { position:absolute; bottom:-14px; font-size:7px; color:white; font-weight:600; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,0.9); pointer-events:none; }
@@ -222,17 +222,13 @@ function buildPitchSlotsFromState(modulo, assignments, allPlayers, customPositio
 function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
   let draggedPid = null, draggedFromSlot = null;
 
+  // Roster items: drag HTML5 (rosa → campo)
   document.querySelectorAll('.roster-item[draggable]').forEach(item => {
     item.addEventListener('dragstart', (e) => { draggedPid = item.dataset.pid; draggedFromSlot = null; item.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
     item.addEventListener('dragend', () => { item.classList.remove('dragging'); draggedPid = null; });
   });
 
-  document.querySelectorAll('.pitch-slot.occupied').forEach(slot => {
-    slot.setAttribute('draggable', 'true');
-    slot.addEventListener('dragstart', (e) => { draggedPid = assignments[parseInt(slot.dataset.slot)]; draggedFromSlot = parseInt(slot.dataset.slot); e.dataTransfer.effectAllowed = 'move'; });
-    slot.addEventListener('dragend', () => { draggedPid = null; draggedFromSlot = null; });
-  });
-
+  // Pitch slots: accettano drop dalla rosa
   document.querySelectorAll('.pitch-slot').forEach(slot => {
     slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('drag-over'); });
     slot.addEventListener('dragleave', () => { slot.classList.remove('drag-over'); });
@@ -255,6 +251,7 @@ function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
     });
   });
 
+  // Drop back to roster
   const rosterEl = document.getElementById('rosterList');
   if (rosterEl) {
     rosterEl.addEventListener('dragover', (e) => e.preventDefault());
@@ -264,14 +261,83 @@ function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
     });
   }
 
-  // Free move (pointer drag su slot occupati)
+  // Slot occupati: pointer events per spostamento fluido (no drag HTML5)
   const pitch = document.getElementById('pitchField');
   if (!pitch) return;
   document.querySelectorAll('.pitch-slot.occupied').forEach(slot => {
     let moving = false;
-    slot.addEventListener('pointerdown', (e) => { if (e.pointerType==='mouse'&&e.button!==0) return; moving=true; slot.classList.add('free-move'); slot.setPointerCapture(e.pointerId); });
-    slot.addEventListener('pointermove', (e) => { if(!moving) return; e.preventDefault(); const rect=pitch.getBoundingClientRect(); slot.style.left=Math.max(5,Math.min(95,((e.clientX-rect.left)/rect.width)*100))+'%'; slot.style.top=Math.max(5,Math.min(95,((e.clientY-rect.top)/rect.height)*100))+'%'; });
-    slot.addEventListener('pointerup', (e) => { if(!moving) return; moving=false; slot.classList.remove('free-move'); slot.releasePointerCapture(e.pointerId); const rect=pitch.getBoundingClientRect(); customPositions[parseInt(slot.dataset.slot)]={x:Math.max(5,Math.min(95,((e.clientX-rect.left)/rect.width)*100)),y:Math.max(5,Math.min(95,((e.clientY-rect.top)/rect.height)*100))}; });
+    let hasMoved = false;
+    let startX, startY;
+
+    slot.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      moving = true;
+      hasMoved = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      slot.setPointerCapture(e.pointerId);
+      slot.style.cursor = 'grabbing';
+      slot.style.zIndex = '10';
+      // Imposta per drag dalla rosa verso questo slot
+      draggedPid = assignments[parseInt(slot.dataset.slot)];
+      draggedFromSlot = parseInt(slot.dataset.slot);
+    });
+
+    slot.addEventListener('pointermove', (e) => {
+      if (!moving) return;
+      e.preventDefault();
+      const dx = Math.abs(e.clientX - startX);
+      const dy = Math.abs(e.clientY - startY);
+      if (dx > 5 || dy > 5) hasMoved = true;
+      if (!hasMoved) return;
+      const rect = pitch.getBoundingClientRect();
+      const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(5, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100));
+      slot.style.left = x + '%';
+      slot.style.top = y + '%';
+    });
+
+    slot.addEventListener('pointerup', (e) => {
+      if (!moving) return;
+      moving = false;
+      slot.releasePointerCapture(e.pointerId);
+      slot.style.cursor = '';
+      slot.style.zIndex = '';
+
+      if (hasMoved) {
+        // Salva posizione custom
+        const rect = pitch.getBoundingClientRect();
+        const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
+        const y = Math.max(5, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100));
+        customPositions[parseInt(slot.dataset.slot)] = { x, y };
+
+        // Controlla se è stato droppato su un altro slot (swap)
+        const targetSlot = document.elementFromPoint(e.clientX, e.clientY)?.closest('.pitch-slot');
+        if (targetSlot && targetSlot !== slot) {
+          const fromIdx = parseInt(slot.dataset.slot);
+          const toIdx = parseInt(targetSlot.dataset.slot);
+          const fromPid = assignments[fromIdx];
+          const toPid = assignments[toIdx];
+          delete assignments[fromIdx];
+          if (toPid) assignments[fromIdx] = toPid;
+          assignments[toIdx] = fromPid;
+          delete customPositions[fromIdx];
+          delete customPositions[toIdx];
+          refresh();
+          return;
+        }
+      } else {
+        // Click senza movimento: rimuovi dal campo (torna in rosa)
+        const idx = parseInt(slot.dataset.slot);
+        delete assignments[idx];
+        delete customPositions[idx];
+        refresh();
+      }
+
+      draggedPid = null;
+      draggedFromSlot = null;
+    });
   });
 }
 
