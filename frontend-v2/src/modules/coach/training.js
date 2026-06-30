@@ -50,7 +50,7 @@ function renderPage(c) {
   window._trainingRefreshCalendar = () => {
     const calEl = document.getElementById('trainingCalendar');
     if (calEl) {
-      calEl.innerHTML = renderCalendar(config, presenze);
+      calEl.innerHTML = renderCalendar(config, presenze, window.YFM.allMatches || []);
       attachCalendarListeners();
     }
   };
@@ -63,7 +63,7 @@ function renderPage(c) {
     <!-- Calendario Mensile -->
     <div class="card" style="margin-bottom:16px;">
       <div id="trainingCalendar">
-        ${renderCalendar(config, presenze)}
+        ${renderCalendar(config, presenze, window.YFM.allMatches || [])}
       </div>
     </div>
 

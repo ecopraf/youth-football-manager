@@ -10,15 +10,25 @@ let onDateSelect = null;
 export function getSelectedDate() { return selectedDate; }
 export function setOnDateSelect(callback) { onDateSelect = callback; }
 
-export function renderCalendar(config, presenze) {
+export function renderCalendar(config, presenze, matches) {
   const giorniConfigurati = (config || []).map(c => c.giorno_settimana);
   const oggi = new Date();
-  // Data locale (non UTC) per evitare che dopo le 22 in Italia mostri domani
+  // Data locale (non UTC)
   const oggiStr = oggi.getFullYear() + '-' + String(oggi.getMonth()+1).padStart(2,'0') + '-' + String(oggi.getDate()).padStart(2,'0');
 
   // Date con presenze registrate
   const dateConPresenze = new Set();
   (presenze || []).forEach(p => { if (p.data) dateConPresenze.add(p.data); });
+
+  // Date con partite
+  const datePartite = {};
+  (matches || []).forEach(m => {
+    if (m.data_ora) {
+      const d = new Date(m.data_ora);
+      const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      datePartite[dateStr] = m;
+    }
+  });
 
   const primoGiorno = new Date(currentYear, currentMonth, 1);
   const ultimoGiorno = new Date(currentYear, currentMonth + 1, 0);
@@ -41,12 +51,14 @@ export function renderCalendar(config, presenze) {
     .cal-day.has-training:hover { background:#dcfce7; }
     .cal-day.has-presenze { cursor:pointer; background:#d1fae5; }
     .cal-day.has-presenze:hover { background:#a7f3d0; }
+    .cal-day.has-match { background:#fff7ed; cursor:default; }
     .cal-day.is-today { border:2px solid #667eea; font-weight:700; color:#667eea; }
     .cal-day.is-selected { background:#667eea !important; color:white !important; border-radius:8px; }
     .cal-day.is-selected .cal-dot { background:white !important; }
     .cal-dot { width:6px; height:6px; border-radius:50%; margin-top:2px; }
     .cal-dot.programmed { background:#86efac; border:1px solid #22c55e; }
     .cal-dot.registered { background:#22c55e; }
+    .cal-dot.match { background:#f97316; border:1px solid #ea580c; }
     @media (max-width:640px) { .cal-day { padding:6px 2px; font-size:12px; min-height:34px; } .cal-dot { width:5px; height:5px; } }
   </style>`;
 
@@ -70,25 +82,26 @@ export function renderCalendar(config, presenze) {
     const isSelected = dateStr === selectedDate;
     const isProgrammed = giorniConfigurati.includes(dayOfWeek);
     const hasPresenze = dateConPresenze.has(dateStr);
-    const isPast = date < oggi;
+    const hasMatch = !!datePartite[dateStr];
 
     let classes = 'cal-day';
     if (isToday) classes += ' is-today';
     if (isSelected) classes += ' is-selected';
-    if (hasPresenze) {
-      classes += ' has-presenze';
-    } else if (isProgrammed) {
-      classes += ' has-training';
-    }
+    if (hasMatch) classes += ' has-match';
+    else if (hasPresenze) classes += ' has-presenze';
+    else if (isProgrammed) classes += ' has-training';
 
     let dotHtml = '';
-    if (hasPresenze) {
+    if (hasMatch) {
+      const m = datePartite[dateStr];
+      dotHtml = `<span class="cal-dot match" title="⚽ ${m.avversario || 'Partita'}"></span>`;
+    } else if (hasPresenze) {
       dotHtml = '<span class="cal-dot registered"></span>';
     } else if (isProgrammed) {
       dotHtml = '<span class="cal-dot programmed"></span>';
     }
 
-    // Cliccabile se è un giorno programmato o ha presenze
+    // Cliccabile se è un giorno programmato o ha presenze (non partite)
     const clickable = isProgrammed || hasPresenze;
     const dataAttr = clickable ? `data-date="${dateStr}"` : '';
 
@@ -99,6 +112,7 @@ export function renderCalendar(config, presenze) {
   html += `<div style="display:flex;gap:16px;margin-top:10px;font-size:11px;color:#6c757d;flex-wrap:wrap;">
     <span><span class="cal-dot registered" style="display:inline-block;vertical-align:middle;margin-right:4px;"></span> Presenze registrate</span>
     <span><span class="cal-dot programmed" style="display:inline-block;vertical-align:middle;margin-right:4px;"></span> Programmato</span>
+    <span><span class="cal-dot match" style="display:inline-block;vertical-align:middle;margin-right:4px;"></span> Partita</span>
     <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border:2px solid #667eea;border-radius:4px;display:inline-block;"></span> Oggi</span>
   </div>`;
 
