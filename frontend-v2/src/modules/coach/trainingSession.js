@@ -182,7 +182,8 @@ export async function renderSession(date, trainingData) {
 
   html += `</div></div>`;
   html += `<div class="session-actions">
-    <button class="btn btn-primary" id="btnSaveSession">💾 Salva Seduta</button>
+    <button class="btn btn-primary" id="btnSavePresenze">💾 Salva Presenze</button>
+    <button class="btn btn-primary" id="btnSaveSession" style="background:#8b5cf6;">🎯 Salva Programma</button>
     <button class="btn btn-secondary" id="btnSaveTemplate" style="font-size:12px;">📋 Salva come Template</button>
   </div>`;
 
@@ -227,8 +228,10 @@ export function attachSessionListeners(date, trainingData, onSave) {
   document.getElementById('btnAddFase')?.addEventListener('click', () => openFaseForm(null));
   attachFasiListeners();
 
-  // Salva
-  document.getElementById('btnSaveSession')?.addEventListener('click', () => saveSession(date, trainingData, onSave));
+  // Salva presenze (separato dal programma)
+  document.getElementById('btnSavePresenze')?.addEventListener('click', () => savePresenze(date, onSave));
+  // Salva programma (separato dalle presenze)
+  document.getElementById('btnSaveSession')?.addEventListener('click', () => saveProgrammaAction(date));
   document.getElementById('btnSaveTemplate')?.addEventListener('click', async () => {
     const nome = prompt('Nome del template:');
     if (!nome) return;
@@ -319,37 +322,6 @@ function collectProgramma() {
   };
 }
 
-async function saveSession(date, trainingData, onSave) {
-  if (!date) return;
-
-  // Salva programma via API + presenze
-  saveProgrammaToApi(date, collectProgramma());
-
-  // Salva presenze via API
-  const presenzeToSave = [];
-  document.querySelectorAll('.session-pres-check').forEach(cb => {
-    const isAssente = cb.checked;
-    const pid = cb.dataset.pid;
-    const select = document.querySelector(`.session-motivo-select[data-pid="${pid}"]`);
-    const motivo = isAssente && select ? select.value : null;
-    presenzeToSave.push({ calciatoreId: pid, data: date, presente: !isAssente, note: motivo });
-  });
-
-  showLoading();
-  try {
-    for (const p of presenzeToSave) {
-      await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze', {
-        method: 'POST', body: JSON.stringify(p)
-      });
-    }
-    hideLoading();
-    alert('✅ Seduta salvata!');
-    if (onSave) onSave();
-  } catch (e) {
-    hideLoading();
-    alert('Errore: ' + e.message);
-  }
-}
 
 async function applyTemplateUI(date, trainingData, onSave) {
   const templates = await getTemplates();
@@ -367,4 +339,44 @@ async function applyTemplateUI(date, trainingData, onSave) {
   document.querySelectorAll('#materialeGrid .mat-chip').forEach(chip => {
     chip.classList.toggle('active', (prog.materiale || []).includes(chip.dataset.mat));
   });
+}
+
+async function savePresenze(date, onSave) {
+  if (!date) return;
+  const presenzeToSave = [];
+  document.querySelectorAll('.session-pres-check').forEach(cb => {
+    const isAssente = cb.checked;
+    const pid = cb.dataset.pid;
+    const select = document.querySelector(`.session-motivo-select[data-pid="${pid}"]`);
+    const motivo = isAssente && select ? select.value : null;
+    presenzeToSave.push({ calciatoreId: pid, data: date, presente: !isAssente, note: motivo });
+  });
+
+  showLoading();
+  try {
+    for (const p of presenzeToSave) {
+      await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze', {
+        method: 'POST', body: JSON.stringify(p)
+      });
+    }
+    hideLoading();
+    alert('✅ Presenze salvate!');
+    if (onSave) onSave();
+  } catch (e) {
+    hideLoading();
+    alert('Errore: ' + e.message);
+  }
+}
+
+async function saveProgrammaAction(date) {
+  if (!date) return;
+  showLoading();
+  try {
+    await saveProgrammaToApi(date, collectProgramma());
+    hideLoading();
+    alert('✅ Programma salvato!');
+  } catch (e) {
+    hideLoading();
+    alert('Errore: ' + e.message);
+  }
 }

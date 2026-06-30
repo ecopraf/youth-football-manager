@@ -13,7 +13,8 @@ export function setOnDateSelect(callback) { onDateSelect = callback; }
 export function renderCalendar(config, presenze) {
   const giorniConfigurati = (config || []).map(c => c.giorno_settimana);
   const oggi = new Date();
-  const oggiStr = oggi.toISOString().split('T')[0];
+  // Data locale (non UTC) per evitare che dopo le 22 in Italia mostri domani
+  const oggiStr = oggi.getFullYear() + '-' + String(oggi.getMonth()+1).padStart(2,'0') + '-' + String(oggi.getDate()).padStart(2,'0');
 
   // Date con presenze registrate
   const dateConPresenze = new Set();
@@ -127,13 +128,11 @@ export function attachCalendarListeners() {
 
 export function selectTodayIfTraining(config) {
   const oggi = new Date();
-  const oggiStr = oggi.toISOString().split('T')[0];
+  const oggiStr = oggi.getFullYear() + '-' + String(oggi.getMonth()+1).padStart(2,'0') + '-' + String(oggi.getDate()).padStart(2,'0');
   const giorniConfigurati = (config || []).map(c => c.giorno_settimana);
-  // Seleziona oggi come default se è giorno di allenamento
   if (giorniConfigurati.includes(oggi.getDay())) {
     selectedDate = oggiStr;
   }
-  // Calendario parte SEMPRE dal mese corrente
   currentMonth = oggi.getMonth();
   currentYear = oggi.getFullYear();
   return selectedDate;

@@ -924,94 +924,28 @@ app.get('/api/calciatori/:id/stats-current', async (req, res) => {
 
 // ── TRAINING ROUTES ──
 
-// Get training sessions for a team (settimana tipo = sessioni ricorrenti)
+// Get training config (settimana tipo) dalla tabella dedicata
 app.get('/api/squadre/:squadraId/allenamenti/config', async (req, res) => {
   try {
     const { data, error } = await supabase
-      .from('training')
+      .from('training_config')
       .select('*')
       .eq('team_id', req.params.squadraId)
-      .order('data_ora', { ascending: true });
+      .order('giorno_settimana');
     if (error) return res.status(400).json({ error: error.message });
-    // Deduplica per giorno_settimana (prende il primo di ogni giorno come "config")
-    const seen = {};
-    const config = [];
-    (data || []).forEach(t => {
-      const d = new Date(t.data_ora);
-      const giorno = d.getDay();
-      if (!seen[giorno]) {
-        seen[giorno] = true;
-        config.push({
-          id: t.id,
-          giorno_settimana: giorno,
-          ora_inizio: String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'),
-          ora_fine: null,
-          luogo: '',
-          tipo: t.tipo,
-          team_id: t.team_id
-        });
-      }
-    });
-    res.json(config);
+    res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Create training session
+// Create training config
 app.post('/api/squadre/:squadraId/allenamenti/config', authMiddleware, async (req, res) => {
   try {
     const { giorno_settimana, ora_inizio, ora_fine, luogo } = req.body;
-    // Crea una sessione training per il prossimo giorno della settimana indicato
-    const now = new Date();
-    const targetDay = parseInt(giorno_settimana);
-    const currentDay = now.getDay();
-    let daysUntil = targetDay - currentDay;
-    if (daysUntil <= 0) daysUntil += 7;
-    const targetDate = new Date(now);
-    targetDate.setDate(now.getDate() + daysUntil);
-    const [h, m] = (ora_inizio || '17:00').split(':');
-    targetDate.setHours(parseInt(h), parseInt(m), 0, 0);
-    
-    const { data, error } = await supabase.from('training').insert({
-      team_id: req.params.squadraId,
-      data_ora: targetDate.toISOString(),
-      durata_minuti: 90,
-      tipo: 'Allenamento',
-      descrizione: luogo || null
+    const { data, error } = await supabase.from('training_config').insert({
+      team_id: req.params.squadraId, giorno_settimana, ora_inizio, ora_fine, luogo
     }).select().single();
-    if (error) return res.status(400).json({ error: error.message });
-    // Restituisci nel formato config atteso dal frontend
-    res.json({
-      id: data.id,
-      giorno_settimana: targetDay,
-      ora_inizio: ora_inizio,
-      ora_fine: ora_fine,
-      luogo: luogo || '',
-      team_id: data.team_id
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Update training session
-app.put('/api/allenamenti/config/:id', authMiddleware, async (req, res) => {
-  try {
-    const { giorno_settimana, ora_inizio, luogo } = req.body;
-    const updateData = {};
-    if (luogo !== undefined) updateData.descrizione = luogo;
-    if (ora_inizio) {
-      // Aggiorna ora nella data_ora esistente
-      const { data: existing } = await supabase.from('training').select('data_ora').eq('id', req.params.id).single();
-      if (existing) {
-        const d = new Date(existing.data_ora);
-        const [h, m] = ora_inizio.split(':');
-        d.setHours(parseInt(h), parseInt(m), 0, 0);
-        updateData.data_ora = d.toISOString();
-      }
-    }
-    const { data, error } = await supabase.from('training').update(updateData).eq('id', req.params.id).select().single();
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);
   } catch (err) {
@@ -1019,12 +953,24 @@ app.put('/api/allenamenti/config/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Delete training session
+// Update training config
+app.put('/api/allenamenti/config/:id', authMiddleware, async (req, res) => {
+  try {
+    const { giorno_settimana, ora_inizio, ora_fine, luogo } = req.body;
+    const { data, error } = await supabase.from('training_config').update({
+      giorno_settimana, ora_inizio, ora_fine, luogo
+    }).eq('id', req.params.id).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete training config
 app.delete('/api/allenamenti/config/:id', authMiddleware, async (req, res) => {
   try {
-    // Prima elimina le presenze associate
-    await supabase.from('training_attendance').delete().eq('training_id', req.params.id);
-    const { error } = await supabase.from('training').delete().eq('id', req.params.id);
+    const { error } = await supabase.from('training_config').delete().eq('id', req.params.id);
     if (error) return res.status(400).json({ error: error.message });
     res.json({ success: true });
   } catch (err) {
@@ -1059,7 +1005,7 @@ app.get('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
     const result = (data || []).map(d => ({
       id: d.id,
       calciatore_id: tpMap[d.team_player_id] || d.team_player_id,
-      data: d.training?.data_ora ? d.training.data_ora.split('T')[0] : null,
+      data: d.training?.data_ora ? new Date(d.training.data_ora).toLocaleDateString('sv-SE') : null,
       presente: d.presente,
       motivo_assenza: d.motivi_assenza,
       note: d.note,
@@ -1157,12 +1103,11 @@ app.get('/api/squadre/:squadraId/allenamenti/summary', async (req, res) => {
       };
     });
     
-    // Calcola assenze settimanali
+    // Calcola assenze settimanali (usa date locali)
     const now = new Date();
-    const inizioSett = new Date(now);
-    inizioSett.setDate(now.getDate() - now.getDay() + 1);
-    const fineSett = new Date(inizioSett);
-    fineSett.setDate(inizioSett.getDate() + 6);
+    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); // Lun=1, Dom=7
+    const inizioSett = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + 1);
+    const fineSett = new Date(inizioSett.getFullYear(), inizioSett.getMonth(), inizioSett.getDate() + 6, 23, 59, 59);
     
     // Prendi training di questa settimana
     const weekTrainings = (trainings || []).filter(t => {
