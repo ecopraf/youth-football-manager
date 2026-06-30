@@ -16,8 +16,11 @@ export default async function loadCalendar() {
     allMatches = matches;
     window.YFM.allMatches = matches;
     
-    await preloadMatchSteps(matches);
+    // Render IMMEDIATO senza progress dots (non blocca)
     renderCalendarPage(c, matches, stats);
+    
+    // Carica progress dots in background
+    preloadMatchSteps(matches).then(() => updateProgressDots());
   } catch (e) {
     c.innerHTML = '<div class="error-box">' + e.message + '</div>';
   }
@@ -26,38 +29,49 @@ export default async function loadCalendar() {
 async function preloadMatchSteps(matches) {
   const now = new Date();
   const futureMatches = matches.filter(m => new Date(m.data_ora) >= now);
-  for (const m of futureMatches) {
+  // Tutte in parallelo (non sequenziale)
+  await Promise.all(futureMatches.map(async (m) => {
     matchSteps[m.id] = await getNextStep(m.id);
-  }
+  }));
 }
 
 async function getNextStep(matchId) {
   try {
-    const convResp = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/convocati').catch(() => null);
+    // Chiamate in parallelo (3 invece di 5 sequenziali)
+    const [convResp, formResp, eventiResp] = await Promise.all([
+      apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/convocati').catch(() => null),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/formazione').catch(() => null),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/eventi').catch(() => null)
+    ]);
     const hasConvocazione = convResp && Array.isArray(convResp) && convResp.length > 0;
-    
-    const formResp = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/formazione').catch(() => null);
-    const hasFormazione = formResp && Object.keys(formResp).length > 0;
-    
-    const distResp = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/distinta').catch(() => null);
-    const hasDistinta = distResp && Array.isArray(distResp) && distResp.length > 0;
-    
+    const hasFormazione = formResp && ((Array.isArray(formResp) && formResp.length > 0) || Object.keys(formResp || {}).length > 0);
     const match = allMatches.find(m => m.id === matchId);
-    const hasRisultato = match && match.gol_casa !== null && match.gol_casa !== undefined;
-    
-    const eventiResp = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/eventi').catch(() => null);
+    const hasRisultato = match && match.stato === 'Terminata';
     const hasEventi = eventiResp && Array.isArray(eventiResp) && eventiResp.length > 0;
     
     if (!hasConvocazione) return 'convocazione';
     if (!hasFormazione) return 'formazione';
-    if (!hasDistinta) return 'distinta';
     if (!hasRisultato) return 'risultato';
     if (!hasEventi) return 'eventi';
     return null;
   } catch (e) {
-    console.warn('Errore getNextStep:', e);
     return 'convocazione';
   }
+}
+
+function updateProgressDots() {
+  document.querySelectorAll('.match-progress[data-mid]').forEach(el => {
+    const mid = el.dataset.mid;
+    const nextStep = matchSteps[mid];
+    if (nextStep === undefined) return;
+    const stepOrder = ['convocazione', 'formazione', 'risultato', 'eventi'];
+    const currentIdx = nextStep ? stepOrder.indexOf(nextStep) : 4;
+    const labels = { convocazione: 'Conv', formazione: 'Form', risultato: 'Ris', eventi: 'Ev' };
+    el.innerHTML = stepOrder.map((s, i) => {
+      const dotClass = i < currentIdx ? 'progress-done' : i === currentIdx ? 'progress-active' : 'progress-pending';
+      return `<div class="progress-step ${dotClass}"><span class="progress-dot"></span><span class="progress-label">${labels[s]}</span></div>`;
+    }).join('');
+  });
 }
 
 const stepColors = {
@@ -275,6 +289,7 @@ export function renderMatchCard(m, stats, isNext = false, nextStep = null) {
     <span class="match-teams" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;">${window.YFM.getSocietaName()} vs ${m.avversario}</span>
     ${resultBadge}
   </div>
+  ${!isPast && !isArchiviata ? `<div class="match-progress" data-mid="${m.id}" style="display:flex;gap:12px;margin-bottom:8px;padding:6px 0;"></div>` : ''}
   <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;" class="action-buttons">`;
 
   // === PULSANTI AZIONE ===
