@@ -79,25 +79,25 @@ function updateProgressDots() {
       return `<div class="progress-step ${dotClass}"><span class="progress-dot"></span><span class="progress-label">${labels[s]}</span></div>`;
     }).join('');
   });
-  // Aggiorna step badge (pallino + label nella sezione PROSSIMA/IN ARRIVO)
-  document.querySelectorAll('.step-badge[data-mid]').forEach(el => {
-    const mid = el.dataset.mid;
+  // Aggiorna pallino lampeggiante nel bottone dell'azione corrente
+  document.querySelectorAll('.match-card-inner[data-mid]').forEach(card => {
+    const mid = card.dataset.mid;
     const nextStep = matchSteps[mid];
-    if (!nextStep) { el.innerHTML = ''; return; }
-    const info = stepColors[nextStep];
-    if (info) {
-      el.innerHTML = `<span class="pallino-blink"></span><span style="color:${info.color};font-size:12px;font-weight:600;">${info.icon} ${info.label}</span>`;
-    }
-  });
-  // Aggiorna bordo sinistro per card con azione pendente
-  document.querySelectorAll('.step-badge[data-mid]').forEach(el => {
-    const mid = el.dataset.mid;
-    const nextStep = matchSteps[mid];
-    if (nextStep) {
-      const card = el.closest('.card');
-      if (card && !card.style.borderLeft.includes('#28a745')) {
-        card.style.borderLeft = '3px solid #007bff';
+    if (!nextStep) return;
+    // Mappa step → testo nel bottone
+    const stepToLabel = { convocazione: 'Convoca', formazione: 'Formazione', risultato: 'Risultato', eventi: 'Eventi' };
+    const label = stepToLabel[nextStep];
+    if (!label) return;
+    const btns = card.querySelectorAll('.match-actions-row .btn');
+    btns.forEach(btn => {
+      if (btn.textContent.includes(label) && !btn.querySelector('.pallino-blink')) {
+        btn.insertAdjacentHTML('afterbegin', '<span class="pallino-blink"></span>');
       }
+    });
+    // Aggiorna bordo sinistro card
+    const parentCard = card.closest('.card');
+    if (parentCard && !parentCard.style.borderLeft?.includes('#28a745')) {
+      parentCard.style.borderLeft = '3px solid #007bff';
     }
   });
 }
@@ -221,11 +221,8 @@ function renderCalendarPage(c, matches, stats) {
   if (nextMatch) {
     html += `
       <div class="card" style="margin-bottom:20px;border-left:4px solid #28a745;background:linear-gradient(135deg, #E8F8F0 0%, #D4F1E0 100%);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
-          <h3 style="margin:0;color:#155724;">
-            <span style="background:#28a745;color:white;padding:2px 10px;border-radius:10px;font-size:12px;margin-right:8px;">🟢 PROSSIMA</span>
-          </h3>
-          <span class="step-badge" data-mid="${nextMatch.id}"></span>
+        <div style="display:flex;align-items:center;margin-bottom:8px;">
+          <span style="background:#28a745;color:white;padding:2px 10px;border-radius:10px;font-size:12px;">🟢 PROSSIMA</span>
         </div>
         ${renderMatchCard(nextMatch, stats, true)}
       </div>`;
@@ -235,7 +232,7 @@ function renderCalendarPage(c, matches, stats) {
   if (otherFutureMatches.length > 0) {
     html += `<div style="margin:20px 0 12px 0;"><span style="background:#D1ECF1;color:#0C5460;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;">📅 IN ARRIVO</span></div>`;
     otherFutureMatches.forEach(m => {
-      html += `<div class="card" style="margin-bottom:12px;"><span class="step-badge" data-mid="${m.id}"></span>${renderMatchCard(m, stats)}</div>`;
+      html += `<div class="card" style="margin-bottom:12px;">${renderMatchCard(m, stats)}</div>`;
     });
   }
 
