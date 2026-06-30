@@ -723,18 +723,56 @@ app.get('/api/squadre/:id/top-players', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Prendi i giocatori con più gol
+    // Prendi team_player con info giocatore
     const { data: players } = await supabase
       .from('team_player')
-      .select(`
-        id,
-        player:player_id(id, nome, cognome),
-        numero_maglia
-      `)
-      .eq('team_id', id)
-      .order('numero_maglia');
+      .select('id, player:player_id(id, nome, cognome), numero_maglia')
+      .eq('team_id', id);
     
-    res.json(players || []);
+    if (!players || players.length === 0) return res.json({ marcatori: [], assistmen: [], presenze: [] });
+    
+    // Prendi partite terminate di questa squadra
+    const { data: matches } = await supabase.from('match').select('id').eq('team_id', id).eq('stato', 'Terminata');
+    const matchIds = (matches || []).map(m => m.id);
+    
+    if (matchIds.length === 0) return res.json({ marcatori: [], assistmen: [], presenze: [] });
+    
+    // Prendi tutti gli eventi per queste partite
+    const { data: events } = await supabase.from('match_event').select('tipo_evento, player_id').in('match_id', matchIds);
+    
+    // Conta gol e assist per giocatore
+    const golCount = {};
+    const assistCount = {};
+    (events || []).forEach(e => {
+      if (e.tipo_evento === 'GOAL') golCount[e.player_id] = (golCount[e.player_id] || 0) + 1;
+      if (e.tipo_evento === 'ASSIST') assistCount[e.player_id] = (assistCount[e.player_id] || 0) + 1;
+    });
+    
+    // Costruisci classifiche
+    const marcatori = players
+      .filter(p => golCount[p.player?.id])
+      .map(p => ({ id: p.player.id, nome: p.player.cognome + ' ' + p.player.nome, gol: golCount[p.player.id] }))
+      .sort((a, b) => b.gol - a.gol)
+      .slice(0, 5);
+    
+    const assistmen = players
+      .filter(p => assistCount[p.player?.id])
+      .map(p => ({ id: p.player.id, nome: p.player.cognome + ' ' + p.player.nome, assist: assistCount[p.player.id] }))
+      .sort((a, b) => b.assist - a.assist)
+      .slice(0, 5);
+    
+    // Presenze: conta convocazioni con presente=true
+    const { data: convs } = await supabase.from('convocation').select('team_player_id').in('match_id', matchIds).eq('presente', true);
+    const presCount = {};
+    (convs || []).forEach(c => { presCount[c.team_player_id] = (presCount[c.team_player_id] || 0) + 1; });
+    
+    const presenze = players
+      .filter(p => presCount[p.id])
+      .map(p => ({ id: p.player?.id, nome: p.player?.cognome + ' ' + p.player?.nome, presenze: presCount[p.id] }))
+      .sort((a, b) => b.presenze - a.presenze)
+      .slice(0, 5);
+    
+    res.json({ marcatori, assistmen, presenze });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1369,9 +1407,15 @@ app.get('/api/squadre/:squadraId/partite/:matchId/eventi', async (req, res) => {
 
 app.get('/api/partite/:matchId/dettaglio', async (req, res) => {
   try {
-    const { data: match } = await supabase.from('match').select('*').eq('id', req.params.matchId).single();
-    const { data: eventi } = await supabase.from('match_event').select('*').eq('match_id', req.params.matchId).order('minuto');
-    res.json({ match, eventi: eventi || [] });
+    const { data: match } = await supabase.from('match').select('*, competition:competition_id(nome)').eq('id', req.params.matchId).single();
+    if (match) match.competizione = match.competition?.nome || null;
+    const { data: eventi } = await supabase.from('match_event').select('*, player:player_id(nome, cognome)').eq('match_id', req.params.matchId).order('minuto');
+    // Mappa nomi giocatori negli eventi
+    const eventiMapped = (eventi || []).map(e => ({
+      ...e,
+      player_name: e.player ? e.player.cognome + ' ' + e.player.nome : ''
+    }));
+    res.json({ match, eventi: eventiMapped });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

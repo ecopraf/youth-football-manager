@@ -76,3 +76,36 @@ style: stili (CSS)
 3. Se la modifica è significativa → aggiorna documentazione (vedi sopra)
 4. Commit con messaggio descrittivo
 5. Push su main → deploy automatico Vercel
+
+## Gestione Task Complessi
+
+### Stima e Progress
+
+Quando l'utente richiede modifiche significative, l'agente DEVE:
+
+1. **Analizzare** la complessità e scomporre il lavoro in task numerati
+2. **Stimare** il tempo necessario per ogni task (es. ~2min, ~5min)
+3. **Mostrare una tabella di progresso** aggiornata ad ogni step completato:
+
+```
+| # | Task                          | Stima | Stato |
+|---|-------------------------------|-------|-------|
+| 1 | Fix endpoint partite          | ~2min | ✅    |
+| 2 | Restyling calendario          | ~5min | ⏳    |
+| 3 | Test build                    | ~1min | ⬜    |
+```
+
+4. **Aggiornare** lo stato (⬜ → ⏳ → ✅) man mano che completa ogni task
+5. **Comunicare** al termine di ogni task prima di procedere al successivo
+
+### Suddivisione in Sottomoduli
+
+Se una modifica è troppo complessa (tocca più di 3-4 file con logica diversa), l'agente DEVE:
+
+1. **Valutare** se creare file/moduli separati anziché un unico file monolitico
+2. **Preferire** la separazione in moduli quando:
+   - Un file supera le 500 righe
+   - La logica copre domini diversi (es. auth + training + match nello stesso handler)
+   - Ci sono funzioni utility riutilizzabili in più punti
+3. **Proporre** la struttura modulare all'utente prima di implementarla
+4. **Non modificare mai** più di 200 righe in un singolo step senza conferma

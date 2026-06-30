@@ -10,10 +10,16 @@ export async function openMatchDetail(mid) {
     let d, p, eventi, golCasa, golOspiti, ammonizioni, espulsioni;
     
     d = await apiFetch('/partite/' + mid + '/dettaglio');
-    p = d.partita;
-    eventi = d.eventi || [];
-    golCasa = d.golCasa || 0;
-    golOspiti = d.golOspiti || 0;
+    p = d.match;
+    if (!p) throw new Error('Partita non trovata');
+    eventi = (d.eventi || []).map(e => ({
+      ...e,
+      tipo: e.tipo_evento || e.tipo,
+      principale: e.player_name || '',
+      secondario: e.player_name_secondary || ''
+    }));
+    golCasa = p.gol_casa || 0;
+    golOspiti = p.gol_ospite || 0;
     ammonizioni = eventi.filter(e => e.tipo === 'YELLOW').length;
     espulsioni = eventi.filter(e => e.tipo === 'RED').length;
     
@@ -53,7 +59,7 @@ export async function openMatchDetail(mid) {
     html += '<h2>' + window.YFM.getSocietaName() + ' vs ' + p.avversario + '</h2>';
     html += '<div class="score">' + golCasa + ' - ' + golOspiti + '</div>';
     html += '<div class="result-label">' + resultIcon + ' ' + resultLabel + '</div>';
-    html += '<div class="meta">' + formatDate(p.data_ora) + ' · ' + p.competizione + (p.giornata ? ' · G.' + p.giornata : '') + ' · ' + p.luogo + '</div>';
+    html += '<div class="meta">' + formatDate(p.data_ora) + (p.giornata ? ' · G.' + p.giornata : '') + ' · ' + (p.luogo || '') + '</div>';
     html += '</div>';
     
     html += '<div class="match-stats">';
