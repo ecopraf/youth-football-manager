@@ -42,7 +42,7 @@ export default async function loadTraining() {
 }
 
 function renderPage(c) {
-  const { config, giocatori, presenze, summary, settimana } = trainingData;
+  const { config, giocatori, presenze, partite, summary, settimana } = trainingData;
 
   selectTodayIfTraining(config);
 
