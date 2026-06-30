@@ -1352,9 +1352,14 @@ app.put('/api/partite/:id/sblocca', authMiddleware, async (req, res) => {
 // ── CONVOCAZIONI ──
 app.get('/api/partite/:matchId/convocazioni', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('convocation').select('*').eq('match_id', req.params.matchId);
+    const { data, error } = await supabase.from('convocation').select('*, team_player:team_player_id(player_id)').eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
-    res.json(data || []);
+    // Mappa team_player_id → calciatoreId per retrocompatibilità frontend
+    const result = (data || []).map(c => ({
+      ...c,
+      calciatoreId: c.team_player?.player_id || c.team_player_id
+    }));
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1362,9 +1367,13 @@ app.get('/api/partite/:matchId/convocazioni', async (req, res) => {
 
 app.get('/api/squadre/:squadraId/partite/:matchId/convocati', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('convocation').select('*').eq('match_id', req.params.matchId).eq('presente', true);
+    const { data, error } = await supabase.from('convocation').select('*, team_player:team_player_id(player_id)').eq('match_id', req.params.matchId).eq('presente', true);
     if (error) return res.status(400).json({ error: error.message });
-    res.json(data || []);
+    const result = (data || []).map(c => ({
+      ...c,
+      calciatoreId: c.team_player?.player_id || c.team_player_id
+    }));
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
