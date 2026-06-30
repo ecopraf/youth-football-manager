@@ -100,15 +100,17 @@ export async function openConvocation(mid, readOnly) {
     if (checks.length < 11) { alert('⚠️ Minimo 11 calciatori!'); return; }
     if (checks.length < 16 && !confirm('Solo ' + checks.length + ' convocati. Procedere?')) return;
     
-    const selectedIds = Array.from(checks).map(cb => cb.dataset.pid);
+    // Raccogli tutte le convocazioni in un array
+    const convocazioni = [];
+    document.querySelectorAll('#currentModal .conv-check').forEach(cb => {
+      convocazioni.push({ calciatoreId: cb.dataset.pid, presente: cb.checked });
+    });
     
     showLoading();
     try {
-      for (const cb of document.querySelectorAll('#currentModal .conv-check')) {
-        await apiFetch('/partite/' + mid + '/convocazioni', {
-          method: 'POST', body: JSON.stringify({ calciatoreId: cb.dataset.pid, presente: cb.checked })
-        });
-      }
+      await apiFetch('/partite/' + mid + '/convocazioni-batch', {
+        method: 'POST', body: JSON.stringify({ convocazioni })
+      });
       hideLoading(); modal.close(); alert('✅ Convocazioni salvate!');
     } catch (e) {
       hideLoading();

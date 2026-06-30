@@ -1393,6 +1393,40 @@ app.post('/api/partite/:matchId/convocazioni', authMiddleware, async (req, res) 
   }
 });
 
+// Batch convocazioni (una sola chiamata per tutti)
+app.post('/api/partite/:matchId/convocazioni-batch', authMiddleware, async (req, res) => {
+  try {
+    const { convocazioni } = req.body;
+    if (!convocazioni || !Array.isArray(convocazioni)) return res.status(400).json({ error: 'Dati mancanti' });
+    
+    // Mappa tutti i player_id → team_player_id in una query
+    const playerIds = convocazioni.map(c => c.calciatoreId);
+    const { data: tps } = await supabase.from('team_player').select('id, player_id').in('player_id', playerIds);
+    const playerToTp = {};
+    (tps || []).forEach(tp => { playerToTp[tp.player_id] = tp.id; });
+    
+    // Delete existing per questa partita + insert batch
+    await supabase.from('convocation').delete().eq('match_id', req.params.matchId);
+    
+    const inserts = convocazioni
+      .filter(c => playerToTp[c.calciatoreId])
+      .map(c => ({
+        match_id: req.params.matchId,
+        team_player_id: playerToTp[c.calciatoreId],
+        presente: c.presente
+      }));
+    
+    if (inserts.length > 0) {
+      const { error } = await supabase.from('convocation').insert(inserts);
+      if (error) return res.status(400).json({ error: error.message });
+    }
+    
+    res.json({ success: true, saved: inserts.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── FORMAZIONE ──
 app.get('/api/squadre/:squadraId/partite/:matchId/formazione', async (req, res) => {
   try {
@@ -1446,6 +1480,33 @@ app.delete('/api/partite/:matchId/eventi-batch', authMiddleware, async (req, res
     const { error } = await supabase.from('match_event').delete().eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Batch insert eventi (una sola chiamata)
+app.post('/api/partite/:matchId/eventi-batch', authMiddleware, async (req, res) => {
+  try {
+    const { eventi } = req.body;
+    if (!eventi || !Array.isArray(eventi)) return res.status(400).json({ error: 'Dati mancanti' });
+    
+    // Delete existing
+    await supabase.from('match_event').delete().eq('match_id', req.params.matchId);
+    
+    // Insert batch
+    if (eventi.length > 0) {
+      const inserts = eventi.map(e => ({
+        match_id: req.params.matchId,
+        tipo_evento: e.tipo,
+        minuto: parseInt(e.minuto),
+        player_id: e.principale_id || null
+      }));
+      const { error } = await supabase.from('match_event').insert(inserts);
+      if (error) return res.status(400).json({ error: error.message });
+    }
+    
+    res.json({ success: true, saved: eventi.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
