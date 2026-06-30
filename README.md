@@ -177,11 +177,14 @@ frontend-v2/src/
 │   └── api.js         # Chiamate API
 ├── modules/
 │   ├── auth/          # Login, guest
-│   ├── admin/         # Gestione utenti
+│   ├── admin/         # Gestione utenti, link guest
 │   ├── team/          # Dashboard, roster, calendar, etc.
-│   ├── coach/          # Allenamenti
-│   ├── performance/    # Stats, reports
-│   └── club/          # Impostazioni
+│   ├── coach/         # Allenamenti
+│   ├── performance/   # Stats, reports
+│   └── club/          # Impostazioni, workspace
+├── utils/
+│   ├── formatters.js  # Formattazione date
+│   └── ui.js          # Loading spinner
 └── components/
     └── layout/        # Sidebar, header
 ```

@@ -24,7 +24,7 @@
 
 ### Frontend
 - **Framework**: Vite 6.x + JavaScript ES Modules
-- **Styling**: Tailwind CSS
+- **Styling**: CSS custom (no Tailwind)
 - **Routing**: Router custom in `router.js`
 - **State**: Window globals (`window.YFM.*`)
 - **Deploy**: Vercel (static hosting)
@@ -56,13 +56,12 @@ youth-football-manager/
 │   │   ├── build-info.js     # Auto-generato (non tracciare)
 │   │   ├── api.js            # Chiamate backend
 │   │   ├── modules/          # Pagine/applicazioni
-│   │   │   ├── auth/         # Login, Register, Guest
+│   │   │   ├── auth/         # Login, Guest
 │   │   │   ├── admin/        # Users, Guest Links
 │   │   │   ├── team/         # Dashboard, Roster, Calendar, etc.
 │   │   │   ├── coach/        # Training
 │   │   │   ├── performance/  # Stats, Reports
-│   │   │   ├── club/         # Settings, Workspace
-│   │   │   └── demo/         # Demo mode
+│   │   │   └── club/         # Settings, Workspace
 │   │   └── components/
 │   │       └── layout/        # Sidebar, Header
 │   ├── public/
@@ -86,7 +85,7 @@ youth-football-manager/
 
 ### Base URL
 - **Produzione**: `https://youth-football-manager-backend.vercel.app/api`
-- **Locale**: `http://localhost:3001/api`
+- **Locale**: `http://localhost:3002/api`
 
 ### Endpoint Principali
 

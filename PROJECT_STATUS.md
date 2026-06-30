@@ -54,29 +54,29 @@ Macro-aree funzionali:
 - **Colonne**: 🇮🇹 Italiano (es. `nome`, `cognome`, `data_nascita`)
 
 #### Tabelle Principali
-| Tabella (EN) | Descrizione | Ex Tabella (IT) |
-|--------------|-------------|-----------------|
-| `users` | Utenti sistema | utente |
-| `player` | Anagrafica calciatori | calciatore |
-| `team` | Squadre per stagione | squadra |
-| `season` | Stagioni sportive | stagione |
-| `team_player` | Assegnazione giocatori-squadra | rosa |
-| `match` | Partite | partita |
-| `match_event` | Eventi partita | evento_partita |
-| `convocation` | Convocazioni | convocazione |
-| `match_formation` | Formazioni tattiche | formazione_partita |
-| `training` | Allenamenti | allenamento |
-| `training_attendance` | Presenze allenamenti | presenza_allenamento |
-| `category` | Categorie (Under 14, etc.) | - |
-| `competition` | Campionati/Competizioni | - |
-| `facility` | Impianti sportivi | - |
-| `staff` | Anagrafica personale | - |
-| `team_staff` | Assegnazione staff a squadra | - |
-| `match_statistics` | Statistiche partita | - |
-| `document` | Documenti polimorfici | - |
-| `workspace` | Società/Organizzazioni | - |
-
-> ⚠️ Nota: alcune tabelle legacy (`utente`, `stagione`, `calciatore`, `squadra`) sono ancora presenti nel DB per retrocompatibilità ma verranno rimosse nelle prossime migrazioni.
+| Tabella (EN) | Descrizione | Colonne Chiave |
+|--------------|-------------|----------------|
+| `workspace` | Società/club | id, nome, logo_url, data_creazione |
+| `users` | Utenti sistema | id, email, password_hash, nome, cognome, ruolo, workspace_id, is_superadmin, is_active |
+| `season` | Stagioni sportive | id, workspace_id, nome, data_inizio, data_fine, attiva |
+| `category` | Categorie (Under 14, etc.) | id, workspace_id, nome, tipo_campionato, anno_da, anno_a |
+| `competition` | Campionati/Competizioni | id, nome, tipo, federazione, regione |
+| `team` | Squadre per stagione | id, season_id, category_id, nome |
+| `player` | Anagrafica calciatori | id, nome, cognome, data_nascita, ruolo_principale, matricola_figc |
+| `team_player` | Assegnazione giocatori-squadra | id, team_id, player_id, numero_maglia, ruolo_preferito, stato |
+| `match` | Partite | id, team_id, data_ora, avversario, luogo, gol_casa, gol_ospite, archiviata |
+| `match_event` | Eventi partita | id, match_id, tipo_evento, minuto, player_id |
+| `match_formation` | Formazioni tattiche | id, match_id, team_player_id, posizione, is_starter |
+| `convocation` | Convocazioni | id, match_id, team_player_id, presente |
+| `match_statistics` | Statistiche partita | id, match_id, team_player_id, minuti_giocati, gol, assist |
+| `training` | Allenamenti | id, team_id, data_ora, durata_minuti, tipo, descrizione |
+| `training_attendance` | Presenze allenamenti | id, training_id, team_player_id, presente, motivi_assenza |
+| `staff` | Anagrafica personale | id, nome, cognome, ruolo, qualifiche |
+| `team_staff` | Assegnazione staff a squadra | id, team_id, staff_id, ruolo_squadra |
+| `facility` | Impianti sportivi | id, nome, indirizzo, citta |
+| `document` | Documenti polimorfici | id, tipo, entita_tipo, entita_id, file_url |
+| `guest_token` | Token guest temporanei | id, token, utente_id, tipo, squadre_accesso, scadenza |
+| `valutazione_partita` | Valutazioni | id, partita_id, calciatore_id, voto |
 
 ---
 
@@ -175,7 +175,8 @@ Macro-aree funzionali:
 
 ## 5. Demo Standalone ✅
 
-> ⚠️ **Nota**: La demo interattiva è ora un **repository separato** (`youth-football-manager-demo`) con deploy indipendente.
+> ⚠️ **La demo è un repository separato** (`youth-football-manager-demo`) con deploy indipendente.
+> Il progetto principale NON contiene più codice demo, bottoni demo, o modalità demo.
 
 ### Demo Standalone
 - **URL**: https://youth-football-manager-demo.vercel.app
@@ -441,16 +442,15 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
+| d0a49ab | fix: allineamento backend con schema DB reale |
+| 262e503 | fix: bug fix completo + restyling calendario + login senza demo |
+| bea01e2 | docs: update calendar documentation with button layout |
+| 4a30858 | feat(calendar): new layout with result badges and mobile grid |
 | 0310aa0 | feat: UI calendario migliorata (badge sezioni pill, badge luogo colorati) |
-| 634ec74 | feat: pallino lampeggiante calendario per prossimo passo |
-| 61a3f87 | feat: stile dashboard migliorato con badge colorati |
-| dd364a3 | feat: dashboard con badge competizione e risultati colorati |
-| 1b11426 | feat: rimosso demo mode dal frontend |
-| 12bb78a | feat: rimosso demo mode dal frontend |
 
 ---
 
-*Ultimo aggiornamento: Giugno 2026*
+*Ultimo aggiornamento: Luglio 2026*
 
 ---
 

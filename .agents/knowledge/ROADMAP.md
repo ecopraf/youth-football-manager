@@ -2,7 +2,7 @@
 
 ## Stato Sviluppo
 
-**Versione Attuale**: v3.14
+**Versione Attuale**: v3.15
 **Target MVP**: Fine Settembre 2026
 
 ---
@@ -95,9 +95,23 @@
 ### Critici
 - Nessuno
 
+### Risolti (Luglio 2026)
+- [x] Endpoint senza authMiddleware (partite, calciatori) → protetti
+- [x] Statistiche calcolate con stima → calcolo reale da gol_casa/gol_ospite
+- [x] Training usa tabelle inesistenti → allineato a training + training_attendance
+- [x] guest_link inesistente → allineato a guest_token
+- [x] formazione_partita inesistente → allineato a match_formation
+- [x] convocation usa player_id → corretto in team_player_id
+- [x] formatTime non gestisce ISO datetime → fix
+- [x] Mismatch snake_case/camelCase (presenze, scadenze) → fix
+- [x] 15 endpoint mancanti nel backend → aggiunti
+- [x] Pagina login con riferimenti demo → rimossi, stile rinnovato
+- [x] Calendario con layout vecchio → restyling completo (progress dots, card cliccabili, mobile toggle)
+
 ### Minori
 - [ ] Filtro categorie: staff vede tutte le squadre invece di quelle assegnate
 - [ ] Valutazioni giocatore: sistema incompleto
+- [ ] Workspace isolation non completo su tutti gli endpoint GET
 
 ---
 

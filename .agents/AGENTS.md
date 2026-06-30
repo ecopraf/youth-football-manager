@@ -48,8 +48,8 @@ git status
 
 | Info | Valore |
 |------|--------|
-| **Versione** | v3.14 |
-| **Build ID** | `v3.14.<git-hash>` |
+| **Versione** | v3.15 |
+| **Build ID** | `v3.15.<git-hash>` |
 | **Frontend** | Vite + JavaScript ES Modules |
 | **Backend** | Node.js/Express + Supabase |
 | **Deploy** | Vercel (auto su push a main) |
@@ -80,20 +80,29 @@ git status
 
 ## 🗄️ Schema Database
 
-| Tabella | Descrizione |
-|---------|-------------|
-| `workspace` | Società/club |
-| `stagione` | Stagione sportiva |
-| `squadra` | Squadra |
-| `calciatore` | Giocatore |
-| `rosa` | Associazione giocatore-squadra |
-| `partita` | Partita |
-| `evento_partita` | Eventi (GOAL, ASSIST, YELLOW, etc.) |
-| `convocazione` | Convocazioni |
-| `formazione_partita` | Formazione |
-| `valutazione_partita` | Valutazioni |
-| `utente` | Utente sistema |
-| `guest_token` | Token guest |
+| Tabella | Descrizione | FK Chiave |
+|---------|-------------|----------|
+| `workspace` | Società/club | - |
+| `season` | Stagione sportiva | workspace_id |
+| `category` | Categorie (U14, U15...) | workspace_id |
+| `competition` | Campionati | - |
+| `team` | Squadra | season_id, category_id |
+| `player` | Giocatore | - |
+| `team_player` | Associazione giocatore-squadra | team_id, player_id |
+| `match` | Partita | team_id, competition_id |
+| `match_event` | Eventi (GOAL, ASSIST, YELLOW...) | match_id, player_id |
+| `match_formation` | Formazione | match_id, team_player_id |
+| `match_statistics` | Statistiche dettagliate | match_id, team_player_id |
+| `convocation` | Convocazioni | match_id, team_player_id |
+| `training` | Allenamenti | team_id |
+| `training_attendance` | Presenze allenamenti | training_id, team_player_id |
+| `valutazione_partita` | Valutazioni | partita_id, calciatore_id |
+| `staff` | Personale | - |
+| `team_staff` | Staff assegnato a squadra | team_id, staff_id |
+| `facility` | Impianti sportivi | - |
+| `document` | Documenti polimorfici | entita_tipo, entita_id |
+| `users` | Utente sistema | workspace_id |
+| `guest_token` | Token guest | utente_id |
 
 ---
 
@@ -126,7 +135,7 @@ git status
 - **NON modificare**: `frontend-v2/src/build-info.js` (auto-generato)
 - **NON hardcodare**: credenziali, API keys
 - **Deploy**: automatico su push a main
-- **Build ID**: `v3.14.<git-hash>` (mostrato dopo `npm run build`)
+- **Build ID**: `v3.15.<git-hash>` (mostrato dopo `npm run build`)
 
 ### 🔐 Credenziali Supabase (persistenti)
 
@@ -246,7 +255,7 @@ cd backend && npm install && node api/index.js
 
 # Verifica build
 npm run build
-# Output: Build ID: v3.14.XXXXXXX
+# Output: Build ID: v3.15.XXXXXXX
 
 # Deploy (automatico)
 git add .
@@ -279,7 +288,7 @@ Il sistema supporta **multi-tenant**: ogni workspace è una società sportiva is
 **Regole**:
 - Tutte le query includono `workspace_id`
 - API `/auth/workspaces` per ottenere squadre utente
-- Dati Demo vs ASD Albalonga sono workspace separati
+- Ogni workspace è una società sportiva isolata
 
 ---
 
@@ -345,7 +354,7 @@ DELETE /api/<risorsa>/:id       → Elimina
 Dopo ogni task completato:
 ```bash
 git add .
-git commit -m "tipo: descrizione - build v3.14.<hash>"
+git commit -m "tipo: descrizione - build v3.15.<hash>"
 git push origin main
 ```
 
