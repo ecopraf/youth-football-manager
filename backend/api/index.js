@@ -395,6 +395,22 @@ app.get('/api/stagioni/:id/squadre', async (req, res) => {
     if (error) {
       return res.status(400).json({ error: error.message });
     }
+    
+    // Arricchisci ogni team con nomi staff
+    for (const team of (data || [])) {
+      const { data: staffAssign } = await supabase.from('team_staff').select('ruolo_squadra, staff:staff_id(nome, cognome)').eq('team_id', team.id);
+      if (staffAssign && staffAssign.length > 0) {
+        staffAssign.forEach(sa => {
+          const nome = sa.staff ? sa.staff.nome + ' ' + sa.staff.cognome : '';
+          const ruolo = (sa.ruolo_squadra || '').toLowerCase();
+          if (ruolo.includes('allenatore') && !ruolo.includes('portieri')) team.allenatore = team.allenatore || nome;
+          if (ruolo.includes('dirigente')) team.dirigente = team.dirigente || nome;
+          if (ruolo.includes('preparatore')) team.preparatore_atletico = team.preparatore_atletico || nome;
+          if (ruolo.includes('portieri')) team.allenatore_portieri = team.allenatore_portieri || nome;
+        });
+      }
+    }
+    
     res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
@@ -442,6 +458,20 @@ app.get('/api/squadre/:id', async (req, res) => {
     const { id } = req.params;
     const { data, error } = await supabase.from('team').select('*').eq('id', id).single();
     if (error || !data) return res.status(404).json({ error: 'Squadra non trovata' });
+    
+    // Arricchisci con nomi staff da team_staff
+    const { data: staffAssign } = await supabase.from('team_staff').select('ruolo_squadra, staff:staff_id(nome, cognome)').eq('team_id', id);
+    if (staffAssign && staffAssign.length > 0) {
+      staffAssign.forEach(sa => {
+        const nome = sa.staff ? sa.staff.nome + ' ' + sa.staff.cognome : '';
+        const ruolo = (sa.ruolo_squadra || '').toLowerCase();
+        if (ruolo.includes('capo allenatore') || ruolo.includes('allenatore') && !ruolo.includes('portieri')) data.allenatore = data.allenatore || nome;
+        if (ruolo.includes('dirigente')) data.dirigente = data.dirigente || nome;
+        if (ruolo.includes('preparatore')) data.preparatore_atletico = data.preparatore_atletico || nome;
+        if (ruolo.includes('portieri')) data.allenatore_portieri = data.allenatore_portieri || nome;
+      });
+    }
+    
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
