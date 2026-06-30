@@ -1,5 +1,5 @@
 import { apiFetch } from '../../services/api';
-import { formatDate, formatDateShort } from '../../utils/formatters';
+import { formatDate, formatDateShort, formatDateCompact } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 
 let allMatches = [];
