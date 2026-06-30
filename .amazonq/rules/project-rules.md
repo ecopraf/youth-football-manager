@@ -1,5 +1,15 @@
 # Regole di Progetto - Youth Football Manager
 
+## Onboarding Obbligatorio (Inizio Chat)
+
+All'inizio di ogni nuova conversazione, l'agente DEVE leggere i seguenti file per allinearsi allo stato attuale del progetto:
+
+1. **`.agents/AGENTS.md`** — Entry point, schema DB, comandi, workflow
+2. **`.agents/knowledge/ROADMAP.md`** — Backlog, bug noti, priorità
+3. **`PROJECT_STATUS.md`** — Stato moduli, ultimi commit, architettura
+
+Solo dopo aver letto questi file l'agente può procedere con il task richiesto dall'utente.
+
 ## Documentazione Obbligatoria
 
 Dopo ogni build significativa (nuove feature, fix di bug multipli, refactoring, modifiche allo schema DB, aggiunta/rimozione endpoint API), l'agente DEVE aggiornare la documentazione:
