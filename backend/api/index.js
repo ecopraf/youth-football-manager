@@ -1458,12 +1458,10 @@ app.get('/api/partite/:matchId/formazione', async (req, res) => {
       numeroMaglia: f.numero_maglia
     }));
     
-    // Leggi metadati formazione dal campo note della partita
+    // Leggi metadati formazione dal campo dedicato
     let meta = { modulo: '4-3-3', positions: {} };
-    const { data: matchData } = await supabase.from('match').select('note').eq('id', req.params.matchId).single();
-    if (matchData?.note && matchData.note.startsWith('FORMATION_META::')) {
-      try { meta = JSON.parse(matchData.note.substring(16)); } catch(e) {}
-    }
+    const { data: matchData } = await supabase.from('match').select('formazione_meta').eq('id', req.params.matchId).single();
+    if (matchData?.formazione_meta) meta = matchData.formazione_meta;
     
     res.json({ formazione: result, meta });
   } catch (err) {
@@ -1502,10 +1500,9 @@ app.put('/api/partite/:matchId/formazione', authMiddleware, async (req, res) => 
       if (error) return res.status(400).json({ error: error.message });
     }
     
-    // Salva metadati formazione (modulo + posizioni custom) nel campo note della partita
+    // Salva metadati formazione (modulo + posizioni custom) nel campo dedicato
     if (modulo || positions) {
-      const meta = JSON.stringify({ modulo: modulo || '4-3-3', positions: positions || {} });
-      await supabase.from('match').update({ note: 'FORMATION_META::' + meta }).eq('id', req.params.matchId);
+      await supabase.from('match').update({ formazione_meta: { modulo: modulo || '4-3-3', positions: positions || {} } }).eq('id', req.params.matchId);
     }
     
     res.json({ success: true, saved: inserts.length });
