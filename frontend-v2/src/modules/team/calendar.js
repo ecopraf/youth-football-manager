@@ -5,6 +5,12 @@ import { showLoading, hideLoading } from '../../utils/ui';
 let allMatches = [];
 let matchSteps = {};
 
+// Helper per creare bottone azione con pallino lampeggiante opzionale
+function makeBtn(label, onclick, isNextStep) {
+  const dot = isNextStep ? '<span class="pallino-blink"></span>' : '';
+  return `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();${onclick}">${dot}${label}</button>`;
+}
+
 export default async function loadCalendar() {
   const c = document.getElementById('pageContent');
   
