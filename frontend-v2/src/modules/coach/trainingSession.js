@@ -343,22 +343,20 @@ async function applyTemplateUI(date, trainingData, onSave) {
 
 async function savePresenze(date, onSave) {
   if (!date) return;
-  const presenzeToSave = [];
+  const presenzeList = [];
   document.querySelectorAll('.session-pres-check').forEach(cb => {
     const isAssente = cb.checked;
     const pid = cb.dataset.pid;
     const select = document.querySelector(`.session-motivo-select[data-pid="${pid}"]`);
     const motivo = isAssente && select ? select.value : null;
-    presenzeToSave.push({ calciatoreId: pid, data: date, presente: !isAssente, note: motivo });
+    presenzeList.push({ calciatoreId: pid, presente: !isAssente, note: motivo });
   });
 
   showLoading();
   try {
-    for (const p of presenzeToSave) {
-      await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze', {
-        method: 'POST', body: JSON.stringify(p)
-      });
-    }
+    await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze-batch', {
+      method: 'POST', body: JSON.stringify({ data: presenzeList, date })
+    });
     hideLoading();
     alert('✅ Presenze salvate!');
     if (onSave) onSave();

@@ -1017,7 +1017,53 @@ app.get('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
   }
 });
 
-// Save/update training attendance
+// Save/update training attendance - BATCH (una sola chiamata per tutti i giocatori)
+app.post('/api/squadre/:squadraId/allenamenti/presenze-batch', authMiddleware, async (req, res) => {
+  try {
+    const { data: presenzeList, date } = req.body;
+    if (!presenzeList || !date) return res.status(400).json({ error: 'Dati mancanti' });
+    
+    // Trova o crea la sessione training per quella data
+    const dataInizio = date + 'T00:00:00';
+    const dataFine = date + 'T23:59:59';
+    let { data: training } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId).gte('data_ora', dataInizio).lte('data_ora', dataFine).limit(1).single();
+    
+    if (!training) {
+      const { data: newTraining, error: tErr } = await supabase.from('training').insert({
+        team_id: req.params.squadraId, data_ora: date + 'T17:00:00', durata_minuti: 90, tipo: 'Allenamento'
+      }).select().single();
+      if (tErr) return res.status(400).json({ error: tErr.message });
+      training = newTraining;
+    }
+    
+    // Mappa player_id → team_player_id
+    const playerIds = presenzeList.map(p => p.calciatoreId);
+    const { data: tps } = await supabase.from('team_player').select('id, player_id').eq('team_id', req.params.squadraId).in('player_id', playerIds);
+    const playerToTp = {};
+    (tps || []).forEach(tp => { playerToTp[tp.player_id] = tp.id; });
+    
+    // Upsert tutte le presenze
+    const upserts = presenzeList.map(p => ({
+      training_id: training.id,
+      team_player_id: playerToTp[p.calciatoreId],
+      presente: p.presente,
+      motivi_assenza: !p.presente ? (p.note || 'Assente') : null
+    })).filter(u => u.team_player_id);
+    
+    // Delete existing + insert (upsert)
+    await supabase.from('training_attendance').delete().eq('training_id', training.id);
+    if (upserts.length > 0) {
+      const { error } = await supabase.from('training_attendance').insert(upserts);
+      if (error) return res.status(400).json({ error: error.message });
+    }
+    
+    res.json({ success: true, saved: upserts.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Save/update training attendance (singolo - mantenuto per retrocompatibilità)
 app.post('/api/squadre/:squadraId/allenamenti/presenze', authMiddleware, async (req, res) => {
   try {
     const { calciatoreId, data, presente, note } = req.body;
