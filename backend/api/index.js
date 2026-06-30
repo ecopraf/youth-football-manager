@@ -1451,14 +1451,21 @@ app.get('/api/partite/:matchId/formazione', async (req, res) => {
   try {
     const { data, error } = await supabase.from('match_formation').select('*, team_player:team_player_id(player_id)').eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
-    // Mappa per il frontend: calciatoreId, posizione, numeroMaglia
     const result = (data || []).map(f => ({
       ...f,
       calciatoreId: f.team_player?.player_id || f.team_player_id,
       posizione: f.is_starter ? 'Titolare' : 'Panchina',
       numeroMaglia: f.numero_maglia
     }));
-    res.json(result);
+    
+    // Leggi metadati formazione dal campo note della partita
+    let meta = { modulo: '4-3-3', positions: {} };
+    const { data: matchData } = await supabase.from('match').select('note').eq('id', req.params.matchId).single();
+    if (matchData?.note && matchData.note.startsWith('FORMATION_META::')) {
+      try { meta = JSON.parse(matchData.note.substring(16)); } catch(e) {}
+    }
+    
+    res.json({ formazione: result, meta });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1466,7 +1473,7 @@ app.get('/api/partite/:matchId/formazione', async (req, res) => {
 
 app.put('/api/partite/:matchId/formazione', authMiddleware, async (req, res) => {
   try {
-    const { formazione } = req.body;
+    const { formazione, modulo, positions } = req.body;
     if (!formazione || !Array.isArray(formazione)) return res.status(400).json({ error: 'Dati mancanti' });
     
     // Mappa player_id → team_player_id
@@ -1493,6 +1500,12 @@ app.put('/api/partite/:matchId/formazione', authMiddleware, async (req, res) => 
     if (inserts.length > 0) {
       const { error } = await supabase.from('match_formation').insert(inserts);
       if (error) return res.status(400).json({ error: error.message });
+    }
+    
+    // Salva metadati formazione (modulo + posizioni custom) nel campo note della partita
+    if (modulo || positions) {
+      const meta = JSON.stringify({ modulo: modulo || '4-3-3', positions: positions || {} });
+      await supabase.from('match').update({ note: 'FORMATION_META::' + meta }).eq('id', req.params.matchId);
     }
     
     res.json({ success: true, saved: inserts.length });

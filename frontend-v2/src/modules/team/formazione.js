@@ -54,7 +54,7 @@ export async function openFormazioneForm(mid) {
 
   [convocazioni, formazioneSalvata, giocatori] = await Promise.all([
     apiFetch('/partite/' + mid + '/convocazioni').catch(() => []),
-    apiFetch('/partite/' + mid + '/formazione').catch(() => []),
+    apiFetch('/partite/' + mid + '/formazione').catch(() => ({ formazione: [], meta: {} })),
     apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => [])
   ]);
 
@@ -67,7 +67,9 @@ export async function openFormazioneForm(mid) {
   });
 
   // Converti formazione API in formato interno
-  const formazione = convertApiFormation(formazioneSalvata, giocatori);
+  const apiFormazione = Array.isArray(formazioneSalvata) ? formazioneSalvata : (formazioneSalvata?.formazione || []);
+  const apiMeta = formazioneSalvata?.meta || {};
+  const formazione = convertApiFormation(apiFormazione, giocatori, apiMeta);
 
   if (isArchiviata) {
     renderPitchReadOnly(match, giocatoriConvocati, formazione, giocatori);
@@ -76,19 +78,19 @@ export async function openFormazioneForm(mid) {
   }
 }
 
-function convertApiFormation(apiData, allPlayers) {
+function convertApiFormation(apiData, allPlayers, meta) {
   if (!apiData || !Array.isArray(apiData) || apiData.length === 0) return null;
   const titolari = apiData.filter(f => f.posizione === 'Titolare' || f.is_starter);
   const riserve = apiData.filter(f => f.posizione === 'Panchina' || !f.is_starter);
   const portiere = titolari.find(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Portiere'; });
   return {
-    modulo: '4-3-3',
+    modulo: meta?.modulo || '4-3-3',
+    positions: meta?.positions || {},
     portiere: portiere?.calciatoreId || titolari[0]?.calciatoreId,
     difensori: titolari.filter(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Difensore'; }).map(f => f.calciatoreId),
     centrocampisti: titolari.filter(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Centrocampista'; }).map(f => f.calciatoreId),
     attaccanti: titolari.filter(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Attaccante'; }).map(f => f.calciatoreId),
-    riserve: riserve.map(f => f.calciatoreId),
-    positions: {}
+    riserve: riserve.map(f => f.calciatoreId)
   };
 }
 
@@ -181,7 +183,7 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
 
     showLoading();
     try {
-      await apiFetch('/partite/' + mid + '/formazione', { method: 'PUT', body: JSON.stringify({ formazione }) });
+      await apiFetch('/partite/' + mid + '/formazione', { method: 'PUT', body: JSON.stringify({ formazione, modulo: currentModulo, positions: customPositions }) });
       hideLoading(); modal.close();
       alert('✅ Formazione salvata!');
       if (window.YFM?.loadCalendar) window.YFM.loadCalendar();
