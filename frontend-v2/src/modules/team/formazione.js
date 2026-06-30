@@ -153,12 +153,25 @@ function renderFormazioneEdit(mid, match, giocatoriConvocati, formMap) {
   const updateCounters = () => {
     const titChecked = document.querySelectorAll('#currentModal .form-check-tit:checked').length;
     const panChecked = document.querySelectorAll('#currentModal .form-check-pan:checked').length;
-    document.getElementById('cntTitolari').textContent = titChecked + '/11 titolari';
+    
+    // Conta portieri titolari
+    let portieriTitolari = 0;
+    document.querySelectorAll('#currentModal .form-check-tit:checked').forEach(cb => {
+      const g = giocatoriConvocati.find(x => x.id === cb.dataset.pid);
+      if (g && g.ruolo === 'Portiere') portieriTitolari++;
+    });
+    
+    let warning = '';
+    if (titChecked === 11 && portieriTitolari === 0) warning = ' ⚠️ Serve 1 portiere!';
+    if (portieriTitolari > 1) warning = ' ⚠️ Max 1 portiere!';
+    
+    document.getElementById('cntTitolari').innerHTML = titChecked + '/11 titolari' + (warning ? '<span style="color:#E74C3C;font-weight:600;">' + warning + '</span>' : '');
     document.getElementById('cntRiserve').textContent = panChecked + ' riserve';
     const saveBtn = document.getElementById('saveFormBtn');
     if (saveBtn) {
-      saveBtn.disabled = titChecked !== 11;
-      saveBtn.style.opacity = titChecked === 11 ? '1' : '0.5';
+      const valid = titChecked === 11 && portieriTitolari === 1;
+      saveBtn.disabled = !valid;
+      saveBtn.style.opacity = valid ? '1' : '0.5';
     }
     document.querySelectorAll('#currentModal .form-check-tit:not(:checked)').forEach(cb => { cb.disabled = titChecked >= 11; });
   };
