@@ -50,8 +50,8 @@ export function renderCalendar(config, presenze, matches) {
     .cal-day.has-training:hover { background:#dcfce7; }
     .cal-day.has-presenze { cursor:pointer; background:#d1fae5; }
     .cal-day.has-presenze:hover { background:#a7f3d0; }
-    .cal-day.has-match { background:#fff7ed; cursor:default; border:1px solid #fed7aa; min-height:52px; padding:4px 2px; }
-    .cal-match-info { font-size:7px; color:#c2410c; line-height:1.3; margin-top:1px; max-width:100%; overflow:hidden; display:block; word-break:break-all; }
+    .cal-day.has-match { background:#fff7ed; cursor:default; border:1px solid #fed7aa; min-height:52px; padding:4px 3px; }
+    .cal-match-info { font-size:9px; color:#c2410c; line-height:1.2; margin-top:1px; max-width:100%; overflow:hidden; display:block; text-overflow:ellipsis; white-space:nowrap; }
     .cal-day.is-today { border:2px solid #667eea; font-weight:700; color:#667eea; }
     .cal-day.is-selected { background:#667eea !important; color:white !important; border-radius:8px; }
     .cal-day.is-selected .cal-dot { background:white !important; }
