@@ -69,17 +69,25 @@ export function renderCalendar(config, presenze) {
     const isSelected = dateStr === selectedDate;
     const isProgrammed = giorniConfigurati.includes(dayOfWeek);
     const hasPresenze = dateConPresenze.has(dateStr);
+    const isPast = date < oggi;
 
     let classes = 'cal-day';
     if (isToday) classes += ' is-today';
     if (isSelected) classes += ' is-selected';
-    if (hasPresenze) classes += ' has-presenze';
-    else if (isProgrammed) classes += ' has-training';
+    if (hasPresenze) {
+      classes += ' has-presenze';
+    } else if (isProgrammed) {
+      classes += ' has-training';
+    }
 
     let dotHtml = '';
-    if (hasPresenze) dotHtml = '<span class="cal-dot registered"></span>';
-    else if (isProgrammed) dotHtml = '<span class="cal-dot programmed"></span>';
+    if (hasPresenze) {
+      dotHtml = '<span class="cal-dot registered"></span>';
+    } else if (isProgrammed) {
+      dotHtml = '<span class="cal-dot programmed"></span>';
+    }
 
+    // Cliccabile se è un giorno programmato o ha presenze
     const clickable = isProgrammed || hasPresenze;
     const dataAttr = clickable ? `data-date="${dateStr}"` : '';
 
@@ -117,26 +125,16 @@ export function attachCalendarListeners() {
   });
 }
 
-export function selectTodayIfTraining(config, presenze) {
+export function selectTodayIfTraining(config) {
   const oggi = new Date();
   const oggiStr = oggi.toISOString().split('T')[0];
   const giorniConfigurati = (config || []).map(c => c.giorno_settimana);
+  // Seleziona oggi come default se è giorno di allenamento
   if (giorniConfigurati.includes(oggi.getDay())) {
     selectedDate = oggiStr;
   }
-  // Se non ci sono presenze nel mese corrente, naviga all'ultimo mese con dati
-  const datePresenze = (presenze || []).map(p => p.data).filter(Boolean);
-  const meseCorrente = oggi.getFullYear() * 12 + oggi.getMonth();
-  const hasDatiMeseCorrente = datePresenze.some(d => {
-    const dd = new Date(d);
-    return dd.getFullYear() * 12 + dd.getMonth() === meseCorrente;
-  });
-  if (!hasDatiMeseCorrente && datePresenze.length > 0) {
-    // Vai all'ultimo mese con presenze
-    const ultima = datePresenze.sort().pop();
-    const d = new Date(ultima);
-    currentMonth = d.getMonth();
-    currentYear = d.getFullYear();
-  }
+  // Calendario parte SEMPRE dal mese corrente
+  currentMonth = oggi.getMonth();
+  currentYear = oggi.getFullYear();
   return selectedDate;
 }
