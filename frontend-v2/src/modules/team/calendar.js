@@ -164,32 +164,41 @@ function renderCalendarPage(c, matches, stats) {
     .progress-active .progress-label { color:#667eea; font-weight:700; }
     .progress-pending .progress-dot { background:white; border-color:#dee2e6; }
     
+    .match-card-inner { cursor:pointer; transition:background 0.15s; position:relative; }
+    .match-card-inner:hover { background:#f8f9fa; }
+    .match-opponent { font-size:18px; font-weight:700; color:#1a1a2e; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .match-date-compact { font-size:13px; color:#6c757d; margin-top:4px; }
+    .match-badges { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .match-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+    .badge-casa { background:#D4EDDA; color:#155724; }
+    .badge-trasferta { background:#FFF3CD; color:#856404; }
+    .badge-section { background:#E9ECEF; color:#495057; }
+    .result-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:16px; font-size:13px; font-weight:600; }
+    .result-victory { background:#D4EDDA; color:#155724; }
+    .result-defeat { background:#F8D7DA; color:#721C24; }
+    .result-draw { background:#FFF3CD; color:#856404; }
+    .result-score { font-size:16px; font-weight:700; }
+    .match-card-actions { display:flex; gap:4px; align-items:flex-start; flex-shrink:0; }
+    .match-card-actions .btn { padding:4px 6px !important; font-size:12px; }
+    .match-actions-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid #f0f0f0; }
+    .match-actions-toggle { display:none; width:100%; padding:8px 12px; margin-top:8px; background:#f0f4ff; border:1px solid #dee2e6; border-radius:8px; font-size:12px; font-weight:600; color:#667eea; cursor:pointer; text-align:center; }
+    .match-actions-toggle:hover { background:#e0e7ff; }
+    
     /* === LAYOUT MOBILE (< 640px) === */
     @media (max-width: 639px) {
-      .match-card-wrapper {
-        padding-top: 32px !important;
-      }
-      .desktop-actions {
-        top: 4px !important;
-        right: 4px !important;
-      }
-      .action-buttons {
-        display: grid !important;
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 4px !important;
-      }
-      .action-buttons button {
-        font-size: 11px !important;
-        padding: 6px 4px !important;
-        text-align: center !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-      }
-      .match-teams {
-        max-width: 160px !important;
-        font-size: 13px !important;
-      }
+      .match-opponent { font-size:15px; }
+      .match-date-compact { font-size:12px; }
+      .match-badges .match-badge { font-size:10px; padding:2px 6px; }
+      .match-progress { gap:8px; }
+      .progress-label { font-size:9px; }
+      .match-actions-row { display:none; grid-template-columns:repeat(3,1fr); gap:6px; width:100%; }
+      .match-actions-row.expanded { display:grid; }
+      .match-actions-row .btn { padding:8px 4px !important; font-size:11px; min-height:38px; justify-content:center; }
+      .match-actions-toggle { display:block; }
+      .result-badge { font-size:11px; padding:3px 8px; gap:4px; }
+      .result-score { font-size:14px; }
+      .match-card-actions { position:absolute; top:6px; right:6px; }
+      .match-card-actions .btn { padding:4px !important; font-size:11px; }
     }
   </style>`;
 
@@ -249,117 +258,113 @@ function attachCardListeners() {
   });
 }
 
-export function renderMatchCard(m, stats, isNext = false, nextStep = null) {
-  // Cerca risultato in stats o usa dati diretti dalla partita (demo mode)
+export function renderMatchCard(m, stats, isNext = false) {
   const r = (stats?.risultati || []).find(x => x.id === m.id);
-  const hasResult = !!(r || (m.gol_casa !== undefined && m.gol_trasferta !== undefined));
+  const hasResult = !!(r || (m.gol_casa !== undefined && m.gol_trasferta !== undefined && m.stato === 'Terminata'));
   const isPast = new Date(m.data_ora) < new Date();
   const isArchiviata = m.archiviata === true || m.archiviata === 'true';
-  
-  // Stile per partite archiviate
-  const archivedStyle = isArchiviata ? 'opacity:0.75;border-left:4px solid #8B7355 !important;background:#F5F5F0 !important;' : '';
-  const archivedIcon = isArchiviata ? '📦' : '';
 
-  // Estrai gol (da stats o da dati diretti partita)
-  const golFatti = r?.golFatti ?? m.gol_casa ?? null;
-  const golSubiti = r?.golSubiti ?? m.gol_trasferta ?? null;
+  const golFatti = r?.golFatti ?? (m.stato === 'Terminata' ? m.gol_casa : null) ?? null;
+  const golSubiti = r?.golSubiti ?? (m.stato === 'Terminata' ? m.gol_ospite : null) ?? null;
 
-  // Badge Risultato con icona
-  let resultBadge = '';
-  if (!isPast && hasResult && golFatti !== null && golSubiti !== null) {
-    // Partita futura con risultato = IN CORSO / LIVE
-    const color = golFatti > golSubiti ? '#27AE60' : golFatti === golSubiti ? '#F39C12' : '#E74C3C';
-    resultBadge = `<span style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')">`+
-      `<span class="live-dot" style="background:#E74C3C;"></span>` +
-      `<span class="live-text" style="color:#E74C3C;font-size:10px;font-weight:bold;">LIVE</span>` +
-      `<span style="font-size:16px;font-weight:bold;color:${color};">${golFatti} - ${golSubiti}</span>` +
-      `</span>`;
-  } else if (hasResult && golFatti !== null && golSubiti !== null) {
-    let icon, color, bgColor;
-    if (golFatti > golSubiti) {
-      icon = '✅'; color = '#27AE60'; bgColor = '#e8f5e9';
-    } else if (golFatti < golSubiti) {
-      icon = '❌'; color = '#E74C3C'; bgColor = '#ffebee';
-    } else {
-      icon = '🤝'; color = '#F39C12'; bgColor = '#fff8e1';
-    }
-    resultBadge = `<span style="background:${bgColor};color:${color};padding:2px 8px;border-radius:6px;font-weight:bold;font-size:14px;border:1px solid ${color};cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')">${golFatti} - ${golSubiti} ${icon}</span>`;
+  // === BORDO SINISTRO COLORATO PER ESITO ===
+  let borderColor = '#dee2e6';
+  if (isArchiviata) {
+    borderColor = '#8B7355';
+  } else if (isPast && hasResult && golFatti !== null && golSubiti !== null) {
+    if (golFatti > golSubiti) borderColor = '#28a745';
+    else if (golFatti < golSubiti) borderColor = '#dc3545';
+    else borderColor = '#ffc107';
+  } else if (!isPast && isNext) {
+    borderColor = '#28a745';
+  } else if (!isPast) {
+    borderColor = '#667eea';
   }
 
-  // Badge Casa/Trasferta
-  const luogoBadge = m.luogo === 'Casa' 
-    ? '<span style="background:#D4EDDA;color:#155724;padding:1px 6px;border-radius:6px;font-size:11px;">🏠 Casa</span>'
-    : '<span style="background:#FFF3CD;color:#856404;padding:1px 6px;border-radius:6px;font-size:11px;">✈️ Trasferta</span>';
-  
-  // Badge Giornata e Competizione
-  const giornataBadge = m.giornata ? `<span style="background:#E9ECEF;padding:1px 6px;border-radius:6px;font-size:11px;">${m.giornata}</span>` : '';
-  const compBadge = m.competizione ? `<span style="background:#E9ECEF;padding:1px 6px;border-radius:6px;font-size:11px;">${m.competizione}</span>` : '';
-  
-  // === LAYOUT DESKTOP ===
-  // Riga 1: Data + Badge Giornata + Badge Competizione + Badge Luogo
-  // Riga 2: Nome Squadre + Result Badge (stessa riga)
-  // Riga 3: Tutti i pulsanti azione (stessa riga)
-  // Riga 4: Edit/Delete in alto a destra (piccoli)
-  
-  let desktopHTML = `
-  <div class="match-date">${archivedIcon ? archivedIcon + ' ' : ''}${formatDate(m.data_ora)}</div>
-  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
-    ${giornataBadge} ${compBadge} ${luogoBadge}
-  </div>
-  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:8px;">
-    <span class="match-teams" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;">${window.YFM.getSocietaName()} vs ${m.avversario}</span>
-    ${resultBadge}
-  </div>
-  ${!isPast && !isArchiviata ? `<div class="match-progress" data-mid="${m.id}" style="display:flex;gap:12px;margin-bottom:8px;padding:6px 0;"></div>` : ''}
-  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;" class="action-buttons">`;
+  const cardStyle = `border-left:4px solid ${borderColor};${isArchiviata ? 'opacity:0.7;background:#F9F8F6;' : ''}`;
+
+  // === BADGE ===
+  const luogoBadge = m.luogo === 'Casa'
+    ? '<span class="match-badge badge-casa">🏠 Casa</span>'
+    : '<span class="match-badge badge-trasferta">✈️ Trasferta</span>';
+  const compBadge = m.competizione ? `<span class="match-badge badge-section">${m.competizione}</span>` : '';
+  const giornBadge = m.giornata ? `<span class="match-badge badge-section">⚽ G.${m.giornata}</span>` : '';
+  const archivedBadge = isArchiviata ? '<span class="match-badge" style="background:#8B7355;color:white;">📦 Archiviata</span>' : '';
+
+  // === RISULTATO ===
+  let resultHtml = '';
+  if (!isPast && hasResult && golFatti !== null && golSubiti !== null) {
+    const color = golFatti > golSubiti ? '#27AE60' : golFatti === golSubiti ? '#F39C12' : '#E74C3C';
+    resultHtml = `<span style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')">`
+      + `<span class="live-dot" style="background:#E74C3C;"></span>`
+      + `<span class="live-text" style="color:#E74C3C;font-size:10px;font-weight:bold;">LIVE</span>`
+      + `<span style="font-size:20px;font-weight:bold;color:${color};">${golFatti} - ${golSubiti}</span>`
+      + `</span>`;
+  } else if (hasResult && golFatti !== null && golSubiti !== null) {
+    let cls, icon;
+    if (golFatti > golSubiti) { cls = 'result-victory'; icon = '✅'; }
+    else if (golFatti < golSubiti) { cls = 'result-defeat'; icon = '❌'; }
+    else { cls = 'result-draw'; icon = '🤝'; }
+    resultHtml = `<span class="result-badge ${cls}" style="cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')"><span class="result-score">${golFatti} - ${golSubiti}</span>${icon}</span>`;
+  } else if (!isPast) {
+    resultHtml = `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">⚽ Risultato</button>`;
+  }
+
+  // === PROGRESS DOTS (placeholder, aggiornati in background) ===
+  const progressHtml = (!isPast && !isArchiviata) ? `<div class="match-progress" data-mid="${m.id}"></div>` : '';
 
   // === PULSANTI AZIONE ===
-  // Future: Convocazione, Formazione, Distinta, Eventi (se ha risultato), Note
-  // Giocate: Convocazione, Formazione, Distinta, Archivia (se con risultato), Note
-  // Archiviate: Convocazione, Formazione, Distinta, Sblocca, Note
-  
-  if (!isPast) {
-    // Partite future
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',false)">📋 Convocazione</button>`;
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Distinta</button>`;
+  let actionsHtml = '';
+  if (!isPast && !isArchiviata) {
+    actionsHtml += makeBtn('📋 Convoca', `window.YFM.openConvocation('${m.id}',false)`, false);
+    actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);
+    actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
+    actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
     if (hasResult) {
-      desktopHTML += `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">⚽ Eventi</button>`;
+      actionsHtml += makeBtn('✏️ Eventi', `window.YFM.openResultForm('${m.id}')`, false);
     }
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openNoteAvversario('${m.id}')">📝 Note</button>`;
-  } else if (isPast && !isArchiviata) {
-    // Partite giocate (non archiviate)
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Convocazione</button>`;
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Distinta</button>`;
-    if (hasResult) {
-      desktopHTML += `<button class="btn btn-secondary btn-small" style="background:#8B7355;color:white;border-color:#8B7355;" onclick="event.stopPropagation();archiveMatch('${m.id}')">📦 Archivia</button>`;
-    }
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openNoteAvversario('${m.id}')">📝 Note</button>`;
+  } else if (isPast && hasResult && !isArchiviata) {
+    actionsHtml += makeBtn('📋 Conv.', `window.YFM.openConvocation('${m.id}',true)`, false);
+    actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);
+    actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
+    actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
+    actionsHtml += makeBtn('✏️ Eventi', `window.YFM.openResultForm('${m.id}')`, false);
+  } else if (isPast && !hasResult) {
+    actionsHtml += makeBtn('📋 Conv.', `window.YFM.openConvocation('${m.id}',true)`, false);
+    actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);
+    actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
+    actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
   } else {
-    // Partite archiviate
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openConvocation('${m.id}',true)">📋 Convocazione</button>`;
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openFormazioneForm('${m.id}')">🏟️ Formazione</button>`;
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openDistinta('${m.id}')">📄 Distinta</button>`;
-    desktopHTML += `<button class="btn btn-secondary btn-small" style="background:#6B5B4F;color:white;border-color:#6B5B4F;" onclick="event.stopPropagation();unarchiveMatch('${m.id}')">🔓 Sblocca</button>`;
-    desktopHTML += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openNoteAvversario('${m.id}')">📝 Note</button>`;
+    actionsHtml += makeBtn('📋 Conv.', `window.YFM.openConvocation('${m.id}',true)`, false);
+    actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);
+    actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
+    actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
   }
-  
-  desktopHTML += `</div>`;
 
-  // === PULSANTI EDIT/DELETE (DESKTOP - piccoli in alto a destra) ===
-  let actionButtons = '';
+  // === EDIT/DELETE/ARCHIVIA ===
+  let editBtns = '';
   if (!isArchiviata) {
-    actionButtons = `
-    <div class="desktop-actions" style="position:absolute;top:8px;right:8px;display:flex;gap:4px;">
-      <button class="btn btn-secondary btn-small btn-editm" data-mid="${m.id}" title="Modifica" style="padding:4px 8px;">✏️</button>
-      <button class="btn btn-secondary btn-small btn-danger btn-del" data-mid="${m.id}" title="Elimina" style="padding:4px 8px;">🗑️</button>
-    </div>`;
+    const archBtn = (isPast && hasResult) ? `<button class="btn btn-secondary btn-small" style="color:#856404;" onclick="event.stopPropagation();archiveMatch('${m.id}')" title="Archivia">📦</button>` : '';
+    editBtns = `${archBtn}<button class="btn btn-secondary btn-small btn-editm" data-mid="${m.id}" title="Modifica">✏️</button><button class="btn btn-secondary btn-small btn-danger btn-del" data-mid="${m.id}" title="Elimina">🗑️</button>`;
+  } else {
+    editBtns = `<button class="btn btn-secondary btn-small" style="background:#6B5B4F;color:white;border-color:#6B5B4F;" onclick="event.stopPropagation();unarchiveMatch('${m.id}')" title="Sblocca">🔓</button>`;
   }
 
-  return `<div class="match-card-wrapper" style="position:relative;${archivedStyle}">
-    ${actionButtons}
-    ${desktopHTML}
+  return `<div class="match-card-inner" data-mid="${m.id}" style="${cardStyle}padding-left:12px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+      <div style="flex:1;min-width:0;">
+        <div class="match-badges" style="margin-bottom:6px;">${luogoBadge}${compBadge}${giornBadge}${archivedBadge}</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span class="match-opponent">${m.avversario}</span>
+          ${resultHtml}
+        </div>
+        <div class="match-date-compact">📅 ${formatDateCompact(m.data_ora)}</div>
+        ${progressHtml}
+      </div>
+      <div class="match-card-actions">${editBtns}</div>
+    </div>
+    <button class="match-actions-toggle" onclick="event.stopPropagation();this.nextElementSibling.classList.toggle('expanded');this.textContent=this.nextElementSibling.classList.contains('expanded')?'▲ Chiudi':'⋯ Azioni'">⋯ Azioni</button>
+    <div class="match-actions-row">${actionsHtml}</div>
   </div>`;
 }
 
