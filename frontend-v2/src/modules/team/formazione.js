@@ -17,12 +17,12 @@ const MODULI = {
 const PITCH_CSS = `
 .pitch-container { display:flex; gap:16px; flex-wrap:wrap; }
 .pitch-panel { flex:1; min-width:240px; }
-.pitch-roster { flex:0 0 200px; max-height:420px; overflow-y:auto; }
+.pitch-roster { flex:0 0 200px; max-height:380px; overflow-y:auto; }
 @media (max-width:768px) {
   .pitch-container { flex-direction:column; }
   .pitch-roster { max-height:none; overflow-y:visible; background:#fff; border-radius:12px; padding:10px; border:1px solid #eee; margin-top:8px; }
 }
-.pitch { width:100%; max-width:340px; aspect-ratio:2/3; margin:0 auto; background:linear-gradient(180deg,#2d8a4e 0%,#1a6b38 100%); border-radius:12px; position:relative; overflow:hidden; border:3px solid #1a5c30; touch-action:none; }
+.pitch { width:100%; max-width:300px; aspect-ratio:3/4; margin:0 auto; background:linear-gradient(180deg,#2d8a4e 0%,#1a6b38 100%); border-radius:12px; position:relative; overflow:hidden; border:3px solid #1a5c30; touch-action:none; }
 .pitch::before { content:''; position:absolute; top:50%; left:8%; right:8%; height:1px; background:rgba(255,255,255,0.25); }
 .pitch::after { content:''; position:absolute; top:50%; left:50%; width:50px; height:50px; border:1px solid rgba(255,255,255,0.25); border-radius:50%; transform:translate(-50%,-50%); }
 .pitch-slot { position:absolute; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.12); border:2px dashed rgba(255,255,255,0.35); display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%); transition:background 0.2s,border 0.2s,box-shadow 0.2s; cursor:default; user-select:none; }
@@ -395,7 +395,7 @@ function updateRosterState(assignments) {
 function createModal(title, content, footer, maxW='600px') {
   const existing = document.getElementById('currentModal'); if (existing) existing.remove();
   const modal = document.createElement('div'); modal.className='modal-overlay'; modal.id='currentModal';
-  modal.innerHTML = `<div class="modal-content" style="max-width:${maxW};"><div class="modal-header"><h2>${title}</h2><button class="modal-close-btn" id="modalCloseX">×</button></div><div class="modal-body">${content}</div>${footer?'<div class="modal-footer">'+footer+'</div>':''}</div>`;
+  modal.innerHTML = `<div class="modal-content" style="max-width:${maxW};max-height:90vh;display:flex;flex-direction:column;"><div class="modal-header"><h2>${title}</h2><button class="modal-close-btn" id="modalCloseX">×</button></div><div class="modal-body" style="overflow-y:auto;flex:1;">${content}</div>${footer?'<div class="modal-footer">'+footer+'</div>':''}</div>`;
   document.body.appendChild(modal);
   const close = () => { const m=document.getElementById('currentModal'); if(m) m.remove(); };
   document.getElementById('modalCloseX').addEventListener('click', close);
