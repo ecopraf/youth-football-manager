@@ -33,6 +33,9 @@ const PITCH_CSS = `
 .pitch-slot .slot-name { position:absolute; bottom:-14px; font-size:7px; color:white; font-weight:600; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,0.9); pointer-events:none; }
 .roster-item { display:flex; align-items:center; gap:6px; padding:6px 8px; margin-bottom:3px; background:#f8f9fa; border-radius:8px; cursor:grab; border:1px solid #eee; transition:all 0.2s; font-size:11px; }
 .roster-item.placed { opacity:0.3; pointer-events:none; }
+.roster-item.selected-mobile { background:#667eea; color:white; border-color:#667eea; }
+.roster-item.selected-mobile .r-num { background:white; color:#667eea; }
+.roster-item.selected-mobile .r-role { color:rgba(255,255,255,0.8); }
 .roster-item .r-num { width:22px; height:22px; background:#667eea; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink:0; }
 .roster-item .r-name { font-weight:500; flex:1; }
 .roster-item .r-role { font-size:9px; color:#888; }
@@ -223,8 +226,53 @@ function buildPitchSlotsFromState(modulo, assignments, allPlayers, customPositio
 
 function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
   let draggedPid = null, draggedFromSlot = null;
+  let selectedPid = null; // Per mobile tap-to-place
 
-  // Roster items: drag HTML5 (rosa → campo)
+  // === MOBILE: Tap-to-place (alternativa al drag&drop) ===
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+  // Tap su giocatore nella rosa: seleziona
+  document.querySelectorAll('.roster-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (!isTouchDevice) return; // Su desktop usa drag
+      e.preventDefault();
+      const pid = item.dataset.pid;
+      if (item.classList.contains('placed')) return;
+      // Deseleziona precedente
+      document.querySelectorAll('.roster-item.selected-mobile').forEach(el => el.classList.remove('selected-mobile'));
+      if (selectedPid === pid) { selectedPid = null; return; }
+      selectedPid = pid;
+      item.classList.add('selected-mobile');
+    });
+  });
+
+  // Tap su slot: posiziona il giocatore selezionato
+  document.querySelectorAll('.pitch-slot').forEach(slot => {
+    slot.addEventListener('click', (e) => {
+      if (!isTouchDevice) return;
+      e.preventDefault();
+      const targetIdx = parseInt(slot.dataset.slot);
+
+      if (selectedPid) {
+        // Posiziona giocatore selezionato nello slot
+        const existingPid = assignments[targetIdx];
+        // Rimuovi da slot precedente se già posizionato
+        Object.keys(assignments).forEach(k => { if (assignments[k] === selectedPid) delete assignments[k]; });
+        if (Object.keys(assignments).length >= 11 && !existingPid) { selectedPid = null; return; }
+        assignments[targetIdx] = selectedPid;
+        selectedPid = null;
+        document.querySelectorAll('.roster-item.selected-mobile').forEach(el => el.classList.remove('selected-mobile'));
+        refresh();
+      } else if (slot.classList.contains('occupied')) {
+        // Tap su slot occupato senza selezione: rimuovi
+        delete assignments[targetIdx];
+        delete customPositions[targetIdx];
+        refresh();
+      }
+    });
+  });
+
+  // === DESKTOP: Drag HTML5 (rosa → campo) ===
   document.querySelectorAll('.roster-item[draggable]').forEach(item => {
     item.addEventListener('dragstart', (e) => { draggedPid = item.dataset.pid; draggedFromSlot = null; item.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
     item.addEventListener('dragend', () => { item.classList.remove('dragging'); draggedPid = null; });
