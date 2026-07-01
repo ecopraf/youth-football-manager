@@ -1787,7 +1787,7 @@ app.get('/api/squadre/:squadraId/stats-giocatori', async (req, res) => {
   try {
     const teamId = req.params.squadraId;
     // Giocatori
-    const { data: tps } = await supabase.from('team_player').select('id, player_id, player:player_id(id, nome, cognome, ruolo_principale)').eq('team_id', teamId);
+    const { data: tps } = await supabase.from('team_player').select('id, player_id, ruolo_preferito, player:player_id(id, nome, cognome)').eq('team_id', teamId);
     // Partite terminate
     const { data: matches } = await supabase.from('match').select('id').eq('team_id', teamId).eq('stato', 'Terminata');
     const matchIds = (matches || []).map(m => m.id);
@@ -1809,7 +1809,7 @@ app.get('/api/squadre/:squadraId/stats-giocatori', async (req, res) => {
     (tps || []).forEach(tp => {
       tpToPlayer[tp.id] = tp.player_id;
       const p = tp.player;
-      if (p) playerStats[p.id] = { id: p.id, nome: p.nome, cognome: p.cognome, ruolo: p.ruolo_principale || '', presenze: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
+      if (p) playerStats[p.id] = { id: p.id, nome: p.nome, cognome: p.cognome, ruolo: tp.ruolo_preferito || '', presenze: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
     });
     // Presenze da formazioni (solo titolari = is_starter)
     formazioni.filter(f => f.is_starter).forEach(f => {
