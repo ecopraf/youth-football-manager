@@ -227,6 +227,7 @@ function buildPitchSlotsFromState(modulo, assignments, allPlayers, customPositio
 function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
   let draggedPid = null, draggedFromSlot = null;
   let selectedPid = null; // Per mobile tap-to-place
+  let justMoved = false; // Flag per evitare conflitto pointer/touch
 
   // === MOBILE: Tap-to-place (alternativa al drag&drop) ===
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -247,6 +248,8 @@ function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
   // Tap su slot: posiziona il giocatore selezionato (SOLO mobile)
   document.querySelectorAll('.pitch-slot').forEach(slot => {
     slot.addEventListener('touchend', (e) => {
+      // Se veniamo da un free-move, ignora
+      if (justMoved) { justMoved = false; return; }
       e.preventDefault();
       const targetIdx = parseInt(slot.dataset.slot);
 
@@ -352,6 +355,7 @@ function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
       slot.style.zIndex = '';
 
       if (hasMoved) {
+        justMoved = true; // Impedisce al touchend di rimuovere il giocatore
         // Salva posizione custom
         const rect = pitch.getBoundingClientRect();
         const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
