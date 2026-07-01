@@ -147,6 +147,8 @@ export function initRouter() {
       if (window.YFM.updateUserUI) {
         window.YFM.updateUserUI();
       }
+      // Help contestuale
+      import('./components/PageHelp.js').then(m => m.injectPageHelp(page)).catch(() => {});
     } catch (error) {
       container.innerHTML = `<div class="error-box">Errore nel caricamento di ${page}: ${error.message}</div>`;
     }
