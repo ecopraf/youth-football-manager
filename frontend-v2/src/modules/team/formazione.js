@@ -116,7 +116,7 @@ function renderPitchReadOnly(match, giocatoriConvocati, formazione, allPlayers) 
   }
   html += `</div>`;
   const footer = '<button class="btn btn-secondary" id="modalCancelBtn">Chiudi</button>';
-  const modal = createModal('👥 Formazione - ' + match.avversario, html, footer, '500px');
+  const modal = createModal('🏟️ Formazione vs ' + match.avversario, html, footer, '500px');
   document.getElementById('modalCancelBtn').addEventListener('click', () => modal.close());
 }
 
@@ -140,7 +140,7 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
   html += `</div></div>`;
 
   const footer = '<button class="btn btn-secondary" id="modalCancelBtn">Annulla</button><button class="btn btn-primary" id="saveFormBtn">💾 Salva</button>';
-  const modal = createModal('👥 Formazione - ' + match.avversario, html, footer, '850px');
+  const modal = createModal('🏟️ Formazione vs ' + match.avversario, html, footer, '850px');
 
   let currentModulo = savedModulo;
   let slotAssignments = {};
