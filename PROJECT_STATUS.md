@@ -64,7 +64,7 @@ Macro-aree funzionali:
 | `team` | Squadre per stagione | id, season_id, category_id, nome |
 | `player` | Anagrafica calciatori | id, nome, cognome, data_nascita, ruolo_principale, matricola_figc |
 | `team_player` | Assegnazione giocatori-squadra | id, team_id, player_id, numero_maglia, ruolo_preferito, stato |
-| `match` | Partite | id, team_id, data_ora, avversario, luogo, gol_casa, gol_ospite, archiviata |
+| `match` | Partite | id, team_id, data_ora, avversario, luogo, gol_casa, gol_ospite, archiviata, formazione_meta JSONB |
 | `match_event` | Eventi partita | id, match_id, tipo_evento, minuto, player_id |
 | `match_formation` | Formazioni tattiche | id, match_id, team_player_id, posizione, is_starter |
 | `convocation` | Convocazioni | id, match_id, team_player_id, presente |
@@ -127,11 +127,11 @@ Macro-aree funzionali:
 | Rosa | `modules/team/roster.js` | CRUD giocatori, scadenze mediche, filtri |
 | Calendario | `modules/team/calendar.js` | CRUD partite, pallino lampeggiante prossimo passo, badge sezioni pill, archiviazione |
 | Convocazioni | `modules/team/convocazioni.js` | Vincoli min/max, PDF, sola lettura se archiviata |
-| Distinta | `modules/team/distinta.js` | Layout FIGC, 24 righe, staff, stampa PDF |
+| Distinta | `modules/team/distinta.js` | Layout FIGC, 24 righe, staff con dropdown selezione + inserimento manuale, stampa PDF |
 | Match Detail | `modules/team/matchDetail.js` | Eventi, timeline per tempo, statistiche |
 | Note Avversario | `modules/team/noteAvversario.js` | Ereditarietà automatica note |
 | Scheda Giocatore | `modules/team/playerDetail.js` | Profilo, stats, carriera, ultime partite |
-| Formazione | `modules/team/formazione.js` | Scelta titolari/panchina, sola lettura se archiviata |
+| Formazione | `modules/team/formazione.js` | Campo visuale con drag&drop, 8 moduli tattici, posizioni custom persistenti |
 | Eventi/Risultato | `modules/team/resultForm.js` | Inserimento eventi, sola lettura se archiviata |
 | Valutazioni | `modules/team/valutazioni.js` | Valutazioni partite |
 | Allenamenti | `modules/coach/training.js` | Calendario sedute, presenze, materiale |

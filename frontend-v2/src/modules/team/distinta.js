@@ -267,35 +267,84 @@ function renderDistinta(d, staff) {
 
 function openStaffForm(mid, cur) {
   const s = cur || {};
-  const content = `
-    <div class="form-grid">
-      <div class="form-group"><label>Allenatore</label><input id="sfAll" value="${s.allenatore || ''}"></div>
-      <div class="form-group"><label>Matr. Allenatore</label><input id="sfMatrAll" value="${s.matricola_allenatore || ''}"></div>
-      <div class="form-group"><label>Tessera FIGC All.</label><input id="sfTessAll" value="${s.tessera_figc_allenatore || ''}"></div>
-      <div class="form-group"><label>Dirigente Ufficiale</label><input id="sfDir" value="${s.dirigente || ''}"></div>
-      <div class="form-group"><label>Matr. Dirigente</label><input id="sfMatr" value="${s.matricola_dirigente || ''}"></div>
-      <div class="form-group"><label>Tessera LND Dir.</label><input id="sfTessLND" value="${s.tessera_lnd_dirigente || ''}"></div>
-      <div class="form-group"><label>2° Dirigente</label><input id="sfDir2" value="${s.dirigente2 || ''}"></div>
-      <div class="form-group"><label>Matr. 2° Dirigente</label><input id="sfMatrDir2" value="${s.matricola_dirigente2 || ''}"></div>
-      <div class="form-group"><label>Tessera LND 2° Dir.</label><input id="sfTessDir2" value="${s.tessera_lnd_dirigente2 || ''}"></div>
-      <div class="form-group"><label>Medico Sociale</label><input id="sfMed" value="${s.medico || ''}"></div>
-      <div class="form-group"><label>Matr. Medico</label><input id="sfMatrMed" value="${s.matricola_medico || ''}"></div>
-      <div class="form-group"><label>Tessera LND Medico</label><input id="sfTessMed" value="${s.tessera_lnd_medico || ''}"></div>
-      <div class="form-group"><label>All. in Seconda</label><input id="sfAll2" value="${s.allenatore2 || ''}"></div>
-      <div class="form-group"><label>Matr. All. in Seconda</label><input id="sfMatrAll2" value="${s.matricola_allenatore2 || ''}"></div>
-      <div class="form-group"><label>Tessera FIGC All. 2</label><input id="sfTessAll2" value="${s.tessera_figc_allenatore2 || ''}"></div>
-      <div class="form-group"><label>Massaggiatore</label><input id="sfMass" value="${s.massaggiatore || ''}"></div>
-      <div class="form-group"><label>Matr. Massaggiatore</label><input id="sfMatrMass" value="${s.matricola_massaggiatore || ''}"></div>
-      <div class="form-group"><label>Tessera LND Mass.</label><input id="sfTessMass" value="${s.tessera_lnd_massaggiatore || ''}"></div>
-      <div class="form-group"><label>Prep. Atletico</label><input id="sfPrep" value="${s.preparatore_atletico || ''}"></div>
-      <div class="form-group"><label>Matr. Prep. Atletico</label><input id="sfMatrPrep" value="${s.matricola_preparatore || ''}"></div>
-      <div class="form-group"><label>Tessera LND Prep.</label><input id="sfTessPrep" value="${s.tessera_lnd_preparatore || ''}"></div>
-      <div class="form-group"><label>Prep. Portieri</label><input id="sfPort" value="${s.allenatore_portieri || ''}"></div>
-      <div class="form-group"><label>Matr. Prep. Portieri</label><input id="sfMatrPort" value="${s.matricola_prep_portieri || ''}"></div>
-      <div class="form-group"><label>Tessera LND Prep. Port.</label><input id="sfTessPort" value="${s.tessera_lnd_prep_portieri || ''}"></div>
-    </div>`;
-  const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="applyBtn">Applica</button>';
-  const modal = createModal('👥 Staff Distinta', content, footer, '700px');
+  const squadra = window.YFM.getSquadra ? window.YFM.getSquadra() : {};
+
+  // Costruisci registro staff da dati squadra (team_staff già caricati)
+  const staffRegistry = [];
+  const seen = new Set();
+  ['allenatore','dirigente','dirigente2','preparatore_atletico','allenatore_portieri'].forEach(key => {
+    const nome = squadra[key];
+    if (nome && !seen.has(nome.toLowerCase())) {
+      staffRegistry.push({ id: 'sq_' + key, nome, ruolo: key, matricola: '', tessera: '' });
+      seen.add(nome.toLowerCase());
+    }
+  });
+
+  const ruoli = [
+    { key: 'allenatore', label: 'Allenatore', idNome: 'sfAll', idMatr: 'sfMatrAll', idTess: 'sfTessAll', tessType: 'FIGC', matrKey: 'matricola_allenatore', tessKey: 'tessera_figc_allenatore' },
+    { key: 'dirigente', label: 'Dirigente Ufficiale', idNome: 'sfDir', idMatr: 'sfMatr', idTess: 'sfTessLND', tessType: 'LND', matrKey: 'matricola_dirigente', tessKey: 'tessera_lnd_dirigente' },
+    { key: 'dirigente2', label: '2° Dirigente', idNome: 'sfDir2', idMatr: 'sfMatrDir2', idTess: 'sfTessDir2', tessType: 'LND', matrKey: 'matricola_dirigente2', tessKey: 'tessera_lnd_dirigente2' },
+    { key: 'medico', label: 'Medico Sociale', idNome: 'sfMed', idMatr: 'sfMatrMed', idTess: 'sfTessMed', tessType: 'LND', matrKey: 'matricola_medico', tessKey: 'tessera_lnd_medico' },
+    { key: 'allenatore2', label: 'All. in Seconda', idNome: 'sfAll2', idMatr: 'sfMatrAll2', idTess: 'sfTessAll2', tessType: 'FIGC', matrKey: 'matricola_allenatore2', tessKey: 'tessera_figc_allenatore2' },
+    { key: 'massaggiatore', label: 'Massaggiatore', idNome: 'sfMass', idMatr: 'sfMatrMass', idTess: 'sfTessMass', tessType: 'LND', matrKey: 'matricola_massaggiatore', tessKey: 'tessera_lnd_massaggiatore' },
+    { key: 'preparatore_atletico', label: 'Prep. Atletico', idNome: 'sfPrep', idMatr: 'sfMatrPrep', idTess: 'sfTessPrep', tessType: 'LND', matrKey: 'matricola_preparatore', tessKey: 'tessera_lnd_preparatore' },
+    { key: 'allenatore_portieri', label: 'Prep. Portieri', idNome: 'sfPort', idMatr: 'sfMatrPort', idTess: 'sfTessPort', tessType: 'LND', matrKey: 'matricola_prep_portieri', tessKey: 'tessera_lnd_prep_portieri' }
+  ];
+
+  let formFields = '';
+  ruoli.forEach(r => {
+    const nomeVal = s[r.key] || '';
+    const matrVal = s[r.matrKey] || '';
+    const tessVal = s[r.tessKey] || '';
+    const options = staffRegistry.map(m =>
+      `<option value="${m.id}" ${m.nome === nomeVal ? 'selected' : ''}>${m.nome}${m.ruolo ? ' (' + m.ruolo + ')' : ''}</option>`
+    ).join('');
+
+    formFields += `
+      <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:10px;background:#f8fafc;">
+        <label style="font-size:12px;font-weight:600;color:#334155;margin-bottom:6px;display:block;">${r.label}</label>
+        <select class="staff-dropdown" data-role="${r.key}" style="width:100%;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;margin-bottom:8px;">
+          <option value="">-- Seleziona dallo staff --</option>
+          ${options}
+          <option value="__manual__">✏️ Inserisci manualmente</option>
+        </select>
+        <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div class="form-group" style="margin-bottom:0;"><label style="font-size:10px;">Nome</label><input id="${r.idNome}" value="${nomeVal}" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+          <div class="form-group" style="margin-bottom:0;"><label style="font-size:10px;">Matricola</label><input id="${r.idMatr}" value="${matrVal}" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+          <div class="form-group" style="margin-bottom:0;"><label style="font-size:10px;">Tessera ${r.tessType}</label><input id="${r.idTess}" value="${tessVal}" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        </div>
+      </div>`;
+  });
+
+  const content = `<div style="max-height:70vh;overflow-y:auto;">${formFields}</div>`;
+  const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="applyBtn">✅ Applica</button>';
+  const modal = createModal('👥 Staff Distinta', content, footer, '750px');
+
+  // Listener dropdown: auto-compila campi
+  document.querySelectorAll('.staff-dropdown').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const roleKey = sel.dataset.role;
+      const ruolo = ruoli.find(r => r.key === roleKey);
+      if (!ruolo) return;
+      const memberId = sel.value;
+      if (!memberId || memberId === '__manual__') {
+        if (memberId === '__manual__') {
+          document.getElementById(ruolo.idNome).value = '';
+          document.getElementById(ruolo.idMatr).value = '';
+          document.getElementById(ruolo.idTess).value = '';
+          document.getElementById(ruolo.idNome).focus();
+        }
+        return;
+      }
+      const member = staffRegistry.find(m => m.id === memberId);
+      if (member) {
+        document.getElementById(ruolo.idNome).value = member.nome || '';
+        document.getElementById(ruolo.idMatr).value = member.matricola || '';
+        document.getElementById(ruolo.idTess).value = member.tessera || '';
+      }
+    });
+  });
+
   document.getElementById('applyBtn').addEventListener('click', () => {
     const ns = {
       allenatore: document.getElementById('sfAll').value,
