@@ -1811,11 +1811,21 @@ app.get('/api/squadre/:squadraId/stats-giocatori', async (req, res) => {
       const p = tp.player;
       if (p) playerStats[p.id] = { id: p.id, nome: p.nome, cognome: p.cognome, ruolo: p.ruolo_principale || '', presenze: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
     });
-    // Presenze da formazioni
-    formazioni.forEach(f => {
+    // Presenze da formazioni (solo titolari = is_starter)
+    formazioni.filter(f => f.is_starter).forEach(f => {
       const pid = tpToPlayer[f.team_player_id];
       if (pid && playerStats[pid]) playerStats[pid].presenze++;
     });
+    // Fallback: per partite senza formazione, usa convocazioni
+    const matchesWithFormation = new Set(formazioni.map(f => f.match_id));
+    const matchesWithoutFormation = matchIds.filter(mid => !matchesWithFormation.has(mid));
+    if (matchesWithoutFormation.length > 0) {
+      const { data: convs } = await supabase.from('convocation').select('match_id, team_player_id, presente').in('match_id', matchesWithoutFormation).eq('presente', true);
+      (convs || []).forEach(cv => {
+        const pid = tpToPlayer[cv.team_player_id];
+        if (pid && playerStats[pid]) playerStats[pid].presenze++;
+      });
+    }
     // Gol, assist, cartellini da eventi
     eventi.forEach(e => {
       if (!e.player_id || !playerStats[e.player_id]) return;
