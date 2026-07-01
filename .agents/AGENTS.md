@@ -94,10 +94,12 @@ git status
 | `match_formation` | Formazione | match_id, team_player_id |
 | `match_statistics` | Statistiche dettagliate | match_id, team_player_id |
 | `convocation` | Convocazioni | match_id, team_player_id |
-| `training` | Allenamenti | team_id |
+| `training` | Sessioni allenamento | team_id |
 | `training_attendance` | Presenze allenamenti | training_id, team_player_id |
+| `training_config` | Settimana tipo (giorni/orari) | team_id |
+| `training_template` | Template programma seduta | team_id, created_by |
 | `valutazione_partita` | Valutazioni | partita_id, calciatore_id |
-| `staff` | Personale | - |
+| `staff` | Personale (con qualifiche JSONB) | - |
 | `team_staff` | Staff assegnato a squadra | team_id, staff_id |
 | `facility` | Impianti sportivi | - |
 | `document` | Documenti polimorfici | entita_tipo, entita_id |

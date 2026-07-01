@@ -98,15 +98,23 @@
 ### Risolti (Luglio 2026)
 - [x] Endpoint senza authMiddleware (partite, calciatori) → protetti
 - [x] Statistiche calcolate con stima → calcolo reale da gol_casa/gol_ospite
-- [x] Training usa tabelle inesistenti → allineato a training + training_attendance
+- [x] Training usa tabelle inesistenti → allineato a training + training_attendance + training_config
 - [x] guest_link inesistente → allineato a guest_token
 - [x] formazione_partita inesistente → allineato a match_formation
-- [x] convocation usa player_id → corretto in team_player_id
+- [x] convocation usa player_id → corretto in team_player_id (con mapping calciatoreId)
 - [x] formatTime non gestisce ISO datetime → fix
-- [x] Mismatch snake_case/camelCase (presenze, scadenze) → fix
-- [x] 15 endpoint mancanti nel backend → aggiunti
+- [x] Mismatch snake_case/camelCase (presenze, scadenze, numero_maglia) → fix
+- [x] 15+ endpoint mancanti nel backend → aggiunti
 - [x] Pagina login con riferimenti demo → rimossi, stile rinnovato
-- [x] Calendario con layout vecchio → restyling completo (progress dots, card cliccabili, mobile toggle)
+- [x] Calendario restyling completo (progress dots, card cliccabili, mobile toggle, LIVE)
+- [x] Formazione: campo visuale con drag&drop, 8 moduli, posizioni custom persistenti
+- [x] Formazione mobile: tap-to-place + free-move
+- [x] Distinta: fallback convocati, staff con dropdown selezione
+- [x] Allenamenti: 4 moduli (calendario mensile, seduta con fasi, config, riepilogo)
+- [x] Allenamenti: calendario mostra partite, presenze batch, template DB
+- [x] Performance: batch convocazioni, eventi, presenze (1 fetch invece di N)
+- [x] Build-info: counter incrementale v3.15.N
+- [x] Data oggi: fix UTC vs locale nel calendario
 
 ### Minori
 - [ ] Filtro categorie: staff vede tutte le squadre invece di quelle assegnate

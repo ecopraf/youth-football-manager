@@ -25,7 +25,7 @@ Le tabelle reali nel DB Supabase sono:
 - `workspace`, `season`, `category`, `competition`, `facility`
 - `team`, `player`, `team_player`, `staff`, `team_staff`
 - `match`, `match_event`, `match_formation`, `match_statistics`, `convocation`
-- `training`, `training_attendance`
+- `training`, `training_attendance`, `training_config`, `training_template`
 - `valutazione_partita`, `document`
 - `users`, `guest_token`
 
@@ -47,6 +47,10 @@ Le tabelle reali nel DB Supabase sono:
 - `convocation` usa `team_player_id` (NON `player_id`)
 - `match_formation` usa `team_player_id` (NON `player_id`)
 - `training_attendance` usa `training_id` + `team_player_id`
+- `training_config` usa `team_id` + `giorno_settimana` (settimana tipo)
+- `training_template` usa `team_id` + `programma` JSONB
+- `match.formazione_meta` JSONB contiene `{modulo, positions}` per il layout campo
+- `staff.qualifiche` JSONB contiene `{matricola, tessera_figc, tessera_lnd, tipo_tessera}`
 - `guest_token` ha colonne: `token, utente_id, tipo, squadre_accesso, scadenza`
 
 ## Regole di Sviluppo

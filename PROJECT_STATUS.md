@@ -64,13 +64,15 @@ Macro-aree funzionali:
 | `team` | Squadre per stagione | id, season_id, category_id, nome |
 | `player` | Anagrafica calciatori | id, nome, cognome, data_nascita, ruolo_principale, matricola_figc |
 | `team_player` | Assegnazione giocatori-squadra | id, team_id, player_id, numero_maglia, ruolo_preferito, stato |
-| `match` | Partite | id, team_id, data_ora, avversario, luogo, gol_casa, gol_ospite, archiviata, formazione_meta JSONB |
+| `match` | Partite | id, team_id, data_ora, avversario, luogo, gol_casa, gol_ospite, archiviata, formazione_meta JSONB, note, note_avversario |
 | `match_event` | Eventi partita | id, match_id, tipo_evento, minuto, player_id |
-| `match_formation` | Formazioni tattiche | id, match_id, team_player_id, posizione, is_starter |
+| `match_formation` | Formazioni tattiche | id, match_id, team_player_id, posizione, numero_maglia, is_starter, is_captain, ordine |
 | `convocation` | Convocazioni | id, match_id, team_player_id, presente |
 | `match_statistics` | Statistiche partita | id, match_id, team_player_id, minuti_giocati, gol, assist |
-| `training` | Allenamenti | id, team_id, data_ora, durata_minuti, tipo, descrizione |
+| `training` | Allenamenti | id, team_id, data_ora, durata_minuti, tipo, descrizione, note |
 | `training_attendance` | Presenze allenamenti | id, training_id, team_player_id, presente, motivi_assenza |
+| `training_config` | Settimana tipo | id, team_id, giorno_settimana, ora_inizio, ora_fine, luogo |
+| `training_template` | Template allenamento | id, team_id, nome, programma JSONB, created_by |
 | `staff` | Anagrafica personale | id, nome, cognome, ruolo, qualifiche |
 | `team_staff` | Assegnazione staff a squadra | id, team_id, staff_id, ruolo_squadra |
 | `facility` | Impianti sportivi | id, nome, indirizzo, citta |
@@ -134,7 +136,10 @@ Macro-aree funzionali:
 | Formazione | `modules/team/formazione.js` | Campo visuale con drag&drop, 8 moduli tattici, posizioni custom persistenti |
 | Eventi/Risultato | `modules/team/resultForm.js` | Inserimento eventi, sola lettura se archiviata |
 | Valutazioni | `modules/team/valutazioni.js` | Valutazioni partite |
-| Allenamenti | `modules/coach/training.js` | Calendario sedute, presenze, materiale |
+| Allenamenti | `modules/coach/training.js` | Calendario mensile, dettaglio seduta con fasi strutturate, presenze batch |
+| | `modules/coach/trainingCalendar.js` | Griglia mensile con pallini (presenze, programmati, partite) |
+| | `modules/coach/trainingSession.js` | Programma seduta (fasi, materiale, template), presenze con motivo |
+| | `modules/coach/trainingConfig.js` | Settimana tipo collassabile, riepilogo presenze con % |
 | Stats | `modules/performance/stats.js` | Disciplina (ammonizioni, espulsioni) |
 | Reports | `modules/performance/reports.js` | Report Partita, Stagionale, Giocatore |
 | Settings | `modules/club/settings.js` | Stagione, categoria, staff |
@@ -442,11 +447,16 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
-| d0a49ab | fix: allineamento backend con schema DB reale |
-| 262e503 | fix: bug fix completo + restyling calendario + login senza demo |
-| bea01e2 | docs: update calendar documentation with button layout |
-| 4a30858 | feat(calendar): new layout with result badges and mobile grid |
-| 0310aa0 | feat: UI calendario migliorata (badge sezioni pill, badge luogo colorati) |
+| 84bf1f1 | fix: mobile free-move non rimuove più il giocatore al rilascio |
+| 4ccbd3b | fix: formazione visibile senza ridimensionare lo schermo |
+| 235d468 | feat: formazione mobile - tap-to-place (alternativa drag&drop) |
+| 7f22ca5 | feat: staff distinta con dati completi (matricole, tessere) |
+| 566d147 | feat: formazione_meta JSONB - campo dedicato per modulo e posizioni |
+| 880c629 | feat: build-info v3.15 counter + formazione campo visuale |
+| 6809ebe | fix: distinta + pallino formazione |
+| d8de05c | fix: convocazioni non mostrate - mismatch team_player_id vs calciatoreId |
+| ba78b11 | perf: batch convocazioni e eventi (1 fetch invece di N) |
+| ad92bf2 | perf: presenze batch - 1 chiamata invece di 22 |
 
 ---
 
