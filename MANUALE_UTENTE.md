@@ -1,505 +1,385 @@
 # Youth Football Manager - Manuale Utente
 
-Guida completa all'utilizzo della piattaforma per la gestione di una società di calcio giovanile.
+Guida completa all'utilizzo della piattaforma per la gestione di squadre di calcio giovanili.
+
+**Versione**: v3.15 | **Ultimo aggiornamento**: Luglio 2026
 
 ---
 
 ## Indice
 
 1. [Introduzione](#introduzione)
-2. [Accesso e Autenticazione](#accesso-e-autenticazione)
+2. [Accesso](#accesso)
 3. [Ruoli e Permessi](#ruoli-e-permessi)
 4. [Dashboard](#dashboard)
 5. [Rosa Giocatori](#rosa-giocatori)
 6. [Calendario Partite](#calendario-partite)
 7. [Gestione Partita](#gestione-partita)
-8. [Allenamenti](#allenamenti)
-9. [Statistiche](#statistiche)
-10. [Report](#report)
-11. [Impostazioni](#impostazioni)
-12. [Gestione Utenti (Admin)](#gestione-utenti-admin)
-13. [ModalitГ  Demo](#modalitГ -demo)
+8. [Formazione](#formazione)
+9. [Allenamenti](#allenamenti)
+10. [Statistiche](#statistiche)
+11. [Report](#report)
+12. [Impostazioni](#impostazioni)
+13. [Gestione Utenti (Admin)](#gestione-utenti-admin)
 14. [Link Guest](#link-guest)
-15. [FAQ e Supporto](#faq-e-supporto)
+15. [Help Contestuale](#help-contestuale)
+16. [FAQ](#faq)
 
 ---
 
 ## Introduzione
 
-**Youth Football Manager** è una piattaforma web per la gestione completa di una società di calcio giovanile.
+**Youth Football Manager** è una piattaforma web per la gestione completa di società di calcio giovanili. Permette di gestire rosa, partite, formazioni, allenamenti, statistiche e molto altro.
 
 ### Requisiti
 - Browser moderno (Chrome, Firefox, Edge, Safari)
 - Connessione internet
-- Account utente con credenziali
+- Account utente fornito dall'amministratore
 
 ### Struttura dell'Interfaccia
-- **Header**: Logo, nome società, categoria selezionata, logout
-- **Sidebar**: Menu di navigazione principale
-- **Area Contenuto**: Contenuto della pagina selezionata
+- **Sidebar** (sinistra): Menu di navigazione con sezioni espandibili
+- **Header** (alto): Logo società, selettore squadra/categoria, profilo utente
+- **Area Contenuto** (centro): Pagina attiva
+- **Bottone ?** (basso destra): Help contestuale per la pagina corrente
 
 ---
 
-## Accesso e Autenticazione
+## Accesso
 
 ### Login
-1. Accedi a https://youth-football-manager.vercel.app
+1. Vai su https://youth-football-manager.vercel.app
 2. Inserisci **Email** e **Password**
-3. Clicca su **Accedi**
+3. Clicca su **🔐 Accedi**
+
+> ⚠️ Non hai un account? Contatta il tuo amministratore. La registrazione è riservata ad admin/superadmin.
 
 ### Logout
-- Clicca sul pulsante **Logout** nell'header in alto a destra
+- Clicca sull'avatar in alto a destra → **🚪 Logout**
 
-### Accesso come Guest
-Se hai ricevuto un link di accesso via email/SMS:
-1. Clicca sul link ricevuto
-2. Verrai reindirizzato automaticamente alla Dashboard
-3. Potrai accedere solo alle sezioni consentite
+### Cambio Squadra/Categoria
+- Usa il selettore nel header per passare tra le categorie (es. Under 15, Under 16)
+
+### Cambio Workspace (Superadmin)
+- Il superadmin può gestire più società: usa il selettore nella sidebar
 
 ---
 
 ## Ruoli e Permessi
 
-Il sistema prevede 4 livelli di accesso:
-
 | Ruolo | Descrizione | Accesso |
 |-------|-------------|---------|
-| **Admin** | Amministratore | Tutto + gestione utenti |
-| **Allenatore** | Responsabile tecnico | Rosa, Partite, Convocazioni, Formazioni |
+| **Superadmin** | Sviluppatore/Owner | Tutto + multi-workspace |
+| **Admin** | Amministratore società | Tutto + gestione utenti e link guest |
+| **Allenatore** | Responsabile tecnico | Rosa, Partite, Formazioni, Allenamenti |
 | **Staff** | Assistente | Funzionalità limitate assegnate |
-| **Guest** | Ospite temporaneo | Solo lettura, categorie limitate |
-
-### Admin
-Ha il controllo completo del sistema:
-- Gestisce tutti i moduli
-- Può creare e modificare utenti
-- Può generare link di accesso guest
-- Accede alle impostazioni complete
-
-### Allenatore
-Responsabile dell'aspetto tecnico-sportivo:
-- Gestisce la rosa giocatori
-- Crea e gestisce partite
-- Compila formazioni e convocazioni
-- Inserisce eventi e valutazioni
-
-### Staff
-Ruolo con accesso limitato:
-- Funzionalità definite dall'Admin
-- Dipende dalla configurazione specifica
-
-### Guest
-Accesso temporaneo per genitori/atleti:
-- Riceve un link personalizzato
-- Accesso limitato a categorie specifiche
-- Solo lettura (non può modificare dati)
+| **Guest** | Ospite temporaneo | Solo lettura via link |
 
 ---
 
 ## Dashboard
 
-La Dashboard è la **homepage** dell'applicazione e mostra un riepilogo della stagione.
+La homepage mostra un riepilogo della stagione:
 
-### Elementi della Dashboard
+### Widget Statistiche (8)
+Punti | Giocate | V | P | S | GF | GS | DR
 
-#### Prossima Partita (Evidenziata)
-- **Avversario**: Nome della squadra avversaria
-- **Data e Ora**: Quando si gioca
-- **Luogo**: Casa o Trasferta
-- **Competizione**: Campionato, Coppa, Amichevole
-- **Pulsanti**: Convocazioni, Dettagli
+### Prossima Partita
+- Avversario, data/ora, luogo, competizione
+- Pulsante rapido **Convocazioni**
 
-#### Widget Statistiche
-- **Punti**: Punteggio totale in classifica
-- **Giocate**: Partite disputate
-- **V/P/S**: Vittorie, Pareggi, Sconfitte
-- **GF/GS**: Gol Fatti, Gol Subiti
-- **DR**: Differenza Reti
+### Top 3
+- ⚽ **Marcatori**: i 3 con più gol
+- 🅰️ **Assistmen**: i 3 con più assist
+- 🏃 **Presenze**: i 3 più presenti
 
-#### Top 3
-- **Marcatori**: I 3 giocatori con più gol
-- **Assist**: I 3 giocatori con più assist
-- **Presenze**: I 3 giocatori più presenti
+### Ultimi Risultati
+- Trend ultime 5 partite (V/P/S colorati)
+- GF, GS, DR delle ultime 5
+- Click su una partita → apre il dettaglio
 
-#### Migliori per Media Voto
-Classifica dei giocatori con la migliore media voti nelle partite.
-
-#### Ultimi Risultati
-Elenco delle ultime 5 partite con:
-- Trend visivo (V/P/S)
-- Gol fatti e subiti nelle ultime 5
-- Dettaglio per competizione
-
-#### Staff
-Visualizza lo staff della squadra:
-- Allenatore
-- Dirigenti
-- Preparatore Atletico
-- Allenatore Portieri
+### Staff
+- Allenatore, Dirigente, Preparatore, All. Portieri
 
 ---
 
 ## Rosa Giocatori
 
-Gestione completa della rosa della squadra.
+### Visualizzazione
+- Giocatori raggruppati per ruolo (Portieri, Difensori, Centrocampisti, Attaccanti)
+- Conteggio per ruolo nel sottotitolo
+- Badge stato (Attivo/Infortunato)
 
 ### Aggiungere un Giocatore
-1. Vai su **Rosa**
-2. Clicca su **+ Aggiungi Giocatore**
-3. Compila i campi:
-   - Nome e Cognome
-   - Data di Nascita
-   - Numero di Maglia
-   - Ruolo (Portiere, Difensore, Centrocampista, Attaccante)
-   - Telefono (opzionale)
-   - Scadenza Visita Medica
-4. Clicca su **Salva**
-
-### Modificare un Giocatore
-1. Clicca sulla **scheda del giocatore**
-2. Modifica i campi desiderati
-3. Clicca su **Salva**
+1. Clicca **+ Aggiungi**
+2. Compila: Nome, Cognome, Data Nascita, Ruolo, N. Maglia, Telefono, Visita Medica, Matricola FIGC, Documenti
+3. **Salva**
 
 ### Scheda Giocatore
-Cliccando su un giocatore si apre la scheda completa con:
+Click su un giocatore → scheda completa con:
 - Dati anagrafici
-- Statistiche stagionali
-- Storico partite giocate
-- Eventi e gol realizzati
-- Valutazioni ricevute
+- Statistiche stagionali (gol, assist, presenze)
+- Storico partite
 
 ### Scadenze Mediche
-La sezione mostra i giocatori con visita medica in scadenza (entro 30 giorni).
+Alert automatico per certificati in scadenza (entro 30 giorni).
+
+### Selezione Multipla (Admin)
+- **☐ Seleziona** → attiva modalità selezione
+- **🗑️ Elimina** multipli
+- **↗️ Sposta** in altra categoria
 
 ---
 
 ## Calendario Partite
 
-### Vista Calendario
-Le partite sono organizzate in 3 sezioni:
-1. **⚽ PROSSIMA PARTITA** - Evidenziata in verde
-2. **📅 PROSSIME PARTITE** - Da giocare (ordinate per data)
-3. **🏆 PARTITE GIOCATE** - Già disputate (ordinate per data decrescente)
+### Layout
+- **🟢 PROSSIMA**: partita evidenziata in verde
+- **📅 IN ARRIVO**: partite future
+- **🏆 GIOCATE**: partite passate
 
-### Creare una Nuova Partita
-1. Vai su **Calendario**
-2. Clicca su **+ Nuova Partita**
-3. Compila i campi:
-   - **Data e Ora**
-   - **Avversario**
-   - **Luogo**: Casa / Trasferta
-   - **Competizione**: Campionato, Coppa, Amichevole
-   - **Giornata**: Numero giornata (opzionale)
-4. Clicca su **Salva**
+### Card Partita
+Ogni partita mostra:
+- **Avversario** (grande)
+- **Badge**: 🏠 Casa / ✈️ Trasferta, Competizione, Giornata
+- **Data compatta**: es. "Sab 12 Lug · 15:30"
+- **Risultato**: badge colorato (verde vittoria, rosso sconfitta, giallo pareggio)
+- **Progress dots** (partite future): Conv → Form → Ris → Ev
+- **Bordo sinistro** colorato per esito
 
-### Modificare/Eliminare una Partita
-- **Modifica**: Clicca sull'icona ✏️
-- **Elimina**: Clicca sull'icona 🗑️ (solo partite future senza eventi)
+### Indicatore LIVE
+Se una partita futura ha già un risultato inserito → mostra pallino rosso lampeggiante + "LIVE"
 
-### Archiviare una Partita
-Dopo aver inserito il risultato:
-1. Clicca su **📦 Archivia**
-2. La partita diventa di sola lettura
-3. Per sbloccare: clicca su **🔓 Sblocca**
+### Azioni
+- **+ Nuova**: crea partita
+- **📥 Importa CSV**: importazione massiva
+- **📦 Archivia**: blocca modifiche (partite concluse)
+- **🔓 Sblocca**: riabilita modifiche
+
+### Pulsanti per Partita
+| Pulsante | Funzione |
+|----------|----------|
+| 📋 Convoca | Gestisci convocazioni |
+| 🏟️ Formazione | Campo visuale con drag&drop |
+| 📄 Distinta | Genera PDF FIGC |
+| 📝 Note | Note tattiche sull'avversario |
+| ⚽ Risultato/Eventi | Inserisci gol, assist, cartellini |
 
 ---
 
 ## Gestione Partita
 
-Dalla lista partite, ogni partita mostra pulsanti contestuali:
+### Convocazioni
+1. Clicca **📋 Convoca**
+2. Seleziona i giocatori (min 11, max 20)
+3. **💾 Salva** (salvataggio batch, veloce)
 
-### Partite Future (senza risultato)
-| Pulsante | Funzione |
-|----------|----------|
-| 📋 Formazione | Definisci titolari e panchina |
-| 📝 Note | Note tattiche sull'avversario |
-| 👥 Convocazioni | Seleziona i giocatori convocati |
-| 🖨️ Distinta | Genera PDF FIGC |
-| ✏️ Modifica | Modifica dati partita |
-| 🗑️ Elimina | Elimina partita |
+### Risultato ed Eventi
+1. Clicca **⚽ Risultato**
+2. Aggiungi eventi: Gol, Assist, Ammonizione, Espulsione, Sostituzione
+3. Per ogni evento: seleziona giocatore + minuto
+4. **💾 Salva Eventi**
 
-### Partite Future (con risultato)
-| Pulsante | Funzione |
-|----------|----------|
-| 📋 Formazione | Visualizza/modifica formazione |
-| 📝 Note | Note tattiche |
-| 👥 Convocazioni | Visualizza convocazioni |
-| 🖨️ Distinta | PDF FIGC |
-| ✏️ Eventi | Inserisci gol, assist, cartellini |
-| ✏️ Modifica | Modifica dati |
-| 🗑️ Elimina | Elimina partita |
+### Note Avversario
+- Note tattiche ereditate automaticamente da partite precedenti contro lo stesso avversario
+- Modificabili per ogni partita
 
-### Partite Passate
-| Pulsante | Funzione |
-|----------|----------|
-| 📋 Formazione | Visualizza formazione |
-| 👥 Convocazioni | Visualizza convocazioni |
-| 🖨️ Distinta | PDF FIGC |
-| 📦 Archivia | Blocca modifiche |
+### Distinta FIGC
+1. Clicca **📄 Distinta**
+2. Se c'è formazione → ordina titolari per numero maglia, poi riserve
+3. Se solo convocati → ordine alfabetico
+4. **👥 Staff**: seleziona da dropdown o inserisci manualmente (nome, matricola, tessera)
+5. **🖨️ Stampa** → genera PDF formato FIGC
 
-### Inserire Risultato ed Eventi
-1. Clicca su **✏️ Eventi** (solo per partite con risultato)
-2. Inserisci il **Risultato Finale**
-3. Aggiungi **Eventi**:
-   - ⚽ **Gol** - Seleziona giocatore e minuto
-   - 🅰️ **Assist** - Giocatore che ha servito il gol
-   - 🟨 **Ammonizione** - Giocatore e minuto
-   - 🟥 **Espulsione** - Giocatore e minuto
-   - 🔄 **Sostituzione** - Giocatori IN/OUT e minuto
-4. Clicca su **Salva**
+---
 
-### Convoca Giocatori
-1. Clicca su **👥 Convocazioni**
-2. Seleziona i giocatori dalla lista
-3. Eventuali osservazioni nel campo note
-4. Clicca su **Salva**
+## Formazione
 
-### Genera Distinta FIGC
-1. Clicca su **🖨️ Distinta**
-2. Sistema compila automaticamente campi e giocatori
-3. Clicca su **Stampa PDF**
+### Campo Visuale
+La formazione si gestisce su un **campo da calcio visuale**:
+
+#### Desktop
+- **Seleziona modulo** (4-3-3, 4-4-2, 3-5-2, ecc. — 8 moduli disponibili)
+- **Trascina** giocatori dalla lista a destra verso gli slot sul campo
+- **Sposta** pallini liberamente sul campo (pointer drag)
+- **Click** su un pallino per rimuoverlo
+
+#### Mobile
+- **Tap** su un giocatore nella lista (si evidenzia in viola)
+- **Tap** su uno slot vuoto per posizionarlo
+- **Tap** su slot occupato per sostituire (swap immediato)
+- **Long-press + drag** per spostare posizioni custom
+
+### Suggerimenti Ruolo
+Quando selezioni un giocatore:
+- 🟡 **Slot gialli** (pulsanti): posizione suggerita per il suo ruolo
+- ⚪ **Slot bianchi**: posizioni alternative (fuori ruolo, consentite)
+- 🔴 **Slot bloccati**: portiere ↔ non-portiere (vincolo hard)
+
+### Validazione
+- Esattamente **11 titolari** richiesti
+- Esattamente **1 portiere** tra i titolari
+- Posizioni custom salvate nel DB (persistenti)
 
 ---
 
 ## Allenamenti
 
-Gestione del calendario allenamenti e presenze.
+La sezione Allenamenti è divisa in **3 sotto-pagine** (menu espandibile nella sidebar):
 
-### Creare un Allenamento
-1. Vai su **Allenamenti**
-2. Clicca su **+ Nuovo Allenamento**
-3. Inserisci:
-   - Data e ora
-   - Durata
-   - Luogo
-   - Descrizione/Note
-   - Materiali necessari
-4. Salva
+### 📋 Sedute
+Pianificazione del programma di allenamento:
 
-### Segnare Presenze
-1. Apri l'allenamento
-2. Segna presente/assente per ogni giocatore
-3. Eventuali note individuali
+1. **Calendario mensile**: seleziona un giorno programmato (pallino verde)
+2. **Programma seduta**:
+   - Tipo (Tattico, Tecnico, Atletico, Partita a tema, Possesso palla, Difensivo, Misto)
+   - Obiettivo
+   - Fasi strutturate (Riscaldamento → Tecnica → Tattica → Atletica → Partita → Defaticamento)
+   - Materiale (coni, paletti, over, casacche, ecc.)
+   - Note
+3. **Template**: salva un programma come template per riutilizzarlo
+
+### 🙋 Presenze
+Gestione presenze/assenze:
+
+1. **Calendario**: seleziona il giorno
+2. **Segna assenti**: checkbox rossa + motivo (Impegni Scolastici, Motivi Familiari, Infortunio, Malattia)
+3. **💾 Salva Presenze** (batch, una sola chiamata)
+4. **Riepilogo**: tabella con % presenze per giocatore (verde ≥80%, giallo ≥60%, rosso <60%)
+
+### ⚙️ Impostazioni
+Configurazione:
+
+1. **Settimana tipo**: giorni e orari di allenamento (+ Aggiungi giorno)
+2. **Template sedute**: card compatte con dettaglio (tipo, durata, fasi colorate)
+   - Click su card → modale modifica completa
+   - **+ Nuovo Template** per crearne uno da zero
+
+### Calendario Allenamenti
+- 🟢 **Pallino verde pieno**: presenze registrate
+- 🟢 **Pallino verde chiaro**: giorno programmato (dalla settimana tipo)
+- 🟠 **Riquadro arancione**: giorno partita (con dettaglio avversario)
+- 🔵 **Bordo blu**: oggi
+- I giorni partita **non** permettono la creazione di sedute
 
 ---
 
 ## Statistiche
 
-### Statistiche Disciplina
-Visualizza:
-- Ammonizioni totali per giocatore
-- Espulsioni
-- Squalifiche automatiche (3 ammonizioni)
+### Widget (5)
+| Partite | ⚽ Gol | 🅰️ Assist | 🟨 Amm. | 🟥 Esp. |
+
+### Alert Diffidati
+Box arancione con giocatori a 4 ammonizioni (prossimo giallo = squalifica).
+
+### Tabella Giocatori
+| Giocatore | Ruolo | Pres. | Min | ⚽ | 🅰️ | 🟨 | 🟥 |
+
+- **Click su colonna** per ordinare (toggle ▲/▼)
+- **Badge ruolo** colorati: POR giallo, DIF blu, CEN verde, ATT rosso
+- **Minutaggio**: calcolato per categoria (U15=70', U16=80', U17+=90')
+- Valori zero in grigio `-`, positivi colorati e bold
 
 ---
 
 ## Report
 
 ### Report Partita
-Genera un report dettagliato per singola partita:
-- Eventi
-- Statistiche
-- Valutazioni
+Seleziona una partita terminata → genera report con eventi, statistiche, valutazioni.
 
 ### Report Stagionale
-Riepilogo completo della stagione:
-- Classifica marcatori
-- Statistiche di squadra
-- Andamento
+Riepilogo completo: classifica marcatori, statistiche squadra, andamento.
 
 ### Report Giocatore
-Scheda dettagliata singolo giocatore:
-- Presenze
-- Gol e assist
-- Valutazioni medie
+Scheda individuale: presenze, gol, assist, valutazioni medie.
+
+Tutti i report sono stampabili in **PDF** (🖨️ Stampa).
 
 ---
 
 ## Impostazioni
 
-### Dati Società
-- Nome società
-- Logo
-- Contatti
+### Dati Società (Workspace)
+- Nome, Logo, Indirizzo, Contatti
 
 ### Stagione
-- Anno inizio/fine
-- Categorie attive
+- Anno inizio/fine, Stagione attiva
 
 ### Staff Squadra
-- Allenatore
-- Dirigenti
-- Preparatore Atletico
-- Allenatore Portieri
+- Gestito tramite la sezione Staff (assegnazione ruoli alla squadra)
 
 ---
 
 ## Gestione Utenti (Admin)
 
-Sezione riservata agli amministratori per gestire gli account.
+Sezione riservata agli amministratori.
 
-### Accedere
-1. Clicca su **Utenti** nel menu
-2. Richiede account con ruolo **Admin**
+### Creare un Utente
+1. Vai su **👥 Utenti**
+2. Clicca **+ Nuovo Utente**
+3. Compila: Nome, Cognome, Email, Password, Ruolo, Categorie Accesso
+4. **Salva**
 
-### Creare un Nuovo Utente
-1. Clicca su **+ Nuovo Utente**
-2. Compila:
-   - Nome e Cognome
-   - Email
-   - Password
-   - Ruolo (Admin/Allenatore/Staff)
-   - **Categorie Accesso**: Seleziona quali categorie può vedere
-   - **Attivo**: Sì/No
-3. Clicca su **Salva**
-
-### Modificare un Utente
-1. Clicca sull'icona ✏️ accanto all'utente
-2. Modifica i campi desiderati
-3. Clicca su **Salva**
-
-### Disattivare un Utente
-1. Clicca sull'icona 🗑️
-2. L'utente non potrà più accedere
-
-### Assegnare Categorie
-Nel campo **Categorie Accesso** seleziona le squadre/categorie che l'utente può gestire. L'utente vedrà solo quelle.
+### Modificare/Disattivare
+- ✏️ Modifica ruolo, categorie, stato attivo
+- 🗑️ Disattiva (soft delete, non elimina)
 
 ---
 
 ## Link Guest
 
-Sistema per dare accesso temporaneo a genitori o atleti.
-
-### Accedere
-1. Vai su **Link Guest** nel menu
-2. Richiede account **Admin**
+Accesso temporaneo per genitori o atleti.
 
 ### Generare un Link
-1. Clicca su **+ Genera Link**
-2. Compila:
-   - **Tipo**: Atleta o Genitore
-   - **Categorie**: Seleziona le categorie accessibili
-   - **Scadenza**: Numero di giorni di validità
-3. Clicca su **Genera**
-4. **Copia il link** generato
-5. Invia il link via email/SMS al destinatario
+1. Vai su **🔗 Link Guest**
+2. Clicca **+ Genera Link**
+3. Seleziona: Tipo (Atleta/Genitore), Categorie, Scadenza
+4. **Copia il link** e invialo
 
-### Revocare un Link
-1. Clicca su **🗑️ Revoca** accanto al link
-2. Il link diventa immediatamente non utilizzabile
-
-### Usare un Link Guest
-1. Il destinatario clicca sul link
-2. Viene reindirizzato alla Dashboard
-3. Può vedere solo le categorie e le funzionalità consentite
+### Revocare
+- Clicca 🗑️ accanto al link → diventa immediatamente non utilizzabile
 
 ---
 
+## Help Contestuale
 
-## ModalitГ  Demo
+Su ogni pagina è presente un **bottone ?** viola in basso a destra.
 
-La modalitГ  demo permette di esplorare Youth Football Manager senza bisogno di account o configurazione.
-
-### Accedere alla Demo
-
-1. Nella pagina di login, clicca su **"Entra in Demo"**
-2. Verrai reindirizzato alla Dashboard con dati di esempio
-3. Potrai navigare tutte le sezioni dell'applicazione
-
-### Cosa Include la Demo
-
-La demo include dati realistici di esempio:
-
-| Sezione | Contenuto Demo |
-|---------|----------------|
-| Dashboard | Statistiche, prossima partita, top players |
-| Rosa | 20+ giocatori con ruoli e numeri di maglia |
-| Calendario | 7 partite (2 future, 5 terminate con risultati) |
-| Allenamenti | Sedute programmate di esempio |
-| Statistiche | Classifiche marcatori, assist, presenze |
-| Report | Template di report partita e stagionali |
-
-### Mini Missioni
-
-Durante l'esplorazione della demo, vedrai piccole missioni guidate:
-
-| Pagina | Missione |
-|--------|----------|
-| Dashboard | Esplora la panoramica della societГ |
-| Rosa | Visualizza i giocatori della squadra |
-| Calendario | Scopri le partite in programma |
-| Allenamenti | Esplora le sedute programmate |
-| Statistiche | Visualizza le classifiche |
-| Report | Genera un report di esempio |
-
-Le missioni si completano automaticamente esplorando le sezioni.
-
-### Provare le FunzionalitГ
-
-Nella modalitГ  demo puoi:
-
-- **Creare partite**: Aggiungi nuove partite al calendario
-- **Inserire risultati**: Segna gol, assist e cartellini
-- **Gestire convocazioni**: Seleziona i giocatori convocati
-- **Impostare formazioni**: Definisci titolari e panchina
-- **Gestire allenamenti**: Crea sedute e segna presenze
-
-Tutte le modifiche vengono salvate localmente nel browser.
-
-### Reset della Demo
-
-Per ripristinare i dati originali della demo:
-
-1. Apri la console del browser (F12)
-2. Esegui: `window.YFM.demoPersistence.reset()`
-3. Ricarica la pagina
-
-```javascript
-// Via console del browser
-window.YFM.demoPersistence.reset();
-location.reload();
-```
-
-### Limitazioni della Demo
-
-- I dati sono solo locali (non vengono salvati sul server)
-- Riferiti solo al workspace demo "ASD Green Academy"
-- Dopo il reset, tutte le modifiche vengono perse
+- **Click** → apre un popover con la guida della pagina corrente
+- **Chiusura**: click su ×, click fuori, o re-click su ?
+- Disponibile su: Dashboard, Rosa, Calendario, Sedute, Presenze, Impostazioni, Statistiche, Report
 
 ---
 
-## FAQ e Supporto
+## FAQ
 
-### Ho dimenticato la password
-Contatta l'amministratore del sistema per un reset.
+### Non ho un account
+Contatta l'amministratore della tua società. Solo admin/superadmin possono creare utenti.
 
 ### Non vedo tutte le categorie
-Verifica con l'Admin che ti siano state assegnate le categorie corrette.
+L'admin potrebbe aver limitato il tuo accesso a categorie specifiche.
 
 ### Il link guest non funziona
-- Verifica che non sia scaduto
-- Controlla di aver copiato l'intero URL
-- Il link potrebbe essere stato revocato
+- Potrebbe essere scaduto
+- Potrebbe essere stato revocato
+- Verifica di aver copiato l'URL completo
 
 ### Non posso modificare una partita
-La partita potrebbe essere stata archiviata. Contatta un Admin per sbloccarla.
+La partita è stata archiviata. Chiedi a un admin di sbloccarla (🔓).
 
-### Come aggiungo un nuovo allenatore?
-Solo un Admin può creare account. Contatta l'amministratore.
+### Come salvo la formazione?
+Posiziona esattamente 11 titolari (con 1 portiere) → il bottone 💾 si abilita.
 
-### Posso vedere le statistiche di un giocatore specifico?
-Sì, clicca sulla scheda del giocatore dalla Rosa.
-
----
-
-## Contatti e Supporto
-
-Per assistenza tecnica o segnalazione bug:
-- **Email**: support@example.com
-- **GitHub Issues**: https://github.com/ecopraf/youth-football-manager/issues
+### Le presenze non si salvano
+Verifica di aver selezionato un giorno dal calendario prima di cliccare Salva.
 
 ---
 
-*Documento aggiornato: Giugno 2026*
-*Versione: 1.0*
+## Contatti
+
+- **Email**: youthfootballmanager@gmail.com
+- **GitHub**: https://github.com/ecopraf/youth-football-manager
+- **Demo**: https://youth-football-manager-demo.vercel.app
+
+---
+
+*Versione documento: 2.0 | Luglio 2026*
