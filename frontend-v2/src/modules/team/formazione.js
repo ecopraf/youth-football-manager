@@ -231,14 +231,12 @@ function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
   // === MOBILE: Tap-to-place (alternativa al drag&drop) ===
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-  // Tap su giocatore nella rosa: seleziona
+  // Tap su giocatore nella rosa: seleziona (SOLO mobile)
   document.querySelectorAll('.roster-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      if (!isTouchDevice) return; // Su desktop usa drag
+    item.addEventListener('touchend', (e) => {
       e.preventDefault();
       const pid = item.dataset.pid;
       if (item.classList.contains('placed')) return;
-      // Deseleziona precedente
       document.querySelectorAll('.roster-item.selected-mobile').forEach(el => el.classList.remove('selected-mobile'));
       if (selectedPid === pid) { selectedPid = null; return; }
       selectedPid = pid;
@@ -246,19 +244,16 @@ function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
     });
   });
 
-  // Tap su slot: posiziona il giocatore selezionato
+  // Tap su slot: posiziona il giocatore selezionato (SOLO mobile)
   document.querySelectorAll('.pitch-slot').forEach(slot => {
-    slot.addEventListener('click', (e) => {
-      if (!isTouchDevice) return;
+    slot.addEventListener('touchend', (e) => {
       e.preventDefault();
       const targetIdx = parseInt(slot.dataset.slot);
 
       if (selectedPid) {
         // Posiziona giocatore selezionato nello slot (swap se occupato)
         const existingPid = assignments[targetIdx];
-        // Rimuovi da slot precedente se già posizionato
         Object.keys(assignments).forEach(k => { if (assignments[k] === selectedPid) delete assignments[k]; });
-        // Se lo slot era occupato e abbiamo già 11, è uno swap (non bloccare)
         if (!existingPid && Object.keys(assignments).length >= 11) { selectedPid = null; return; }
         assignments[targetIdx] = selectedPid;
         selectedPid = null;
@@ -378,8 +373,8 @@ function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
           refresh();
           return;
         }
-      } else {
-        // Click senza movimento: rimuovi dal campo (torna in rosa)
+      } else if (!isTouchDevice) {
+        // Click senza movimento su DESKTOP: rimuovi dal campo
         const idx = parseInt(slot.dataset.slot);
         delete assignments[idx];
         delete customPositions[idx];
