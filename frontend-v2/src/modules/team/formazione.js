@@ -254,11 +254,12 @@ function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
       const targetIdx = parseInt(slot.dataset.slot);
 
       if (selectedPid) {
-        // Posiziona giocatore selezionato nello slot
+        // Posiziona giocatore selezionato nello slot (swap se occupato)
         const existingPid = assignments[targetIdx];
         // Rimuovi da slot precedente se già posizionato
         Object.keys(assignments).forEach(k => { if (assignments[k] === selectedPid) delete assignments[k]; });
-        if (Object.keys(assignments).length >= 11 && !existingPid) { selectedPid = null; return; }
+        // Se lo slot era occupato e abbiamo già 11, è uno swap (non bloccare)
+        if (!existingPid && Object.keys(assignments).length >= 11) { selectedPid = null; return; }
         assignments[targetIdx] = selectedPid;
         selectedPid = null;
         document.querySelectorAll('.roster-item.selected-mobile').forEach(el => el.classList.remove('selected-mobile'));
