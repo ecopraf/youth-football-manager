@@ -1782,6 +1782,32 @@ app.post('/api/squadre/:squadraId/training-by-date', authMiddleware, async (req,
   }
 });
 
+// ── STAFF COMPLETO (per distinta) ──
+app.get('/api/squadre/:squadraId/staff-completo', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('team_staff')
+      .select('ruolo_squadra, staff:staff_id(id, nome, cognome, ruolo, qualifiche, documento)')
+      .eq('team_id', req.params.squadraId);
+    if (error) return res.status(400).json({ error: error.message });
+    const result = (data || []).map(ts => {
+      const s = ts.staff || {};
+      const q = s.qualifiche || {};
+      return {
+        id: s.id,
+        nome: s.nome,
+        cognome: s.cognome,
+        ruolo_squadra: ts.ruolo_squadra,
+        matricola: q.matricola || '',
+        tessera: q.tessera_figc || q.tessera_lnd || '',
+        tipo_tessera: q.tipo_tessera || ''
+      };
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── TRAINING TEMPLATES ──
 app.get('/api/squadre/:squadraId/training-templates', async (req, res) => {
   try {

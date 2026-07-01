@@ -267,11 +267,16 @@ function renderDistinta(d, staff) {
 
 function openStaffForm(mid, cur) {
   const s = cur || {};
+
+  // Carica staff completo dalla squadra via team_staff (già in window.YFM)
   const squadra = window.YFM.getSquadra ? window.YFM.getSquadra() : {};
 
-  // Costruisci registro staff da dati squadra (team_staff già caricati)
+  // Costruisci registro staff con qualifiche (caricato dall'API team_staff)
   const staffRegistry = [];
   const seen = new Set();
+
+  // Usa i dati staff già caricati nell'endpoint /stagioni/:id/squadre (arricchiti)
+  // Fallback: usa i nomi dalla squadra
   ['allenatore','dirigente','dirigente2','preparatore_atletico','allenatore_portieri'].forEach(key => {
     const nome = squadra[key];
     if (nome && !seen.has(nome.toLowerCase())) {
@@ -280,6 +285,31 @@ function openStaffForm(mid, cur) {
     }
   });
 
+  // Carica staff completo via API (asincrono, aggiorna dropdown)
+  apiFetch('/squadre/' + window.YFM.squadraId + '/staff-completo').then(staffData => {
+    if (!staffData || !Array.isArray(staffData)) return;
+    // Aggiorna dropdown con dati completi
+    staffData.forEach(m => {
+      if (!seen.has((m.nome + ' ' + m.cognome).toLowerCase())) {
+        staffRegistry.push({ id: m.id, nome: m.nome + ' ' + m.cognome, ruolo: m.ruolo_squadra, matricola: m.matricola || '', tessera: m.tessera || '' });
+      } else {
+        // Aggiorna dati esistenti con matricola/tessera
+        const existing = staffRegistry.find(r => r.nome.toLowerCase() === (m.nome + ' ' + m.cognome).toLowerCase());
+        if (existing) { existing.matricola = m.matricola || ''; existing.tessera = m.tessera || ''; existing.id = m.id; }
+      }
+    });
+    // Refresh dropdown options
+    document.querySelectorAll('.staff-dropdown').forEach(sel => {
+      const roleKey = sel.dataset.role;
+      const nomeInput = sel.closest('div[style]')?.querySelector('input');
+      const nomeVal = nomeInput?.value || '';
+      sel.innerHTML = '<option value="">-- Seleziona dallo staff --</option>' +
+        staffRegistry.map(m => `<option value="${m.id}" ${m.nome === nomeVal ? 'selected' : ''}>${m.nome}${m.ruolo ? ' (' + m.ruolo + ')' : ''}</option>`).join('') +
+        '<option value="__manual__">✏️ Inserisci manualmente</option>';
+    });
+  }).catch(() => {});
+
+  // Ruoli del form con mapping ai campi
   const ruoli = [
     { key: 'allenatore', label: 'Allenatore', idNome: 'sfAll', idMatr: 'sfMatrAll', idTess: 'sfTessAll', tessType: 'FIGC', matrKey: 'matricola_allenatore', tessKey: 'tessera_figc_allenatore' },
     { key: 'dirigente', label: 'Dirigente Ufficiale', idNome: 'sfDir', idMatr: 'sfMatr', idTess: 'sfTessLND', tessType: 'LND', matrKey: 'matricola_dirigente', tessKey: 'tessera_lnd_dirigente' },
