@@ -32,7 +32,7 @@ Le tabelle reali nel DB Supabase sono:
 **NON ESISTONO** (non usare mai nel codice):
 - `formazione_partita` → usa `match_formation`
 - `presenza_allenamento` → usa `training` + `training_attendance`
-- `allenamento_config` / `configurazione_allenamento` → non esiste
+- `allenamento_config` / `configurazione_allenamento` → usa `training_config`
 - `guest_link` → usa `guest_token`
 - `calciatore` → usa `player`
 - `squadra` → usa `team`
@@ -41,6 +41,7 @@ Le tabelle reali nel DB Supabase sono:
 - `rosa` → usa `team_player`
 - `partita` → usa `match`
 - `evento_partita` → usa `match_event`
+- `training_material` → non esiste
 
 ## Relazioni chiave nel DB
 

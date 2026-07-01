@@ -136,10 +136,13 @@ Macro-aree funzionali:
 | Formazione | `modules/team/formazione.js` | Campo visuale con drag&drop, 8 moduli tattici, posizioni custom persistenti |
 | Eventi/Risultato | `modules/team/resultForm.js` | Inserimento eventi, sola lettura se archiviata |
 | Valutazioni | `modules/team/valutazioni.js` | Valutazioni partite |
-| Allenamenti | `modules/coach/training.js` | Calendario mensile, dettaglio seduta con fasi strutturate, presenze batch |
-| | `modules/coach/trainingCalendar.js` | Griglia mensile con pallini (presenze, programmati, partite) |
-| | `modules/coach/trainingSession.js` | Programma seduta (fasi, materiale, template), presenze con motivo |
-| | `modules/coach/trainingConfig.js` | Settimana tipo collassabile, riepilogo presenze con % |
+| Allenamenti | `modules/coach/trainingSessions.js` | 📋 Sedute: calendario + programma fasi strutturato + template |
+| | `modules/coach/trainingPresenze.js` | 🙋 Presenze: calendario + presenze batch + riepilogo % |
+| | `modules/coach/trainingSettings.js` | ⚙️ Impostazioni: settimana tipo + gestione template (card compatte + modale modifica) |
+| | `modules/coach/trainingData.js` | Caricamento dati condiviso per le 3 sotto-pagine |
+| | `modules/coach/trainingCalendar.js` | Calendario mensile condiviso (presenze, programmati, partite) |
+| Stats | `modules/performance/stats.js` | 5 widget, alert diffidati, tabella completa con sorting per colonna |
+| Help | `components/PageHelp.js` | Bottone ? contestuale con guida per ogni pagina |
 | Stats | `modules/performance/stats.js` | Disciplina (ammonizioni, espulsioni) |
 | Reports | `modules/performance/reports.js` | Report Partita, Stagionale, Giocatore |
 | Settings | `modules/club/settings.js` | Stagione, categoria, staff |
@@ -447,16 +450,16 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
-| 84bf1f1 | fix: mobile free-move non rimuove più il giocatore al rilascio |
-| 4ccbd3b | fix: formazione visibile senza ridimensionare lo schermo |
-| 235d468 | feat: formazione mobile - tap-to-place (alternativa drag&drop) |
-| 7f22ca5 | feat: staff distinta con dati completi (matricole, tessere) |
-| 566d147 | feat: formazione_meta JSONB - campo dedicato per modulo e posizioni |
+| a986fcb | feat: help contestuale (?) per ogni pagina |
+| cf531f7 | fix: stats ruolo da team_player.ruolo_preferito + formazioni DB |
+| 48d5aa7 | feat: pagina statistiche rinnovata (layout demo) |
+| d4df5ea | feat: allenamenti split in 3 sotto-pagine (Sedute, Presenze, Impostazioni) |
+| f049f06 | feat: slot suggeriti per ruolo + vincolo portiere |
+| 235d468 | feat: formazione mobile - tap-to-place |
 | 880c629 | feat: build-info v3.15 counter + formazione campo visuale |
-| 6809ebe | fix: distinta + pallino formazione |
-| d8de05c | fix: convocazioni non mostrate - mismatch team_player_id vs calciatoreId |
+| 7f22ca5 | feat: staff distinta con dati completi (matricole, tessere) |
+| 566d147 | feat: formazione_meta JSONB - campo dedicato |
 | ba78b11 | perf: batch convocazioni e eventi (1 fetch invece di N) |
-| ad92bf2 | perf: presenze batch - 1 chiamata invece di 22 |
 
 ---
 

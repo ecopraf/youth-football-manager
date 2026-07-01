@@ -107,14 +107,17 @@
 - [x] 15+ endpoint mancanti nel backend → aggiunti
 - [x] Pagina login con riferimenti demo → rimossi, stile rinnovato
 - [x] Calendario restyling completo (progress dots, card cliccabili, mobile toggle, LIVE)
-- [x] Formazione: campo visuale con drag&drop, 8 moduli, posizioni custom persistenti
-- [x] Formazione mobile: tap-to-place + free-move
-- [x] Distinta: fallback convocati, staff con dropdown selezione
-- [x] Allenamenti: 4 moduli (calendario mensile, seduta con fasi, config, riepilogo)
-- [x] Allenamenti: calendario mostra partite, presenze batch, template DB
+- [x] Formazione: campo visuale con drag&drop, 8 moduli, posizioni custom persistenti (formazione_meta JSONB)
+- [x] Formazione mobile: tap-to-place + free-move + slot suggeriti per ruolo
+- [x] Formazione desktop: role hints durante drag + vincolo portiere
+- [x] Distinta: fallback convocati, staff con dropdown selezione + dati completi
+- [x] Allenamenti: split in 3 sotto-pagine (Sedute, Presenze, Impostazioni)
+- [x] Allenamenti: calendario mostra partite, presenze batch, template DB con card compatte
+- [x] Statistiche: 5 widget, alert diffidati, tabella con sorting, badge ruolo, minutaggio per categoria
 - [x] Performance: batch convocazioni, eventi, presenze (1 fetch invece di N)
 - [x] Build-info: counter incrementale v3.15.N
 - [x] Data oggi: fix UTC vs locale nel calendario
+- [x] Help contestuale: bottone ? con guida per ogni pagina
 
 ### Minori
 - [ ] Filtro categorie: staff vede tutte le squadre invece di quelle assegnate
