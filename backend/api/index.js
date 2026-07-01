@@ -1782,6 +1782,54 @@ app.post('/api/squadre/:squadraId/training-by-date', authMiddleware, async (req,
   }
 });
 
+// ── STATS GIOCATORI COMPLETO (per pagina statistiche) ──
+app.get('/api/squadre/:squadraId/stats-giocatori', async (req, res) => {
+  try {
+    const teamId = req.params.squadraId;
+    // Giocatori
+    const { data: tps } = await supabase.from('team_player').select('id, player_id, player:player_id(id, nome, cognome, ruolo_principale)').eq('team_id', teamId);
+    // Partite terminate
+    const { data: matches } = await supabase.from('match').select('id').eq('team_id', teamId).eq('stato', 'Terminata');
+    const matchIds = (matches || []).map(m => m.id);
+    // Formazioni (presenze)
+    let formazioni = [];
+    if (matchIds.length > 0) {
+      const { data } = await supabase.from('match_formation').select('match_id, team_player_id, is_starter').in('match_id', matchIds);
+      formazioni = data || [];
+    }
+    // Eventi
+    let eventi = [];
+    if (matchIds.length > 0) {
+      const { data } = await supabase.from('match_event').select('tipo_evento, player_id').in('match_id', matchIds);
+      eventi = data || [];
+    }
+    // Calcola stats per giocatore
+    const tpToPlayer = {};
+    const playerStats = {};
+    (tps || []).forEach(tp => {
+      tpToPlayer[tp.id] = tp.player_id;
+      const p = tp.player;
+      if (p) playerStats[p.id] = { id: p.id, nome: p.nome, cognome: p.cognome, ruolo: p.ruolo_principale || '', presenze: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
+    });
+    // Presenze da formazioni
+    formazioni.forEach(f => {
+      const pid = tpToPlayer[f.team_player_id];
+      if (pid && playerStats[pid]) playerStats[pid].presenze++;
+    });
+    // Gol, assist, cartellini da eventi
+    eventi.forEach(e => {
+      if (!e.player_id || !playerStats[e.player_id]) return;
+      if (e.tipo_evento === 'GOAL') playerStats[e.player_id].gol++;
+      if (e.tipo_evento === 'ASSIST') playerStats[e.player_id].assist++;
+      if (e.tipo_evento === 'YELLOW') playerStats[e.player_id].ammonizioni++;
+      if (e.tipo_evento === 'RED') playerStats[e.player_id].espulsioni++;
+    });
+    res.json({ stats: Object.values(playerStats), partiteGiocate: matchIds.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── STAFF COMPLETO (per distinta) ──
 app.get('/api/squadre/:squadraId/staff-completo', async (req, res) => {
   try {
