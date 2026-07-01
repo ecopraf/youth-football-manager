@@ -12,7 +12,10 @@ export function initRouter() {
     formazione: () => import('./modules/team/formazione.js'),
     formation: () => import('./modules/team/formazione.js'),
     playerDetail: () => import('./modules/team/playerDetail.js'),
-    training: () => import('./modules/coach/training.js'),
+    training: () => import('./modules/coach/trainingSessions.js'),
+    trainingSessions: () => import('./modules/coach/trainingSessions.js'),
+    trainingPresenze: () => import('./modules/coach/trainingPresenze.js'),
+    trainingSettings: () => import('./modules/coach/trainingSettings.js'),
     stats: () => import('./modules/performance/stats.js'),
     reports: () => import('./modules/performance/reports.js'),
     settings: () => import('./modules/club/settings.js')
