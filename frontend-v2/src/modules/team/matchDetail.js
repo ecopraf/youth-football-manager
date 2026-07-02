@@ -68,19 +68,9 @@ export async function openMatchDetail(mid) {
     html += '<div class="match-stat"><div class="match-stat-val" style="color:#E74C3C;">' + espulsioni + '</div><div class="match-stat-label">Esp.</div></div>';
     html += '</div>';
     
-    // Helper per nomi con omonimia
+    // Helper per nomi - il backend restituisce già "Cognome N."
     const formatPlayerName = (fullName) => {
-      if (!fullName) return '';
-      const parts = fullName.trim().split(' ');
-      if (parts.length === 1) return parts[0];
-      const nome = parts.slice(0, -1).join(' ');
-      const cognome = parts[parts.length - 1];
-      const sameSurname = eventi.filter(e => e.principale && e.principale.endsWith(' ' + cognome));
-      if (sameSurname.length > 1) {
-        const initial = nome.charAt(0).toUpperCase() + '.';
-        return cognome + ' ' + initial;
-      }
-      return cognome;
+      return fullName || '';
     };
     
     html += '<div class="timeline-title">📋 Cronologia Eventi</div>';
@@ -88,9 +78,10 @@ export async function openMatchDetail(mid) {
     if (eventi.length === 0) {
       html += '<p style="text-align:center;color:#888;padding:30px;font-size:14px;">Nessun evento registrato per questa partita</p>';
     } else {
-      const primoTempo = eventi.filter(e => e.minuto <= 45);
-      const secondoTempo = eventi.filter(e => e.minuto > 45 && e.minuto <= 90);
-      const extraTime = eventi.filter(e => e.minuto > 90);
+      const primoTempo = eventi.filter(e => e.minuto && e.minuto <= 45);
+      const secondoTempo = eventi.filter(e => e.minuto && e.minuto > 45 && e.minuto <= 90);
+      const extraTime = eventi.filter(e => e.minuto && e.minuto > 90);
+      const noMinuto = eventi.filter(e => !e.minuto);
       
       html += '<div class="timeline-container"><div class="timeline">';
       
@@ -141,6 +132,26 @@ export async function openMatchDetail(mid) {
           html += '<div class="timeline-content">';
           html += '<div class="timeline-header">';
           html += '<span class="timeline-minute">' + e.minuto + '\'</span>';
+          html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
+          html += '</div>';
+          if (e.secondario) {
+            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + formatPlayerName(e.secondario) + '</div>';
+          }
+          html += '</div>';
+          html += '</div>';
+        });
+      }
+      
+      if (noMinuto.length > 0) {
+        if (primoTempo.length > 0 || secondoTempo.length > 0 || extraTime.length > 0) {
+          html += '<div class="timeline-divider"><span>Minuto n.d.</span></div>';
+        }
+        noMinuto.forEach(e => {
+          const config = getEventConfig(e.tipo);
+          html += '<div class="timeline-item">';
+          html += '<div class="timeline-dot" style="background:' + config.bgColor + ';">' + config.icon + '</div>';
+          html += '<div class="timeline-content">';
+          html += '<div class="timeline-header">';
           html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
           html += '</div>';
           if (e.secondario) {

@@ -7,6 +7,9 @@ require("dotenv").config();
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const XLSX = require('xlsx');
 const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -53,6 +56,20 @@ const authMiddleware = async (req, res, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // JWT Guest: accesso solo in lettura
+    if (decoded.isGuest) {
+      req.user = {
+        isGuest: true,
+        tipo: decoded.tipo,
+        squadre_accesso: decoded.squadre_accesso || [],
+        ruolo: 'guest',
+        is_superadmin: false,
+        permessi: {}
+      };
+      return next();
+    }
+    
     const { data: user } = await supabase.from('users').select('*').eq('id', decoded.userId).single();
     if (!user) return res.status(401).json({ error: 'Utente non trovato' });
     if (user.is_active === false) return res.status(401).json({ error: 'Account disattivato' });
@@ -62,6 +79,48 @@ const authMiddleware = async (req, res, next) => {
     return res.status(401).json({ error: 'Token non valido' });
   }
 };
+
+// ── PERMISSION HELPERS ──
+function hasPermission(user, modulo, livello = 'read') {
+  if (user.is_superadmin) return true;
+  if (user.ruolo === 'admin') return true;
+  if (user.ruolo === 'allenatore') return true;
+  // Staff: controlla permessi granulari
+  const permessi = user.permessi || {};
+  const perm = permessi[modulo];
+  if (!perm) return false;
+  if (livello === 'read') return perm === 'read' || perm === 'write';
+  return perm === 'write';
+}
+
+function hasSquadraAccess(user, squadraId) {
+  if (user.is_superadmin) return true;
+  if (user.ruolo === 'admin') return true;
+  if (!user.squadre_accesso || user.squadre_accesso.length === 0) return true;
+  // squadre_accesso ora contiene category_id — il check diretto per team_id
+  // viene fatto nel frontend/endpoint specifici tramite hasCategoryAccess
+  return user.squadre_accesso.includes(squadraId);
+}
+
+// Verifica accesso per category_id (usato per filtrare squadre)
+function hasCategoryAccess(user, categoryId) {
+  if (user.is_superadmin) return true;
+  if (user.ruolo === 'admin') return true;
+  if (!user.squadre_accesso || user.squadre_accesso.length === 0) return true;
+  return user.squadre_accesso.includes(categoryId);
+}
+
+function requirePermission(modulo, livello = 'write') {
+  return (req, res, next) => {
+    if (!hasPermission(req.user, modulo, livello)) {
+      return res.status(403).json({ error: 'Permesso negato' });
+    }
+    if (req.params.squadraId && !hasSquadraAccess(req.user, req.params.squadraId)) {
+      return res.status(403).json({ error: 'Accesso alla squadra negato' });
+    }
+    next();
+  };
+}
 
 // Export supabase e JWT_SECRET per i moduli
 // NOTA: module.exports finale sovrascrive questo, usare require diretto se necessario
@@ -98,7 +157,10 @@ app.post('/api/auth/login', async (req, res) => {
         email: users.email, 
         ruolo: users.ruolo, 
         workspace_id: users.workspace_id,
-        is_superadmin: users.is_superadmin || false
+        is_superadmin: users.is_superadmin || false,
+        categorie_accesso: users.squadre_accesso || [],
+        ruoli: users.ruoli || [],
+        permessi: users.permessi || {}
       } 
     });
   } catch (err) {
@@ -163,11 +225,13 @@ app.put('/api/auth/profile', authMiddleware, async (req, res) => {
 app.get('/api/auth/users', authMiddleware, async (req, res) => {
   try {
     const workspaceId = req.query.workspace_id;
-    let query = supabase.from('users').select('id, nome, cognome, email, ruolo, workspace_id, ruoli, squadre_accesso, is_superadmin, is_active').eq('is_active', true).order('cognome');
+    let query = supabase.from('users').select('id, nome, cognome, email, ruolo, workspace_id, ruoli, squadre_accesso, permessi, is_superadmin, is_active').eq('is_active', true).order('cognome');
     if (workspaceId) query = query.eq('workspace_id', workspaceId);
     const { data, error } = await query;
     if (error) return res.status(400).json({ error: error.message });
-    res.json({ users: data || [] });
+    // Mappa squadre_accesso → categorie_accesso per il frontend
+    const users = (data || []).map(u => ({ ...u, categorie_accesso: u.squadre_accesso || [] }));
+    res.json({ users });
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
   }
@@ -175,15 +239,19 @@ app.get('/api/auth/users', authMiddleware, async (req, res) => {
 
 app.post('/api/auth/users', authMiddleware, async (req, res) => {
   try {
-    const { email, password, nome, cognome, ruolo, workspace_id, ruoli, squadre_accesso } = req.body;
+    const { email, password, nome, cognome, ruolo, workspace_id, ruoli, categorie_accesso, permessi } = req.body;
     const password_hash = await bcrypt.hash(password || 'ChangeMe123!', 10);
     const { data, error } = await supabase.from('users').insert({
       email: email.toLowerCase(), password_hash, nome, cognome,
-      ruolo: ruolo || 'admin', workspace_id, ruoli: ruoli || [ruolo || 'admin'],
-      squadre_accesso: squadre_accesso || [], is_active: true
+      ruolo: ruolo || 'admin',
+      workspace_id: workspace_id || req.user.workspace_id,
+      ruoli: ruoli || [ruolo || 'admin'],
+      squadre_accesso: categorie_accesso || [],
+      permessi: permessi || {},
+      is_active: true
     }).select().single();
     if (error) return res.status(400).json({ error: error.message });
-    res.status(201).json(data);
+    res.status(201).json({ ...data, categorie_accesso: data.squadre_accesso || [] });
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
   }
@@ -192,10 +260,13 @@ app.post('/api/auth/users', authMiddleware, async (req, res) => {
 app.put('/api/auth/users/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome, cognome, ruolo, workspace_id, ruoli, squadre_accesso, is_active } = req.body;
-    const { data, error } = await supabase.from('users').update({ nome, cognome, ruolo, workspace_id, ruoli, squadre_accesso, is_active }).eq('id', id).select().single();
+    const { nome, cognome, ruolo, workspace_id, ruoli, categorie_accesso, is_active, permessi } = req.body;
+    const updateData = { nome, cognome, ruolo, workspace_id, ruoli, permessi: permessi || {} };
+    if (is_active !== undefined) updateData.is_active = is_active;
+    if (categorie_accesso !== undefined) updateData.squadre_accesso = categorie_accesso;
+    const { data, error } = await supabase.from('users').update(updateData).eq('id', id).select().single();
     if (error) return res.status(400).json({ error: error.message });
-    res.json({ success: true, user: data });
+    res.json({ success: true, user: { ...data, categorie_accesso: data.squadre_accesso || [] } });
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
   }
@@ -214,14 +285,16 @@ app.delete('/api/auth/users/:id', authMiddleware, async (req, res) => {
 
 app.post('/api/auth/guest-link', authMiddleware, async (req, res) => {
   try {
-    const { tipo = 'genitore', squadre_accesso = [], expires_in_hours = 720 } = req.body;
+    const { tipo = 'genitore', categorie_accesso = [], scadenza_giorni } = req.body;
     const token = require('crypto').randomBytes(32).toString('hex');
-    const scadenza = new Date(Date.now() + expires_in_hours * 60 * 60 * 1000).toISOString();
+    const hours = scadenza_giorni ? scadenza_giorni * 24 : 720 * 24;
+    const scadenza = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase.from('guest_token').insert({
-      token, utente_id: req.user.id, tipo, squadre_accesso, scadenza
+      token, utente_id: req.user.id, tipo, squadre_accesso: categorie_accesso, scadenza
     }).select().single();
     if (error) return res.status(400).json({ error: error.message });
-    res.status(201).json({ token: data.token, scadenza: data.scadenza, tipo: data.tipo, url: `/guest/${data.token}` });
+    const link = `${req.headers.origin || 'https://youth-football-manager.vercel.app'}/guest/${data.token}`;
+    res.status(201).json({ success: true, token: data.token, scadenza: data.scadenza, tipo: data.tipo, link });
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
   }
@@ -229,9 +302,32 @@ app.post('/api/auth/guest-link', authMiddleware, async (req, res) => {
 
 app.get('/api/auth/guest-links', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('guest_token').select('*').gte('scadenza', new Date().toISOString()).order('created_at', { ascending: false });
+    const user = req.user;
+    let query = supabase.from('guest_token').select('*').order('created_at', { ascending: false });
+    
+    if (user.is_superadmin) {
+      // superadmin vede tutto
+    } else if (user.ruolo === 'admin') {
+      const { data: wsUsers } = await supabase.from('users').select('id').eq('workspace_id', user.workspace_id);
+      const userIds = (wsUsers || []).map(u => u.id);
+      query = query.in('utente_id', userIds);
+    } else {
+      query = query.eq('utente_id', user.id);
+    }
+    
+    const { data, error } = await query;
     if (error) return res.status(400).json({ error: error.message });
-    res.json({ links: data || [] });
+    
+    // Arricchisci con nome creatore
+    const utenteIds = [...new Set((data || []).map(t => t.utente_id).filter(Boolean))];
+    let utenteMap = {};
+    if (utenteIds.length > 0) {
+      const { data: utenti } = await supabase.from('users').select('id, nome, cognome').in('id', utenteIds);
+      (utenti || []).forEach(u => { utenteMap[u.id] = { nome: u.nome, cognome: u.cognome }; });
+    }
+    
+    const links = (data || []).map(t => ({ ...t, utente: utenteMap[t.utente_id] || null }));
+    res.json({ links });
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
   }
@@ -253,23 +349,22 @@ app.get('/api/guest/:token', async (req, res) => {
     const { token } = req.params;
     const { data, error } = await supabase.from('guest_token').select('*').eq('token', token).gte('scadenza', new Date().toISOString()).single();
     if (error || !data) return res.status(404).json({ error: 'Link non valido o scaduto' });
-    res.json({ token: data.token, tipo: data.tipo, squadre_accesso: data.squadre_accesso });
+    
+    // Genera JWT guest per accesso API
+    const guestJwt = jwt.sign({
+      isGuest: true,
+      tipo: data.tipo,
+      squadre_accesso: data.squadre_accesso || [],
+      guestTokenId: data.id
+    }, JWT_SECRET, { expiresIn: '24h' });
+    
+    res.json({ token: data.token, jwt: guestJwt, tipo: data.tipo, squadre_accesso: data.squadre_accesso });
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
   }
 });
 
 // ── WORKSPACE ROUTES ──
-app.get('/api/workspaces', async (req, res) => {
-  try {
-    const { data, error } = await supabase.from('workspace').select('id, nome, logo_url, data_creazione').order('nome');
-    if (error) return res.status(400).json({ error: error.message });
-    res.json(data || []);
-  } catch (err) {
-    res.status(500).json({ error: 'Errore server' });
-  }
-});
-
 app.get('/api/auth/workspaces', authMiddleware, async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -297,6 +392,9 @@ app.get('/api/auth/workspaces', authMiddleware, async (req, res) => {
 
 app.post('/api/workspaces', authMiddleware, async (req, res) => {
   try {
+    if (!req.user.is_superadmin) {
+      return res.status(403).json({ error: 'Solo superadmin può creare workspace' });
+    }
     const { nome, logo_url, indirizzo, telefono, email, sito_web } = req.body;
     if (!nome) return res.status(400).json({ error: 'Nome richiesto' });
     const { data, error } = await supabase.from('workspace').insert({ nome, logo_url, indirizzo, telefono, email, sito_web }).select().single();
@@ -321,6 +419,9 @@ app.put('/api/workspaces/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/workspaces/:id', authMiddleware, async (req, res) => {
   try {
+    if (!req.user.is_superadmin) {
+      return res.status(403).json({ error: 'Solo superadmin può eliminare workspace' });
+    }
     const { id } = req.params;
     const { data: seasons } = await supabase.from('season').select('id').eq('workspace_id', id);
     if (seasons && seasons.length > 0) return res.status(400).json({ error: 'Elimina prima le stagioni associate' });
@@ -344,7 +445,7 @@ app.put('/api/workspaces/:id/logo', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/workspaces/:id/stagioni', async (req, res) => {
+app.get('/api/workspaces/:id/stagioni', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { data, error } = await supabase.from('season').select('*').eq('workspace_id', id).order('data_inizio', { ascending: false });
@@ -370,8 +471,171 @@ app.post('/api/workspaces/:id/stagioni', authMiddleware, async (req, res) => {
   }
 });
 
+// ── STAFF PER WORKSPACE (tutti i membri staff del workspace) ──
+app.get('/api/workspaces/:id/staff', authMiddleware, async (req, res) => {
+  try {
+    const wsId = req.params.id;
+    const { data: staffData, error } = await supabase.from('staff')
+      .select('*')
+      .eq('workspace_id', wsId)
+      .order('cognome');
+    if (error) return res.status(400).json({ error: error.message });
+    
+    // Arricchisci con categorie assegnate
+    const staffIds = (staffData || []).map(s => s.id);
+    if (staffIds.length === 0) return res.json([]);
+    
+    const { data: tsData } = await supabase.from('team_staff').select('staff_id, team_id, ruolo_squadra').in('staff_id', staffIds);
+    const { data: categories } = await supabase.from('category').select('id, nome').eq('workspace_id', wsId);
+    const { data: seasons } = await supabase.from('season').select('id').eq('workspace_id', wsId);
+    const seasonIds = (seasons || []).map(s => s.id);
+    const { data: teams } = await supabase.from('team').select('id, category_id').in('season_id', seasonIds.length > 0 ? seasonIds : ['x']);
+    
+    const catMap = {};
+    (categories || []).forEach(c => { catMap[c.id] = c.nome; });
+    const teamCatMap = {};
+    (teams || []).forEach(t => { teamCatMap[t.id] = t.category_id; });
+    
+    const result = (staffData || []).map(s => {
+      const assignments = (tsData || []).filter(ts => ts.staff_id === s.id);
+      const catIds = [...new Set(assignments.map(a => teamCatMap[a.team_id]).filter(Boolean))];
+      return {
+        ...s,
+        categorie: catIds.map(id => ({ id, nome: catMap[id] || '?' })),
+        ruolo_squadra: assignments[0]?.ruolo_squadra || s.ruolo
+      };
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Errore server' });
+  }
+});
+
+app.post('/api/workspaces/:id/staff', authMiddleware, async (req, res) => {
+  try {
+    const wsId = req.params.id;
+    const { nome, cognome, ruolo, telefono, email, qualifiche, categorie_ids } = req.body;
+    
+    const { data: staff, error } = await supabase.from('staff').insert({
+      nome, cognome, ruolo, telefono, email, qualifiche: qualifiche || {}, workspace_id: wsId
+    }).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    
+    // Assegna alle categorie (team_staff)
+    if (categorie_ids && categorie_ids.length > 0) {
+      const { data: seasons } = await supabase.from('season').select('id').eq('workspace_id', wsId);
+      const seasonIds = (seasons || []).map(s => s.id);
+      const { data: teams } = await supabase.from('team').select('id, category_id').in('season_id', seasonIds);
+      
+      const inserts = [];
+      categorie_ids.forEach(catId => {
+        const team = (teams || []).find(t => t.category_id === catId);
+        if (team) inserts.push({ staff_id: staff.id, team_id: team.id, ruolo_squadra: ruolo });
+      });
+      if (inserts.length > 0) await supabase.from('team_staff').insert(inserts);
+    }
+    
+    res.status(201).json({ success: true, staff });
+  } catch (err) {
+    res.status(500).json({ error: 'Errore server' });
+  }
+});
+
+app.put('/api/staff/:id', authMiddleware, async (req, res) => {
+  try {
+    const { nome, cognome, ruolo, telefono, email, qualifiche, categorie_ids, workspace_id } = req.body;
+    
+    const updateData = { nome, cognome, ruolo, telefono, email, qualifiche: qualifiche || {} };
+    const { data: staff, error } = await supabase.from('staff').update(updateData).eq('id', req.params.id).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    
+    // Aggiorna assegnazioni categorie
+    if (categorie_ids !== undefined && workspace_id) {
+      const { data: seasons } = await supabase.from('season').select('id').eq('workspace_id', workspace_id);
+      const seasonIds = (seasons || []).map(s => s.id);
+      const { data: teams } = await supabase.from('team').select('id, category_id').in('season_id', seasonIds);
+      const teamIds = (teams || []).map(t => t.id);
+      
+      // Rimuovi vecchie assegnazioni per questo workspace
+      await supabase.from('team_staff').delete().eq('staff_id', req.params.id).in('team_id', teamIds);
+      
+      // Inserisci nuove
+      const inserts = [];
+      categorie_ids.forEach(catId => {
+        const team = (teams || []).find(t => t.category_id === catId);
+        if (team) inserts.push({ staff_id: req.params.id, team_id: team.id, ruolo_squadra: ruolo });
+      });
+      if (inserts.length > 0) await supabase.from('team_staff').insert(inserts);
+    }
+    
+    res.json({ success: true, staff });
+  } catch (err) {
+    res.status(500).json({ error: 'Errore server' });
+  }
+});
+
+app.delete('/api/staff/:id', authMiddleware, async (req, res) => {
+  try {
+    await supabase.from('team_staff').delete().eq('staff_id', req.params.id);
+    const { error } = await supabase.from('staff').delete().eq('id', req.params.id);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Errore server' });
+  }
+});
+
+// ── CATEGORIE ROUTES ──
+app.get('/api/workspaces/:id/categorie', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('category').select('*').eq('workspace_id', req.params.id).order('nome');
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Errore server' });
+  }
+});
+
+app.post('/api/workspaces/:id/categorie', authMiddleware, async (req, res) => {
+  try {
+    const { nome, anno_da, anno_a, genere, descrizione } = req.body;
+    if (!nome) return res.status(400).json({ error: 'Nome richiesto' });
+    const { data, error } = await supabase.from('category').insert({
+      workspace_id: req.params.id, nome, anno_da: anno_da || 0, anno_a: anno_a || 0, genere: genere || 'M', descrizione
+    }).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    res.status(201).json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Errore server' });
+  }
+});
+
+app.put('/api/categorie/:id', authMiddleware, async (req, res) => {
+  try {
+    const { nome, anno_da, anno_a, genere, descrizione } = req.body;
+    const { data, error } = await supabase.from('category').update({ nome, anno_da, anno_a, genere, descrizione }).eq('id', req.params.id).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Errore server' });
+  }
+});
+
+app.delete('/api/categorie/:id', authMiddleware, async (req, res) => {
+  try {
+    // Verifica che non ci siano squadre associate
+    const { data: teams } = await supabase.from('team').select('id').eq('category_id', req.params.id);
+    if (teams && teams.length > 0) return res.status(400).json({ error: 'Elimina prima le squadre associate a questa categoria' });
+    const { error } = await supabase.from('category').delete().eq('id', req.params.id);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Errore server' });
+  }
+});
+
 // ── STAGIONE ROUTES ──
-app.get('/api/stagioni', async (req, res) => {
+app.get('/api/stagioni', authMiddleware, async (req, res) => {
   try {
     const workspaceId = req.query.workspace_id;
     let query = supabase.from('season').select('*').order('data_inizio', { ascending: false });
@@ -385,7 +649,7 @@ app.get('/api/stagioni', async (req, res) => {
 });
 
 
-app.get('/api/stagioni/:id/squadre', async (req, res) => {
+app.get('/api/stagioni/:id/squadre', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { data, error } = await supabase.from('team')
@@ -396,8 +660,14 @@ app.get('/api/stagioni/:id/squadre', async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
     
+    // Filtra per categorie_accesso dell'utente
+    let filteredData = data || [];
+    if (!req.user.is_superadmin && req.user.ruolo !== 'admin' && req.user.squadre_accesso && req.user.squadre_accesso.length > 0) {
+      filteredData = filteredData.filter(t => !t.category_id || req.user.squadre_accesso.includes(t.category_id));
+    }
+    
     // Arricchisci ogni team con nomi staff
-    for (const team of (data || [])) {
+    for (const team of filteredData) {
       const { data: staffAssign } = await supabase.from('team_staff').select('ruolo_squadra, staff:staff_id(nome, cognome)').eq('team_id', team.id);
       if (staffAssign && staffAssign.length > 0) {
         staffAssign.forEach(sa => {
@@ -411,7 +681,7 @@ app.get('/api/stagioni/:id/squadre', async (req, res) => {
       }
     }
     
-    res.json(data || []);
+    res.json(filteredData);
   } catch (err) {
     res.status(500).json({ error: 'Errore server' });
   }
@@ -431,7 +701,7 @@ app.delete('/api/stagioni/:id', authMiddleware, async (req, res) => {
 });
 
 // ── SQUADRA ROUTES ──
-app.get('/api/squadre', async (req, res) => {
+app.get('/api/squadre', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('team').select('*').order('nome');
     if (error) return res.status(400).json({ error: error.message });
@@ -453,7 +723,7 @@ app.post('/api/squadre', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/squadre/:id', async (req, res) => {
+app.get('/api/squadre/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { data, error } = await supabase.from('team').select('*').eq('id', id).single();
@@ -515,7 +785,7 @@ app.delete('/api/squadre/:id', authMiddleware, async (req, res) => {
 });
 
 // ── GIOCATORI ROUTES ──
-app.get('/api/squadre/:squadraId/calciatori', async (req, res) => {
+app.get('/api/squadre/:squadraId/calciatori', authMiddleware, async (req, res) => {
   try {
     const { data } = await supabase
       .from('team_player')
@@ -543,14 +813,13 @@ app.get('/api/squadre/:squadraId/calciatori', async (req, res) => {
   }
 });
 
-app.post('/api/squadre/:squadraId/calciatori', authMiddleware, async (req, res) => {
+app.post('/api/squadre/:squadraId/calciatori', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
   try {
     const c = req.body;
     
     // Helper per convertire stringa vuota in null per campi DATE
     const toDate = (val) => val && val.trim() ? val.trim() : null;
     
-    // Inserisci giocatore con tutti i campi dalla scheda
     const playerData = {
       nome: c.nome,
       cognome: c.cognome,
@@ -600,7 +869,124 @@ app.post('/api/squadre/:squadraId/calciatori', authMiddleware, async (req, res) 
   }
 });
 
-app.get('/api/squadre/:squadraId/scadenze-mediche', async (req, res) => {
+// === IMPORT ROSTER DA XLS ===
+app.post('/api/roster/parse-xls', authMiddleware, requirePermission('rosa', 'write'), upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'File richiesto' });
+    const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    
+    // Skip header row
+    const PREFIXES = ['DE','DI','DEL','DELLA','DELLO','DEGLI','DELLE','DA','LO','LA','LI','LE','D','MC','MAC'];
+    function splitNameByCF(fullName, cf) {
+      const parts = fullName.split(' ');
+      if (cf && cf.length >= 6) {
+        const cfCognome = cf.substring(0, 3).toUpperCase();
+        for (let i = 1; i < parts.length; i++) {
+          const candidate = parts.slice(0, i).join('');
+          const cons = candidate.replace(/[^BCDFGHJKLMNPQRSTVWXYZ]/gi, '');
+          let check = cons.length >= 3 ? cons.substring(0, 3).toUpperCase() : (cons + candidate.replace(/[^AEIOU]/gi, '')).substring(0, 3).toUpperCase();
+          if (check === cfCognome) {
+            if (PREFIXES.includes(parts.slice(0, i).join(' ').toUpperCase())) continue;
+            return { cognome: parts.slice(0, i).join(' '), nome: parts.slice(i).join(' ') };
+          }
+        }
+      }
+      // Fallback: prefissi noti
+      if (PREFIXES.includes(parts[0].toUpperCase()) && parts.length > 2) {
+        return { cognome: parts.slice(0, 2).join(' '), nome: parts.slice(2).join(' ') };
+      }
+      return { cognome: parts[0], nome: parts.slice(1).join(' ') };
+    }
+    const players = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row[1]) continue;
+      const fullName = String(row[1]).trim();
+      const cf = row[6] ? String(row[6]).trim() : null;
+      const { cognome: rawCognome, nome: rawNome } = splitNameByCF(fullName, cf);
+      
+      // Data nascita: serial Excel → date
+      let dataNascita = null;
+      let annoNascita = null;
+      if (row[3]) {
+        if (typeof row[3] === 'number') {
+          const d = new Date((row[3] - 25569) * 86400 * 1000);
+          dataNascita = d.toISOString().split('T')[0];
+          annoNascita = d.getFullYear();
+        } else {
+          dataNascita = String(row[3]);
+          annoNascita = parseInt(dataNascita.substring(0, 4));
+        }
+      }
+      
+      players.push({
+        matricola: row[0] ? String(row[0]) : null,
+        cognome: rawCognome.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '),
+        nome: rawNome.split(' ').map(n => n.charAt(0).toUpperCase() + n.slice(1).toLowerCase()).join(' '),
+        disciplina: row[2] || null,
+        data_nascita: dataNascita,
+        anno_nascita: annoNascita,
+        codice_fiscale: row[6] || null,
+        status: row[7] || null
+      });
+    }
+    
+    // Raggruppa per anno di nascita
+    const byYear = {};
+    players.forEach(p => {
+      const y = p.anno_nascita || 'sconosciuto';
+      if (!byYear[y]) byYear[y] = [];
+      byYear[y].push(p);
+    });
+    
+    res.json({ success: true, players, byYear, total: players.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/roster/import-xls', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+  try {
+    const { players, teamId } = req.body;
+    if (!players || !players.length || !teamId) return res.status(400).json({ error: 'players e teamId richiesti' });
+    
+    let imported = 0, skipped = 0;
+    for (const p of players) {
+      // Check duplicato per cognome + nome + data_nascita
+      const { data: existing } = await supabase.from('player')
+        .select('id').ilike('cognome', p.cognome).ilike('nome', p.nome).eq('data_nascita', p.data_nascita).maybeSingle();
+      
+      let playerId;
+      if (existing) {
+        playerId = existing.id;
+        // Check se già in questo team
+        const { data: tp } = await supabase.from('team_player').select('id').eq('team_id', teamId).eq('player_id', playerId).maybeSingle();
+        if (tp) { skipped++; continue; }
+      } else {
+        const { data: newP, error } = await supabase.from('player').insert({
+          nome: p.nome, cognome: p.cognome, data_nascita: p.data_nascita,
+          matricola_figc: p.matricola || null, sesso: 'M'
+        }).select().single();
+        if (error) { skipped++; continue; }
+        playerId = newP.id;
+      }
+      
+      await supabase.from('team_player').insert({
+        team_id: teamId, player_id: playerId, stato: 'Attivo',
+        data_assegnazione: new Date().toISOString().split('T')[0]
+      });
+      imported++;
+    }
+    
+    res.json({ success: true, imported, skipped });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/squadre/:squadraId/scadenze-mediche', authMiddleware, async (req, res) => {
   try {
     const { data: rosa } = await supabase
       .from('team_player')
@@ -632,7 +1018,7 @@ app.get('/api/squadre/:squadraId/scadenze-mediche', async (req, res) => {
 });
 
 // ── PARTITE ROUTES ──
-app.get('/api/squadre/:squadraId/partite', async (req, res) => {
+app.get('/api/squadre/:squadraId/partite', authMiddleware, async (req, res) => {
   try {
     const { data } = await supabase.from('match').select('*, competition:competition_id(id, nome)').eq('team_id', req.params.squadraId).order('data_ora', { ascending: false });
     // Mappa competition.nome → competizione per retrocompatibilità frontend
@@ -643,7 +1029,7 @@ app.get('/api/squadre/:squadraId/partite', async (req, res) => {
   }
 });
 
-app.get('/api/squadre/:squadraId/partite-future', async (req, res) => {
+app.get('/api/squadre/:squadraId/partite-future', authMiddleware, async (req, res) => {
   try {
     const now = new Date().toISOString();
     const { data } = await supabase.from('match').select('*, competition:competition_id(id, nome)').eq('team_id', req.params.squadraId).gte('data_ora', now).order('data_ora', { ascending: true }).limit(5);
@@ -654,7 +1040,7 @@ app.get('/api/squadre/:squadraId/partite-future', async (req, res) => {
   }
 });
 
-app.post('/api/squadre/:squadraId/partite', authMiddleware, async (req, res) => {
+app.post('/api/squadre/:squadraId/partite', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
   try {
     const p = req.body;
     // Se il frontend passa 'competizione' come testo, cerca il competition_id
@@ -670,7 +1056,7 @@ app.post('/api/squadre/:squadraId/partite', authMiddleware, async (req, res) => 
   }
 });
 
-app.put('/api/partite/:id', authMiddleware, async (req, res) => {
+app.put('/api/partite/:id', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
   try {
     const p = req.body;
     let competition_id = undefined;
@@ -688,7 +1074,7 @@ app.put('/api/partite/:id', authMiddleware, async (req, res) => {
   }
 });
 
-app.delete('/api/partite/:id', authMiddleware, async (req, res) => {
+app.delete('/api/partite/:id', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
   try {
     await supabase.from('match_event').delete().eq('match_id', req.params.id);
     await supabase.from('match_formation').delete().eq('match_id', req.params.id);
@@ -700,8 +1086,25 @@ app.delete('/api/partite/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Elimina TUTTE le partite di una squadra
+app.delete('/api/squadre/:squadraId/partite-all', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
+  try {
+    const { data: partite } = await supabase.from('match').select('id').eq('team_id', req.params.squadraId);
+    const ids = (partite || []).map(p => p.id);
+    if (ids.length > 0) {
+      await supabase.from('match_event').delete().in('match_id', ids);
+      await supabase.from('match_formation').delete().in('match_id', ids);
+      await supabase.from('convocation').delete().in('match_id', ids);
+      await supabase.from('match').delete().in('id', ids);
+    }
+    res.json({ success: true, eliminate: ids.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── SQUADRA STATISTICS ROUTES ──
-app.get('/api/squadre/:id/statistiche-complete', async (req, res) => {
+app.get('/api/squadre/:id/statistiche-complete', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -750,7 +1153,7 @@ app.get('/api/squadre/:id/statistiche-complete', async (req, res) => {
   }
 });
 
-app.get('/api/squadre/:id/top-players', async (req, res) => {
+app.get('/api/squadre/:id/top-players', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -809,7 +1212,7 @@ app.get('/api/squadre/:id/top-players', async (req, res) => {
   }
 });
 
-app.get('/api/squadre/:id/valutazioni-top', async (req, res) => {
+app.get('/api/squadre/:id/valutazioni-top', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -848,7 +1251,7 @@ app.get('/api/squadre/:id/valutazioni-top', async (req, res) => {
 });
 
 // ── CALCIATORE ROUTES ──
-app.get('/api/calciatori/:id', async (req, res) => {
+app.get('/api/calciatori/:id', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('player').select('*').eq('id', req.params.id).single();
     if (error || !data) return res.status(404).json({ error: 'Giocatore non trovato' });
@@ -858,7 +1261,7 @@ app.get('/api/calciatori/:id', async (req, res) => {
   }
 });
 
-app.put('/api/calciatori/:id', authMiddleware, async (req, res) => {
+app.put('/api/calciatori/:id', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
   try {
     const c = req.body;
     
@@ -906,7 +1309,7 @@ app.put('/api/calciatori/:id', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/calciatori/:id/stats-current', async (req, res) => {
+app.get('/api/calciatori/:id/stats-current', authMiddleware, async (req, res) => {
   try {
     const { data: rose } = await supabase.from('team_player').select('team_id').eq('player_id', req.params.id);
     if (!rose || rose.length === 0) return res.json({ gol: 0, assist: 0, presenze: 0, partite: 0 });
@@ -925,7 +1328,7 @@ app.get('/api/calciatori/:id/stats-current', async (req, res) => {
 // ── TRAINING ROUTES ──
 
 // Get training config (settimana tipo) dalla tabella dedicata
-app.get('/api/squadre/:squadraId/allenamenti/config', async (req, res) => {
+app.get('/api/squadre/:squadraId/allenamenti/config', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('training_config')
@@ -940,7 +1343,7 @@ app.get('/api/squadre/:squadraId/allenamenti/config', async (req, res) => {
 });
 
 // Create training config
-app.post('/api/squadre/:squadraId/allenamenti/config', authMiddleware, async (req, res) => {
+app.post('/api/squadre/:squadraId/allenamenti/config', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
   try {
     const { giorno_settimana, ora_inizio, ora_fine, luogo } = req.body;
     const { data, error } = await supabase.from('training_config').insert({
@@ -954,7 +1357,7 @@ app.post('/api/squadre/:squadraId/allenamenti/config', authMiddleware, async (re
 });
 
 // Update training config
-app.put('/api/allenamenti/config/:id', authMiddleware, async (req, res) => {
+app.put('/api/allenamenti/config/:id', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
   try {
     const { giorno_settimana, ora_inizio, ora_fine, luogo } = req.body;
     const { data, error } = await supabase.from('training_config').update({
@@ -968,7 +1371,7 @@ app.put('/api/allenamenti/config/:id', authMiddleware, async (req, res) => {
 });
 
 // Delete training config
-app.delete('/api/allenamenti/config/:id', authMiddleware, async (req, res) => {
+app.delete('/api/allenamenti/config/:id', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
   try {
     const { error } = await supabase.from('training_config').delete().eq('id', req.params.id);
     if (error) return res.status(400).json({ error: error.message });
@@ -979,7 +1382,7 @@ app.delete('/api/allenamenti/config/:id', authMiddleware, async (req, res) => {
 });
 
 // Get training attendance (presenze) - mappa su training_attendance
-app.get('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
+app.get('/api/squadre/:squadraId/allenamenti/presenze', authMiddleware, async (req, res) => {
   try {
     // Prendi tutte le sessioni training della squadra
     const { data: trainings } = await supabase.from('training').select('id, data_ora').eq('team_id', req.params.squadraId);
@@ -1018,7 +1421,7 @@ app.get('/api/squadre/:squadraId/allenamenti/presenze', async (req, res) => {
 });
 
 // Save/update training attendance - BATCH (una sola chiamata per tutti i giocatori)
-app.post('/api/squadre/:squadraId/allenamenti/presenze-batch', authMiddleware, async (req, res) => {
+app.post('/api/squadre/:squadraId/allenamenti/presenze-batch', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
   try {
     const { data: presenzeList, date } = req.body;
     if (!presenzeList || !date) return res.status(400).json({ error: 'Dati mancanti' });
@@ -1064,7 +1467,7 @@ app.post('/api/squadre/:squadraId/allenamenti/presenze-batch', authMiddleware, a
 });
 
 // Save/update training attendance (singolo - mantenuto per retrocompatibilità)
-app.post('/api/squadre/:squadraId/allenamenti/presenze', authMiddleware, async (req, res) => {
+app.post('/api/squadre/:squadraId/allenamenti/presenze', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
   try {
     const { calciatoreId, data, presente, note } = req.body;
     
@@ -1112,7 +1515,7 @@ app.post('/api/squadre/:squadraId/allenamenti/presenze', authMiddleware, async (
 });
 
 // Get training summary (stats per player)
-app.get('/api/squadre/:squadraId/allenamenti/summary', async (req, res) => {
+app.get('/api/squadre/:squadraId/allenamenti/summary', authMiddleware, async (req, res) => {
   try {
     // Prendi sessioni training
     const { data: trainings } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId);
@@ -1350,7 +1753,7 @@ app.put('/api/partite/:id/sblocca', authMiddleware, async (req, res) => {
 });
 
 // ── CONVOCAZIONI ──
-app.get('/api/partite/:matchId/convocazioni', async (req, res) => {
+app.get('/api/partite/:matchId/convocazioni', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('convocation').select('*, team_player:team_player_id(player_id)').eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
@@ -1365,7 +1768,7 @@ app.get('/api/partite/:matchId/convocazioni', async (req, res) => {
   }
 });
 
-app.get('/api/squadre/:squadraId/partite/:matchId/convocati', async (req, res) => {
+app.get('/api/squadre/:squadraId/partite/:matchId/convocati', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('convocation').select('*, team_player:team_player_id(player_id)').eq('match_id', req.params.matchId).eq('presente', true);
     if (error) return res.status(400).json({ error: error.message });
@@ -1379,7 +1782,7 @@ app.get('/api/squadre/:squadraId/partite/:matchId/convocati', async (req, res) =
   }
 });
 
-app.post('/api/partite/:matchId/convocazioni', authMiddleware, async (req, res) => {
+app.post('/api/partite/:matchId/convocazioni', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
   try {
     const { calciatoreId, presente } = req.body;
     // Trova il team_player_id dal player_id
@@ -1403,7 +1806,7 @@ app.post('/api/partite/:matchId/convocazioni', authMiddleware, async (req, res) 
 });
 
 // Batch convocazioni (una sola chiamata per tutti)
-app.post('/api/partite/:matchId/convocazioni-batch', authMiddleware, async (req, res) => {
+app.post('/api/partite/:matchId/convocazioni-batch', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
   try {
     const { convocazioni } = req.body;
     if (!convocazioni || !Array.isArray(convocazioni)) return res.status(400).json({ error: 'Dati mancanti' });
@@ -1437,7 +1840,7 @@ app.post('/api/partite/:matchId/convocazioni-batch', authMiddleware, async (req,
 });
 
 // ── FORMAZIONE ──
-app.get('/api/squadre/:squadraId/partite/:matchId/formazione', async (req, res) => {
+app.get('/api/squadre/:squadraId/partite/:matchId/formazione', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('match_formation').select('*').eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
@@ -1447,7 +1850,7 @@ app.get('/api/squadre/:squadraId/partite/:matchId/formazione', async (req, res) 
   }
 });
 
-app.get('/api/partite/:matchId/formazione', async (req, res) => {
+app.get('/api/partite/:matchId/formazione', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('match_formation').select('*, team_player:team_player_id(player_id)').eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
@@ -1469,7 +1872,7 @@ app.get('/api/partite/:matchId/formazione', async (req, res) => {
   }
 });
 
-app.put('/api/partite/:matchId/formazione', authMiddleware, async (req, res) => {
+app.put('/api/partite/:matchId/formazione', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
   try {
     const { formazione, modulo, positions } = req.body;
     if (!formazione || !Array.isArray(formazione)) return res.status(400).json({ error: 'Dati mancanti' });
@@ -1512,7 +1915,7 @@ app.put('/api/partite/:matchId/formazione', authMiddleware, async (req, res) => 
 });
 
 // ── EVENTI PARTITA ──
-app.get('/api/squadre/:squadraId/partite/:matchId/eventi', async (req, res) => {
+app.get('/api/squadre/:squadraId/partite/:matchId/eventi', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('match_event').select('*').eq('match_id', req.params.matchId).order('minuto');
     if (error) return res.status(400).json({ error: error.message });
@@ -1522,7 +1925,7 @@ app.get('/api/squadre/:squadraId/partite/:matchId/eventi', async (req, res) => {
   }
 });
 
-app.get('/api/partite/:matchId/dettaglio', async (req, res) => {
+app.get('/api/partite/:matchId/dettaglio', authMiddleware, async (req, res) => {
   try {
     const { data: match } = await supabase.from('match').select('*, competition:competition_id(nome)').eq('id', req.params.matchId).single();
     if (match) match.competizione = match.competition?.nome || null;
@@ -1530,7 +1933,7 @@ app.get('/api/partite/:matchId/dettaglio', async (req, res) => {
     // Mappa nomi giocatori negli eventi
     const eventiMapped = (eventi || []).map(e => ({
       ...e,
-      player_name: e.player ? e.player.cognome + ' ' + e.player.nome : ''
+      player_name: e.player ? e.player.cognome + ' ' + (e.player.nome ? e.player.nome.charAt(0) + '.' : '') : ''
     }));
     res.json({ match, eventi: eventiMapped });
   } catch (err) {
@@ -1538,7 +1941,7 @@ app.get('/api/partite/:matchId/dettaglio', async (req, res) => {
   }
 });
 
-app.delete('/api/partite/:matchId/eventi-batch', authMiddleware, async (req, res) => {
+app.delete('/api/partite/:matchId/eventi-batch', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
   try {
     const { error } = await supabase.from('match_event').delete().eq('match_id', req.params.matchId);
     if (error) return res.status(400).json({ error: error.message });
@@ -1549,7 +1952,7 @@ app.delete('/api/partite/:matchId/eventi-batch', authMiddleware, async (req, res
 });
 
 // Batch insert eventi (una sola chiamata)
-app.post('/api/partite/:matchId/eventi-batch', authMiddleware, async (req, res) => {
+app.post('/api/partite/:matchId/eventi-batch', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
   try {
     const { eventi } = req.body;
     if (!eventi || !Array.isArray(eventi)) return res.status(400).json({ error: 'Dati mancanti' });
@@ -1575,7 +1978,7 @@ app.post('/api/partite/:matchId/eventi-batch', authMiddleware, async (req, res) 
   }
 });
 
-app.post('/api/partite/:matchId/evento-item', authMiddleware, async (req, res) => {
+app.post('/api/partite/:matchId/evento-item', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
   try {
     const { tipo, minuto, calciatorePrincipaleId } = req.body;
     const insertData = { match_id: req.params.matchId, tipo_evento: tipo, minuto };
@@ -1589,7 +1992,7 @@ app.post('/api/partite/:matchId/evento-item', authMiddleware, async (req, res) =
 });
 
 // ── DISTINTA ──
-app.get('/api/squadre/:squadraId/partite/:matchId/distinta', async (req, res) => {
+app.get('/api/squadre/:squadraId/partite/:matchId/distinta', authMiddleware, async (req, res) => {
   try {
     // Prendi formazione con dati giocatore
     const { data: formazione } = await supabase.from('match_formation')
@@ -1626,7 +2029,7 @@ app.get('/api/squadre/:squadraId/partite/:matchId/distinta', async (req, res) =>
 });
 
 // ── IMPORT CALENDARIO CSV ──
-app.post('/api/squadre/:squadraId/importa-calendario', authMiddleware, async (req, res) => {
+app.post('/api/squadre/:squadraId/importa-calendario', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
   try {
     const { csvData } = req.body;
     if (!csvData || !Array.isArray(csvData)) return res.status(400).json({ error: 'Dati CSV mancanti' });
@@ -1658,7 +2061,7 @@ app.post('/api/squadre/:squadraId/importa-calendario', authMiddleware, async (re
 });
 
 // ── MOVE PLAYER ──
-app.post('/api/calciatori/:id/move', authMiddleware, async (req, res) => {
+app.post('/api/calciatori/:id/move', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
   try {
     const { fromSquadraId, toSquadraId } = req.body;
     const playerId = req.params.id;
@@ -1672,7 +2075,7 @@ app.post('/api/calciatori/:id/move', authMiddleware, async (req, res) => {
 });
 
 // ── MATERIALE ALLENAMENTI ──
-app.get('/api/squadre/:squadraId/allenamenti/materiale', async (req, res) => {
+app.get('/api/squadre/:squadraId/allenamenti/materiale', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('training_material').select('*').eq('team_id', req.params.squadraId).order('created_at', { ascending: false });
     if (error) {
@@ -1709,7 +2112,7 @@ app.delete('/api/allenamenti/materiale/:id', authMiddleware, async (req, res) =>
 });
 
 // ── PROGRAMMA SEDUTA (salva/legge JSON nel campo note della tabella training) ──
-app.get('/api/training/:trainingId/programma', async (req, res) => {
+app.get('/api/training/:trainingId/programma', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('training').select('id, note, tipo, durata_minuti').eq('id', req.params.trainingId).single();
     if (error || !data) return res.json({ programma: null });
@@ -1724,7 +2127,7 @@ app.get('/api/training/:trainingId/programma', async (req, res) => {
   }
 });
 
-app.put('/api/training/:trainingId/programma', authMiddleware, async (req, res) => {
+app.put('/api/training/:trainingId/programma', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
   try {
     const { programma } = req.body;
     const noteValue = programma ? 'JSON::' + JSON.stringify(programma) : null;
@@ -1743,7 +2146,7 @@ app.put('/api/training/:trainingId/programma', authMiddleware, async (req, res) 
 });
 
 // Endpoint per ottenere/creare training per una data specifica
-app.get('/api/squadre/:squadraId/training-by-date/:date', async (req, res) => {
+app.get('/api/squadre/:squadraId/training-by-date/:date', authMiddleware, async (req, res) => {
   try {
     const { squadraId, date } = req.params;
     const dataInizio = date + 'T00:00:00';
@@ -1763,7 +2166,7 @@ app.get('/api/squadre/:squadraId/training-by-date/:date', async (req, res) => {
   }
 });
 
-app.post('/api/squadre/:squadraId/training-by-date', authMiddleware, async (req, res) => {
+app.post('/api/squadre/:squadraId/training-by-date', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
   try {
     const { date, programma } = req.body;
     const noteValue = programma ? 'JSON::' + JSON.stringify(programma) : null;
@@ -1783,7 +2186,7 @@ app.post('/api/squadre/:squadraId/training-by-date', authMiddleware, async (req,
 });
 
 // ── STATS GIOCATORI COMPLETO (per pagina statistiche) ──
-app.get('/api/squadre/:squadraId/stats-giocatori', async (req, res) => {
+app.get('/api/squadre/:squadraId/stats-giocatori', authMiddleware, async (req, res) => {
   try {
     const teamId = req.params.squadraId;
     // Giocatori
@@ -1841,7 +2244,7 @@ app.get('/api/squadre/:squadraId/stats-giocatori', async (req, res) => {
 });
 
 // ── STAFF COMPLETO (per distinta) ──
-app.get('/api/squadre/:squadraId/staff-completo', async (req, res) => {
+app.get('/api/squadre/:squadraId/staff-completo', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('team_staff')
       .select('ruolo_squadra, staff:staff_id(id, nome, cognome, ruolo, qualifiche, documento)')
@@ -1867,7 +2270,7 @@ app.get('/api/squadre/:squadraId/staff-completo', async (req, res) => {
 });
 
 // ── TRAINING TEMPLATES ──
-app.get('/api/squadre/:squadraId/training-templates', async (req, res) => {
+app.get('/api/squadre/:squadraId/training-templates', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('training_template').select('*').eq('team_id', req.params.squadraId).order('created_at', { ascending: false });
     if (error) return res.status(400).json({ error: error.message });
@@ -1877,7 +2280,7 @@ app.get('/api/squadre/:squadraId/training-templates', async (req, res) => {
   }
 });
 
-app.post('/api/squadre/:squadraId/training-templates', authMiddleware, async (req, res) => {
+app.post('/api/squadre/:squadraId/training-templates', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
   try {
     const { nome, programma } = req.body;
     if (!nome || !programma) return res.status(400).json({ error: 'Nome e programma richiesti' });
@@ -1891,11 +2294,511 @@ app.post('/api/squadre/:squadraId/training-templates', authMiddleware, async (re
   }
 });
 
-app.delete('/api/training-templates/:id', authMiddleware, async (req, res) => {
+app.delete('/api/training-templates/:id', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
   try {
     const { error } = await supabase.from('training_template').delete().eq('id', req.params.id);
     if (error) return res.status(400).json({ error: error.message });
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// === PDF CALENDARIO IMPORT ===
+const { findTeamInPdf, extractCalendar } = require('./pdfCalendarioParser');
+
+// Step 1: Upload PDF + cerca squadra → ritorna categorie trovate
+app.post('/api/calendario/parse-pdf', authMiddleware, upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'File PDF richiesto' });
+    const searchName = req.body.searchName;
+    if (!searchName) return res.status(400).json({ error: 'Nome squadra richiesto' });
+    
+    const result = await findTeamInPdf(req.file.buffer, searchName);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Errore parsing PDF: ' + err.message });
+  }
+});
+
+// Step 2: Estrai calendario per categoria specifica
+app.post('/api/calendario/extract', authMiddleware, upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'File PDF richiesto' });
+    const { searchName, categoria, girone } = req.body;
+    if (!searchName || !categoria || !girone) return res.status(400).json({ error: 'Parametri mancanti' });
+    
+    const result = await extractCalendar(req.file.buffer, searchName, categoria, girone);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Errore estrazione: ' + err.message });
+  }
+});
+
+// Step 3: Conferma e inserisci partite nel DB
+app.post('/api/calendario/import', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
+  try {
+    const { squadraId, partite } = req.body;
+    if (!squadraId || !partite || !partite.length) return res.status(400).json({ error: 'Dati mancanti' });
+    
+    const inserts = partite.map(p => ({
+      team_id: squadraId,
+      data_ora: p.data,
+      avversario: p.avversario,
+      luogo: p.luogo,
+      giornata: p.giornata,
+      indirizzo_campo: p.indirizzo_campo || null,
+      stato: 'Programmata'
+    }));
+    
+    const { data, error } = await supabase.from('match').insert(inserts).select();
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ inserite: data.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Errore inserimento: ' + err.message });
+  }
+});
+
+// ── IMPORT DA TUTTOCAMPO ──
+app.post('/api/calendario/import-tuttocampo', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
+  try {
+    const { url, teamName, squadraId, importResults, archiveCompleted, importEvents } = req.body;
+    if (!url || !teamName || !squadraId) return res.status(400).json({ error: 'URL, nome squadra e squadraId richiesti' });
+
+    // Valida URL
+    const urlMatch = url.match(/https:\/\/www\.tuttocampo\.it\/(\d{4}-\d{2})\/([^/]+)\/([^/]+)\/([^/]+)\/Calendario/);
+    if (!urlMatch) return res.status(400).json({ error: 'URL non valido. Formato atteso: https://www.tuttocampo.it/ANNO/REGIONE/CATEGORIA/GIRONE/Calendario' });
+
+    const [, anno, regione, categoria, girone] = urlMatch;
+    const baseUrl = `https://www.tuttocampo.it/${anno}/${regione}/${categoria}/${girone}`;
+    const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+    const headers = { 'User-Agent': UA };
+
+    // Step 1: Scarica pagina principale per roundID, numero giornate e cookie sessione
+    const mainResp = await fetch(baseUrl + '/Calendario', { headers });
+    if (!mainResp.ok) return res.status(400).json({ error: 'Impossibile accedere a Tuttocampo (status ' + mainResp.status + ')' });
+    const mainHtml = await mainResp.text();
+    if (mainHtml.length < 1000) return res.status(400).json({ error: 'Tuttocampo non disponibile. Riprova tra qualche minuto.' });
+
+    const matchesNumberMatch = mainHtml.match(/matchesNumber='(\d+)'/);
+    const totalDays = matchesNumberMatch ? parseInt(matchesNumberMatch[1]) : 30;
+    const roundIdMatch = mainHtml.match(/roundID='([^']+)'/);
+    const roundID = roundIdMatch ? roundIdMatch[1] : '';
+    if (!roundID) return res.status(400).json({ error: 'Impossibile determinare il girone.' });
+
+    // Estrai cookie di sessione
+    const setCookies = mainResp.headers.get('set-cookie') || '';
+    const sessionCookie = setCookies.split(';')[0] || '';
+
+    // Step 2: Per ogni giornata, scarica pagina per tckk + AJAX risultati
+    const partite = [];
+    const searchLower = teamName.toLowerCase();
+
+    for (let day = 1; day <= totalDays; day++) {
+      try {
+        const pageResp = await fetch(`${baseUrl}/Giornata${day}`, {
+          headers: { ...headers, 'Cookie': sessionCookie }
+        });
+        if (!pageResp.ok) continue;
+        const pageHtml = await pageResp.text();
+        const ttMatch = pageHtml.match(/var tt='(\d+)'/);
+        if (!ttMatch) continue;
+        const tckk = ttMatch[1];
+        // Aggiorna cookie se presente
+        const pageCookies = pageResp.headers.get('set-cookie');
+        const cookie = pageCookies ? pageCookies.split(';')[0] : sessionCookie;
+
+        const ajaxResp = await fetch(`https://www.tuttocampo.it/Web/Views/Results/ResultsView.php?tckk=${tckk}`, {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Referer': `${baseUrl}/Giornata${day}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Cookie': cookie
+          },
+          body: `category_id=${roundID}&match_day=${day}&tournament_id=`
+        });
+        if (!ajaxResp.ok) continue;
+        const html = await ajaxResp.text();
+        if (html.length < 200) continue;
+
+        const dateMatch = html.match(/id="match_date">([^<]+)/);
+        const dateStr = dateMatch ? dateMatch[1].trim() : '';
+
+        const trRegex = /<tr class="match[^"]*"[^>]*>([\s\S]*?)<\/tr>/g;
+        let tr;
+        while ((tr = trRegex.exec(html)) !== null) {
+          const block = tr[1];
+          if (!block.toLowerCase().includes(searchLower)) continue;
+
+          const hourMatch = block.match(/class="hour[^"]*"[^>]*>\s*([^<]+)/);
+          const hour = hourMatch ? hourMatch[1].trim() : '15:00';
+          const homeNameMatch = block.match(/class="team home[\s\S]*?class="team-name">\s*([^<]+)/);
+          const home = homeNameMatch ? homeNameMatch[1].trim() : '?';
+          const awayNameMatch = block.match(/class="team away[\s\S]*?class="team-name">\s*([^<]+)/);
+          const away = awayNameMatch ? awayNameMatch[1].trim() : '?';
+          const homeGoalMatch = block.match(/class="team home[\s\S]*?class="goal[^"]*"[^>]*>\s*(\d+)/);
+          const awayGoalMatch = block.match(/class="team away[\s\S]*?class="goal[^"]*"[^>]*>\s*(\d+)/);
+          const hg = homeGoalMatch ? parseInt(homeGoalMatch[1]) : null;
+          const ag = awayGoalMatch ? parseInt(awayGoalMatch[1]) : null;
+
+          const isHome = home.toLowerCase().includes(searchLower);
+          const avversario = isHome ? away : home;
+          const luogo = isHome ? 'Casa' : 'Trasferta';
+
+          // Parsing data: supporta formato "d|m|y", "dd/mm/yyyy", "yyyy-mm-dd"
+          let dataOra = null;
+          if (dateStr) {
+            if (dateStr.includes('|')) {
+              const parts = dateStr.split('|');
+              if (parts.length === 3) {
+                const [d, m, y] = parts;
+                dataOra = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${hour}:00`;
+              }
+            } else if (dateStr.includes('/')) {
+              const parts = dateStr.split('/');
+              if (parts.length === 3) {
+                const [d, m, y] = parts;
+                const year = y.length === 2 ? '20' + y : y;
+                dataOra = `${year}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${hour}:00`;
+              }
+            } else if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+              dataOra = `${dateStr.substring(0,10)}T${hour}:00`;
+            }
+          }
+          // Fallback: cerca data inline nel blocco partita
+          if (!dataOra) {
+            const inlineDateMatch = block.match(/class="date[^"]*"[^>]*>\s*([^<]+)/);
+            if (inlineDateMatch) {
+              const inDate = inlineDateMatch[1].trim();
+              if (inDate.includes('/')) {
+                const parts = inDate.split('/');
+                if (parts.length === 3) {
+                  const [d, m, y] = parts;
+                  const year = y.length === 2 ? '20' + y : y;
+                  dataOra = `${year}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${hour}:00`;
+                }
+              }
+            }
+          }
+
+          // Estrai link dettaglio partita (per marcatori)
+          const detailLinkMatch = block.match(/href="([^"]*Partita[^"]*)"/i);
+          const detailLink = detailLinkMatch ? detailLinkMatch[1] : null;
+
+          // Estrai marcatori dalla sezione scorers (dentro l'AJAX)
+          let marcatori = [];
+          if (importEvents && (hg !== null || ag !== null)) {
+            // Scorers casa: nella sezione "team home" 
+            const homeScorersMatch = block.match(/class="team home[\s\S]*?<ul class="scorers">([\s\S]*?)<\/ul>/);
+            const awayScorersMatch = block.match(/class="team away[\s\S]*?<ul class="scorers">([\s\S]*?)<\/ul>/);
+            
+            // Prendi i marcatori della nostra squadra
+            const ourScorersHtml = isHome ? (homeScorersMatch ? homeScorersMatch[1] : '') : (awayScorersMatch ? awayScorersMatch[1] : '');
+            // Prendi i marcatori avversari (gol subiti)
+            const theirScorersHtml = isHome ? (awayScorersMatch ? awayScorersMatch[1] : '') : (homeScorersMatch ? homeScorersMatch[1] : '');
+            
+            // Pattern: <a ... title="Cognome Nome">Iniziale. Cognome</a>
+            const scorerRegex = /title="([^"]+)"/g;
+            let sm;
+            while ((sm = scorerRegex.exec(ourScorersHtml)) !== null) {
+              const fullName = sm[1].trim(); // "Cognome Nome"
+              marcatori.push({ tipo: 'GOAL', nome: fullName, minuto: null });
+            }
+            // Gol subiti
+            const scorerRegex2 = /title="([^"]+)"/g;
+            let sm2;
+            while ((sm2 = scorerRegex2.exec(theirScorersHtml)) !== null) {
+              marcatori.push({ tipo: 'SUBITO', nome: sm2[1].trim(), minuto: null });
+            }
+          }
+
+          partite.push({
+            giornata: day, dataOra, avversario, luogo,
+            golCasa: isHome ? hg : ag,
+            golOspite: isHome ? ag : hg,
+            hasResult: hg !== null && ag !== null,
+            detailLink: detailLink ? ('https://www.tuttocampo.it' + detailLink) : null,
+            marcatori: marcatori.length > 0 ? marcatori : undefined
+          });
+        }
+      } catch (e) { continue; }
+    }
+
+    if (partite.length === 0) {
+      return res.status(404).json({ error: `Squadra "${teamName}" non trovata nel girone. Verifica il nome esatto su Tuttocampo.` });
+    }
+
+    res.json({ success: true, info: { anno, regione, categoria, girone, giornate: totalDays }, partite });
+  } catch (err) {
+    res.status(500).json({ error: 'Errore scraping: ' + err.message });
+  }
+});
+
+// Funzione di parsing eventi da HTML Tuttocampo
+function parseEventiFromHtml(html) {
+  const eventi = [];
+
+  // Pattern 1: sezione "Marcatori" / "Reti" con minuto e nome
+  const marcatoriSection = html.match(/(?:Marcatori|Reti|Goals?|Gol)[\s\S]{0,3000}/i);
+  if (marcatoriSection) {
+    const section = marcatoriSection[0];
+    const linePattern = /(\d+)[\u2019'\'\u0027]\s*([^<\n,;]+)/g;
+    let lm;
+    while ((lm = linePattern.exec(section)) !== null) {
+      const minuto = parseInt(lm[1]);
+      const nome = lm[2].trim().replace(/\s+/g, ' ');
+      if (minuto > 0 && minuto <= 120 && nome.length > 2 && nome.length < 40) {
+        if (!eventi.find(e => e.minuto === minuto && e.nome === nome)) {
+          eventi.push({ tipo: 'GOAL', minuto, nome });
+        }
+      }
+    }
+  }
+
+  // Pattern 2: classe scorer/goalscorer
+  if (eventi.length === 0) {
+    const scorerBlocks = html.match(/class="[^"]*(?:scorer|goalscorer|goal-player|marcator)[^"]*"[^>]*>[\s\S]*?<\/(?:div|span|li|td)>/gi) || [];
+    for (const block of scorerBlocks) {
+      const content = block.replace(/<[^>]*>/g, ' ').trim();
+      const parts = content.match(/(\d+)[\u2019'\'\u0027]\s*(.+)/);
+      if (parts) {
+        const minuto = parseInt(parts[1]);
+        const nome = parts[2].trim();
+        if (minuto > 0 && minuto <= 120 && nome.length > 2 && !eventi.find(e => e.minuto === minuto && e.nome === nome)) {
+          eventi.push({ tipo: 'GOAL', minuto, nome });
+        }
+      }
+    }
+  }
+
+  // Pattern 3: cartellini gialli - sezione "Ammoniti"
+  const yellowSection = html.match(/(?:Ammonit[io]|Ammonizioni|Yellow)[\s\S]{0,2000}/i);
+  if (yellowSection) {
+    const yRe = /(\d+)[\u2019'\'\u0027]\s*([A-Z\u00C0-\u00DA][a-z\u00E0-\u00FA]+(?:\s+[A-Z\u00C0-\u00DA][a-z\u00E0-\u00FA]*)*)/g;
+    let ym;
+    while ((ym = yRe.exec(yellowSection[0])) !== null) {
+      const minuto = parseInt(ym[1]);
+      if (minuto > 0 && minuto <= 120) {
+        eventi.push({ tipo: 'YELLOW', minuto, nome: ym[2].trim() });
+      }
+    }
+  }
+
+  // Pattern 4: espulsioni - sezione "Espulsi"
+  const redSection = html.match(/(?:Espuls[io]|Espulsioni|Red)[\s\S]{0,2000}/i);
+  if (redSection) {
+    const rRe = /(\d+)[\u2019'\'\u0027]\s*([A-Z\u00C0-\u00DA][a-z\u00E0-\u00FA]+(?:\s+[A-Z\u00C0-\u00DA][a-z\u00E0-\u00FA]*)*)/g;
+    let rm;
+    while ((rm = rRe.exec(redSection[0])) !== null) {
+      const minuto = parseInt(rm[1]);
+      if (minuto > 0 && minuto <= 120) {
+        eventi.push({ tipo: 'RED', minuto, nome: rm[2].trim() });
+      }
+    }
+  }
+
+  return eventi;
+}
+
+// Import eventi (marcatori) da Tuttocampo per una singola partita
+// Accetta: url (pagina giornata o dettaglio), oppure html incollato dall'utente
+app.post('/api/partite/:matchId/import-eventi-tuttocampo', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
+  try {
+    const { url, html: rawHtml } = req.body;
+    let html = rawHtml || '';
+
+    if (!url && !html) return res.status(400).json({ error: 'URL o HTML richiesto' });
+
+    // Se fornito URL, scarica la pagina
+    if (url && !html) {
+      const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+      const resp = await fetch(url, { headers: { 'User-Agent': UA } });
+      if (!resp.ok) return res.status(400).json({ error: 'Impossibile accedere alla pagina (status ' + resp.status + ')' });
+      html = await resp.text();
+      if (html.length < 1000 || html.includes('awsWafCookie')) {
+        return res.status(400).json({ error: 'Pagina non disponibile (WAF attivo). Riprova tra qualche minuto oppure incolla l\'HTML manualmente.' });
+      }
+    }
+
+    if (!html || html.length < 500) return res.status(400).json({ error: 'HTML mancante o troppo corto' });
+
+    // Cerca marcatori nella struttura Tuttocampo AJAX (ul.scorers con title)
+    const eventi = [];
+    const scorerTitles = html.match(/class="scorers"[\s\S]*?<\/ul>/gi) || [];
+    for (const block of scorerTitles) {
+      const titleRegex = /title="([^"]+)"/g;
+      let m;
+      while ((m = titleRegex.exec(block)) !== null) {
+        eventi.push({ tipo: 'GOAL', nome: m[1].trim(), minuto: null });
+      }
+    }
+
+    // Fallback: prova parsing generico (per HTML da pagina dettaglio con login)
+    if (eventi.length === 0) {
+      const parsed = parseEventiFromHtml(html);
+      eventi.push(...parsed);
+    }
+
+    res.json({ success: true, eventi, htmlLength: html.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Errore: ' + err.message });
+  }
+});
+
+// Import eventi in batch durante conferma Tuttocampo (marcatori dal calendario)
+app.post('/api/partite/:matchId/eventi-tuttocampo', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
+  try {
+    const { matchId } = req.params;
+    const { eventi, teamId } = req.body;
+    if (!eventi || !Array.isArray(eventi) || eventi.length === 0) {
+      return res.status(400).json({ error: 'Nessun evento da importare' });
+    }
+
+    // Prendi la rosa per fuzzy match nomi
+    const { data: roster } = await supabase
+      .from('team_player')
+      .select('id, player_id, player:player_id(nome, cognome)')
+      .eq('team_id', teamId);
+
+    // Fuzzy match: cerca il giocatore per cognome
+    function findPlayer(nome) {
+      if (!nome || !roster) return null;
+      const searchLower = nome.toLowerCase().trim();
+      // Match esatto cognome
+      let found = roster.find(r => r.player && r.player.cognome.toLowerCase() === searchLower);
+      if (found) return found.player_id;
+      // Match parziale (cognome contenuto)
+      found = roster.find(r => r.player && searchLower.includes(r.player.cognome.toLowerCase()));
+      if (found) return found.player_id;
+      // Match cognome contenuto nel search
+      found = roster.find(r => r.player && r.player.cognome.toLowerCase().includes(searchLower));
+      if (found) return found.player_id;
+      return null;
+    }
+
+    // Inserisci eventi
+    const inserts = eventi.map(e => ({
+      match_id: matchId,
+      tipo_evento: e.tipo || 'GOAL',
+      minuto: e.minuto || null,
+      player_id: findPlayer(e.nome) || null
+    }));
+
+    // Delete existing events first
+    await supabase.from('match_event').delete().eq('match_id', matchId);
+    
+    if (inserts.length > 0) {
+      const { error } = await supabase.from('match_event').insert(inserts);
+      if (error) return res.status(400).json({ error: error.message });
+    }
+
+    const matched = inserts.filter(i => i.player_id).length;
+    res.json({ success: true, imported: inserts.length, matched, unmatched: inserts.length - matched });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Conferma import partite da Tuttocampo
+app.post('/api/calendario/confirm-tuttocampo', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
+  try {
+    const { squadraId, partite, importResults, archiveCompleted, competizione, importEvents } = req.body;
+    if (!squadraId || !partite || !partite.length) return res.status(400).json({ error: 'Dati mancanti' });
+
+    // Cerca competition_id
+    let competition_id = null;
+    if (competizione) {
+      const { data: comp } = await supabase.from('competition').select('id').ilike('nome', '%' + competizione + '%').limit(1).single();
+      if (comp) competition_id = comp.id;
+    }
+
+    // Prendi la rosa per fuzzy match marcatori
+    let roster = [];
+    if (importEvents) {
+      const { data: rosterData } = await supabase
+        .from('team_player')
+        .select('id, player_id, player:player_id(nome, cognome)')
+        .eq('team_id', squadraId);
+      roster = rosterData || [];
+    }
+
+    function findPlayer(nome) {
+      if (!nome || roster.length === 0) return null;
+      const searchLower = nome.toLowerCase().trim();
+      let found = roster.find(r => r.player && r.player.cognome.toLowerCase() === searchLower);
+      if (found) return found.player_id;
+      found = roster.find(r => r.player && searchLower.includes(r.player.cognome.toLowerCase()));
+      if (found) return found.player_id;
+      found = roster.find(r => r.player && r.player.cognome.toLowerCase().includes(searchLower));
+      if (found) return found.player_id;
+      return null;
+    }
+
+    let inserite = 0;
+    let eventiImportati = 0;
+    for (const p of partite) {
+      if (!p.avversario) continue;
+      
+      // data_ora è NOT NULL nel DB: se manca, stima dalla giornata adiacente
+      let dataOra = p.dataOra ? new Date(p.dataOra).toISOString() : null;
+      if (!dataOra) {
+        // Cerca la data della giornata precedente o successiva per stimare
+        const prevMatch = partite.find(x => x.giornata === (p.giornata - 1) && x.dataOra);
+        const nextMatch = partite.find(x => x.giornata === (p.giornata + 1) && x.dataOra);
+        if (prevMatch) {
+          const d = new Date(prevMatch.dataOra);
+          d.setDate(d.getDate() + 7);
+          dataOra = d.toISOString();
+        } else if (nextMatch) {
+          const d = new Date(nextMatch.dataOra);
+          d.setDate(d.getDate() - 7);
+          dataOra = d.toISOString();
+        } else {
+          dataOra = new Date('2026-01-01T15:00:00').toISOString();
+        }
+      }
+      
+      const insertData = {
+        team_id: squadraId,
+        data_ora: dataOra,
+        avversario: p.avversario,
+        luogo: p.luogo || 'Casa',
+        giornata: p.giornata || null,
+        competition_id
+      };
+
+      // Se importa risultati e la partita ha un risultato
+      if (importResults && p.golCasa !== null && p.golOspite !== null) {
+        insertData.gol_casa = p.golCasa;
+        insertData.gol_ospite = p.golOspite;
+        insertData.stato = 'Terminata';
+        if (archiveCompleted) insertData.archiviata = true;
+      }
+
+      const { data: inserted, error } = await supabase.from('match').insert(insertData).select('id').single();
+      if (!error && inserted) {
+        inserite++;
+        // Importa eventi (marcatori) se disponibili
+        if (importEvents && p.marcatori && p.marcatori.length > 0 && inserted.id) {
+          const eventInserts = p.marcatori
+            .map(m => ({
+              match_id: inserted.id,
+              tipo_evento: m.tipo || 'GOAL',
+              minuto: m.minuto || null,
+              player_id: findPlayer(m.nome) || null
+            }))
+            .filter(e => e.player_id); // Solo quelli matchati con la rosa
+          if (eventInserts.length > 0) {
+            const { error: evErr } = await supabase.from('match_event').insert(eventInserts);
+            if (!evErr) eventiImportati += eventInserts.length;
+          }
+        }
+      }
+    }
+
+    res.json({ success: true, inserite, eventiImportati });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

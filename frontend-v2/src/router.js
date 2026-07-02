@@ -18,7 +18,8 @@ export function initRouter() {
     trainingSettings: () => import('./modules/coach/trainingSettings.js'),
     stats: () => import('./modules/performance/stats.js'),
     reports: () => import('./modules/performance/reports.js'),
-    settings: () => import('./modules/club/settings.js')
+    settings: () => import('./modules/club/settings.js'),
+    staff: () => import('./modules/club/staff.js')
   };
 
   window.YFM.isAuthenticated = function() {
@@ -109,19 +110,21 @@ export function initRouter() {
     console.log('[ROUTER] navigateTo chiamato con:', page);
     
     const publicPages = ['login', 'guest'];
+    const guestAllowedPages = ['dashboard', 'roster', 'calendar', 'stats'];
     
     if (!publicPages.includes(page)) {
       const isGuest = window.YFM.isGuest();
       const isAuthenticated = window.YFM.isAuthenticated();
       
-      console.log('[ROUTER] Controlli - isGuest:', isGuest, 'isAuthenticated:', isAuthenticated);
-      
       if (!isGuest && !isAuthenticated) {
-        console.log('[ROUTER] Redirect a login');
         window.YFM.navigateTo('login');
         return;
       }
-      console.log('[ROUTER] Accesso permesso, proseguo con caricamento pagina');
+      
+      // Guest: blocca pagine non permesse
+      if (isGuest && !guestAllowedPages.includes(page)) {
+        page = 'dashboard';
+      }
     }
 
     const container = document.getElementById('pageContent');

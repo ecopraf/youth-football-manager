@@ -1,4 +1,4 @@
-import { apiFetch } from '../../services/api';
+import { apiFetch, API_BASE } from '../../services/api';
 import { formatDate, formatDateShort, formatDateCompact } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 
@@ -113,6 +113,7 @@ const stepColors = {
 function renderCalendarPage(c, matches, stats) {
 
   const now = new Date();
+  const isGuest = !!(window.YFM.guestSquadreAccesso && window.YFM.guestSquadreAccesso.length > 0);
   
   // Separa future e passate
   const futureMatches = matches
@@ -126,6 +127,12 @@ function renderCalendarPage(c, matches, stats) {
   // Prossima partita (la prima delle future)
   const nextMatch = futureMatches.length > 0 ? futureMatches[0] : null;
   const otherFutureMatches = futureMatches.slice(1);
+
+  // === GUEST VIEW: solo prossima + giocate con risultato ===
+  if (isGuest) {
+    renderGuestCalendar(c, nextMatch, pastMatches, stats);
+    return;
+  }
 
   // Stili CSS per LIVE e pallino lampeggiante
   let html = `<style>
@@ -211,9 +218,12 @@ function renderCalendarPage(c, matches, stats) {
   html += `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <div><h1 class="page-title">Calendario ${window.YFM.getSquadraName()}</h1></div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-primary" id="btnAdd">+ Nuova</button>
-        <button class="btn btn-secondary" id="btnImport" style="font-size:13px;">📥 Importa CSV</button>
+        <button class="btn btn-secondary" id="btnImportTc" style="font-size:13px;">⚽ Tuttocampo</button>
+        <button class="btn btn-secondary" id="btnImportPdf" style="font-size:13px;">📄 PDF</button>
+        <button class="btn btn-secondary" id="btnImport" style="font-size:13px;">📥 CSV</button>
+        <button class="btn btn-secondary" id="btnDeleteAll" style="font-size:13px;color:#E74C3C;">🗑️ Cancella tutto</button>
       </div>
     </div>`;
 
@@ -247,8 +257,75 @@ function renderCalendarPage(c, matches, stats) {
   c.innerHTML = html;
 
   document.getElementById('btnAdd').addEventListener('click', () => openMatchForm());
+  document.getElementById('btnImportTc').addEventListener('click', openImportTuttocampo);
   document.getElementById('btnImport').addEventListener('click', openImportCSV);
+  document.getElementById('btnImportPdf').addEventListener('click', openImportPdf);
+  document.getElementById('btnDeleteAll').addEventListener('click', deleteAllMatches);
   attachCardListeners();
+}
+
+function renderGuestCalendar(c, nextMatch, pastMatches, stats) {
+  let html = `<style>
+    .guest-match { background:white; padding:16px; border-radius:12px; margin-bottom:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08); cursor:pointer; transition:transform 0.15s; }
+    .guest-match:hover { transform:translateX(4px); }
+    .result-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:16px; font-size:13px; font-weight:600; }
+    .result-victory { background:#D4EDDA; color:#155724; }
+    .result-defeat { background:#F8D7DA; color:#721C24; }
+    .result-draw { background:#FFF3CD; color:#856404; }
+  </style>`;
+
+  html += `<div style="margin-bottom:24px;"><h1 class="page-title">Calendario ${window.YFM.getSquadraName()}</h1></div>`;
+
+  // Prossima partita
+  if (nextMatch) {
+    const luogo = nextMatch.luogo === 'Casa' ? '🏠 Casa' : '✈️ Trasferta';
+    const comp = nextMatch.competizione ? ' · 🏆 ' + nextMatch.competizione : '';
+    html += `<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;margin-bottom:24px;color:white;border-radius:16px;">
+      <div style="font-size:11px;font-weight:600;opacity:0.9;text-transform:uppercase;margin-bottom:4px;">⏱ Prossima Partita</div>
+      <div style="font-size:18px;font-weight:bold;margin-bottom:4px;">${nextMatch.avversario}</div>
+      <div style="font-size:12px;opacity:0.9;">📅 ${formatDate(nextMatch.data_ora)} · ${luogo}${comp}</div>
+    </div>`;
+  } else {
+    html += `<div style="padding:16px;margin-bottom:24px;text-align:center;border:2px dashed #ddd;border-radius:12px;"><p style="color:var(--gray);margin:0;">📅 Nessuna partita in programma</p></div>`;
+  }
+
+  // Partite giocate con risultato
+  const playedWithResult = pastMatches.filter(m => m.stato === 'Terminata' || m.gol_casa !== null);
+  if (playedWithResult.length > 0) {
+    html += `<div style="margin-bottom:12px;"><span style="background:#E9ECEF;color:#495057;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;">🏆 GIOCATE</span></div>`;
+    playedWithResult.forEach(m => {
+      const r = (stats?.risultati || []).find(x => x.id === m.id);
+      const gf = r?.golFatti ?? m.gol_casa ?? null;
+      const gs = r?.golSubiti ?? m.gol_ospite ?? null;
+      let resultHtml = '';
+      if (gf !== null && gs !== null) {
+        let cls, icon;
+        if (gf > gs) { cls = 'result-victory'; icon = '✅'; }
+        else if (gf < gs) { cls = 'result-defeat'; icon = '❌'; }
+        else { cls = 'result-draw'; icon = '🤝'; }
+        resultHtml = `<span class="result-badge ${cls}"><span style="font-size:16px;font-weight:700;">${gf} - ${gs}</span>${icon}</span>`;
+      }
+      const luogoBadge = m.luogo === 'Casa' ? '🏠' : '✈️';
+      const comp = m.competizione ? `<span style="font-size:11px;color:#888;background:#f5f5f5;padding:2px 6px;border-radius:4px;">${m.competizione}</span>` : '';
+      html += `<div class="guest-match" onclick="window.YFM.openMatchDetail('${m.id}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">${comp}</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:14px;">${luogoBadge}</span>
+              <span style="font-size:14px;font-weight:600;">${m.avversario}</span>
+            </div>
+            <div style="font-size:12px;color:#888;margin-top:4px;">📅 ${formatDateShort(m.data_ora)}</div>
+          </div>
+          ${resultHtml}
+        </div>
+      </div>`;
+    });
+  } else {
+    html += `<p style="color:var(--gray);text-align:center;padding:20px;">Nessuna partita disputata</p>`;
+  }
+
+  c.innerHTML = html;
 }
 
 function attachCardListeners() {
@@ -427,6 +504,120 @@ async function deleteMatch(id) {
   loadCalendar();
 }
 
+function openImportTuttocampo() {
+  const content = `
+  <p style="margin-bottom:12px;">Importa il calendario direttamente da <strong>Tuttocampo.it</strong></p>
+  <div class="form-group" style="margin-bottom:12px;">
+    <label>URL del girone su Tuttocampo</label>
+    <input id="tcUrl" placeholder="https://www.tuttocampo.it/2025-26/Lazio/GiovanissimiRegionaliU15/GironeE/Calendario" style="font-size:12px;">
+    <small style="color:#888;">Vai su Tuttocampo, trova il tuo girone e copia l'URL della pagina Calendario</small>
+  </div>
+  <div class="form-group" style="margin-bottom:12px;">
+    <label>Nome squadra (come appare su Tuttocampo)</label>
+    <input id="tcTeamName" placeholder="es. Dreaming Football Academy">
+  </div>
+  <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcImportResults" checked> Importa risultati</label>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcImportEvents"> Importa marcatori</label>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcArchive" checked> Archivia giocate</label>
+  </div>
+  <div id="tcEventsNote" style="display:none;background:#FFF3CD;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#856404;">\u26a0\ufe0f I marcatori verranno importati solo se Tuttocampo li mostra nella pagina di dettaglio. Il matching con la rosa avviene per cognome.</div>
+  <div id="tcResult" style="margin-top:16px;"></div>`;
+  const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="tcSearch">\ud83d\udd0d Cerca</button>';
+  const modal = createModal('Importa da Tuttocampo', content, footer, '700px');
+
+  document.getElementById('tcSearch').addEventListener('click', async () => {
+    const url = document.getElementById('tcUrl').value.trim();
+    const teamName = document.getElementById('tcTeamName').value.trim();
+    if (!url || !teamName) { alert('Inserisci URL e nome squadra'); return; }
+
+    // Toggle note marcatori
+    const eventsCheckbox = document.getElementById('tcImportEvents');
+    eventsCheckbox.addEventListener('change', () => {
+      document.getElementById('tcEventsNote').style.display = eventsCheckbox.checked ? 'block' : 'none';
+    });
+
+    const resultDiv = document.getElementById('tcResult');
+    resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Scaricamento da Tuttocampo... (pu\u00f2 richiedere 20-30 secondi)</div>';
+
+    try {
+      const importResults = document.getElementById('tcImportResults').checked;
+      const archiveCompleted = document.getElementById('tcArchive').checked;
+      const data = await apiFetch('/calendario/import-tuttocampo', {
+        method: 'POST',
+        body: JSON.stringify({ url, teamName, squadraId: window.YFM.squadraId, importResults, archiveCompleted, importEvents: document.getElementById('tcImportEvents').checked })
+      });
+
+      if (!data.partite || data.partite.length === 0) {
+        resultDiv.innerHTML = '<div style="color:#c00;padding:12px;background:#fee;border-radius:8px;">\u274c Nessuna partita trovata.</div>';
+        return;
+      }
+
+      const played = data.partite.filter(p => p.hasResult).length;
+      const future = data.partite.length - played;
+      const noDate = data.partite.filter(p => !p.dataOra).length;
+      const eventsCount = data.partite.reduce((sum, p) => sum + (p.marcatori ? p.marcatori.length : 0), 0);
+      const rows = data.partite.map(p => {
+        const d = p.dataOra ? new Date(p.dataOra) : null;
+        const dateStr = d ? d.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '<span style="color:#c00;">?</span>';
+        const timeStr = d ? d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' }) : '';
+        const icon = p.luogo === 'Casa' ? '\ud83c\udfe0' : '\u2708\ufe0f';
+        const score = p.hasResult ? `<span style="font-weight:700;">${p.golCasa}-${p.golOspite}</span>` : '<span style="color:#888;">-</span>';
+        const marcatoriStr = p.marcatori && p.marcatori.length > 0
+          ? `<span style="font-size:10px;color:#27AE60;" title="${p.marcatori.map(m => m.minuto + "' " + m.nome).join(', ')}">\u26bd${p.marcatori.filter(m=>m.tipo==='GOAL').length}</span>`
+          : '';
+        return `<tr><td style="padding:4px 8px;font-size:12px;text-align:center;">${p.giornata}</td><td style="padding:4px 8px;font-size:12px;">${dateStr} ${timeStr}</td><td style="padding:4px 8px;font-size:12px;">${icon} ${p.avversario}</td><td style="padding:4px 8px;font-size:12px;text-align:center;">${importResults ? score : '-'}</td><td style="padding:4px 8px;font-size:12px;text-align:center;">${marcatoriStr}</td></tr>`;
+      }).join('');
+
+      let eventsInfo = '';
+      if (eventsCount > 0) eventsInfo = `<br><small style="color:#27AE60;">\u26bd ${eventsCount} eventi (marcatori/cartellini) trovati</small>`;
+      let noDateInfo = '';
+      if (noDate > 0) noDateInfo = `<br><small style="color:#c00;">\u26a0\ufe0f ${noDate} partite senza data (verranno importate senza data/ora)</small>`;
+
+      resultDiv.innerHTML = `
+        <div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;">
+          \u2705 <strong>${data.partite.length}</strong> partite trovate (${played} giocate, ${future} da giocare)${eventsInfo}${noDateInfo}
+          <br><small style="color:#555;">${data.info.categoria} - ${data.info.girone} - ${data.info.anno}</small>
+        </div>
+        <div style="max-height:280px;overflow-y:auto;border:1px solid #eee;border-radius:8px;">
+          <table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f5f5f5;"><th style="padding:6px 8px;font-size:11px;">G</th><th style="padding:6px 8px;font-size:11px;text-align:left;">Data</th><th style="padding:6px 8px;font-size:11px;text-align:left;">Partita</th><th style="padding:6px 8px;font-size:11px;">Ris</th><th style="padding:6px 8px;font-size:11px;">Ev</th></tr></thead><tbody>${rows}</tbody></table>
+        </div>
+        <div class="form-group" style="margin-top:12px;"><label>Competizione (opzionale)</label><input id="tcComp" placeholder="es. Campionato Regionale Lazio"></div>
+        <button class="btn btn-primary" id="tcConfirm" style="margin-top:12px;width:100%;">\u2705 Conferma e Importa (${data.partite.length} partite)</button>`;
+
+      window._tcPartite = data.partite;
+
+      document.getElementById('tcConfirm').addEventListener('click', async () => {
+        showLoading('Importazione...');
+        try {
+          const importEvents = document.getElementById('tcImportEvents').checked;
+          const resp = await apiFetch('/calendario/confirm-tuttocampo', {
+            method: 'POST',
+            body: JSON.stringify({
+              squadraId: window.YFM.squadraId,
+              partite: window._tcPartite,
+              importResults: document.getElementById('tcImportResults').checked,
+              archiveCompleted: document.getElementById('tcArchive').checked,
+              competizione: document.getElementById('tcComp').value.trim(),
+              importEvents
+            })
+          });
+          hideLoading();
+          modal.close();
+          let msg = `\u2705 Importate ${resp.inserite} partite da Tuttocampo!`;
+          if (resp.eventiImportati > 0) msg += `\n\u26bd ${resp.eventiImportati} eventi (marcatori) importati.`;
+          alert(msg);
+          loadCalendar();
+        } catch (err) {
+          hideLoading();
+          alert('Errore: ' + err.message);
+        }
+      });
+    } catch (err) {
+      resultDiv.innerHTML = `<div style="color:#c00;padding:12px;background:#fee;border-radius:8px;">\u274c ${err.message}</div>`;
+    }
+  });
+}
 function openImportCSV() {
   const content = `
   <p style="margin-bottom:12px;">Incolla i dati CSV (una riga per partita):</p>
@@ -447,6 +638,142 @@ function openImportCSV() {
     alert('✅ Importate ' + res.inserite + ' partite!');
     loadCalendar();
   } catch (e) { hideLoading(); alert('Errore: ' + e.message); }
+  });
+}
+
+async function deleteAllMatches() {
+  const count = window.YFM.allMatches ? window.YFM.allMatches.length : 0;
+  if (count === 0) { alert('Nessuna partita da eliminare'); return; }
+  if (!confirm(`⚠️ Eliminare TUTTE le ${count} partite del calendario?\n\nQuesta azione è irreversibile.`)) return;
+  if (!confirm('Sei davvero sicuro? Verranno eliminate tutte le partite, eventi, convocazioni e formazioni associate.')) return;
+  
+  showLoading('Eliminazione...');
+  try {
+    const resp = await apiFetch(`/squadre/${window.YFM.squadraId}/partite-all`, { method: 'DELETE' });
+    hideLoading();
+    alert(`✅ Eliminate ${resp.eliminate || count} partite`);
+    loadCalendar();
+  } catch (err) {
+    hideLoading();
+    alert('Errore: ' + err.message);
+  }
+}
+
+function openImportPdf() {
+  const content = `
+  <p style="margin-bottom:12px;">Carica il PDF del calendario SGS/LND e inserisci il nome della squadra come riportato nel file.</p>
+  <div class="form-group" style="margin-bottom:12px;"><label>File PDF</label><input id="pdfFile" type="file" accept=".pdf"></div>
+  <div class="form-group" style="margin-bottom:12px;"><label>Nome squadra nel PDF</label><input id="pdfTeamName" placeholder="es. DREAMING FOOTBALL ACADEMY"></div>
+  <div id="pdfResult" style="margin-top:16px;"></div>`;
+  const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="pdfSearch">🔍 Cerca</button>';
+  const modal = createModal('Importa Calendario da PDF', content, footer, '700px');
+  
+  document.getElementById('pdfSearch').addEventListener('click', async () => {
+    const file = document.getElementById('pdfFile').files[0];
+    const name = document.getElementById('pdfTeamName').value.trim();
+    if (!file || !name) { alert('Seleziona un PDF e inserisci il nome squadra'); return; }
+    
+    const resultDiv = document.getElementById('pdfResult');
+    resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Analisi PDF...</div>';
+    
+    const formData = new FormData();
+    formData.append('pdf', file);
+    formData.append('searchName', name);
+    
+    try {
+      const token = localStorage.getItem('yfm_token');
+      const resp = await fetch(`${API_BASE}/calendario/parse-pdf`, {
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error);
+      
+      if (data.categorie.length === 0) {
+        const sugg = data.suggestions.length > 0 ? `<p style="margin-top:8px;">Suggerimenti: <strong>${data.suggestions.join(', ')}</strong></p>` : '';
+        resultDiv.innerHTML = `<div style="color:#c00;padding:12px;background:#fee;border-radius:8px;">❌ Squadra non trovata nel PDF.${sugg}</div>`;
+        return;
+      }
+      
+      // Mostra categorie trovate con checkbox
+      const isAdmin = window.YFM.isAdmin();
+      const checkboxes = data.categorie.map((c, i) => `
+        <label style="display:flex;align-items:center;gap:8px;padding:10px;background:#f8f9ff;border-radius:8px;margin-bottom:8px;cursor:pointer;">
+          <input type="checkbox" name="pdfCat" value="${i}" data-cat="${c.categoria}" data-gir="${c.girone}" ${!isAdmin && i === 0 ? 'checked' : ''}>
+          <span style="font-weight:600;">${c.categoria}</span> <span style="color:#666;">Girone ${c.girone}</span>
+        </label>`).join('');
+      
+      resultDiv.innerHTML = `
+        <div style="background:#e8f5e9;padding:12px;border-radius:8px;margin-bottom:12px;">✅ Trovata in ${data.categorie.length} categorie</div>
+        <p style="font-weight:600;margin-bottom:8px;">Seleziona le categorie da importare:</p>
+        ${checkboxes}
+        <button class="btn btn-primary" id="pdfExtract" style="margin-top:12px;">📥 Estrai Calendario</button>`;
+      
+      document.getElementById('pdfExtract').addEventListener('click', () => extractAndPreview(file, name, modal));
+    } catch (err) {
+      resultDiv.innerHTML = `<div style="color:#c00;">${err.message}</div>`;
+    }
+  });
+}
+
+async function extractAndPreview(file, searchName, modal) {
+  const checked = document.querySelectorAll('input[name="pdfCat"]:checked');
+  if (checked.length === 0) { alert('Seleziona almeno una categoria'); return; }
+  
+  const resultDiv = document.getElementById('pdfResult');
+  resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Estrazione calendario...</div>';
+  
+  const token = localStorage.getItem('yfm_token');
+  let allPartite = [];
+  
+  for (const cb of checked) {
+    const formData = new FormData();
+    formData.append('pdf', file);
+    formData.append('searchName', searchName);
+    formData.append('categoria', cb.dataset.cat);
+    formData.append('girone', cb.dataset.gir);
+    
+    const resp = await fetch(`${API_BASE}/calendario/extract`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
+    });
+    const data = await resp.json();
+    if (!resp.ok) { resultDiv.innerHTML = `<div style="color:#c00;">${data.error}</div>`; return; }
+    allPartite = allPartite.concat(data.partite.map(p => ({ ...p, _cat: cb.dataset.cat + ' G.' + cb.dataset.gir })));
+  }
+  
+  // Mostra anteprima
+  const rows = allPartite.map(p => {
+    const d = new Date(p.data);
+    const dateStr = d.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit' });
+    const timeStr = d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+    const icon = p.luogo === 'Casa' ? '🏠' : '✈️';
+    return `<tr><td style="padding:4px 8px;font-size:12px;">${p.giornata}</td><td style="padding:4px 8px;font-size:12px;">${dateStr} ${timeStr}</td><td style="padding:4px 8px;font-size:12px;">${icon} ${p.avversario}</td><td style="padding:4px 8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;" title="${p.indirizzo_campo || ''}">${p.indirizzo_campo ? '📍' : ''}</td></tr>`;
+  }).join('');
+  
+  resultDiv.innerHTML = `
+    <div style="background:#e8f5e9;padding:8px 12px;border-radius:8px;margin-bottom:12px;">✅ ${allPartite.length} partite estratte</div>
+    <div style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:8px;">
+      <table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f5f5f5;"><th style="padding:6px 8px;font-size:11px;text-align:left;">G</th><th style="padding:6px 8px;font-size:11px;text-align:left;">Data</th><th style="padding:6px 8px;font-size:11px;text-align:left;">Partita</th><th style="padding:6px 8px;font-size:11px;">📍</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    <button class="btn btn-primary" id="pdfConfirm" style="margin-top:12px;width:100%;">✅ Conferma e Importa (${allPartite.length} partite)</button>`;
+  
+  document.getElementById('pdfConfirm').addEventListener('click', async () => {
+    showLoading('Importazione...');
+    try {
+      const resp = await fetch(`${API_BASE}/calendario/import`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ squadraId: window.YFM.squadraId, partite: allPartite })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error);
+      hideLoading();
+      modal.close();
+      alert(`✅ Importate ${data.inserite} partite!`);
+      loadCalendar();
+    } catch (err) {
+      hideLoading();
+      alert('Errore: ' + err.message);
+    }
   });
 }
 

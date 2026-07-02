@@ -7,7 +7,13 @@ export async function loadSquadre(stagioneId) {
   try {
     let allSquadre;
     
-    if (stagioneId) {
+    // Guest: carica tutte le squadre e filtra per category_id (squadre_accesso contiene category_id)
+    const guestSquadre = window.YFM.guestSquadreAccesso || [];
+    if (guestSquadre.length > 0 && !window.YFM.workspaceInfo) {
+      console.log('[loadSquadre] Guest mode, loading by category IDs');
+      const all = await apiFetch('/squadre');
+      allSquadre = (all || []).filter(s => guestSquadre.includes(s.category_id));
+    } else if (stagioneId) {
       // Se passato stagioneId, usa quello
       console.log('[loadSquadre] Using provided stagioneId:', stagioneId);
       allSquadre = await apiFetch(`/stagioni/${stagioneId}/squadre`);
@@ -64,6 +70,15 @@ export async function loadSquadre(stagioneId) {
     }
     
     console.log('[loadSquadre] Setting allSquadre:', allSquadre.length, 'teams');
+    
+    // Filtra per categorie_accesso dell'utente (se non admin/superadmin e non guest)
+    const user = window.YFM.getUser ? window.YFM.getUser() : null;
+    const categorieAccesso = user?.categorie_accesso || [];
+    if (!guestSquadre.length && user && !user.is_superadmin && user.ruolo !== 'admin' && categorieAccesso.length > 0) {
+      allSquadre = allSquadre.filter(s => !s.category_id || categorieAccesso.includes(s.category_id));
+      console.log('[loadSquadre] Filtered by categorie_accesso:', allSquadre.length);
+    }
+    
     window.YFM.allSquadre = allSquadre;
     
     const sel = document.getElementById('squadraSelect');

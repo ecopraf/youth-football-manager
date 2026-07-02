@@ -53,7 +53,20 @@ git status
 | **Frontend** | Vite + JavaScript ES Modules |
 | **Backend** | Node.js/Express + Supabase |
 | **Deploy** | Vercel (auto su push a main) |
-| **Logo** | `/frontend-v2/public/assets/logo.png` |
+| **Auth** | JWT + permessi granulari JSONB |
+| **Guest** | JWT guest (24h, solo lettura) |
+
+### Backend Dependencies
+- `express`, `cors`, `bcryptjs`, `jsonwebtoken`
+- `@supabase/supabase-js`
+- `multer` (upload file PDF/XLS)
+- `xlsx` (parsing tabulato atleti FIGC .xlsx)
+- `pdf-parse@1.1.1` (parsing PDF calendario SGS/LND)
+- `dotenv`
+
+### Backend Files
+- `api/index.js` — Tutti gli endpoint API
+- `api/pdfCalendarioParser.js` — Parser PDF calendario SGS/LND (3 colonne, campi da gioco)
 
 ---
 

@@ -46,7 +46,6 @@ ALTER SEQUENCE IF EXISTS partita_id_seq RESTART WITH 1;
 
 | ID | Nome | Note |
 |----|------|------|
-| `00000000-0000-0000-0000-000000000001` | ASD Green Academy | DEMO |
 | `22222222-2222-2222-2222-222222222222` | SSD New Team | Produzione |
 | `752eab50-73c1-495b-9e0e-8b851e9c9a99` | ACP Annex | Produzione |
 | `ab1186e5-a884-4355-b684-28e32b8157c2` | DF Academy | Produzione |

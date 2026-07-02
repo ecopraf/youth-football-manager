@@ -54,14 +54,18 @@ youth-football-manager/
 │   │   ├── router.js         # Routing
 │   │   ├── style.css         # Stili globali
 │   │   ├── build-info.js     # Auto-generato (non tracciare)
-│   │   ├── api.js            # Chiamate backend
+│   │   ├── services/
+│   │   │   └── api.js        # API_BASE + apiFetch
 │   │   ├── modules/          # Pagine/applicazioni
 │   │   │   ├── auth/         # Login, Guest
 │   │   │   ├── admin/        # Users, Guest Links
 │   │   │   ├── team/         # Dashboard, Roster, Calendar, etc.
 │   │   │   ├── coach/        # Training
 │   │   │   ├── performance/  # Stats, Reports
-│   │   │   └── club/         # Settings, Workspace
+│   │   │   └── club/         # Settings, Workspace, Staff
+│   │   ├── utils/
+│   │   │   ├── formatters.js # Formattazione date
+│   │   │   └── ui.js         # Loading spinner
 │   │   └── components/
 │   │       └── layout/        # Sidebar, Header
 │   ├── public/
@@ -72,12 +76,13 @@ youth-football-manager/
 │
 ├── backend/
 │   ├── api/
-│   │   └── index.js          # Tutti gli endpoint API
+│   │   ├── index.js          # Tutti gli endpoint API
+│   │   └── pdfCalendarioParser.js  # Parser PDF SGS/LND
 │   └── package.json
 │
+├── .agents/                  # Configurazione agenti AI
 ├── docs/                     # Documenti partnership
 ├── landing.html              # Landing page statica
-├── AGENTS.md                 # Linee guida per agenti
 └── README.md                 # Documentazione
 ```
 
@@ -118,6 +123,24 @@ youth-football-manager/
 | GET | `/squadre/:id/partite-future` | Prossime partite |
 | PUT | `/partite/:id/archivia` | Archivia partita |
 | PUT | `/partite/:id/sblocca` | Sblocca partita |
+| DELETE | `/squadre/:id/partite-all` | Elimina TUTTE le partite |
+
+#### Import Dati
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| POST | `/calendario/import-tuttocampo` | Scraping calendario Tuttocampo (con marcatori opzionali) |
+| POST | `/calendario/confirm-tuttocampo` | Conferma import partite + eventi |
+| POST | `/partite/:id/import-eventi-tuttocampo` | Import eventi singola partita (URL o HTML) |
+| POST | `/partite/:id/eventi-tuttocampo` | Batch import eventi con fuzzy match |
+| POST | `/roster/parse-xls` | Upload e parsing tabulato XLS FIGC (multipart) |
+| POST | `/roster/import-xls` | Conferma import giocatori nella rosa |
+
+#### PDF Import Calendario
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| POST | `/calendario/parse-pdf` | Upload PDF + cerca squadra (multipart) |
+| POST | `/calendario/extract` | Estrai calendario per categoria (multipart) |
+| POST | `/calendario/import` | Conferma e inserisci partite nel DB |
 
 #### Lineups & Events
 | Metodo | Endpoint | Descrizione |
@@ -176,7 +199,8 @@ team_player (id, team_id, player_id, is_primary, numero_maglia,
 
 -- Match (ex partita)
 match (id, team_id, competition_id, venue_id, data_ora, avversario, luogo,
-       giornata, gol_casa, gol_ospite, stato, archiviata, ...)
+       giornata, gol_casa, gol_ospite, stato, archiviata, indirizzo_campo,
+       formazione_meta JSONB, note, note_avversario, ...)
 
 -- Match Event (ex evento_partita)
 match_event (id, match_id, tipo_evento, minuto, player_id, player_id_secondario, ...)

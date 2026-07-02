@@ -3,6 +3,12 @@ import { showLoading, hideLoading } from '../../utils/ui';
 
 export default async function loadSettings() {
   const c = document.getElementById('pageContent');
+  
+  if (!window.YFM.isAdmin()) {
+    c.innerHTML = '<div class="error-box">Accesso riservato agli amministratori.</div>';
+    return;
+  }
+  
   const s = window.YFM.getSquadra();
   
   c.innerHTML = `

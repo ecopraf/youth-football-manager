@@ -22,7 +22,7 @@ export async function openResultForm(mid) {
   
   try {
     const detRes = await apiFetch('/partite/' + mid + '/dettaglio');
-    eventi = detRes.eventi || [];
+    eventi = (detRes.eventi || []).map(e => ({ ...e, principale: e.player_name || e.principale || '', minuto: e.minuto || '' }));
   } catch(e) {}
   
   try {
@@ -90,7 +90,7 @@ function renderFormReadOnly(match, eventi, modal) {
     html += '<div class="evt-item">';
     html += '<span class="evt-badge" style="background:' + cfg.color + '20;color:' + cfg.color + ';border:2px solid ' + cfg.color + ';">' + (isAutogol ? '🟡 ' : '') + cfg.icon + ' ' + cfg.label + '</span>';
     const nomeMostrato = e.principale || (e.tipo === 'SUBITO' ? 'Avversario' : (e.autogol ? 'Autogol' : ''));
-    html += '<div class="evt-info">' + e.minuto + "' - " + nomeMostrato + '</div></div>';
+    html += '<div class="evt-info">' + (e.minuto ? e.minuto + "'" : '') + (e.minuto && nomeMostrato ? ' - ' : '') + nomeMostrato + '</div></div>';
   });
   if (eventi.length === 0) html += '<div class="empty">Nessun evento registrato</div>';
   html += '</div></div>';
@@ -131,7 +131,7 @@ function renderForm(mid, match, eventi, giocatori, modal) {
     html += '<div class="evt-item">';
     html += '<span class="evt-badge" style="background:' + cfg.color + '20;color:' + cfg.color + ';border:2px solid ' + cfg.color + ';">' + (isAutogol ? '🟡 ' : '') + cfg.icon + ' ' + cfg.label + '</span>';
     const nomeMostrato = e.principale || (e.tipo === 'SUBITO' ? 'Avversario' : (e.autogol ? 'Autogol' : ''));
-    html += '<div class="evt-info">' + e.minuto + "' - " + nomeMostrato + '</div>';
+    html += '<div class="evt-info">' + (e.minuto ? e.minuto + "'" : '') + (e.minuto && nomeMostrato ? ' - ' : '') + nomeMostrato + '</div>';
     html += '<button class="evt-del" id="delEvt' + i + '">✕</button></div>';
   });
   if (eventi.length === 0) html += '<div class="empty">Nessun evento registrato</div>';
@@ -151,7 +151,8 @@ function renderForm(mid, match, eventi, giocatori, modal) {
   
   html += '<div id="magliaGroup" class="form-group" style="display:none;"><label>N° Maglia Avversario</label><input type="number" id="evtMagliaAvv" placeholder="es. 9" min="1" max="99"></div>';
   
-  html += '<button class="add-btn" id="addEvtBtn">+ Aggiungi Evento</button></div>';
+  html += '<button class="add-btn" id="addEvtBtn">+ Aggiungi Evento</button>';
+  html += '<button class="add-btn" id="importTcEvtBtn" style="background:#17a2b8;margin-top:8px;">\u26bd Importa da Tuttocampo</button></div>';
   
   container.innerHTML = html;
   
@@ -168,6 +169,12 @@ function renderForm(mid, match, eventi, giocatori, modal) {
       if (idx > -1) eventi.splice(idx, 1);
       renderForm(mid, match, eventi, giocatori, modal);
     });
+  });
+  
+  document.getElementById('importTcEvtBtn').addEventListener('click', () => {
+    const tcUrl = prompt('Incolla URL della pagina dettaglio partita su Tuttocampo:\n(es. https://www.tuttocampo.it/.../Partita/12345)');
+    if (!tcUrl) return;
+    importEventiFromTuttocampo(mid, tcUrl, eventi, match, giocatori, modal);
   });
   
   document.getElementById('addEvtBtn').addEventListener('click', () => {
@@ -192,6 +199,98 @@ function renderForm(mid, match, eventi, giocatori, modal) {
     
     eventi.push({ tipo, minuto: min, principale, principale_id, autogol: isAutogol || false });
     renderForm(mid, match, eventi, giocatori, modal);
+  });
+}
+
+async function importEventiFromTuttocampo(mid, tcUrl, eventi, match, giocatori, modal) {
+  showLoading('Scaricamento marcatori...');
+  try {
+    const resp = await apiFetch('/partite/' + mid + '/import-eventi-tuttocampo', {
+      method: 'POST',
+      body: JSON.stringify({ url: tcUrl })
+    });
+    hideLoading();
+    if (resp.eventi && resp.eventi.length > 0) {
+      addEventiToList(resp.eventi, eventi, giocatori);
+      alert('\u2705 Importati ' + resp.eventi.length + ' eventi da Tuttocampo!');
+      renderForm(mid, match, eventi, giocatori, modal);
+    } else {
+      alert('Nessun evento trovato nella pagina. Verifica che l\'URL sia corretto.');
+    }
+  } catch (err) {
+    hideLoading();
+    if (err.message && (err.message.includes('WAF') || err.message.includes('non disponibile'))) {
+      showHtmlPasteModal(mid, eventi, match, giocatori, modal);
+    } else {
+      alert('Errore: ' + err.message);
+    }
+  }
+}
+
+function showHtmlPasteModal(mid, eventi, match, giocatori, parentModal) {
+  // Crea un overlay sopra il modal esistente
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;">
+    <h3 style="margin:0 0 12px;">\u26a0\ufe0f WAF attivo - Incolla HTML</h3>
+    <p style="font-size:13px;color:#555;margin-bottom:12px;">Tuttocampo ha il firewall attivo. Per importare i marcatori:</p>
+    <ol style="font-size:13px;color:#555;margin-bottom:12px;padding-left:20px;">
+      <li>Apri la pagina della partita su Tuttocampo nel browser</li>
+      <li>Premi <strong>Ctrl+U</strong> (o tasto destro > "Visualizza sorgente")</li>
+      <li>Seleziona tutto (<strong>Ctrl+A</strong>) e copia (<strong>Ctrl+C</strong>)</li>
+      <li>Incolla qui sotto</li>
+    </ol>
+    <textarea id="htmlPasteArea" rows="8" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:monospace;font-size:11px;" placeholder="Incolla qui il codice sorgente della pagina..."></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button id="htmlPasteCancel" class="btn btn-secondary" style="flex:1;">Annulla</button>
+      <button id="htmlPasteConfirm" class="btn btn-primary" style="flex:1;">\u26bd Analizza</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  document.getElementById('htmlPasteCancel').addEventListener('click', () => overlay.remove());
+  document.getElementById('htmlPasteConfirm').addEventListener('click', async () => {
+    const html = document.getElementById('htmlPasteArea').value;
+    if (!html || html.length < 500) { alert('HTML troppo corto. Assicurati di aver copiato tutto il sorgente.'); return; }
+    showLoading('Analisi HTML...');
+    try {
+      const resp = await apiFetch('/partite/' + mid + '/import-eventi-tuttocampo', {
+        method: 'POST',
+        body: JSON.stringify({ html })
+      });
+      hideLoading();
+      overlay.remove();
+      if (resp.eventi && resp.eventi.length > 0) {
+        addEventiToList(resp.eventi, eventi, giocatori);
+        alert('\u2705 Importati ' + resp.eventi.length + ' eventi!');
+        renderForm(mid, match, eventi, giocatori, parentModal);
+      } else {
+        alert('Nessun evento trovato nell\'HTML. La pagina potrebbe non contenere marcatori.');
+      }
+    } catch (e) {
+      hideLoading();
+      alert('Errore: ' + e.message);
+    }
+  });
+}
+
+function addEventiToList(newEventi, eventi, giocatori) {
+  newEventi.forEach(e => {
+    const existing = eventi.find(ev => ev.minuto === e.minuto && ev.tipo === e.tipo && ev.principale === e.nome);
+    if (!existing) {
+      const g = giocatori.find(x => {
+        const cognome = (x.cognome || '').toLowerCase();
+        const nome = (e.nome || '').toLowerCase();
+        return cognome === nome || nome.includes(cognome) || cognome.includes(nome);
+      });
+      eventi.push({
+        tipo: e.tipo,
+        minuto: e.minuto,
+        principale: e.nome,
+        principale_id: g ? g.calciatoreId : null,
+        autogol: false
+      });
+    }
   });
 }
 

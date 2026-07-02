@@ -67,11 +67,16 @@ export default async function loadLogin() {
     
     <style>
       .login-container {
+        position: fixed;
+        inset: 0;
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: 70vh;
         padding: 20px;
+        background: rgba(248, 249, 250, 0.7);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 200;
       }
       .login-welcome {
         background: white;
@@ -227,17 +232,24 @@ export default async function loadLogin() {
       // Salva token e user info
       localStorage.setItem('yfm_token', res.token);
       localStorage.setItem('yfm_user', JSON.stringify(res.user));
-      
-      // Rimuovi eventuali residui demo
       localStorage.removeItem('yfm_demo_session');
       localStorage.removeItem('yfm_demo_user');
       
       window.YFM.setUser(res.user);
-      
-      // Imposta il workspace prima di caricare le squadre
       const user = res.user;
-      if (user?.workspace_id) {
-        const { loadAvailableWorkspaces } = await import('../../modules/club/workspaceSwitcher');
+      
+      // Determina workspace: superadmin sceglie, altri usano il proprio
+      const { loadAvailableWorkspaces, showWorkspaceSelectorModal, getSavedWorkspaceId } = await import('../../modules/club/workspaceSwitcher');
+      
+      if (user.is_superadmin) {
+        hideLoading();
+        // Superadmin: mostra selettore workspace
+        const selectedWs = await showWorkspaceSelectorModal();
+        if (selectedWs) {
+          window.YFM.workspaceInfo = selectedWs;
+          window.YFM.activeWorkspaceId = selectedWs.id;
+        }
+      } else if (user.workspace_id) {
         const workspaces = await loadAvailableWorkspaces();
         const userWorkspace = workspaces.find(w => w.id === user.workspace_id);
         if (userWorkspace) {
@@ -246,7 +258,13 @@ export default async function loadLogin() {
         }
       }
       
-      // Carica dati necessari per la dashboard
+      // 1. Costruisci layout (crea il DOM con #squadraSelect)
+      const { setupLayout } = await import('../../components/layout/Sidebar');
+      setupLayout();
+      const { initRouter } = await import('../../router');
+      initRouter();
+      
+      // 2. Ora carica dati (il DOM esiste)
       const { loadWorkspaceInfo } = await import('../../modules/club/workspace');
       const { loadSquadre } = await import('../../modules/team/squadre');
       

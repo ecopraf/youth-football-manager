@@ -25,7 +25,8 @@ export default async function loadDashboard() {
   const s = window.YFM.getSquadra();
   const prossimaPartita = partiteFuture && partiteFuture.length > 0 ? partiteFuture[0] : null;
   
-  const hasEditAccess = window.YFM.isAdmin() || window.YFM.hasRole('allenatore');
+  const isGuest = !!(window.YFM.guestSquadreAccesso && window.YFM.guestSquadreAccesso.length > 0);
+  const hasEditAccess = !isGuest && (window.YFM.isAdmin() || window.YFM.hasRole('allenatore'));
   const convButton = hasEditAccess && prossimaPartita 
     ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600;" onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')">👥 Convocazioni</button>'
     : '';
@@ -189,7 +190,7 @@ export default async function loadDashboard() {
   };
   
   // Build final HTML
-  c.innerHTML = '<style>' +
+  const styles = '<style>' +
     '.dash-widgets { display:grid; grid-template-columns:repeat(8,1fr); gap:10px; margin-bottom:24px; }' +
     '@media (max-width: 900px) { .dash-widgets { grid-template-columns: repeat(4, 1fr) !important; } }' +
     '@media (max-width: 600px) { .dash-widgets { grid-template-columns: repeat(4, 1fr) !important; } }' +
@@ -208,8 +209,22 @@ export default async function loadDashboard() {
     '.match-item:hover { background:#f0f0f0; transform: translateX(5px); }' +
     '.staff-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
     '.staff-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }' +
-    '</style>' +
+    '</style>';
+
+  if (isGuest) {
+    // GUEST VIEW: solo prossima partita + widgets + ultimi risultati
+    c.innerHTML = styles +
+      '<div style="margin-bottom:24px;"><h1 class="page-title">Dashboard ' + window.YFM.getSquadraName() + '</h1>' +
+      '<p class="page-subtitle">Stagione 2025/26 · ' + stats.partiteGiocate + ' partite</p></div>' +
+      renderProssimaPartitaSection() +
+      '<div class="dash-widgets">' +
+      widgets.map(w => '<div class="dash-card"><div style="font-size:20px;font-weight:bold;color:' + (w.c || 'var(--text)') + ';">' + w.v + '</div><div style="font-size:10px;color:var(--gray);margin-top:4px;">' + w.l + '</div></div>').join('') +
+      '</div>' +
+      '<div class="result-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>';
+    return;
+  }
     
+  c.innerHTML = styles +
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">' +
     '<div><h1 class="page-title">Dashboard ' + window.YFM.getSquadraName() + '</h1>' +
     '<p class="page-subtitle">Stagione 2025/26 · ' + stats.partiteGiocate + ' partite</p></div></div>' +

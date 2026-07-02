@@ -80,7 +80,6 @@ curl -X PATCH "https://api.vercel.com/v6/projects/youth-football-manager" \
 - Solo i **superadmin** vedono lo switcher
 - Al login appare un modal di selezione se ci sono 2+ workspace reali
 - Dalla sidebar si può cambiare in qualsiasi momento
-- Il workspace demo (ID: `00000000-0000-0000-0000-000000000001`) è escluso
 
 ---
 
@@ -261,7 +260,6 @@ Il calendario mostra un pallino 🔵 lampeggiante accanto alla partita che richi
 │─────────────────────────────────────────────────────│
 │ 📦 25 Gen 2025                                        │
 │ [G.15] [Campionato] [🏠 Casa]                      │
-│ ASD Green Academy vs Juventus    3-1 ✅             │
 │                                                     │
 │ [📋 Convocazione][🏟️ Formazione][📄 Distinta]     │
 │ [📝 Note]                          [✏️][🗑️]         │
@@ -270,7 +268,6 @@ Il calendario mostra un pallino 🔵 lampeggiante accanto alla partita che richi
 📅 IN ARRIVO
 ┌─────────────────────────────────────────────────────┐
 │ [G.16] [Campionato] [✈️ Trasferta]                 │
-│ ASD Green vs Inter Academy         [📊 Risultato]    │
 │                                                     │
 │ [📋][🏟️][📄][📝]                  [✏️][🗑️]         │
 └─────────────────────────────────────────────────────┘
@@ -279,7 +276,6 @@ Il calendario mostra un pallino 🔵 lampeggiante accanto alla partita che richi
 ┌─────────────────────────────────────────────────────┐
 │ 18 Gen 2025                                        │
 │ [G.14] [Campionato] [✈️ Trasferta]                 │
-│ ASD Green Academy vs Milan        1-3 ❌            │
 │                                                     │
 │ [📋][🏟️][📄][📦 Archivia][📝]   [✏️][🗑️]         │
 └─────────────────────────────────────────────────────┘

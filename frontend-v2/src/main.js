@@ -47,6 +47,7 @@ window.YFM.loadCalendar = async () => {
   const m = await import('./modules/team/calendar.js')
   await m.default()
 }
+window.YFM.loadSquadre = loadSquadre;
 window.YFM.openConvocation = async (mid, readOnly) => {
   const m = await import('./modules/team/convocazioni.js')
   m.openConvocation(mid, readOnly)
@@ -76,12 +77,13 @@ window.YFM.openResultForm = async (mid) => {
   m.openResultForm(mid)
 }
 window.YFM.openPlayerDetail = function(playerId) {
+  if (window.YFM.isGuest && window.YFM.isGuest()) return;
   var c = document.getElementById('pageContent');
   if (!c) { console.error('pageContent non trovato'); return; }
   loadPlayerDetail(c, playerId);
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   setupLayout();
   initRouter();
 
@@ -98,52 +100,52 @@ document.addEventListener('DOMContentLoaded', () => {
   const isAuth = window.YFM.isAuthenticated && window.YFM.isAuthenticated();
 
   if (isAuth) {
-    console.log('[MAIN] Auth:', isAuth);
-    
-    loadAvailableWorkspaces().then(async (workspaces) => {
+    try {
       const user = window.YFM.getUser();
+      const workspaces = await loadAvailableWorkspaces();
       
       if (isSuperAdmin(user)) {
         const savedWsId = getSavedWorkspaceId();
-        const hasSavedWorkspace = savedWsId && workspaces.find(w => w.id === savedWsId);
+        const savedWs = savedWsId && workspaces.find(w => w.id === savedWsId);
         
-        if (!hasSavedWorkspace && workspaces.length > 1) {
+        if (savedWs) {
+          window.YFM.workspaceInfo = savedWs;
+          window.YFM.activeWorkspaceId = savedWs.id;
+        } else if (workspaces.length > 1) {
           const selectedWs = await showWorkspaceSelectorModal();
           if (selectedWs) {
             saveCurrentWorkspace(selectedWs.id);
             window.YFM.workspaceInfo = selectedWs;
             window.YFM.activeWorkspaceId = selectedWs.id;
           }
-        } else if (workspaces.length === 1 || hasSavedWorkspace) {
-          const wsToUse = hasSavedWorkspace 
-            ? workspaces.find(w => w.id === savedWsId) 
-            : workspaces[0];
-          if (wsToUse) {
-            saveCurrentWorkspace(wsToUse.id);
-            window.YFM.workspaceInfo = wsToUse;
-            window.YFM.activeWorkspaceId = wsToUse.id;
-          }
+        } else if (workspaces.length === 1) {
+          saveCurrentWorkspace(workspaces[0].id);
+          window.YFM.workspaceInfo = workspaces[0];
+          window.YFM.activeWorkspaceId = workspaces[0].id;
         }
         
         setTimeout(() => initWorkspaceSwitcherInSidebar(), 100);
       } else {
-        const userWorkspaceId = user?.workspace_id;
-        if (userWorkspaceId) {
-          const userWs = workspaces.find(w => w.id === userWorkspaceId);
-          if (userWs) {
-            window.YFM.workspaceInfo = userWs;
-            window.YFM.activeWorkspaceId = userWs.id;
-            console.log('[MAIN] Workspace utente:', userWs.nome);
-          }
+        const userWs = workspaces.find(w => w.id === user?.workspace_id) || workspaces[0];
+        if (userWs) {
+          window.YFM.workspaceInfo = userWs;
+          window.YFM.activeWorkspaceId = userWs.id;
         }
       }
       
       await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
       window.YFM.navigateTo('dashboard');
-    }).catch(async () => {
-      await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
-      window.YFM.navigateTo('dashboard');
-    });
+    } catch (err) {
+      console.error('[MAIN] Init error:', err);
+      // Fallback: prova comunque a caricare
+      try {
+        await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+        window.YFM.navigateTo('dashboard');
+      } catch (e2) {
+        console.error('[MAIN] Fallback error:', e2);
+        window.YFM.navigateTo('login');
+      }
+    }
   } else {
     window.YFM.navigateTo('login');
   }

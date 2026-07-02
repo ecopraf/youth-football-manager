@@ -1,4 +1,4 @@
-import { apiFetch } from '../../services/api';
+import { apiFetch, API_BASE } from '../../services/api';
 import { formatDateShort, getAvatarColor } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 
@@ -44,6 +44,7 @@ function renderRoster(c, players, scadenze) {
   const plur = { Portiere: 'Portieri', Difensore: 'Difensori', Centrocampista: 'Centrocampisti', Attaccante: 'Attaccanti' };
   const byRole = {};
   ruoli.forEach(r => byRole[r] = players.filter(p => p.ruolo === r));
+  const noRole = players.filter(p => !p.ruolo || !ruoli.includes(p.ruolo));
 
   // Count by role for subtitle
   const roleCount = ruoli.map(r => byRole[r].length + ' ' + shortRole[r]).join(' · ');
@@ -58,11 +59,15 @@ function renderRoster(c, players, scadenze) {
     }
   }
   
+  toolbarHtml += '<button class="btn btn-secondary" id="btnImportXls" title="Importa rosa da file Excel">📥 Importa XLS</button>';
   toolbarHtml += '<button class="btn btn-primary" id="btnAdd">+ Aggiungi</button></div></div>';
 
   let scadenzeHtml = scadenze.length > 0 ? '<div class="card" style="margin-bottom:20px;border-left:4px solid #F39C12;"><h3>⚠️ Certificati in scadenza</h3>' + scadenze.map(x => '<div>' + x.nome + ' ' + x.cognome + ' - ' + formatDateShort(x.scadenza) + ' (' + (x.giorni_rimanenti || x.giorniRimanenti) + 'gg)</div>').join('') + '</div>' : '';
 
   let gridsHtml = '';
+  if (noRole.length > 0) {
+    gridsHtml += '<div style="margin-bottom:20px;"><h3 style="font-size:16px;font-weight:600;color:#F39C12;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #F39C12;">⚠️ Ruolo non assegnato (' + noRole.length + ')</h3><div class="roster-grid" id="gridNoRole">' + renderPlayerCards(noRole.sort((a, b) => a.cognome.localeCompare(b.cognome))) + '</div></div>';
+  }
   ruoli.forEach(r => {
     gridsHtml += '<div style="margin-bottom:20px;"><h3 style="font-size:16px;font-weight:600;color:var(--blue);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--green);">' + plur[r] + ' (' + byRole[r].length + ')</h3><div class="roster-grid" id="grid' + r + '">' + renderPlayerCards(byRole[r].sort((a, b) => a.cognome.localeCompare(b.cognome))) + '</div></div>';
   });
@@ -70,6 +75,7 @@ function renderRoster(c, players, scadenze) {
   c.innerHTML = toolbarHtml + scadenzeHtml + '<div class="roster-toolbar"><input class="search-bar" placeholder="Cerca giocatore..." id="sInput"><select class="filter-select" id="fRuolo"><option value="">Tutti i ruoli</option>' + ruoli.map(r => '<option value="' + r + '">' + plur[r] + '</option>').join('') + '</select><select class="filter-select" id="fStato"><option value="">Tutti gli stati</option><option value="Attivo">Attivo</option><option value="Infortunato">Infortunato</option></select></div>' + gridsHtml;
 
   document.getElementById('btnAdd')?.addEventListener('click', () => openPlayerForm());
+  document.getElementById('btnImportXls')?.addEventListener('click', () => openImportXlsModal());
   document.getElementById('sInput')?.addEventListener('input', filterRoster);
   document.getElementById('fRuolo')?.addEventListener('change', filterRoster);
   document.getElementById('fStato')?.addEventListener('change', filterRoster);
@@ -314,3 +320,151 @@ function openPlayerForm(pid) {
 
 window.YFM = window.YFM || {};
 window.YFM.openPlayerForm = openPlayerForm;
+
+// === IMPORT ROSA DA XLS ===
+async function openImportXlsModal() {
+  const isAdmin = window.YFM.isAdmin();
+  const allSquadre = window.YFM.allSquadre || [];
+  
+  // Build team selector (admin vede tutte, allenatore solo la sua)
+  let teamOptions = '';
+  if (isAdmin && allSquadre.length > 1) {
+    teamOptions = allSquadre.map(s => `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${s.nome}</option>`).join('');
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'importXlsModal';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width:800px;max-height:90vh;overflow-y:auto;">
+      <div class="modal-header"><h2>📥 Importa Rosa da XLS</h2><button class="modal-close" id="closeImportXls">&times;</button></div>
+      <div class="modal-body">
+        <div id="importStep1">
+          <p style="margin-bottom:12px;color:#666;">Carica il tabulato atleti in formato Excel (.xlsx). I giocatori verranno raggruppati per anno di nascita.</p>
+          <input type="file" id="xlsFileInput" accept=".xlsx,.xls" style="margin-bottom:16px;">
+          ${teamOptions ? `<div style="margin-bottom:16px;"><label style="font-weight:600;">Squadra destinazione:</label><select id="importTeamSelect" class="filter-select" style="margin-top:4px;">${teamOptions}</select></div>` : ''}
+          <button class="btn btn-primary" id="btnParseXls" disabled>Analizza file</button>
+        </div>
+        <div id="importStep2" style="display:none;"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  document.getElementById('closeImportXls').onclick = () => modal.remove();
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  const fileInput = document.getElementById('xlsFileInput');
+  const btnParse = document.getElementById('btnParseXls');
+  fileInput.onchange = () => { btnParse.disabled = !fileInput.files.length; };
+
+  btnParse.onclick = async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    btnParse.disabled = true;
+    btnParse.textContent = 'Analisi in corso...';
+    try {
+      const resp = await fetch(API_BASE + '/roster/parse-xls', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('yfm_token') || '') },
+        body: formData
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Errore parsing');
+      renderImportPreview(data, modal);
+    } catch (e) {
+      alert('Errore: ' + e.message);
+      btnParse.disabled = false;
+      btnParse.textContent = 'Analizza file';
+    }
+  };
+}
+
+function renderImportPreview(data, modal) {
+  const step2 = document.getElementById('importStep2');
+  document.getElementById('importStep1').style.display = 'none';
+  step2.style.display = 'block';
+
+  const years = Object.keys(data.byYear).filter(y => y !== 'sconosciuto').sort();
+  
+  // Calcola categoria suggerita per ogni anno (stagione 25-26)
+  const currentSeasonEnd = 2026;
+  const suggestCategory = (year) => {
+    const age = currentSeasonEnd - parseInt(year);
+    return `Under ${age}`;
+  };
+
+  let html = `<p style="margin-bottom:12px;"><strong>${data.total}</strong> giocatori trovati, raggruppati per anno di nascita:</p>`;
+  html += `<div style="margin-bottom:16px;">`;
+  
+  years.forEach(y => {
+    const count = data.byYear[y].length;
+    const cat = suggestCategory(y);
+    html += `<label style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:#f8f9fa;">
+      <input type="checkbox" class="yearCheck" value="${y}"> 
+      <strong>${y}</strong> — ${count} giocatori <span style="color:#667eea;">(${cat})</span>
+    </label>`;
+  });
+  html += `</div>`;
+  
+  html += `<div id="importPreviewTable" style="margin-bottom:16px;"></div>`;
+  html += `<div style="display:flex;gap:8px;justify-content:flex-end;">
+    <button class="btn btn-secondary" id="btnBackStep1">← Indietro</button>
+    <button class="btn btn-primary" id="btnConfirmImport" disabled>Importa selezionati</button>
+  </div>`;
+  
+  step2.innerHTML = html;
+
+  // Show preview when years are checked
+  const checkboxes = step2.querySelectorAll('.yearCheck');
+  checkboxes.forEach(cb => {
+    cb.onchange = () => {
+      const selected = [...step2.querySelectorAll('.yearCheck:checked')].map(c => c.value);
+      const players = selected.flatMap(y => data.byYear[y]);
+      document.getElementById('btnConfirmImport').disabled = players.length === 0;
+      
+      if (players.length > 0) {
+        let table = `<div style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:8px;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="background:#f0f0f0;position:sticky;top:0;"><th style="padding:6px;text-align:left;">Cognome</th><th style="padding:6px;text-align:left;">Nome</th><th style="padding:6px;">Nascita</th><th style="padding:6px;">Matricola</th></tr></thead><tbody>`;
+        players.forEach(p => {
+          table += `<tr style="border-bottom:1px solid #f0f0f0;"><td style="padding:6px;">${p.cognome}</td><td style="padding:6px;">${p.nome}</td><td style="padding:6px;text-align:center;">${p.data_nascita || '-'}</td><td style="padding:6px;text-align:center;">${p.matricola || '-'}</td></tr>`;
+        });
+        table += `</tbody></table></div>`;
+        document.getElementById('importPreviewTable').innerHTML = `<p style="margin-bottom:8px;"><strong>${players.length}</strong> giocatori da importare:</p>` + table;
+      } else {
+        document.getElementById('importPreviewTable').innerHTML = '';
+      }
+    };
+  });
+
+  document.getElementById('btnBackStep1').onclick = () => {
+    step2.style.display = 'none';
+    document.getElementById('importStep1').style.display = 'block';
+  };
+
+  document.getElementById('btnConfirmImport').onclick = async () => {
+    const selected = [...step2.querySelectorAll('.yearCheck:checked')].map(c => c.value);
+    const players = selected.flatMap(y => data.byYear[y]);
+    const teamId = document.getElementById('importTeamSelect')?.value || window.YFM.squadraId;
+
+    const btn = document.getElementById('btnConfirmImport');
+    btn.disabled = true;
+    btn.textContent = 'Importazione...';
+    
+    try {
+      const resp = await apiFetch('/roster/import-xls', {
+        method: 'POST',
+        body: JSON.stringify({ players, teamId })
+      });
+      modal.remove();
+      alert(`✅ Importazione completata!\n${resp.imported} importati, ${resp.skipped} già presenti/saltati`);
+      loadRoster();
+    } catch (e) {
+      alert('Errore: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = 'Importa selezionati';
+    }
+  };
+}

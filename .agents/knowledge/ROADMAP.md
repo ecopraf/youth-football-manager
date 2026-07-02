@@ -10,22 +10,48 @@
 ## Fasi di Sviluppo
 
 ### FASE 1 ✅ COMPLETATA
-**Sistema Auth/Ruoli**
+**Sistema Auth/Ruoli/Permessi**
 - [x] Login con JWT
-- [x] Registrazione utenti
+- [x] Registrazione utenti (solo admin)
 - [x] Ruoli: admin, allenatore, staff, guest
 - [x] Gestione utenti (CRUD)
-- [x] Link guest temporanei
+- [x] Link guest temporanei con JWT guest
 - [x] Multi-workspace isolation
+- [x] Permessi granulari per staff (campo `permessi` JSONB su users)
+- [x] `squadre_accesso` per limitare visibilità squadre
+- [x] Tutti i GET protetti con authMiddleware
+- [x] Role-check su tutti gli endpoint di scrittura (requirePermission)
+- [x] Guest view: sidebar ridotta, solo lettura, no dati sensibili
+- [x] Guard frontend su pagine admin (settings, users, guestLinks)
 
-### FASE 2 📋 TODO
+### FASE 2 📋 IN CORSO
 **Import Dati**
 - [x] Import CSV base (struttura)
+- [x] Import PDF calendario SGS/LND (parser 3 colonne, campi da gioco, multi-categoria)
+- [x] Cancella calendario (elimina tutte le partite di una squadra in batch)
+- [x] Import Tuttocampo - Fase 1 (scraping calendario + risultati)
+- [x] Import Tuttocampo - Fase 2: Marcatori da AJAX
+  - Estrazione marcatori da `<ul class="scorers"><a title="Cognome Nome">` nell'AJAX ResultsView.php
+  - Checkbox "Importa marcatori" nel modal Tuttocampo
+  - Preview con colonna ⚽ (conteggio gol per partita)
+  - Fuzzy match cognome vs rosa team_player al momento del confirm
+  - Solo eventi con player_id matchato vengono salvati
+  - Formato display: "Cognome N." (es. Pannone M.)
+- [x] Import Rosa da XLS (tabulato FIGC)
+  - Upload file .xlsx dalla pagina Rosa (bottone "📥 Importa XLS")
+  - Parsing intelligente cognome/nome tramite codice fiscale (gestisce DE, DI, DELLA, etc.)
+  - Raggruppamento automatico per anno di nascita con suggerimento categoria
+  - Admin sceglie categoria target, allenatore importa nella sua
+  - Deduplicazione: skip se cognome+nome+data_nascita già esiste
+  - Crea player + team_player in batch
+  - Sezione "⚠️ Ruolo non assegnato" per giocatori importati senza ruolo
+- [ ] Import Tuttocampo - Fase 3: Archiviazione automatica
+  - Partite con risultato importate → archiviata=true automatico
+  - Gestione conflitti: se partita già esiste (stesso avversario+giornata) → skip o aggiorna
 - [ ] Import CSV avanzato (campi FIGC completi)
-- [ ] Import Tuttocampo (web scraping)
 - [ ] Centro Importazioni con:
-  - [ ] Log operazioni
-  - [ ] Rilevamento duplicati
+  - [ ] Log operazioni (storico import con timestamp, fonte, n. record)
+  - [ ] Rilevamento duplicati (avversario + giornata + data)
   - [ ] Matching intelligente giocatori
 
 ### FASE 3 📋 TODO
@@ -97,6 +123,17 @@
 
 ### Risolti (Luglio 2026)
 - [x] Endpoint senza authMiddleware (partite, calciatori) → protetti
+- [x] 30+ GET endpoint ora richiedono authMiddleware
+- [x] Rimosso /api/workspaces pubblico (solo /api/auth/workspaces autenticato)
+- [x] Sistema permessi granulari: hasPermission + hasSquadraAccess + requirePermission
+- [x] Role-check su POST/PUT/DELETE (rosa, partite, formazione, allenamenti)
+- [x] Guest JWT: /api/guest/:token restituisce JWT limitato (24h, solo lettura)
+- [x] Guest view frontend: sidebar ridotta, whitelist pagine, no playerDetail
+- [x] Login response arricchita: squadre_accesso, ruoli, permessi
+- [x] Colonna `permessi` JSONB aggiunta su tabella users
+- [x] UI admin: sezione permessi granulari per staff (6 moduli × 3 livelli)
+- [x] Filtro squadre_accesso nel dropdown frontend
+- [x] Guard isAdmin() su settings.js
 - [x] Statistiche calcolate con stima → calcolo reale da gol_casa/gol_ospite
 - [x] Training usa tabelle inesistenti → allineato a training + training_attendance + training_config
 - [x] guest_link inesistente → allineato a guest_token
@@ -118,11 +155,19 @@
 - [x] Build-info: counter incrementale v3.15.N
 - [x] Data oggi: fix UTC vs locale nel calendario
 - [x] Help contestuale: bottone ? con guida per ogni pagina
+- [x] Guest view migliorata: dashboard semplificata (solo prossima partita + widget + risultati), calendario guest (solo partite giocate + prossima)
+- [x] Guest sidebar: "Le mie Stats" → "Statistiche", icona staff 👥 → 👔
+- [x] Login flow fix: workspace selector per superadmin, layout costruito prima del data loading
+- [x] Staff: aggiunti ruoli "Direttore Sportivo" e "Osservatore"
+- [x] PDF Import calendario SGS/LND: parser 3 colonne, estrazione campi da gioco, multi-categoria/girone
+- [x] Cancella calendario: elimina tutte le partite + eventi/formazioni/convocazioni associate
+- [x] Fix guest token category/workspace: team ACP Annex category_id corretto
+- [x] Fix guestLinks.js: superadmin carica categorie da tutti i workspace
 
 ### Minori
-- [ ] Filtro categorie: staff vede tutte le squadre invece di quelle assegnate
 - [ ] Valutazioni giocatore: sistema incompleto
-- [ ] Workspace isolation non completo su tutti gli endpoint GET
+- [x] ~~Filtro categorie: staff vede tutte le squadre~~ → risolto con squadre_accesso
+- [x] ~~Workspace isolation non completo su tutti gli endpoint GET~~ → tutti i GET protetti
 
 ---
 

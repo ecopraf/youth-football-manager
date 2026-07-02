@@ -57,7 +57,7 @@ Macro-aree funzionali:
 | Tabella (EN) | Descrizione | Colonne Chiave |
 |--------------|-------------|----------------|
 | `workspace` | Società/club | id, nome, logo_url, data_creazione |
-| `users` | Utenti sistema | id, email, password_hash, nome, cognome, ruolo, workspace_id, is_superadmin, is_active |
+| `users` | Utenti sistema | id, email, password_hash, nome, cognome, ruolo, workspace_id, is_superadmin, is_active, squadre_accesso, permessi JSONB |
 | `season` | Stagioni sportive | id, workspace_id, nome, data_inizio, data_fine, attiva |
 | `category` | Categorie (Under 14, etc.) | id, workspace_id, nome, tipo_campionato, anno_da, anno_a |
 | `competition` | Campionati/Competizioni | id, nome, tipo, federazione, regione |
@@ -82,21 +82,62 @@ Macro-aree funzionali:
 
 ---
 
-## 3. Sistema di Autenticazione (Auth FASE 1) ✅ COMPLETATO
+## 3. Sistema di Autenticazione e Autorizzazioni ✅ COMPLETATO
 
 ### Ruoli Utente
 | Ruolo | Descrizione | Permessi |
 |-------|-------------|----------|
-| **Admin** | Amministratore sistema | Accesso completo, gestisce utenti e link guest |
-| **Allenatore** | Responsabile tecnico | Gestisce rosa, partite, formazioni, eventi, convocazioni |
-| **Staff** | Assistente | Accesso limitato alle funzionalità assegnate |
-| **Guest** | Ospite temporaneo | Accesso via link, solo lettura, limitato a categorie specifiche |
+| **Superadmin** | Owner sistema | Accesso completo a tutti i workspace |
+| **Admin** | Amministratore workspace | Accesso completo al proprio workspace, gestisce utenti e link guest |
+| **Allenatore** | Responsabile tecnico | Pieni poteri sulle squadre in `squadre_accesso` (o tutte se vuoto) |
+| **Staff** | Collaboratore | Permessi granulari per modulo (configurabili dall'admin) |
+| **Guest** | Ospite temporaneo | Solo lettura via JWT guest, limitato a squadre specifiche |
+
+### Permessi Granulari (Staff)
+Campo `permessi` JSONB su tabella `users`:
+```json
+{"rosa": "write", "partite": "write", "formazione": "read", "allenamenti": "write", "statistiche": "read", "guest_links": ""}
+```
+Valori: `""` (nessun accesso), `"read"` (sola lettura), `"write"` (lettura + scrittura)
+
+### Matrice Permessi
+| Azione | Superadmin | Admin | Allenatore | Staff (con permesso) | Guest |
+|--------|:---:|:---:|:---:|:---:|:---:|
+| Leggere dati (GET) | ✅ | ✅ | ✅ | ✅ (moduli assegnati) | ✅ (limitato) |
+| Creare/modificare partite | ✅ | ✅ | ✅ | Se `partite: write` | ❌ |
+| Formazione/Convocazioni | ✅ | ✅ | ✅ | Se `formazione: write` | ❌ |
+| Aggiungere calciatori | ✅ | ✅ | ✅ | Se `rosa: write` | ❌ |
+| Presenze allenamento | ✅ | ✅ | ✅ | Se `allenamenti: write` | ❌ |
+| Creare workspace | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Gestire utenti | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Pagina Impostazioni | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+### Guest View
+| Pagina | Genitore | Atleta |
+|--------|:---:|:---:|
+| Dashboard (risultati, prossima partita) | ✅ | ✅ |
+| Rosa (nomi, ruolo, numero) | ✅ | ✅ |
+| Dettaglio giocatore (telefono, documenti) | ❌ | ❌ |
+| Calendario (partite, risultati) | ✅ | ✅ |
+| Statistiche | ❌ | ✅ |
+| Qualsiasi azione di scrittura | ❌ | ❌ |
+
+### Flusso Guest
+```
+Admin crea link guest → /api/auth/guest-link
+Genitore/Atleta accede a /guest/[token]
+Backend verifica token → genera JWT guest (24h)
+Frontend salva JWT → sidebar ridotta → navigazione limitata
+Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
+```
 
 ### Gestione Utenti (Admin)
 - CRUD completo utenti da pannello Admin
 - Campo `squadre_accesso` per limitare accesso per categoria
+- Campo `permessi` JSONB per permessi granulari staff
 - Campo `is_active` per disattivare utenti senza eliminarli
 - Campo `is_superadmin` per permessi speciali
+- UI: sezione permessi visibile solo quando ruolo = staff
 
 ### Link Guest
 - Generazione link temporanei con scadenza configurabile
@@ -104,18 +145,26 @@ Macro-aree funzionali:
 - Tipi: `atleta` o `genitore`
 - Accesso limitato alle categorie selezionate
 - Revoca immediata dei link
+- JWT guest generato alla verifica (24h validità)
 
 ### Endpoint Auth
-- `POST /api/auth/login` - Login
-- `POST /api/auth/register` - Registrazione
+- `POST /api/auth/login` - Login (restituisce squadre_accesso, ruoli, permessi)
+- `POST /api/auth/register` - Registrazione (solo admin/superadmin)
 - `GET /api/auth/users` - Lista utenti (Admin)
 - `POST /api/auth/users` - Crea utente (Admin)
-- `PUT /api/auth/users/:id` - Modifica utente (Admin)
+- `PUT /api/auth/users/:id` - Modifica utente + permessi (Admin)
 - `DELETE /api/auth/users/:id` - Disattiva utente (Admin)
 - `POST /api/auth/guest-link` - Genera link guest (Admin)
 - `GET /api/auth/guest-links` - Lista link guest (Admin)
 - `DELETE /api/auth/guest-link/:token` - Revoca link (Admin)
-- `GET /api/guest/:token` - Attivazione guest
+- `GET /api/guest/:token` - Verifica guest → restituisce JWT guest
+- `GET /api/auth/workspaces` - Workspace accessibili (autenticato)
+
+### Endpoint Calendario/Import
+- `POST /api/calendario/parse-pdf` - Upload PDF + cerca squadra (multipart: pdf + searchName)
+- `POST /api/calendario/extract` - Estrai calendario per categoria (multipart: pdf + searchName + categoria + girone)
+- `POST /api/calendario/import` - Conferma e inserisci partite nel DB (JSON: squadraId + partite[])
+- `DELETE /api/squadre/:id/partite-all` - Elimina TUTTE le partite di una squadra + eventi/formazioni/convocazioni
 
 ---
 
@@ -125,7 +174,7 @@ Macro-aree funzionali:
 
 | Modulo | Percorso | Descrizione |
 |--------|----------|-------------|
-| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze, badge competizione, risultati colorati |
+| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze, badge competizione, risultati colorati. Guest view semplificata (solo prossima partita + widget + ultimi risultati) |
 | Rosa | `modules/team/roster.js` | CRUD giocatori, scadenze mediche, filtri |
 | Calendario | `modules/team/calendar.js` | CRUD partite, pallino lampeggiante prossimo passo, badge sezioni pill, archiviazione |
 | Convocazioni | `modules/team/convocazioni.js` | Vincoli min/max, PDF, sola lettura se archiviata |
@@ -162,6 +211,14 @@ Macro-aree funzionali:
 | Dashboard Badge Competizione | dd364a3, 61a3f87 | Badge colorati competizione, risultati colorati V/P/S, pallino avversario |
 | Calendario Pallino Lampeggiante | 634ec74, 0310aa0 | Indicatore prossimo passo con animazione, badge sezioni pill |
 | Demo Mode Rimosso | 1b11426, 12bb78a | Rimosso sistema demo dal frontend principale |
+| Guest View Migliorata | - | Dashboard semplificata, calendario guest, sidebar ridotta |
+| Login Flow Fix | - | Workspace selector superadmin, layout prima del data loading |
+| PDF Import Calendario | - | Parser SGS/LND 3 colonne, campi da gioco, multi-categoria |
+| Cancella Calendario | - | Elimina tutte le partite + dati associati in batch |
+| Staff Ruoli | - | Aggiunti Direttore Sportivo, Osservatore; icona 👔 |
+| Import Tuttocampo Marcatori | - | Estrazione scorers da AJAX, fuzzy match cognome, eventi GOAL salvati con player_id |
+| Import Rosa XLS | - | Tabulato FIGC .xlsx, parsing CF per cognomi composti, raggruppamento per anno nascita |
+| Rosa: Ruolo non assegnato | - | Sezione visibile per giocatori importati senza ruolo |
 
 ### ⏸️ SOSPESI
 
@@ -174,8 +231,8 @@ Macro-aree funzionali:
 
 | Funzionalità | Note |
 |--------------|------|
-| Import Tuttocampo | Import dati da fonti esterne |
-| Import CSV | Import massivo dati |
+| Import Tuttocampo Fase 3 | Archiviazione automatica, gestione conflitti duplicati |
+| Centro Importazioni | Log storico, duplicati, matching |
 | Multi-istanza | Supporto multiple società |
 
 ---
@@ -204,7 +261,7 @@ Macro-aree funzionali:
 
 | Tipo | Contenuto |
 |------|-----------|
-| Workspace | ASD Green Academy (Roma) |
+| Workspace | SSD New Team |
 | Squadre | Under 19, Under 17 |
 | Giocatori | 20 giocatori con stats |
 | Partite | 7 partite (2 future, 5 terminate) |
@@ -249,9 +306,6 @@ La sezione "Riepilogo Presenze" mostra:
 
 | Tipo | ID |
 |------|-----|
-| Workspace Demo | `00000000-0000-0000-0000-000000000001` |
-| Squadra Under 19 | `00000000-0000-0000-0000-000000000010` |
-| Squadra Under 17 | `00000000-0000-0000-0000-000000000011` |
 
 ---
 
@@ -380,18 +434,19 @@ unction renderModule(container, data) {
 ### 📋 Prossime Checklist - Import Dati
 
 #### Core Import Dati
-- [ ] Wizard import CSV (rosa)
+- [x] Import rosa da XLS (tabulato FIGC)
+- [x] Preview anteprima dati con raggruppamento per anno
+- [x] Gestione errori e deduplicazione
 - [ ] Wizard import CSV (partite)
 - [ ] Wizard import CSV (eventi)
-- [ ] Preview anteprima dati
-- [ ] Gestione errori
 
 #### Core Tuttocampo
-- [ ] Parser URL Tuttocampo
-- [ ] Web scraping rosa
-- [ ] Web scraping partite
-- [ ] Web scraping risultati
-- [ ] Web scraping marcatori
+- [x] Parser URL Tuttocampo
+- [x] Web scraping partite (calendario AJAX)
+- [x] Web scraping risultati
+- [x] Web scraping marcatori (da `<ul class="scorers">` in AJAX)
+- [x] Fuzzy match marcatori vs rosa
+- [ ] Web scraping rosa (non prioritario, XLS è più affidabile)
 
 #### Centro Importazioni
 - [ ] Log storico importazioni
@@ -404,9 +459,9 @@ unction renderModule(container, data) {
 | Data | Milestone | Stato |
 |------|-----------|-------|
 | 23 Giugno 2026 | Auth FASE 1 completata | ✅ **COMPLETATA** |
-| 15 Luglio 2026 | Auth completa | ⏳ |
-| 15 Agosto 2026 | Import base | ⏳ |
-| 1 Settembre 2026 | Import Tuttocampo | ⏳ |
+| 15 Luglio 2026 | Import Tuttocampo + XLS | ✅ **COMPLETATA** |
+| 15 Agosto 2026 | Centro Importazioni | ⏳ |
+| 1 Settembre 2026 | Polish e test | ⏳ |
 | 15 Settembre 2026 | MVP STABILE | ⏳ |
 
 ---
@@ -450,16 +505,11 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
-| a986fcb | feat: help contestuale (?) per ogni pagina |
-| cf531f7 | fix: stats ruolo da team_player.ruolo_preferito + formazioni DB |
-| 48d5aa7 | feat: pagina statistiche rinnovata (layout demo) |
-| d4df5ea | feat: allenamenti split in 3 sotto-pagine (Sedute, Presenze, Impostazioni) |
-| f049f06 | feat: slot suggeriti per ruolo + vincolo portiere |
-| 235d468 | feat: formazione mobile - tap-to-place |
-| 880c629 | feat: build-info v3.15 counter + formazione campo visuale |
-| 7f22ca5 | feat: staff distinta con dati completi (matricole, tessere) |
-| 566d147 | feat: formazione_meta JSONB - campo dedicato |
-| ba78b11 | perf: batch convocazioni e eventi (1 fetch invece di N) |
+| (pending) | feat: import rosa da XLS con parsing CF per cognomi composti |
+| (pending) | feat: import marcatori Tuttocampo da AJAX scorers |
+| (pending) | fix: eventi display - formato "Cognome N.", gestione minuto null |
+| (pending) | fix: sezione "Ruolo non assegnato" per giocatori importati senza ruolo |
+| fc00806 | docs: manuale utente riscritto completamente (v2.0) |
 
 ---
 
@@ -485,7 +535,6 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Ruolo | Email | Password | Note |
 |-------|-------|----------|------|
-| Demo | demo_yfm | demo_yfm | Accesso rapido demo |
 
 ---
 

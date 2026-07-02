@@ -258,6 +258,8 @@ Il backend sarà disponibile su **http://localhost:3001**
 ## Funzionalità Principali
 
 - ✅ Gestione roster giocatori
+- ✅ Import rosa da tabulato XLS FIGC (parsing intelligente cognomi)
+- ✅ Import calendario e marcatori da Tuttocampo
 - ✅ Calendario partite con archivio
 - ✅ Formazioni e convocazioni
 - ✅ Statistiche individuali e di squadra
