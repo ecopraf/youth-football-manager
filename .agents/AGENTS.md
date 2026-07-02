@@ -62,11 +62,33 @@ git status
 - `multer` (upload file PDF/XLS)
 - `xlsx` (parsing tabulato atleti FIGC .xlsx)
 - `pdf-parse@1.1.1` (parsing PDF calendario SGS/LND)
+- `cheerio` (parsing HTML Tuttocampo)
 - `dotenv`
 
-### Backend Files
-- `api/index.js` — Tutti gli endpoint API
-- `api/pdfCalendarioParser.js` — Parser PDF calendario SGS/LND (3 colonne, campi da gioco)
+### Backend Files (Architettura Modulare)
+```
+api/
+├── index.js                    — Entry point: middleware, health, mount router (~130 righe)
+├── pdfCalendarioParser.js      — Parser PDF calendario SGS/LND
+├── helpers/
+│   ├── tuttocampo.js           — Login/request Tuttocampo
+│   ├── importUtils.js          — Normalizzazione nomi, parsing eventi, log
+│   └── importFormationTC.js    — Import formazioni da Tuttocampo
+└── routes/
+    ├── auth.js                 — Login, register, users CRUD, guest
+    ├── workspace.js            — Workspace, facility, stagioni, categorie
+    ├── team.js                 — Squadre CRUD con cascade delete
+    ├── training.js             — Config, presenze, templates, programma
+    ├── match.js                — Partite CRUD, convocazioni, formazione, eventi
+    ├── staff.js                — Staff completo per distinta
+    ├── admin.js                — Migrazioni schema DB
+    ├── statistics.js           — Statistiche complete, top players
+    ├── player.js               — Calciatori CRUD, scadenze, stats, move
+    ├── roster.js               — Import rosa XLS/Tuttocampo
+    ├── importCalendario.js     — PDF, testo SGS, import-log
+    ├── importTuttocampo.js     — Scraping calendario TC, eventi
+    └── importConfirm.js        — Confirm TC, formations batch, matches-without-formation
+```
 
 ---
 
@@ -118,6 +140,7 @@ git status
 | `document` | Documenti polimorfici | entita_tipo, entita_id |
 | `users` | Utente sistema | workspace_id |
 | `guest_token` | Token guest | utente_id |
+| `import_log` | Storico importazioni | workspace_id, team_id, user_id |
 
 ---
 

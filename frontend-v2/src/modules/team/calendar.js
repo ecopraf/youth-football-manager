@@ -519,6 +519,7 @@ function openImportTuttocampo() {
   <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcImportResults" checked> Importa risultati</label>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcImportEvents"> Importa marcatori</label>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcImportFormations"> Importa formazioni</label>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcArchive" checked> Archivia giocate</label>
   </div>
   <div id="tcEventsNote" style="display:none;background:#FFF3CD;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#856404;">\u26a0\ufe0f I marcatori verranno importati solo se Tuttocampo li mostra nella pagina di dettaglio. Il matching con la rosa avviene per cognome.</div>
@@ -591,6 +592,7 @@ function openImportTuttocampo() {
         showLoading('Importazione...');
         try {
           const importEvents = document.getElementById('tcImportEvents').checked;
+          const importFormations = document.getElementById('tcImportFormations').checked;
           const resp = await apiFetch('/calendario/confirm-tuttocampo', {
             method: 'POST',
             body: JSON.stringify({
@@ -599,13 +601,17 @@ function openImportTuttocampo() {
               importResults: document.getElementById('tcImportResults').checked,
               archiveCompleted: document.getElementById('tcArchive').checked,
               competizione: document.getElementById('tcComp').value.trim(),
-              importEvents
+              importEvents,
+              importFormations,
+              teamName: document.getElementById('tcTeamName').value.trim()
             })
           });
           hideLoading();
           modal.close();
-          let msg = `\u2705 Importate ${resp.inserite} partite da Tuttocampo!`;
+          let msg = `\u2705 Importate ${resp.inserite} nuove partite da Tuttocampo!`;
+          if (resp.aggiornate > 0) msg += `\n\ud83d\udd04 ${resp.aggiornate} partite aggiornate (risultati/link).`;
           if (resp.eventiImportati > 0) msg += `\n\u26bd ${resp.eventiImportati} eventi (marcatori) importati.`;
+          if (resp.formazioniImportate > 0) msg += `\n\ud83d\udccb ${resp.formazioniImportate} formazioni importate.`;
           alert(msg);
           loadCalendar();
         } catch (err) {

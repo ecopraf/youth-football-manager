@@ -1,0 +1,294 @@
+/**
+ * Training Routes - config, presenze, summary, programma, templates, materiale
+ */
+const express = require('express');
+
+module.exports = function createTrainingRouter({ supabase, authMiddleware, requirePermission }) {
+  const router = express.Router();
+
+  // ── CONFIG (settimana tipo) ──
+  router.get('/api/squadre/:squadraId/allenamenti/config', authMiddleware, async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('training_config').select('*').eq('team_id', req.params.squadraId).order('giorno_settimana');
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data || []);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post('/api/squadre/:squadraId/allenamenti/config', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { giorno_settimana, ora_inizio, ora_fine, luogo } = req.body;
+      const { data, error } = await supabase.from('training_config').insert({
+        team_id: req.params.squadraId, giorno_settimana, ora_inizio, ora_fine, luogo
+      }).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.put('/api/allenamenti/config/:id', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { giorno_settimana, ora_inizio, ora_fine, luogo } = req.body;
+      const { data, error } = await supabase.from('training_config').update({
+        giorno_settimana, ora_inizio, ora_fine, luogo
+      }).eq('id', req.params.id).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/api/allenamenti/config/:id', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { error } = await supabase.from('training_config').delete().eq('id', req.params.id);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── PRESENZE ──
+  router.get('/api/squadre/:squadraId/allenamenti/presenze', authMiddleware, async (req, res) => {
+    try {
+      const { data: trainings } = await supabase.from('training').select('id, data_ora').eq('team_id', req.params.squadraId);
+      const trainingIds = (trainings || []).map(t => t.id);
+      if (trainingIds.length === 0) return res.json([]);
+      const { data, error } = await supabase.from('training_attendance').select('*, training:training_id(id, data_ora, team_id)').in('training_id', trainingIds);
+      if (error) return res.status(400).json({ error: error.message });
+      const tpIds = [...new Set((data || []).map(d => d.team_player_id))];
+      let tpMap = {};
+      if (tpIds.length > 0) {
+        const { data: tps } = await supabase.from('team_player').select('id, player_id').in('id', tpIds);
+        (tps || []).forEach(tp => { tpMap[tp.id] = tp.player_id; });
+      }
+      const result = (data || []).map(d => ({
+        id: d.id,
+        calciatore_id: tpMap[d.team_player_id] || d.team_player_id,
+        data: d.training?.data_ora ? new Date(d.training.data_ora).toLocaleDateString('sv-SE') : null,
+        presente: d.presente,
+        motivo_assenza: d.motivi_assenza,
+        note: d.note,
+        team_id: d.training?.team_id
+      }));
+      res.json(result);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post('/api/squadre/:squadraId/allenamenti/presenze-batch', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { data: presenzeList, date } = req.body;
+      if (!presenzeList || !date) return res.status(400).json({ error: 'Dati mancanti' });
+      const dataInizio = date + 'T00:00:00';
+      const dataFine = date + 'T23:59:59';
+      let { data: training } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId).gte('data_ora', dataInizio).lte('data_ora', dataFine).limit(1).single();
+      if (!training) {
+        const { data: newTraining, error: tErr } = await supabase.from('training').insert({
+          team_id: req.params.squadraId, data_ora: date + 'T17:00:00', durata_minuti: 90, tipo: 'Allenamento'
+        }).select().single();
+        if (tErr) return res.status(400).json({ error: tErr.message });
+        training = newTraining;
+      }
+      const playerIds = presenzeList.map(p => p.calciatoreId);
+      const { data: tps } = await supabase.from('team_player').select('id, player_id').eq('team_id', req.params.squadraId).in('player_id', playerIds);
+      const playerToTp = {};
+      (tps || []).forEach(tp => { playerToTp[tp.player_id] = tp.id; });
+      const upserts = presenzeList.map(p => ({
+        training_id: training.id,
+        team_player_id: playerToTp[p.calciatoreId],
+        presente: p.presente,
+        motivi_assenza: !p.presente ? (p.note || 'Assente') : null
+      })).filter(u => u.team_player_id);
+      await supabase.from('training_attendance').delete().eq('training_id', training.id);
+      if (upserts.length > 0) {
+        const { error } = await supabase.from('training_attendance').insert(upserts);
+        if (error) return res.status(400).json({ error: error.message });
+      }
+      res.json({ success: true, saved: upserts.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post('/api/squadre/:squadraId/allenamenti/presenze', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { calciatoreId, data, presente, note } = req.body;
+      const { data: tp } = await supabase.from('team_player').select('id').eq('player_id', calciatoreId).eq('team_id', req.params.squadraId).single();
+      if (!tp) return res.status(400).json({ error: 'Giocatore non in rosa' });
+      const dataInizio = data + 'T00:00:00';
+      const dataFine = data + 'T23:59:59';
+      let { data: training } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId).gte('data_ora', dataInizio).lte('data_ora', dataFine).limit(1).single();
+      if (!training) {
+        const { data: newTraining, error: tErr } = await supabase.from('training').insert({
+          team_id: req.params.squadraId, data_ora: data + 'T17:00:00', durata_minuti: 90, tipo: 'Allenamento'
+        }).select().single();
+        if (tErr) return res.status(400).json({ error: tErr.message });
+        training = newTraining;
+      }
+      const { data: existing } = await supabase.from('training_attendance').select('id').eq('training_id', training.id).eq('team_player_id', tp.id).single();
+      if (existing) {
+        const { data: updated, error } = await supabase.from('training_attendance').update({ presente, motivi_assenza: !presente ? (note || 'Assente') : null }).eq('id', existing.id).select().single();
+        if (error) return res.status(400).json({ error: error.message });
+        res.json(updated);
+      } else {
+        const { data: inserted, error } = await supabase.from('training_attendance').insert({
+          training_id: training.id, team_player_id: tp.id, presente, motivi_assenza: !presente ? (note || 'Assente') : null
+        }).select().single();
+        if (error) return res.status(400).json({ error: error.message });
+        res.json(inserted);
+      }
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── SUMMARY ──
+  router.get('/api/squadre/:squadraId/allenamenti/summary', authMiddleware, async (req, res) => {
+    try {
+      const { data: trainings } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId);
+      const trainingIds = (trainings || []).map(t => t.id);
+      let presenze = [];
+      if (trainingIds.length > 0) {
+        const { data } = await supabase.from('training_attendance').select('*').in('training_id', trainingIds);
+        presenze = data || [];
+      }
+      const { data: teamPlayers } = await supabase.from('team_player').select('id, player_id, calciatore:player_id(id, nome, cognome)').eq('team_id', req.params.squadraId);
+      const summary = {};
+      (teamPlayers || []).forEach(tp => {
+        const g = tp.calciatore;
+        if (!g) return;
+        const playerPres = presenze.filter(p => p.team_player_id === tp.id);
+        summary[g.id] = { id: g.id, nome: g.nome, cognome: g.cognome, totali: playerPres.length, presenti: playerPres.filter(p => p.presente).length, assenti: playerPres.filter(p => !p.presente).length, assentiSett: 0 };
+      });
+      const now = new Date();
+      const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+      const inizioSett = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + 1);
+      const fineSett = new Date(inizioSett.getFullYear(), inizioSett.getMonth(), inizioSett.getDate() + 6, 23, 59, 59);
+      if (trainingIds.length > 0) {
+        const { data: weekT } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId).gte('data_ora', inizioSett.toISOString()).lte('data_ora', fineSett.toISOString());
+        const weekIds = (weekT || []).map(t => t.id);
+        if (weekIds.length > 0) {
+          const weekPresenze = presenze.filter(p => weekIds.includes(p.training_id) && !p.presente);
+          const tpToPlayer = {};
+          (teamPlayers || []).forEach(tp => { tpToPlayer[tp.id] = tp.calciatore?.id; });
+          weekPresenze.forEach(p => {
+            const playerId = tpToPlayer[p.team_player_id];
+            if (playerId && summary[playerId]) summary[playerId].assentiSett++;
+          });
+        }
+      }
+      res.json({ summary, settimana: { da: inizioSett.toISOString().split('T')[0], a: fineSett.toISOString().split('T')[0] } });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── MATERIALE ──
+  router.get('/api/squadre/:squadraId/allenamenti/materiale', authMiddleware, async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('training_material').select('*').eq('team_id', req.params.squadraId).order('created_at', { ascending: false });
+      if (error) return res.json([]);
+      res.json(data || []);
+    } catch (err) { res.json([]); }
+  });
+
+  router.post('/api/squadre/:squadraId/allenamenti/materiale', authMiddleware, async (req, res) => {
+    try {
+      const { titolo, descrizione, tipo, url } = req.body;
+      const { data, error } = await supabase.from('training_material').insert({
+        team_id: req.params.squadraId, titolo, descrizione, tipo, url
+      }).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/api/allenamenti/materiale/:id', authMiddleware, async (req, res) => {
+    try {
+      const { error } = await supabase.from('training_material').delete().eq('id', req.params.id);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── PROGRAMMA SEDUTA ──
+  router.get('/api/training/:trainingId/programma', authMiddleware, async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('training').select('id, note, tipo, durata_minuti').eq('id', req.params.trainingId).single();
+      if (error || !data) return res.json({ programma: null });
+      let programma = null;
+      if (data.note && data.note.startsWith('JSON::')) {
+        try { programma = JSON.parse(data.note.substring(6)); } catch(e) {}
+      }
+      res.json({ programma, tipo: data.tipo, durata_minuti: data.durata_minuti });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.put('/api/training/:trainingId/programma', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { programma } = req.body;
+      const noteValue = programma ? 'JSON::' + JSON.stringify(programma) : null;
+      const updateData = { note: noteValue };
+      if (programma?.tipo) updateData.tipo = programma.tipo;
+      if (programma?.fasi) {
+        const durata = programma.fasi.reduce((s, f) => s + (f.durata || 0), 0);
+        if (durata > 0) updateData.durata_minuti = durata;
+      }
+      const { error } = await supabase.from('training').update(updateData).eq('id', req.params.trainingId);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── TRAINING BY DATE ──
+  router.get('/api/squadre/:squadraId/training-by-date/:date', authMiddleware, async (req, res) => {
+    try {
+      const { squadraId, date } = req.params;
+      const { data } = await supabase.from('training').select('*').eq('team_id', squadraId).gte('data_ora', date + 'T00:00:00').lte('data_ora', date + 'T23:59:59').limit(1).single();
+      if (data) {
+        let programma = null;
+        if (data.note && data.note.startsWith('JSON::')) {
+          try { programma = JSON.parse(data.note.substring(6)); } catch(e) {}
+        }
+        res.json({ training: data, programma });
+      } else {
+        res.json({ training: null, programma: null });
+      }
+    } catch (err) { res.json({ training: null, programma: null }); }
+  });
+
+  router.post('/api/squadre/:squadraId/training-by-date', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { date, programma } = req.body;
+      const noteValue = programma ? 'JSON::' + JSON.stringify(programma) : null;
+      const durata = programma?.fasi ? programma.fasi.reduce((s, f) => s + (f.durata || 0), 0) : 90;
+      const { data, error } = await supabase.from('training').insert({
+        team_id: req.params.squadraId, data_ora: date + 'T17:00:00', durata_minuti: durata, tipo: programma?.tipo || 'Allenamento', note: noteValue
+      }).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ training: data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── TEMPLATES ──
+  router.get('/api/squadre/:squadraId/training-templates', authMiddleware, async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('training_template').select('*').eq('team_id', req.params.squadraId).order('created_at', { ascending: false });
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data || []);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.post('/api/squadre/:squadraId/training-templates', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { nome, programma } = req.body;
+      if (!nome || !programma) return res.status(400).json({ error: 'Nome e programma richiesti' });
+      const { data, error } = await supabase.from('training_template').insert({
+        team_id: req.params.squadraId, nome, programma, created_by: req.user.id
+      }).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.status(201).json(data);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  router.delete('/api/training-templates/:id', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { error } = await supabase.from('training_template').delete().eq('id', req.params.id);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  return router;
+};

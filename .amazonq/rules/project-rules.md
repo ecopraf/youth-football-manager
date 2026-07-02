@@ -80,10 +80,13 @@ Le tabelle reali nel DB Supabase sono:
 - `team`, `player`, `team_player`, `staff`, `team_staff`
 - `match`, `match_event`, `match_formation`, `match_statistics`, `convocation`
 
-**Colonne notevoli `match`**: `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS)
+**Colonne notevoli `match`**: `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS), `tc_match_url TEXT` (URL pagina partita Tuttocampo per import formazioni)
 - `training`, `training_attendance`, `training_config`, `training_template`
 - `valutazione_partita`, `document`
 - `users`, `guest_token`
+- `import_log`
+
+**Colonne notevoli `import_log`**: `tipo TEXT` (calendario_pdf, calendario_testo, calendario_tuttocampo, rosa_xls, rosa_tuttocampo, formazioni_tuttocampo), `dettagli JSONB`, `record_importati INT`, `esito TEXT`
 
 **NON ESISTONO** (non usare mai nel codice):
 - `formazione_partita` → usa `match_formation`

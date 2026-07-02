@@ -24,10 +24,13 @@ export async function openConvocation(mid, readOnly) {
 
   // Se partita archiviata O readOnly (passata), mostra sola lettura
   if (isArchiviata || readOnly) {
-    const convocatiList = conv.filter(c => c.presente === true).map(c => ({
-      nome: c.nome, cognome: c.cognome,
-      ruolo: gioc.find(g => g.id === c.calciatoreId)?.ruolo || ''
-    }));
+    const convocatiList = conv.filter(c => c.presente === true).map(c => {
+      const g = gioc.find(g => g.id === c.calciatoreId);
+      return {
+        nome: g?.nome || '', cognome: g?.cognome || '',
+        ruolo: g?.ruolo || ''
+      };
+    });
     showConvocationPreview(match, convocatiList, isArchiviata);
     return;
   }
@@ -120,7 +123,7 @@ export async function openConvocation(mid, readOnly) {
 }
 
 function showConvocationPreview(match, list, isArchiviata = false) {
-  list.sort((a, b) => a.cognome.localeCompare(b.cognome));
+  list.sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
   const dt = new Date(match.data_ora);
   const ritrovo = new Date(dt.getTime() - 75 * 60000);
   const giorni = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];

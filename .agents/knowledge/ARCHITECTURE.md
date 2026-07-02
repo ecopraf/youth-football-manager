@@ -62,7 +62,8 @@ youth-football-manager/
 │   │   │   ├── team/         # Dashboard, Roster, Calendar, etc.
 │   │   │   ├── coach/        # Training
 │   │   │   ├── performance/  # Stats, Reports
-│   │   │   └── club/         # Settings, Workspace, Staff
+│   │   │   ├── club/         # Settings, Workspace, Staff
+│   │   │   └── import/       # Import Center
 │   │   ├── utils/
 │   │   │   ├── formatters.js # Formattazione date
 │   │   │   └── ui.js         # Loading spinner
@@ -76,8 +77,26 @@ youth-football-manager/
 │
 ├── backend/
 │   ├── api/
-│   │   ├── index.js          # Tutti gli endpoint API
-│   │   └── pdfCalendarioParser.js  # Parser PDF SGS/LND
+│   │   ├── index.js              # Entry point modulare (~130 righe)
+│   │   ├── pdfCalendarioParser.js # Parser PDF SGS/LND
+│   │   ├── helpers/
+│   │   │   ├── tuttocampo.js     # Login/request Tuttocampo
+│   │   │   ├── importUtils.js    # Normalizzazione, parsing, log
+│   │   │   └── importFormationTC.js # Import formazioni TC
+│   │   └── routes/
+│   │       ├── auth.js           # Auth, users, guest
+│   │       ├── workspace.js      # Workspace, facility
+│   │       ├── team.js           # Squadre CRUD
+│   │       ├── training.js       # Allenamenti
+│   │       ├── match.js          # Partite, formazione, eventi
+│   │       ├── staff.js          # Staff distinta
+│   │       ├── admin.js          # Migrazioni
+│   │       ├── statistics.js     # Stats complete
+│   │       ├── player.js         # Calciatori CRUD
+│   │       ├── roster.js         # Import rosa XLS/TC
+│   │       ├── importCalendario.js  # PDF, testo SGS
+│   │       ├── importTuttocampo.js  # Scraping TC
+│   │       └── importConfirm.js     # Confirm, batch
 │   └── package.json
 │
 ├── .agents/                  # Configurazione agenti AI
@@ -141,6 +160,14 @@ youth-football-manager/
 | POST | `/calendario/parse-pdf` | Upload PDF + cerca squadra (multipart) |
 | POST | `/calendario/extract` | Estrai calendario per categoria (multipart) |
 | POST | `/calendario/import` | Conferma e inserisci partite nel DB |
+| POST | `/calendario/parse-text` | Parser testo calendario SGS (copia-incolla) |
+
+#### Import Center
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| GET | `/import-log` | Storico importazioni (filtro ?team_id) |
+| POST | `/import-formations-batch` | Import formazioni TC batch per partite selezionate |
+| GET | `/matches-without-formation` | Partite con tc_match_url (con/senza formazione) |
 
 #### Workspace & Facility
 | Metodo | Endpoint | Descrizione |
@@ -236,6 +263,10 @@ document (id, tipo, entita_tipo, entita_id, file_url, nome_file,
 
 -- Guest Token
 guest_token (id, token, tipo, utente_id, scadenza, ...)
+
+-- Import Log (storico importazioni)
+import_log (id, workspace_id, team_id, user_id, tipo, fonte, dettagli JSONB,
+            record_importati, record_saltati, esito, errore, created_at)
 ```
 
 ## Gestione Multi-Workspace

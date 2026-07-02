@@ -6,6 +6,19 @@ const pdfParse = require('pdf-parse');
 
 const HEADER_REGEX = /\*\s+(UNDER\s+\d+[^*]+?)\s+GIRONE:\s*([A-Z](?:\s*[A-Z]*)?)\s*\*/g;
 
+// Normalizza nome squadra da MAIUSCOLO a Title Case, rimuovendo suffissi legali
+function normalizeTeamName(name) {
+  // Rimuovi suffissi legali
+  let clean = name.replace(/\b(S\.?S\.?D\.?|S\.?R\.?L\.?|A\.?S\.?D\.?|A\.?R\.?L\.?|S\.?S\.?|A\.?C\.?|F\.?C\.?)\b\.?/gi, '').trim();
+  // Rimuovi punti e spazi multipli residui
+  clean = clean.replace(/\s+/g, ' ').trim();
+  // Title Case
+  return clean.split(' ').map(w => {
+    if (w.length <= 2) return w.toUpperCase(); // C.S., FC, etc.
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  }).join(' ');
+}
+
 /**
  * Step 1: Trova tutte le categorie/gironi in cui appare la squadra cercata
  */
@@ -168,7 +181,7 @@ function parseMatches(sectionText, teamName) {
         
         if (casa.toUpperCase().includes(teamName) || ospite.toUpperCase().includes(teamName)) {
           const isCasa = casa.toUpperCase().includes(teamName);
-          const avversario = isCasa ? ospite : casa;
+          const avversario = normalizeTeamName(isCasa ? ospite : casa);
           
           // Partita di andata
           partite.push({

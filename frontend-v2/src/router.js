@@ -19,7 +19,8 @@ export function initRouter() {
     stats: () => import('./modules/performance/stats.js'),
     reports: () => import('./modules/performance/reports.js'),
     settings: () => import('./modules/club/settings.js'),
-    staff: () => import('./modules/club/staff.js')
+    staff: () => import('./modules/club/staff.js'),
+    importCenter: () => import('./modules/import/importCenter.js')
   };
 
   window.YFM.isAuthenticated = function() {

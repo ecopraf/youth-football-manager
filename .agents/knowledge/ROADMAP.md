@@ -37,6 +37,13 @@
   - Fuzzy match cognome vs rosa team_player al momento del confirm
   - Solo eventi con player_id matchato vengono salvati
   - Formato display: "Cognome N." (es. Pannone M.)
+- [x] Import Tuttocampo - Fase 2b: Formazioni da AJAX
+  - Endpoint `POST /Web/Views/MatchFormations/MatchFormations.php?tckk=<tckk>` con body `match_id=<SHORT_ID>&category_id=<roundID>`
+  - Parsing titolari, riserve, modulo, sostituzioni (con minuto), gol
+  - Fuzzy match cognome vs rosa team_player
+  - Crea convocations + match_formations + match_events (GOAL, SUBSTITUTION)
+  - Checkbox "Importa formazioni" nel modal Tuttocampo
+  - Batch import per partite già in DB (`POST /api/import-formations-batch`)
 - [x] Import Rosa da XLS (tabulato FIGC)
   - Upload file .xlsx dalla pagina Rosa (bottone "📥 Importa XLS")
   - Parsing intelligente cognome/nome tramite codice fiscale (gestisce DE, DI, DELLA, etc.)
@@ -45,14 +52,16 @@
   - Deduplicazione: skip se cognome+nome+data_nascita già esiste
   - Crea player + team_player in batch
   - Sezione "⚠️ Ruolo non assegnato" per giocatori importati senza ruolo
+- [x] Import Center (pagina centralizzata)
+  - Pagina dedicata con 6 card: PDF, Testo, Tuttocampo, XLS, Rosa TC, Formazioni TC
+  - Parser testo calendario SGS (copia-incolla o upload .txt) — stesso parser del PDF
+  - Import formazioni batch (seleziona partite con tc_match_url senza formazione)
+  - Log storico importazioni in DB (tabella `import_log`)
+  - Voce sidebar "📥 Import Center" tra Calendario e Coach
 - [ ] Import Tuttocampo - Fase 3: Archiviazione automatica
   - Partite con risultato importate → archiviata=true automatico
   - Gestione conflitti: se partita già esiste (stesso avversario+giornata) → skip o aggiorna
 - [ ] Import CSV avanzato (campi FIGC completi)
-- [ ] Centro Importazioni con:
-  - [ ] Log operazioni (storico import con timestamp, fonte, n. record)
-  - [ ] Rilevamento duplicati (avversario + giornata + data)
-  - [ ] Matching intelligente giocatori
 
 ### FASE 3 📋 TODO
 **Dashboard e Analytics**
@@ -172,6 +181,8 @@
 - [x] Facility (Campo di Casa): tabella facility con workspace_id/is_default, endpoint GET/PUT, UI settings, convocazioni e distinta mostrano indirizzo
 - [x] Workspace switcher semplificato: rimosso modal iniziale, rimosso switcher sidebar complesso, sostituito con <select> nella sidebar per superadmin
 - [x] Fix duplicate event listener su #squadraSelect (onchange invece di addEventListener)
+- [x] Import Tuttocampo Formazioni: scraping formazioni da MatchFormations.php, fuzzy match, batch import
+- [x] Import Center: pagina centralizzata con 6 card, parser testo, batch formazioni, log storico DB
 
 ### Minori
 - [ ] Valutazioni giocatore: sistema incompleto
@@ -183,6 +194,7 @@
 ## Technical Debt
 
 ### Refactoring Suggeriti
+- [x] Modularizzare backend: index.js monolite → 13 router modulari (~130 righe index.js)
 - [ ] Estrarre API client in modulo separato
 - [ ] Centralizzare gestione errori API
 - [ ] Sostituire window.YFM con stato react/query
