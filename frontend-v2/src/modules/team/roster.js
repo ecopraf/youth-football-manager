@@ -59,7 +59,8 @@ function renderRoster(c, players, scadenze) {
     }
   }
   
-  toolbarHtml += '<button class="btn btn-secondary" id="btnImportXls" title="Importa rosa da file Excel">📥 Importa XLS</button>';
+  toolbarHtml += '<button class="btn btn-secondary" id="btnImportXls" title="Importa rosa da file Excel">📥 XLS</button>';
+  toolbarHtml += '<button class="btn btn-secondary" id="btnImportTc" title="Importa rosa da Tuttocampo" style="background:#149347;color:#fff;">⚽ Tuttocampo</button>';
   toolbarHtml += '<button class="btn btn-primary" id="btnAdd">+ Aggiungi</button></div></div>';
 
   let scadenzeHtml = scadenze.length > 0 ? '<div class="card" style="margin-bottom:20px;border-left:4px solid #F39C12;"><h3>⚠️ Certificati in scadenza</h3>' + scadenze.map(x => '<div>' + x.nome + ' ' + x.cognome + ' - ' + formatDateShort(x.scadenza) + ' (' + (x.giorni_rimanenti || x.giorniRimanenti) + 'gg)</div>').join('') + '</div>' : '';
@@ -76,6 +77,7 @@ function renderRoster(c, players, scadenze) {
 
   document.getElementById('btnAdd')?.addEventListener('click', () => openPlayerForm());
   document.getElementById('btnImportXls')?.addEventListener('click', () => openImportXlsModal());
+  document.getElementById('btnImportTc')?.addEventListener('click', () => openImportTcModal());
   document.getElementById('sInput')?.addEventListener('input', filterRoster);
   document.getElementById('fRuolo')?.addEventListener('change', filterRoster);
   document.getElementById('fStato')?.addEventListener('change', filterRoster);
@@ -212,7 +214,7 @@ function openMoveModal(pids) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
-  modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:400px;width:90%;"><div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">↗️ Sposta Giocatori</h2><button id="moveModalClose" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button></div><div style="padding:20px;"><p style="margin-bottom:12px;"><strong>' + playerIds.length + ' giocatore(i):</strong></p><p style="color:#666;font-size:12px;margin-bottom:16px;">' + playerNames + '</p><div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:12px;font-weight:600;color:#666;">Sposta nella categoria:</label><select id="targetSquadra" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;">' + otherSquadre.map(s => '<option value="' + s.id + '">' + s.nome + '</option>').join('') + '</select></div></div><div style="padding:16px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:12px;"><button id="moveModalCancel" class="btn btn-secondary" style="padding:10px 16px;border-radius:8px;cursor:pointer;">Annulla</button><button id="confirmMoveBtn" class="btn btn-primary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:var(--primary,#667eea);color:white;border:none;">Sposta</button></div></div>';
+  modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:400px;width:90%;"><div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">↗️ Sposta Giocatori</h2><button id="moveModalClose" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button></div><div style="padding:20px;"><p style="margin-bottom:12px;"><strong>' + playerIds.length + ' giocatore(i):</strong></p><p style="color:#666;font-size:12px;margin-bottom:16px;">' + playerNames + '</p><div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:12px;font-weight:600;color:#666;">Sposta nella categoria:</label><select id="targetSquadra" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;">' + otherSquadre.map(s => '<option value="' + s.id + '">' + (s.category?.nome || s.nome) + '</option>').join('') + '</select></div></div><div style="padding:16px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:12px;"><button id="moveModalCancel" class="btn btn-secondary" style="padding:10px 16px;border-radius:8px;cursor:pointer;">Annulla</button><button id="confirmMoveBtn" class="btn btn-primary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:var(--primary,#667eea);color:white;border:none;">Sposta</button></div></div>';
   document.body.appendChild(modal);
   
   document.getElementById('moveModalClose').addEventListener('click', () => modal.remove());
@@ -329,7 +331,10 @@ async function openImportXlsModal() {
   // Build team selector (admin vede tutte, allenatore solo la sua)
   let teamOptions = '';
   if (isAdmin && allSquadre.length > 1) {
-    teamOptions = allSquadre.map(s => `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${s.nome}</option>`).join('');
+    teamOptions = allSquadre.map(s => {
+      const label = s.category?.nome || s.nome;
+      return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${label}</option>`;
+    }).join('');
   }
 
   const modal = document.createElement('div');
@@ -465,6 +470,82 @@ function renderImportPreview(data, modal) {
       alert('Errore: ' + e.message);
       btn.disabled = false;
       btn.textContent = 'Importa selezionati';
+    }
+  };
+}
+
+function openImportTcModal() {
+  const teamId = window.YFM.squadraId;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-content" style="max-width:600px;max-height:90vh;overflow-y:auto;">
+      <h2 style="margin-bottom:16px;">⚽ Importa Rosa da Tuttocampo</h2>
+      <p style="margin-bottom:12px;color:#666;font-size:13px;">Incolla l'URL della pagina Rosa della squadra su Tuttocampo.<br>Es: https://www.tuttocampo.it/2025-26/.../Squadra/.../Rosa</p>
+      <input type="text" id="tcRosaUrl" placeholder="URL pagina Rosa Tuttocampo" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-size:14px;">
+      <button id="tcFetchBtn" class="btn btn-primary" style="width:100%;margin-bottom:16px;">🔍 Cerca giocatori</button>
+      <div id="tcPreview"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-secondary" id="tcCloseBtn" style="flex:1;">Chiudi</button>
+        <button class="btn btn-primary" id="tcImportBtn" style="flex:1;display:none;">Importa selezionati</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  document.getElementById('tcCloseBtn').onclick = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  let fetchedPlayers = [];
+
+  document.getElementById('tcFetchBtn').onclick = async () => {
+    const url = document.getElementById('tcRosaUrl').value.trim();
+    if (!url) return;
+    const btn = document.getElementById('tcFetchBtn');
+    btn.disabled = true; btn.textContent = '⏳ Caricamento...';
+    try {
+      const resp = await fetch(`${API_BASE}/roster/scrape-tuttocampo`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('yfm_token')}` },
+        body: JSON.stringify({ url })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error);
+      fetchedPlayers = data.players;
+      const preview = document.getElementById('tcPreview');
+      preview.innerHTML = `<p style="font-weight:600;margin-bottom:8px;">📋 ${data.teamName} — ${fetchedPlayers.length} giocatori trovati</p>
+        <div style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;">
+        ${fetchedPlayers.map((p, i) => `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f5f5f5;">
+          <input type="checkbox" checked data-idx="${i}">
+          <span style="flex:1;font-size:13px;">${p.cognome} ${p.nome}</span>
+          <span style="font-size:11px;color:#888;">${p.ruolo || '?'}</span>
+          <span style="font-size:11px;color:#aaa;">${p.data_nascita || '-'}</span>
+        </label>`).join('')}
+        </div>`;
+      document.getElementById('tcImportBtn').style.display = 'block';
+    } catch (err) {
+      document.getElementById('tcPreview').innerHTML = `<p style="color:red;">❌ ${err.message}</p>`;
+    }
+    btn.disabled = false; btn.textContent = '🔍 Cerca giocatori';
+  };
+
+  document.getElementById('tcImportBtn').onclick = async () => {
+    const checked = [...document.querySelectorAll('#tcPreview input[type=checkbox]:checked')].map(c => parseInt(c.dataset.idx));
+    const selected = checked.map(i => fetchedPlayers[i]);
+    if (!selected.length) return;
+    const btn = document.getElementById('tcImportBtn');
+    btn.disabled = true; btn.textContent = '⏳ Importazione...';
+    try {
+      const resp = await fetch(`${API_BASE}/roster/import-tuttocampo`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('yfm_token')}` },
+        body: JSON.stringify({ players: selected, teamId })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error);
+      alert(`✅ Importati: ${data.imported}, Già presenti: ${data.skipped}`);
+      overlay.remove();
+      loadRoster();
+    } catch (err) {
+      alert('❌ Errore: ' + err.message);
+      btn.disabled = false; btn.textContent = 'Importa selezionati';
     }
   };
 }

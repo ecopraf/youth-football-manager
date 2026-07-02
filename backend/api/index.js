@@ -10,6 +10,8 @@ const http = require('http');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const XLSX = require('xlsx');
+const cheerio = require('cheerio');
+const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -980,6 +982,165 @@ app.post('/api/roster/import-xls', authMiddleware, requirePermission('rosa', 'wr
       imported++;
     }
     
+    res.json({ success: true, imported, skipped });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// === TUTTOCAMPO SCRAPING HELPER ===
+const TC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+function tcRequest(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const opts = {
+      hostname: urlObj.hostname, path: urlObj.pathname + urlObj.search,
+      method: options.method || 'GET',
+      headers: { 'User-Agent': TC_UA, ...(options.headers || {}) }
+    };
+    const req = https.request(opts, (res) => {
+      let data = '';
+      const cookies = res.headers['set-cookie'] || [];
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          resolve({ data, cookies, redirect: res.headers.location, status: res.statusCode });
+        } else {
+          resolve({ data, cookies, status: res.statusCode });
+        }
+      });
+    });
+    req.on('error', reject);
+    if (options.body) req.write(options.body);
+    req.end();
+  });
+}
+
+async function tcLogin() {
+  const user = process.env.TC_USERNAME || 'youthfootball';
+  const pass = process.env.TC_PASSWORD || 'manager';
+  // Step 1: get initial cookies
+  const home = await tcRequest('https://www.tuttocampo.it/Homepage');
+  const initCookies = home.cookies.map(c => c.split(';')[0]).join('; ');
+  // Step 2: login
+  const body = `username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&submit_login=Accedi&destination_page=https://www.tuttocampo.it/Homepage`;
+  const login = await tcRequest('https://www.tuttocampo.it/Web/Views/Login/LoginModal.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Cookie': initCookies },
+    body
+  });
+  const allCookies = [...home.cookies, ...login.cookies].map(c => c.split(';')[0]).join('; ');
+  return allCookies;
+}
+
+async function tcFetchPage(url, cookies) {
+  const res = await tcRequest(url, { headers: { 'Cookie': cookies } });
+  return res.data;
+}
+
+async function tcFetchAjax(url, cookies, referer) {
+  const res = await tcRequest(url, {
+    headers: { 'Cookie': cookies, 'X-Requested-With': 'XMLHttpRequest', 'Referer': referer }
+  });
+  return res.data;
+}
+
+app.post('/api/roster/scrape-tuttocampo', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url || !url.includes('tuttocampo.it')) return res.status(400).json({ error: 'URL Tuttocampo richiesto' });
+
+    // Login
+    const cookies = await tcLogin();
+
+    // Load roster page to get tokens
+    const pageHtml = await tcFetchPage(url, cookies);
+    const tckkMatch = pageHtml.match(/tckk='([^']+)'/);
+    const ttMatch = pageHtml.match(/var tt='([^']+)'/);
+    const hhMatch = pageHtml.match(/var hh='([^']+)'/);
+    const teamIdMatch = pageHtml.match(/var teamID=(\d+)/);
+    const teamNameMatch = pageHtml.match(/var teamName='([^']+)'/);
+
+    if (!tckkMatch || !ttMatch || !hhMatch || !teamIdMatch) {
+      return res.status(400).json({ error: 'Impossibile estrarre i token dalla pagina. Verifica URL.' });
+    }
+
+    const tckk = tckkMatch[1], tt = ttMatch[1], hh = hhMatch[1], teamId = teamIdMatch[1];
+    const teamName = teamNameMatch ? teamNameMatch[1] : 'Sconosciuta';
+
+    // Fetch roster via AJAX
+    const rosterUrl = `https://www.tuttocampo.it/Web/Views/TeamPlayers/TeamPlayers.php?tckk=${tckk}&id=${teamId}&tt=${tt}&hh=${hh}`;
+    const rosterHtml = await tcFetchAjax(rosterUrl, cookies, url);
+
+    // Parse HTML
+    const $ = cheerio.load(rosterHtml);
+    const players = [];
+    $('table.team-players tbody tr').each((i, row) => {
+      const nameEl = $(row).find('td.player a[data-player-id]');
+      if (!nameEl.length) return;
+      const fullName = nameEl.text().trim();
+      const birthdate = $(row).find('td.birthdate').text().trim();
+      const ruolo = $(row).find('td').eq(3).text().trim();
+
+      if (!fullName) return;
+      const parts = fullName.split(' ');
+      const cognome = parts[0] || '';
+      const nome = parts.slice(1).join(' ') || '';
+
+      let dataNascita = null;
+      if (birthdate && birthdate !== '-') {
+        const [dd, mm, yyyy] = birthdate.split('-');
+        if (dd && mm && yyyy) dataNascita = `${yyyy}-${mm}-${dd}`;
+      }
+
+      const ruoloMap = { 'POR': 'Portiere', 'DIF': 'Difensore', 'CEN': 'Centrocampista', 'ATT': 'Attaccante' };
+
+      players.push({ cognome, nome, data_nascita: dataNascita, ruolo: ruoloMap[ruolo] || null });
+    });
+
+    if (!players.length) {
+      return res.status(400).json({ error: 'Nessun giocatore trovato. La pagina potrebbe non contenere dati.' });
+    }
+
+    res.json({ success: true, teamName, players });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/roster/import-tuttocampo', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+  try {
+    const { players, teamId } = req.body;
+    if (!players || !players.length || !teamId) return res.status(400).json({ error: 'players e teamId richiesti' });
+
+    let imported = 0, skipped = 0;
+    for (const p of players) {
+      let query = supabase.from('player').select('id').ilike('cognome', p.cognome).ilike('nome', p.nome);
+      if (p.data_nascita) query = query.eq('data_nascita', p.data_nascita);
+      const { data: existing } = await query.maybeSingle();
+
+      let playerId;
+      if (existing) {
+        playerId = existing.id;
+        const { data: tp } = await supabase.from('team_player').select('id').eq('team_id', teamId).eq('player_id', playerId).maybeSingle();
+        if (tp) { skipped++; continue; }
+      } else {
+        const { data: newP, error } = await supabase.from('player').insert({
+          nome: p.nome, cognome: p.cognome, data_nascita: p.data_nascita || null,
+          ruolo_principale: p.ruolo || null, sesso: 'M'
+        }).select().single();
+        if (error) { skipped++; continue; }
+        playerId = newP.id;
+      }
+
+      await supabase.from('team_player').insert({
+        team_id: teamId, player_id: playerId, stato: 'Attivo', ruolo_preferito: p.ruolo || null,
+        data_assegnazione: new Date().toISOString().split('T')[0]
+      });
+      imported++;
+    }
+
     res.json({ success: true, imported, skipped });
   } catch (err) {
     res.status(500).json({ error: err.message });

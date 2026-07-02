@@ -23,7 +23,8 @@ window.YFM = {
 
 window.YFM.getSquadraName = () => {
   const s = window.YFM.allSquadre.find(x => x.id === window.YFM.squadraId);
-  return s ? s.nome + (s.categoria ? ' ' + s.categoria : '') : 'Squadra';
+  if (!s) return 'Squadra';
+  return s.category?.nome || s.nome;
 };
 window.YFM.getSquadra = () => {
   return window.YFM.allSquadre.find(x => x.id === window.YFM.squadraId) || {};

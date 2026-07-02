@@ -176,7 +176,7 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 |--------|----------|-------------|
 | Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze, badge competizione, risultati colorati. Guest view semplificata (solo prossima partita + widget + ultimi risultati) |
 | Rosa | `modules/team/roster.js` | CRUD giocatori, scadenze mediche, filtri |
-| Calendario | `modules/team/calendar.js` | CRUD partite, pallino lampeggiante prossimo passo, badge sezioni pill, archiviazione |
+| Calendario | `modules/team/calendar.js` | CRUD partite, pallino lampeggiante, badge sezioni pill, archiviazione, import PDF SGS/LND, import CSV, cancella calendario, guest view |
 | Convocazioni | `modules/team/convocazioni.js` | Vincoli min/max, PDF, sola lettura se archiviata |
 | Distinta | `modules/team/distinta.js` | Layout FIGC, 24 righe, staff con dropdown selezione + inserimento manuale, stampa PDF |
 | Match Detail | `modules/team/matchDetail.js` | Eventi, timeline per tempo, statistiche |
@@ -513,7 +513,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 ---
 
-*Ultimo aggiornamento: Luglio 2026*
+*Ultimo aggiornamento: Luglio 2026 (PDF Import, Guest View, Login Fix, Staff)*
 
 ---
 
