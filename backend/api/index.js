@@ -447,8 +447,30 @@ app.put('/api/workspaces/:id/logo', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/workspaces/:id/stagioni', authMiddleware, async (req, res) => {
+// ── FACILITY (campo di casa) ──
+app.get('/api/workspaces/:id/facility', authMiddleware, async (req, res) => {
   try {
+    const { data } = await supabase.from('facility').select('*').eq('workspace_id', req.params.id).eq('is_default', true).maybeSingle();
+    res.json(data || null);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/workspaces/:id/facility', authMiddleware, async (req, res) => {
+  try {
+    const { nome, indirizzo, citta } = req.body;
+    const { data: existing } = await supabase.from('facility').select('id').eq('workspace_id', req.params.id).eq('is_default', true).maybeSingle();
+    if (existing) {
+      const { error } = await supabase.from('facility').update({ nome, indirizzo, citta }).eq('id', existing.id);
+      if (error) return res.status(400).json({ error: error.message });
+    } else {
+      const { error } = await supabase.from('facility').insert({ nome, indirizzo, citta, workspace_id: req.params.id, is_default: true });
+      if (error) return res.status(400).json({ error: error.message });
+    }
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/workspaces/:id/stagioni', authMiddleware, async (req, res) => {  try {
     const { id } = req.params;
     const { data, error } = await supabase.from('season').select('*').eq('workspace_id', id).order('data_inizio', { ascending: false });
     if (error) return res.status(400).json({ error: error.message });

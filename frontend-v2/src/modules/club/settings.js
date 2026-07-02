@@ -10,6 +10,9 @@ export default async function loadSettings() {
   }
   
   const s = window.YFM.getSquadra();
+  const wid = window.YFM.workspaceId;
+  let facility = null;
+  try { facility = await apiFetch('/workspaces/' + wid + '/facility'); } catch(e) {}
   
   c.innerHTML = `
     <h1 class="page-title">Impostazioni ${window.YFM.getSquadraName()}</h1>
@@ -32,6 +35,16 @@ export default async function loadSettings() {
       </div>
     </div>
     
+    <div class="card" style="margin-bottom:20px;">
+      <h3 class="section-title">🏟️ Campo di Casa</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Nome Impianto</label><input id="fNome" value="${facility?.nome || ''}" placeholder="es. Centro Sportivo Comunale"></div>
+        <div class="form-group"><label>Indirizzo</label><input id="fIndirizzo" value="${facility?.indirizzo || ''}" placeholder="es. Via dello Sport 1"></div>
+        <div class="form-group"><label>Città</label><input id="fCitta" value="${facility?.citta || ''}" placeholder="es. Roma"></div>
+      </div>
+      <button class="btn btn-primary" id="btnSaveFacility" style="margin-top:16px;">💾 Salva Campo</button>
+    </div>
+    
     <div class="card">
       <h3 class="section-title">➕ Nuova Categoria</h3>
       <div class="form-grid">
@@ -46,6 +59,19 @@ export default async function loadSettings() {
       <button class="btn btn-primary" id="btnNew" style="margin-top:16px;">➕ Crea</button>
     </div>
   `;
+
+  document.getElementById('btnSaveFacility').addEventListener('click', async () => {
+    showLoading();
+    await apiFetch('/workspaces/' + wid + '/facility', {
+      method: 'PUT', body: JSON.stringify({
+        nome: document.getElementById('fNome').value,
+        indirizzo: document.getElementById('fIndirizzo').value,
+        citta: document.getElementById('fCitta').value
+      })
+    });
+    hideLoading();
+    alert('✅ Campo di casa aggiornato!');
+  });
 
   document.getElementById('btnSave').addEventListener('click', async () => {
     const d = {

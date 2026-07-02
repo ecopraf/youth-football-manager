@@ -4,7 +4,7 @@ import { initRouter } from './router'
 import { loadWorkspaceInfo } from './modules/club/workspace'
 import { loadSquadre } from './modules/team/squadre'
 import { loadPlayerDetail } from './modules/team/playerDetail.js'
-import { showWorkspaceSelectorModal, initWorkspaceSwitcherInSidebar, getSavedWorkspaceId, resetWorkspaceCache, loadAvailableWorkspaces, isSuperAdmin, saveCurrentWorkspace } from './modules/club/workspaceSwitcher'
+import { getSavedWorkspaceId, resetWorkspaceCache, loadAvailableWorkspaces, isSuperAdmin, saveCurrentWorkspace, populateWorkspaceSelect } from './modules/club/workspaceSwitcher'
 import { BUILD_INFO } from './build-info'
 
 window.YFM_BUILD_ID = BUILD_INFO.id
@@ -105,45 +105,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       const user = window.YFM.getUser();
       const workspaces = await loadAvailableWorkspaces();
       
+      let currentWs = null;
       if (isSuperAdmin(user)) {
         const savedWsId = getSavedWorkspaceId();
-        const savedWs = savedWsId && workspaces.find(w => w.id === savedWsId);
-        
-        if (savedWs) {
-          window.YFM.workspaceInfo = savedWs;
-          window.YFM.activeWorkspaceId = savedWs.id;
-        } else if (workspaces.length > 1) {
-          const selectedWs = await showWorkspaceSelectorModal();
-          if (selectedWs) {
-            saveCurrentWorkspace(selectedWs.id);
-            window.YFM.workspaceInfo = selectedWs;
-            window.YFM.activeWorkspaceId = selectedWs.id;
-          }
-        } else if (workspaces.length === 1) {
-          saveCurrentWorkspace(workspaces[0].id);
-          window.YFM.workspaceInfo = workspaces[0];
-          window.YFM.activeWorkspaceId = workspaces[0].id;
-        }
-        
-        setTimeout(() => initWorkspaceSwitcherInSidebar(), 100);
+        currentWs = (savedWsId && workspaces.find(w => w.id === savedWsId)) || workspaces[0];
       } else {
-        const userWs = workspaces.find(w => w.id === user?.workspace_id) || workspaces[0];
-        if (userWs) {
-          window.YFM.workspaceInfo = userWs;
-          window.YFM.activeWorkspaceId = userWs.id;
-        }
+        currentWs = workspaces.find(w => w.id === user?.workspace_id) || workspaces[0];
+      }
+      
+      if (currentWs) {
+        saveCurrentWorkspace(currentWs.id);
+        window.YFM.workspaceInfo = currentWs;
+        window.YFM.activeWorkspaceId = currentWs.id;
       }
       
       await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+      if (isSuperAdmin(user)) populateWorkspaceSelect(workspaces);
       window.YFM.navigateTo('dashboard');
     } catch (err) {
       console.error('[MAIN] Init error:', err);
-      // Fallback: prova comunque a caricare
       try {
         await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
         window.YFM.navigateTo('dashboard');
       } catch (e2) {
-        console.error('[MAIN] Fallback error:', e2);
         window.YFM.navigateTo('login');
       }
     }

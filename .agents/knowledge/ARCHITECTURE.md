@@ -142,6 +142,13 @@ youth-football-manager/
 | POST | `/calendario/extract` | Estrai calendario per categoria (multipart) |
 | POST | `/calendario/import` | Conferma e inserisci partite nel DB |
 
+#### Workspace & Facility
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| GET | `/auth/workspaces` | Lista workspace accessibili |
+| GET | `/workspaces/:id/facility` | Campo di casa del workspace |
+| PUT | `/workspaces/:id/facility` | Aggiorna campo di casa |
+
 #### Lineups & Events
 | Metodo | Endpoint | Descrizione |
 |--------|----------|-------------|
@@ -181,7 +188,7 @@ category (id, workspace_id, nome, tipo_campionato, anno_da, anno_a, genere, ...)
 competition (id, nome, tipo, federazione, regione, logo_url, ...)
 
 -- Facility (impianti sportivi)
-facility (id, nome, indirizzo, citta, capienza, superficie, tipo, ...)
+facility (id, nome, indirizzo, citta, capienza, superficie, tipo, workspace_id, is_default, ...)
 
 -- Team (ex squadra)
 team (id, season_id, category_id, nome, colori_casa, colori_trasferta, 

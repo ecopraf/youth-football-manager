@@ -195,7 +195,8 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Stats | `modules/performance/stats.js` | Disciplina (ammonizioni, espulsioni) |
 | Reports | `modules/performance/reports.js` | Report Partita, Stagionale, Giocatore |
 | Settings | `modules/club/settings.js` | Stagione, categoria, staff |
-| Workspace | `modules/club/workspace.js` | Info società |
+| Workspace | `modules/club/workspace.js` | Info società, caricamento facility |
+| Workspace Switcher | `modules/club/workspaceSwitcher.js` | Dropdown select nella sidebar per superadmin |
 | Gestione Utenti | `modules/admin/users.js` | CRUD utenti sistema (Admin) |
 | Link Guest | `modules/admin/guestLinks.js` | Genera/revoca link accesso guest (Admin) |
 
@@ -219,6 +220,10 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Import Tuttocampo Marcatori | - | Estrazione scorers da AJAX, fuzzy match cognome, eventi GOAL salvati con player_id |
 | Import Rosa XLS | - | Tabulato FIGC .xlsx, parsing CF per cognomi composti, raggruppamento per anno nascita |
 | Rosa: Ruolo non assegnato | - | Sezione visibile per giocatori importati senza ruolo |
+| Import Rosa Tuttocampo | bed0274 | Scraping rosa da Tuttocampo, fix URL/token/ruolo |
+| PDF Calendario Elite | - | Regex fix per formato "UNDER XX REG. ECCELLENZA MASCH" |
+| Facility Campo di Casa | - | Endpoint, settings UI, indirizzo in convocazioni/distinta |
+| Workspace Switcher v2 | - | Dropdown select in sidebar per superadmin, rimosso modal |
 
 ### ⏸️ SOSPESI
 
@@ -505,10 +510,11 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
-| (pending) | feat: import rosa da XLS con parsing CF per cognomi composti |
-| (pending) | feat: import marcatori Tuttocampo da AJAX scorers |
-| (pending) | fix: eventi display - formato "Cognome N.", gestione minuto null |
-| (pending) | fix: sezione "Ruolo non assegnato" per giocatori importati senza ruolo |
+| (pending) | feat: workspace switcher dropdown nella sidebar per superadmin |
+| (pending) | feat: facility (campo di casa) in convocazioni e distinta |
+| (pending) | fix: PDF calendario regex per formato Elite/Eccellenza |
+| (pending) | fix: import rosa Tuttocampo (URL, token, ruolo, en-dash) |
+| bed0274 | feat: import rosa Tuttocampo + fix vari |
 | fc00806 | docs: manuale utente riscritto completamente (v2.0) |
 
 ---

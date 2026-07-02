@@ -4,7 +4,7 @@
  */
 const pdfParse = require('pdf-parse');
 
-const HEADER_REGEX = /\*\s+(UNDER\s+\d+\s+\w+\s+\w+)\s+GIRONE:\s*([A-Z](?:\s*BIS)?)\s*\*/g;
+const HEADER_REGEX = /\*\s+(UNDER\s+\d+[^*]+?)\s+GIRONE:\s*([A-Z](?:\s*[A-Z]*)?)\s*\*/g;
 
 /**
  * Step 1: Trova tutte le categorie/gironi in cui appare la squadra cercata

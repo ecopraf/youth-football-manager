@@ -45,6 +45,8 @@ body {
 .sidebar-info-label { font-size: 12px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
 .sidebar-info-workspace { font-weight: 500; margin: 4px 0; font-size: 15px; color: white; }
 .sidebar-info-season { font-size: 12px; opacity: 0.5; }
+.sidebar-ws-select { width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(255,255,255,0.1);color:white;font-size:14px;font-weight:500;margin:4px 0;cursor:pointer;appearance:auto; }
+.sidebar-ws-select option { background:#1a1a2e;color:white; }
 
 .sidebar-nav { flex: 1; padding: 0 12px; overflow-y: auto; }
 .sidebar-nav a {

@@ -125,6 +125,8 @@ function showConvocationPreview(match, list, isArchiviata = false) {
   const ritrovo = new Date(dt.getTime() - 75 * 60000);
   const giorni = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
   const catYear = dt.getFullYear() - 14;
+  const campoCasa = window.YFM.facility ? `${window.YFM.facility.nome} - ${window.YFM.facility.indirizzo}, ${window.YFM.facility.citta}` : '';
+  const campoInfo = match.luogo === 'Trasferta' ? (match.indirizzo_campo || 'Trasferta') : (campoCasa || 'Casa');
   let html = '';
   
   // Badge archivio se applicabile
@@ -136,7 +138,7 @@ function showConvocationPreview(match, list, isArchiviata = false) {
     <div class="t1">CONVOCAZIONE</div>
     <div class="t2">${window.YFM.getSocietaName()} - ${catYear}</div>
     <div class="t3">${match.giornata ? 'Giornata ' + match.giornata + ' - ' : ''}${match.competizione || ''}</div>
-    <div class="info">Partita: <strong>${window.YFM.getSocietaName()} - ${match.avversario}</strong><br>Campo: ${match.luogo || ''}<br>Alle ore: ${dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} del giorno: <strong>${giorni[dt.getDay()]} ${dt.toLocaleDateString('it-IT')}</strong><br>Ritrovo alle ore: <strong>${ritrovo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</strong> al Campo di Giuoco</div>
+    <div class="info">Partita: <strong>${window.YFM.getSocietaName()} - ${match.avversario}</strong><br>Campo: <strong>${campoInfo}</strong><br>Alle ore: ${dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} del giorno: <strong>${giorni[dt.getDay()]} ${dt.toLocaleDateString('it-IT')}</strong><br>Ritrovo alle ore: <strong>${ritrovo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</strong> al Campo di Giuoco</div>
     <table class="list-table" style="border:2px solid #000;border-collapse:collapse;width:100%;"><thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000;padding:5px 8px;">N.</th><th style="border:1px solid #000;padding:5px 8px;">Cognome</th><th style="border:1px solid #000;padding:5px 8px;">Nome</th><th style="border:1px solid #000;padding:5px 8px;">P</th></tr></thead><tbody>`;
   for (let i = 0; i < 25; i++) {
     if (i < list.length) {

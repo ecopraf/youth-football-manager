@@ -17,7 +17,9 @@ export async function loadWorkspaceInfo() {
     }
     
     if (ws) {
-      document.getElementById('workspaceName').textContent = ws.nome || 'Società';
+      window.YFM.workspaceId = ws.id;
+      const wn = document.getElementById('workspaceName');
+      if (wn) wn.textContent = ws.nome || 'Società';
       const hn = document.getElementById('headerSocName');
       if (hn) hn.textContent = ws.nome || 'Società';
       const logo = document.getElementById('headerLogo');
@@ -25,9 +27,14 @@ export async function loadWorkspaceInfo() {
         logo.src = ws.logo_url;
         logo.style.display = 'block';
       }
+      // Load facility (campo di casa)
+      try {
+        window.YFM.facility = await apiFetch('/workspaces/' + ws.id + '/facility');
+      } catch(e) { window.YFM.facility = null; }
     }
   } catch (e) {
     console.error('loadWorkspaceInfo error:', e);
-    document.getElementById('workspaceName').textContent = 'Società';
+    const wn = document.getElementById('workspaceName');
+    if (wn) wn.textContent = 'Società';
   }
 }

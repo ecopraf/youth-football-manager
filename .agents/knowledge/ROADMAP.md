@@ -158,11 +158,20 @@
 - [x] Guest view migliorata: dashboard semplificata (solo prossima partita + widget + risultati), calendario guest (solo partite giocate + prossima)
 - [x] Guest sidebar: "Le mie Stats" → "Statistiche", icona staff 👥 → 👔
 - [x] Login flow fix: workspace selector per superadmin, layout costruito prima del data loading
+- [x] Workspace switcher: dropdown select nella sidebar per superadmin (rimosso modal)
+- [x] Import rosa Tuttocampo: fix URL, token, ruolo, en-dash
+- [x] PDF Import calendario: regex fix per formato Elite/Eccellenza
+- [x] Facility (Campo di Casa): settings, convocazioni, distinta con indirizzo
 - [x] Staff: aggiunti ruoli "Direttore Sportivo" e "Osservatore"
 - [x] PDF Import calendario SGS/LND: parser 3 colonne, estrazione campi da gioco, multi-categoria/girone
 - [x] Cancella calendario: elimina tutte le partite + eventi/formazioni/convocazioni associate
 - [x] Fix guest token category/workspace: team ACP Annex category_id corretto
 - [x] Fix guestLinks.js: superadmin carica categorie da tutti i workspace
+- [x] Import rosa Tuttocampo: fix doppio /api/api/, token key, window.currentTeamId, ruolo_principale/ruolo_preferito, en-dash in input number
+- [x] PDF calendario regex: supporto formato Elite "UNDER XX REG. ECCELLENZA MASCH" oltre a Regionali
+- [x] Facility (Campo di Casa): tabella facility con workspace_id/is_default, endpoint GET/PUT, UI settings, convocazioni e distinta mostrano indirizzo
+- [x] Workspace switcher semplificato: rimosso modal iniziale, rimosso switcher sidebar complesso, sostituito con <select> nella sidebar per superadmin
+- [x] Fix duplicate event listener su #squadraSelect (onchange invece di addEventListener)
 
 ### Minori
 - [ ] Valutazioni giocatore: sistema incompleto

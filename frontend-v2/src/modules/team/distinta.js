@@ -71,8 +71,9 @@ export async function openDistinta(mid, staffOverrides) {
         dataOra: match.data_ora,
         competizione: match.competizione || '',
         giornata: match.giornata,
-        luogo: match.luogo
-      } : { avversario: '...', dataOra: new Date().toISOString(), competizione: '', giornata: null, luogo: '' };
+        luogo: match.luogo,
+        indirizzo_campo: match.indirizzo_campo || null
+      } : { avversario: '...', dataOra: new Date().toISOString(), competizione: '', giornata: null, luogo: '', indirizzo_campo: null };
     }
     
     curStaff = staffOverrides || data.staff || {};
@@ -242,6 +243,9 @@ function renderDistinta(d, staff) {
   const societa = window.YFM.getSocietaName ? window.YFM.getSocietaName() : (d.societa || 'La tua Società');
   const logoSocieta = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : '';
   const logoSocietaHtml = logoSocieta ? '<img src="' + logoSocieta + '" alt="Logo" style="height:60px;">' : '<div style="width:60px;"></div>';
+  const fac = window.YFM.facility;
+  const campoCasa = fac ? fac.nome + ' - ' + fac.indirizzo + ', ' + fac.citta : '';
+  const campoInfo = d.partita.luogo === 'Trasferta' ? (d.partita.indirizzo_campo || 'Trasferta') : (campoCasa || 'Casa');
   
   // Staff section - ordine ufficiale FIGC
   const staffRows = [
@@ -282,7 +286,7 @@ function renderDistinta(d, staff) {
       'Distinta dei/delle giocatori/trici partecipanti alla gara <strong>' + societa + ' - ' + d.partita.avversario + '</strong><br>' +
       'del campionato <strong>' + (d.partita.competizione || '________________') + '</strong><br>' +
       'da disputare il <strong>' + dt.toLocaleDateString('it-IT') + '</strong> ore <strong>' + dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + '</strong>' + (d.partita.giornata ? ' (Giornata ' + d.partita.giornata + ')' : '') + '<br>' +
-      'presso <strong>' + (d.partita.luogo || '________________') + '</strong>' +
+      'presso <strong>' + campoInfo + '</strong>' +
     '</div>' +
     // TABELLA GIOCATORI
     '<div style="position:relative;">' +

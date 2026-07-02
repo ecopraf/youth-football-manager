@@ -238,41 +238,36 @@ export default async function loadLogin() {
       window.YFM.setUser(res.user);
       const user = res.user;
       
-      // Determina workspace: superadmin sceglie, altri usano il proprio
-      const { loadAvailableWorkspaces, showWorkspaceSelectorModal, getSavedWorkspaceId } = await import('../../modules/club/workspaceSwitcher');
+      // Determina workspace
+      const { loadAvailableWorkspaces, getSavedWorkspaceId, saveCurrentWorkspace } = await import('../../modules/club/workspaceSwitcher');
+      const workspaces = await loadAvailableWorkspaces();
       
+      let currentWs = null;
       if (user.is_superadmin) {
-        hideLoading();
-        // Superadmin: mostra selettore workspace
-        const selectedWs = await showWorkspaceSelectorModal();
-        if (selectedWs) {
-          window.YFM.workspaceInfo = selectedWs;
-          window.YFM.activeWorkspaceId = selectedWs.id;
-        }
-      } else if (user.workspace_id) {
-        const workspaces = await loadAvailableWorkspaces();
-        const userWorkspace = workspaces.find(w => w.id === user.workspace_id);
-        if (userWorkspace) {
-          window.YFM.workspaceInfo = userWorkspace;
-          window.YFM.activeWorkspaceId = userWorkspace.id;
-        }
+        const savedId = getSavedWorkspaceId();
+        currentWs = (savedId && workspaces.find(w => w.id === savedId)) || workspaces[0];
+      } else {
+        currentWs = workspaces.find(w => w.id === user.workspace_id) || workspaces[0];
+      }
+      if (currentWs) {
+        saveCurrentWorkspace(currentWs.id);
+        window.YFM.workspaceInfo = currentWs;
+        window.YFM.activeWorkspaceId = currentWs.id;
       }
       
-      // 1. Costruisci layout (crea il DOM con #squadraSelect)
+      // Costruisci layout
       const { setupLayout } = await import('../../components/layout/Sidebar');
       setupLayout();
       const { initRouter } = await import('../../router');
       initRouter();
       
-      // 2. Ora carica dati (il DOM esiste)
+      // Carica dati
       const { loadWorkspaceInfo } = await import('../../modules/club/workspace');
       const { loadSquadre } = await import('../../modules/team/squadre');
+      const { populateWorkspaceSelect } = await import('../../modules/club/workspaceSwitcher');
       
-      try {
-        await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
-      } catch (loadErr) {
-        console.warn('Errore caricamento dati post-login:', loadErr);
-      }
+      await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+      if (user.is_superadmin) populateWorkspaceSelect(workspaces);
       
       hideLoading();
       window.YFM.navigateTo('dashboard');
