@@ -257,7 +257,7 @@ function renderCalendarPage(c, matches, stats) {
   c.innerHTML = html;
 
   document.getElementById('btnAdd').addEventListener('click', () => openMatchForm());
-  document.getElementById('btnImportTc').addEventListener('click', openImportTuttocampo);
+  document.getElementById('btnImportTc')?.addEventListener('click', openImportTuttocampo);
   document.getElementById('btnImport').addEventListener('click', openImportCSV);
   document.getElementById('btnImportPdf').addEventListener('click', openImportPdf);
   document.getElementById('btnDeleteAll').addEventListener('click', deleteAllMatches);
