@@ -53,7 +53,7 @@ function renderRoster(c, players, scadenze) {
 
   // Count by role for subtitle
   const roleCount = ruoli.map(r => byRole[r].length + ' ' + shortRole[r]).join(' · ');
-  let toolbarHtml = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;"><div><h1 class="page-title">Rosa ' + window.YFM.getSquadraName() + '</h1><p class="page-subtitle" style="color:#666;font-size:14px;">' + players.length + ' calciatori <span style="color:#999;">(' + roleCount + ')</span></p></div><div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  let toolbarHtml = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;"><div><h1 class="page-title">Rosa</h1><p class="page-subtitle" style="color:#666;font-size:14px;">' + players.length + ' calciatori <span style="color:#999;">(' + roleCount + ')</span></p></div><div style="display:flex;gap:8px;flex-wrap:wrap;">';
   
   if (isAdminMode) {
     toolbarHtml += '<button class="btn btn-secondary" id="btnSelectMode">' + (isSelectionMode ? '✓ Selezione Attiva' : '☐ Seleziona') + '</button>';

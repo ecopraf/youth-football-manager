@@ -37,7 +37,7 @@ export default async function loadStats() {
       .stats-ruolo.centrocampista { background:#22c55e20; color:#16a34a; }
       .stats-ruolo.attaccante { background:#ef444420; color:#dc2626; }
     </style>
-    <h1 class="page-title">Dati & Statistiche ${window.YFM.getSquadraName()}</h1>
+    <h1 class="page-title">Dati & Statistiche</h1>
     <p class="page-subtitle">Riepilogo stagionale • ${minPerMatch}' a partita</p>
     <div class="widgets" style="margin-bottom:20px;">
       <div class="card widget"><div class="widget-value" style="color:#667eea;">${partiteGiocate || 0}</div><div class="widget-label">Partite</div></div>

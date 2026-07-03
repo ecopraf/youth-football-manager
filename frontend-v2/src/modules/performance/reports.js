@@ -5,7 +5,7 @@ import { showLoading, hideLoading } from '../../utils/ui';
 export default async function loadReports() {
   const c = document.getElementById('pageContent');
   c.innerHTML = `
-    <h1 class="page-title">Report ${window.YFM.getSquadraName()}</h1>
+    <h1 class="page-title">Report</h1>
     <p class="page-subtitle">Genera e scarica report della stagione</p>
     
     <div class="report-tabs" style="margin-bottom:24px;">
