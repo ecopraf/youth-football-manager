@@ -19,7 +19,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         const gc = p.gol_casa || 0, go = p.gol_ospite || 0;
         golFatti += gc; golSubiti += go;
         if (gc > go) vinte++; else if (gc === go) pareggiate++; else perse++;
-        risultati.push({ id: p.id, dataOra: p.data_ora, avversario: p.avversario, luogo: p.luogo, competizione: p.competition?.nome || null, golFatti: gc, golSubiti: go });
+        risultati.push({ id: p.id, dataOra: p.data_ora, avversario: p.avversario, luogo: p.luogo, competizione: p.competition?.nome || null, giornata: p.giornata || null, golFatti: gc, golSubiti: go });
       });
 
       const partiteGiocate = (partite || []).length;
