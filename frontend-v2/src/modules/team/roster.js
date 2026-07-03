@@ -288,7 +288,25 @@ function openPlayerForm(pid) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
-  modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:650px;width:90%;"><div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">' + (p ? 'Modifica' : 'Nuovo') + ' Calciatore</h2><button id="modalCloseX" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button></div><div style="padding:20px;"><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;"><div><label style="font-size:12px;font-weight:600;color:#666;">Nome</label><input id="pfN" value="' + (p ? p.nome : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div><div><label style="font-size:12px;font-weight:600;color:#666;">Cognome</label><input id="pfC" value="' + (p ? p.cognome : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div><div><label style="font-size:12px;font-weight:600;color:#666;">Data Nascita</label><input id="pfD" type="date" value="' + (p && p.data_nascita ? p.data_nascita.split('T')[0] : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div><div><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="pfTel" value="' + (p ? p.telefono || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div><div><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="pfVM" type="date" value="' + (p && p.data_visita_medica ? p.data_visita_medica.split('T')[0] : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div><div><label style="font-size:12px;font-weight:600;color:#666;">Ruolo</label><select id="pfR" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><option value=""' + (!p?.ruolo ? ' selected' : '') + '>-- Seleziona --</option><option value="Portiere"' + (p?.ruolo === 'Portiere' ? ' selected' : '') + '>Portiere</option><option value="Difensore"' + (p?.ruolo === 'Difensore' ? ' selected' : '') + '>Difensore</option><option value="Centrocampista"' + (p?.ruolo === 'Centrocampista' ? ' selected' : '') + '>Centrocampista</option><option value="Attaccante"' + (p?.ruolo === 'Attaccante' ? ' selected' : '') + '>Attaccante</option></select></div><div><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia</label><input id="pfM" type="number" value="' + (p ? p.numero_maglia || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div><div><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="pfFigc" value="' + (p ? p.matricola_figc || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div><div><label style="font-size:12px;font-weight:600;color:#666;">Tipo Doc</label><input id="pfTD" value="' + (p ? p.tipo_documento || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div><div><label style="font-size:12px;font-weight:600;color:#666;">N. Doc</label><input id="pfND" value="' + (p ? p.numero_documento || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div><div><label style="font-size:12px;font-weight:600;color:#666;">Rilasciato</label><input id="pfRD" value="' + (p ? p.rilasciato_da || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div></div></div><div style="padding:16px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:12px;"><button id="btnCancelForm" class="btn btn-secondary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:#f0f0f0;border:none;">Annulla</button><button id="saveBtn" class="btn btn-primary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:var(--primary,#667eea);color:white;border:none;">Salva</button></div></div>';
+  modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:650px;width:90%;max-height:90vh;overflow-y:auto;"><div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">' + (p ? 'Modifica' : 'Nuovo') + ' Calciatore</h2><button id="modalCloseX" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button></div><div style="padding:20px;">' +
+    '<div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;">👥 SQUADRA</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;">' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Ruolo</label><select id="pfR" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><option value=""' + (!p?.ruolo ? ' selected' : '') + '>-- Seleziona --</option><option value="Portiere"' + (p?.ruolo === 'Portiere' ? ' selected' : '') + '>Portiere</option><option value="Difensore"' + (p?.ruolo === 'Difensore' ? ' selected' : '') + '>Difensore</option><option value="Centrocampista"' + (p?.ruolo === 'Centrocampista' ? ' selected' : '') + '>Centrocampista</option><option value="Attaccante"' + (p?.ruolo === 'Attaccante' ? ' selected' : '') + '>Attaccante</option></select></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia</label><input id="pfM" type="number" value="' + (p ? p.numero_maglia || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div></div>' +
+    '<div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;">👤 DATI PERSONALI</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;">' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Nome *</label><input id="pfN" value="' + (p ? p.nome : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Cognome *</label><input id="pfC" value="' + (p ? p.cognome : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Data Nascita</label><input id="pfD" type="date" value="' + (p && p.data_nascita ? p.data_nascita.split('T')[0] : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="pfTel" value="' + (p ? p.telefono || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="pfVM" type="date" value="' + (p && p.data_visita_medica ? p.data_visita_medica.split('T')[0] : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="pfFigc" value="' + (p ? p.matricola_figc || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div></div>' +
+    '<div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;">📄 DOCUMENTAZIONE</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Tipo Doc</label><input id="pfTD" value="' + (p ? p.tipo_documento || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">N. Doc</label><input id="pfND" value="' + (p ? p.numero_documento || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Rilasciato Da</label><input id="pfRD" value="' + (p ? p.rilasciato_da || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div></div>' +
+    '</div><div style="padding:16px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:12px;"><button id="btnCancelForm" class="btn btn-secondary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:#f0f0f0;border:none;">Annulla</button><button id="saveBtn" class="btn btn-primary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:var(--primary,#667eea);color:white;border:none;">Salva</button></div></div>';
   document.body.appendChild(modal);
   
   const closeModal = () => modal.remove();
@@ -298,18 +316,21 @@ function openPlayerForm(pid) {
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
   
   document.getElementById('saveBtn').addEventListener('click', async () => {
+    const nome = document.getElementById('pfN').value.trim();
+    const cognome = document.getElementById('pfC').value.trim();
+    if (!nome || !cognome) { alert('Nome e Cognome sono obbligatori'); return; }
     const d = {
-      nome: document.getElementById('pfN').value,
-      cognome: document.getElementById('pfC').value,
-      data_nascita: document.getElementById('pfD').value,
-      telefono: document.getElementById('pfTel').value,
-      data_visita_medica: document.getElementById('pfVM').value,
-      ruolo: document.getElementById('pfR').value,
+      nome,
+      cognome,
+      data_nascita: document.getElementById('pfD').value || null,
+      telefono: document.getElementById('pfTel').value || null,
+      data_visita_medica: document.getElementById('pfVM').value || null,
+      ruolo: document.getElementById('pfR').value || null,
       numero_maglia: document.getElementById('pfM').value ? parseInt(document.getElementById('pfM').value) : null,
-      matricola_figc: document.getElementById('pfFigc').value,
-      tipo_documento: document.getElementById('pfTD').value,
-      numero_documento: document.getElementById('pfND').value,
-      rilasciato_da: document.getElementById('pfRD').value
+      matricola_figc: document.getElementById('pfFigc').value || null,
+      tipo_documento: document.getElementById('pfTD').value || null,
+      numero_documento: document.getElementById('pfND').value || null,
+      rilasciato_da: document.getElementById('pfRD').value || null
     };
     
     showLoading();

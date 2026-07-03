@@ -222,7 +222,7 @@ function renderPlayerDetail(container, data) {
           <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Nascita</label><input id="editDataNas" type="date" value="${player.data_nascita ? player.data_nascita.split('T')[0] : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
           <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Ruolo</label><select id="editRuolo" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="" ${!ruolo || ruolo === '-' ? 'selected' : ''}>-- Seleziona --</option><option value="Portiere" ${ruolo === 'Portiere' ? 'selected' : ''}>Portiere</option><option value="Difensore" ${ruolo === 'Difensore' ? 'selected' : ''}>Difensore</option><option value="Centrocampista" ${ruolo === 'Centrocampista' ? 'selected' : ''}>Centrocampista</option><option value="Attaccante" ${ruolo === 'Attaccante' ? 'selected' : ''}>Attaccante</option></select></div>
           <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia</label><input id="editNumMaglia" type="number" value="${numero}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Piede Preferito</label><select id="editPiede" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="Destro" ${piede === 'Destro' ? 'selected' : ''}>Destro</option><option value="Sinistro" ${piede === 'Sinistro' ? 'selected' : ''}>Sinistro</option><option value="Ambidestro" ${piede === 'Ambidestro' ? 'selected' : ''}>Ambidestro</option></select></div>
+          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Piede Preferito</label><select id="editPiede" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="" ${!player.piede_preferito ? 'selected' : ''}>-- Seleziona --</option><option value="Destro" ${player.piede_preferito === 'Destro' ? 'selected' : ''}>Destro</option><option value="Sinistro" ${player.piede_preferito === 'Sinistro' ? 'selected' : ''}>Sinistro</option><option value="Ambidestro" ${player.piede_preferito === 'Ambidestro' ? 'selected' : ''}>Ambidestro</option></select></div>
           <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Peso (kg)</label><input id="editPeso" type="number" value="${peso !== '-' ? peso : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
           <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Altezza (cm)</label><input id="editAltezza" type="number" value="${altezza !== '-' ? altezza : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
           <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="editTelefono" value="${telefono !== '-' ? telefono : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
@@ -295,9 +295,9 @@ function renderPlayerDetail(container, data) {
         data_nascita: document.getElementById('editDataNas').value,
         ruolo: document.getElementById('editRuolo').value,
         numero_maglia: document.getElementById('editNumMaglia').value ? parseInt(document.getElementById('editNumMaglia').value) : null,
-        piede_preferito: document.getElementById('editPiede').value,
-        peso: parseFloat(document.getElementById('editPeso').value) || null,
-        altezza: parseInt(document.getElementById('editAltezza').value) || null,
+        piede_preferito: document.getElementById('editPiede').value || null,
+        peso: document.getElementById('editPeso').value ? parseFloat(document.getElementById('editPeso').value) : null,
+        altezza: document.getElementById('editAltezza').value ? parseInt(document.getElementById('editAltezza').value) : null,
         telefono: document.getElementById('editTelefono').value,
         stato: document.getElementById('editStato').value,
         data_visita_medica: document.getElementById('editCertificato').value,

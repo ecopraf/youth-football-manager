@@ -32,9 +32,9 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const toDate = (val) => val && val.trim() ? val.trim() : null;
 
       const { data: cal, error } = await supabase.from('player').insert({
-        nome: c.nome, cognome: c.cognome, data_nascita: c.data_nascita, sesso: c.sesso || 'M',
+        nome: c.nome, cognome: c.cognome, data_nascita: c.data_nascita || null, sesso: c.sesso || 'M',
         telefono: c.telefono || null, email: c.email || null, foto_url: c.foto_url || null,
-        ruolo_principale: c.ruolo || c.ruolo_principale, piede_preferito: c.piede_preferito || null,
+        ruolo_principale: c.ruolo || c.ruolo_principale || null, piede_preferito: c.piede_preferito || null,
         altezza: c.altezza || null, peso: c.peso || null, note: c.note || null,
         luogo_nascita: c.luogo_nascita || null, nazionalita: c.nazionalita || null,
         residenza: c.residenza || null, matricola_figc: c.matricola_figc || null,

@@ -305,7 +305,7 @@ export default async function loadDashboard() {
     const renderTable = (items) => items.map((m, i) => {
       const isOur = m.squadra.toLowerCase().includes(teamName) || teamName.includes(m.squadra.toLowerCase());
       const s = isOur ? ' style="background:#f0f4ff;font-weight:600;color:#667eea;"' : '';
-      return '<tr' + s + '><td style="padding:3px 4px;text-align:center;color:#999;font-size:10px;">' + (i + 1) + '</td><td style="padding:3px 4px;">' + m.nome + '</td><td style="padding:3px 4px;text-align:center;font-weight:700;">' + m.gol + '</td><td style="padding:3px 4px;color:#888;font-size:10px;">' + m.squadra + '</td></tr>';
+      return '<tr' + s + '><td style="padding:3px 4px;text-align:center;color:#999;font-size:10px;white-space:nowrap;">' + (i + 1) + '</td><td style="padding:3px 4px;white-space:nowrap;">' + m.nome + '</td><td style="padding:3px 4px;text-align:center;font-weight:700;white-space:nowrap;">' + m.gol + '</td><td style="padding:3px 4px;color:#888;font-size:10px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;">' + m.squadra + '</td></tr>';
     }).join('');
     return '<div class="result-card" style="margin-top:20px;"><h3 style="margin:0 0 12px 0;font-size:15px;color:#333;">⚽ Top Marcatori</h3>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
