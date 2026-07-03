@@ -15,11 +15,38 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       let vinte = 0, pareggiate = 0, perse = 0, golFatti = 0, golSubiti = 0;
       const risultati = [];
 
+      // Fetch logos for matching
+      const avversari = [...new Set((partite || []).map(p => p.avversario))];
+      let logoMap = {};
+      if (avversari.length > 0) {
+        const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
+        if (logos) {
+          logoMap = {};
+          for (const logo of logos) {
+            logoMap[logo.nome.toLowerCase()] = logo.logo_path;
+            logoMap[logo.nome_normalizzato] = logo.logo_path;
+          }
+        }
+      }
+
+      function findLogo(avversario) {
+        const lower = avversario.toLowerCase().trim();
+        if (logoMap[lower]) return logoMap[lower];
+        // Fuzzy: cerca contenimento
+        for (const [key, path] of Object.entries(logoMap)) {
+          if (lower.includes(key) || key.includes(lower)) return path;
+        }
+        // Normalizzato
+        const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        if (logoMap[norm]) return logoMap[norm];
+        return null;
+      }
+
       (partite || []).forEach(p => {
         const gc = p.gol_casa || 0, go = p.gol_ospite || 0;
         golFatti += gc; golSubiti += go;
         if (gc > go) vinte++; else if (gc === go) pareggiate++; else perse++;
-        risultati.push({ id: p.id, dataOra: p.data_ora, avversario: p.avversario, luogo: p.luogo, competizione: p.competition?.nome || null, giornata: p.giornata || null, golFatti: gc, golSubiti: go });
+        risultati.push({ id: p.id, dataOra: p.data_ora, avversario: p.avversario, luogo: p.luogo, competizione: p.competition?.nome || null, giornata: p.giornata || null, golFatti: gc, golSubiti: go, logo: findLogo(p.avversario) });
       });
 
       const partiteGiocate = (partite || []).length;

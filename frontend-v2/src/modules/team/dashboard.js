@@ -160,7 +160,7 @@ export default async function loadDashboard() {
         '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">' +
         '<span style="font-size:12px;">' + icon + '</span>' +
         '<span style="font-size:13px;font-weight:500;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + r.avversario + '</span>' +
-        '<span style="width:12px;height:12px;border-radius:50%;background:' + badgeColor + ';flex-shrink:0;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span></div>' +
+        (r.logo ? '<img src="' + r.logo + '" style="width:18px;height:18px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '<span style="width:12px;height:12px;border-radius:50%;background:' + badgeColor + ';flex-shrink:0;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>') + '</div>' +
         '<span style="font-size:16px;font-weight:800;color:' + resStyle.color + ';background:' + resStyle.bg + ';padding:6px 14px;border-radius:8px;">' + r.golFatti + ' - ' + r.golSubiti + '</span></div></div>';
     }).join('');
     
