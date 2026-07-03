@@ -4,6 +4,7 @@ import { getSavedWorkspaceId, saveCurrentWorkspace } from '../club/workspaceSwit
 export async function loadSquadre(stagioneId) {
   try {
     let allSquadre;
+    let stagioni = [];
     
     const guestSquadre = window.YFM.guestSquadreAccesso || [];
     if (guestSquadre.length > 0 && !window.YFM.workspaceInfo) {
@@ -27,14 +28,16 @@ export async function loadSquadre(stagioneId) {
       
       if (!currentWorkspace) return;
       
-      const stagioni = await apiFetch(`/workspaces/${currentWorkspace.id}/stagioni`);
-      const stagioneAttiva = stagioni.find(s => s.attiva) || stagioni[0];
+      stagioni = await apiFetch(`/workspaces/${currentWorkspace.id}/stagioni`);
       
-      if (stagioneAttiva) {
-        allSquadre = await apiFetch(`/stagioni/${stagioneAttiva.id}/squadre`);
-      } else {
-        allSquadre = [];
+      // Carica team di TUTTE le stagioni
+      const allTeams = [];
+      for (const s of stagioni) {
+        const teams = await apiFetch(`/stagioni/${s.id}/squadre`);
+        (teams || []).forEach(t => { t._stagione = s.nome; t._stagioneAttiva = s.attiva; });
+        allTeams.push(...(teams || []));
       }
+      allSquadre = allTeams;
     }
     
     // Filtra per categorie_accesso dell'utente (se non admin/superadmin e non guest)
@@ -48,14 +51,40 @@ export async function loadSquadre(stagioneId) {
     
     const sel = document.getElementById('squadraSelect');
     if (sel) {
-      sel.innerHTML = allSquadre.map(s => {
-        const categoriaNome = s.category?.nome || s.categoria || '';
-        const tipoCampionato = s.category?.tipo_campionato || '';
-        const displayNome = categoriaNome && tipoCampionato 
-          ? `${categoriaNome} ${tipoCampionato}` 
-          : (categoriaNome || s.nome);
-        return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${displayNome}</option>`;
-      }).join('');
+      // Raggruppa per stagione
+      const byStag = {};
+      allSquadre.forEach(s => {
+        const stag = s._stagione || 'Corrente';
+        if (!byStag[stag]) byStag[stag] = [];
+        byStag[stag].push(s);
+      });
+      const stagKeys = Object.keys(byStag).sort().reverse();
+      
+      if (stagKeys.length <= 1) {
+        // Una sola stagione: dropdown semplice
+        sel.innerHTML = allSquadre.map(s => {
+          const categoriaNome = s.category?.nome || s.categoria || '';
+          const tipoCampionato = s.category?.tipo_campionato || '';
+          const displayNome = categoriaNome && tipoCampionato 
+            ? `${categoriaNome} ${tipoCampionato}` 
+            : (categoriaNome || s.nome);
+          return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${displayNome}</option>`;
+        }).join('');
+      } else {
+        // Più stagioni: optgroup
+        sel.innerHTML = stagKeys.map(stag => {
+          const opts = byStag[stag].map(s => {
+            const categoriaNome = s.category?.nome || s.categoria || '';
+            const tipoCampionato = s.category?.tipo_campionato || '';
+            const displayNome = categoriaNome && tipoCampionato 
+              ? `${categoriaNome} ${tipoCampionato}` 
+              : (categoriaNome || s.nome);
+            return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${displayNome}</option>`;
+          }).join('');
+          return `<optgroup label="📅 ${stag}">${opts}</optgroup>`;
+        }).join('');
+      }
+      
       sel.onchange = async (e) => {
         window.YFM.squadraId = e.target.value;
         window.YFM.allPlayers = [];
@@ -80,8 +109,10 @@ export async function loadSquadre(stagioneId) {
         window.YFM.navigateTo(window.YFM.currentPage);
       };
     }
+    // Se la squadra selezionata non è più nella lista, seleziona la prima della stagione più recente
     if (allSquadre.length > 0 && !allSquadre.find(s => s.id === window.YFM.squadraId)) {
-      window.YFM.squadraId = allSquadre[0].id;
+      const preferActive = allSquadre.find(s => s._stagioneAttiva) || allSquadre[0];
+      window.YFM.squadraId = preferActive.id;
     }
   } catch (err) {
     console.error('[loadSquadre] ERROR:', err);
