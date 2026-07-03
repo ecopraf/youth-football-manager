@@ -38,12 +38,17 @@ export default {
 
       const resp = await fetch(url, fetchOpts);
       const text = await resp.text();
-      const cookieHeader = resp.headers.get('set-cookie') || '';
+      
+      // Collect ALL set-cookie headers
+      const cookies = [];
+      resp.headers.forEach((value, key) => {
+        if (key.toLowerCase() === 'set-cookie') cookies.push(value);
+      });
 
       return new Response(JSON.stringify({
         status: resp.status,
         data: text,
-        cookies: cookieHeader ? [cookieHeader] : [],
+        cookies: cookies,
         redirect: resp.headers.get('location') || null
       }), {
         headers: { 'Content-Type': 'application/json', ...corsHeaders(request) }

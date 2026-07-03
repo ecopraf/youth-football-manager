@@ -85,7 +85,7 @@ async function tcLogin() {
   const pass = process.env.TC_PASSWORD || 'manager';
   const home = await tcRequest('https://www.tuttocampo.it/Homepage');
   const initCookies = home.cookies.map(c => c.split(';')[0]).join('; ');
-  await delay(600);
+  if (!PROXY_URL) await delay(600);
   const body = `username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&submit_login=Accedi&destination_page=https://www.tuttocampo.it/Homepage`;
   const login = await tcRequest('https://www.tuttocampo.it/Web/Views/Login/LoginModal.php', {
     method: 'POST',
@@ -97,10 +97,10 @@ async function tcLogin() {
 }
 
 async function tcFetchPage(url, cookies) {
-  await delay(800);
+  if (!PROXY_URL) await delay(800);
   const res = await tcRequest(url, { headers: { 'Cookie': cookies } });
   if (!res.data || res.data.length < 200) {
-    await delay(2000);
+    await delay(1500);
     const retry = await tcRequest(url, { headers: { 'Cookie': cookies } });
     return retry.data;
   }
@@ -108,12 +108,12 @@ async function tcFetchPage(url, cookies) {
 }
 
 async function tcFetchAjax(url, cookies, referer) {
-  await delay(800);
+  if (!PROXY_URL) await delay(800);
   const res = await tcRequest(url, {
     headers: { 'Cookie': cookies, 'X-Requested-With': 'XMLHttpRequest', 'Referer': referer }
   });
   if (!res.data || res.data.length < 100) {
-    await delay(2000);
+    await delay(1500);
     const retry = await tcRequest(url, {
       headers: { 'Cookie': cookies, 'X-Requested-With': 'XMLHttpRequest', 'Referer': referer }
     });
