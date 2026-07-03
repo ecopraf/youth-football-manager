@@ -93,7 +93,7 @@ youth-football-manager/
 │   │       ├── match.js          # Partite, formazione, eventi
 │   │       ├── staff.js          # Staff distinta
 │   │       ├── admin.js          # Migrazioni
-│   │       ├── statistics.js     # Stats complete
+│   │       ├── statistics.js     # Stats complete, report partita/stagionale/giocatore
 │   │       ├── player.js         # Calciatori CRUD
 │   │       ├── roster.js         # Import rosa XLS/TC
 │   │       ├── importCalendario.js  # PDF, testo SGS
@@ -136,6 +136,9 @@ youth-football-manager/
 | GET | `/squadre` | Lista squadre |
 | GET | `/squadre/:id` | Dettaglio squadra |
 | GET | `/squadre/:id/statistiche-complete` | Stats complete |
+| GET | `/partite/:matchId/report` | Report partita (staff, formazione/convocazioni, eventi) |
+| GET | `/squadre/:squadraId/report-stagionale` | Report stagionale (top players, match per competizione) |
+| GET | `/calciatori/:playerId/report` | Report giocatore (stats, event history) |
 | GET | `/squadre/:id/top-players` | Top marcatori/assist |
 | GET | `/squadre/:id/calciatori` | Rosa (esclude svincolati, ?includi_svincolati=1) |
 | GET | `/squadre/:id/aggregabili` | Giocatori aggregabili da categorie inferiori |

@@ -238,13 +238,14 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Stats | `modules/performance/stats.js` | 5 widget, alert diffidati, tabella completa con sorting per colonna |
 | Help | `components/PageHelp.js` | Bottone ? contestuale con guida per ogni pagina |
 | Stats | `modules/performance/stats.js` | Disciplina (ammonizioni, espulsioni) |
-| Reports | `modules/performance/reports.js` | Report Partita, Stagionale, Giocatore |
+| Reports | `modules/performance/reports.js` | Report Partita (fallback convocazioni), Stagionale (top players, match per competizione), Giocatore (event history), commento social |
 | Settings | `modules/club/settings.js` | Stagione, categoria, staff |
 | Workspace | `modules/club/workspace.js` | Info società, caricamento facility |
 | Import Center | `modules/import/importCenter.js` | Pagina centralizzata con 6 card import TC + 4 card Gazzetta Regionale, wizard testo SGS, batch formazioni TC, wizard GR 3-step, log storico DB |
 | Loghi Squadre | `frontend-v2/public/logos/` | 40+ loghi PNG da Tuttocampo, matching fuzzy, logo workspace, convocazioni layout PDF (3 colonne), dettaglio partita logo+nome vs logo+nome, distinta 80px, header 40px |
 | Gazzetta Regionale | `backend/api/routes/gazzettaRegionale.js` | Import classifica/calendario/marcatori/loghi da GR API pubblica, wizard config, fuzzy match, dashboard widget |
 | Workspace Switcher | `modules/club/workspaceSwitcher.js` | Dropdown select nella sidebar per superadmin |
+| Workspace CRUD | `modules/admin/workspaces.js` | Gestione workspace superadmin: create/edit/delete cascade, TC paste parser, auto-logo fuzzy match |
 | Gestione Utenti | `modules/admin/users.js` | CRUD utenti sistema (Admin) |
 | Link Guest | `modules/admin/guestLinks.js` | Genera/revoca link accesso guest (Admin) |
 
@@ -578,6 +579,8 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
+| (pending) | feat: report endpoints backend + fix frontend reports + fix typo INVIOLATA |
+| 3665480 | feat: gestione workspace CRUD con cascade delete, parser TC per workspace e staff, fix aggregazione e filtri rosa |
 | 3f7b8ae | feat: aggregazione giocatori da categorie inferiori con badge AGG, filtro, recupera svincolati workspace |
 | c779163 | feat: gestione svincolo giocatori con riattivazione, sezione svincolati collassabile |
 | 003634b | feat: custom alert modale con titolo Youth Football Manager |
@@ -607,7 +610,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 ---
 
-*Ultimo aggiornamento: 4 Luglio 2026 (Gestione giocatori: validazione anno nascita, normalizzazione nomi, svincolo/riattivazione, aggregazione categorie inferiori, recupera svincolati, custom alert, creazione da playerDetail)*
+*Ultimo aggiornamento: 7 Luglio 2026 (Workspace CRUD, report endpoints, staff TC paste import, disaggrega, fix filtri rosa, fix typo INVIOLATA)*
 
 ---
 

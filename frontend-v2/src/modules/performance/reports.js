@@ -101,7 +101,7 @@ async function loadPlayerList() {
     
     const select = document.getElementById('playerSelect');
     select.innerHTML = '<option value="">-- Seleziona giocatore --</option>' +
-      sortedPlayers.map(p => `<option value="${p.id}" data-ruolo="${p.ruolo || ''}">${p.cognome || p.nome} ${p.nome}${p.ruolo ? ' (' + p.ruolo + ')' : ''}</option>`).join('');
+      sortedPlayers.map(p => `<option value="${p.id}" data-ruolo="${p.ruolo || ''}">${p.cognome} ${p.nome}${p.ruolo ? ' (' + p.ruolo + ')' : ''}</option>`).join('');
     select.addEventListener('change', () => {
       document.getElementById('btnGeneratePlayerReport').disabled = !select.value;
     });
@@ -366,7 +366,7 @@ function generateSocialComment(report) {
   }
   
   if (golSubiti === 0 && golFatti > 0) {
-    comment += `🧤 PORTA INVOLATA!\n`;
+    comment += `🧤 PORTA INVIOLATA!\n`;
   }
   
   if (ammonizioni > 0) {
@@ -493,7 +493,7 @@ function renderSeasonalReport(report) {
               ${report.topMarcatori.slice(0, 3).map((m, i) => `
                 <tr style="background:${i === 0 ? '#fff9e6' : 'white'};">
                   <td style="padding:8px;font-weight:bold;">${i + 1}</td>
-                  <td style="padding:8px;">${m.cognome || m.nome} ${m.nome}</td>
+                  <td style="padding:8px;">${m.cognome} ${m.nome}</td>
                   <td style="padding:8px;text-align:center;font-weight:bold;">${m.gol}</td>
                 </tr>
               `).join('')}
@@ -517,7 +517,7 @@ function renderSeasonalReport(report) {
               ${report.topAssist.slice(0, 3).map((a, i) => `
                 <tr style="background:${i === 0 ? '#e6f3ff' : 'white'};">
                   <td style="padding:8px;font-weight:bold;">${i + 1}</td>
-                  <td style="padding:8px;">${a.cognome || a.nome} ${a.nome}</td>
+                  <td style="padding:8px;">${a.cognome} ${a.nome}</td>
                   <td style="padding:8px;text-align:center;font-weight:bold;">${a.assist}</td>
                 </tr>
               `).join('')}
@@ -541,7 +541,7 @@ function renderSeasonalReport(report) {
               ${report.topPresenze.slice(0, 3).map((p, i) => `
                 <tr style="background:${i === 0 ? '#e6f3ff' : 'white'};">
                   <td style="padding:8px;font-weight:bold;">${i + 1}</td>
-                  <td style="padding:8px;">${p.cognome || p.nome} ${p.nome}</td>
+                  <td style="padding:8px;">${p.cognome} ${p.nome}</td>
                   <td style="padding:8px;text-align:center;font-weight:bold;">${p.presenze}</td>
                 </tr>
               `).join('')}

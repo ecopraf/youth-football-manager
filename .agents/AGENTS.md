@@ -83,7 +83,7 @@ api/
     ├── match.js                — Partite CRUD, convocazioni, formazione, eventi
     ├── staff.js                — Staff completo per distinta
     ├── admin.js                — Migrazioni schema DB
-    ├── statistics.js           — Statistiche complete, top players
+    ├── statistics.js           — Statistiche complete, top players, report partita/stagionale/giocatore
     ├── player.js               — Calciatori CRUD, scadenze, stats, move
     ├── roster.js               — Import rosa XLS/Tuttocampo
     ├── importCalendario.js     — PDF, testo SGS, import-log

@@ -180,6 +180,15 @@
 ### Critici
 - Nessuno
 
+### Risolti (Luglio 2026 - Reports & Workspace)
+- [x] 3 endpoint report completamente mancanti dal backend → creati in statistics.js
+- [x] Report Partita: usa FK allenatore_id/dirigente_id → staff join, fallback convocazioni quando formazione assente
+- [x] Report Stagionale: stats complete con top players e match list raggruppata per competizione
+- [x] Report Giocatore: stats ed event history across all teams
+- [x] Fix display duplicato nomi (cognome || nome → solo cognome) nel frontend reports
+- [x] Fix typo "PORTA INVOLATA" → "PORTA INVIOLATA" nel commento social
+- [x] FK constraint error su DELETE staff → nullify allenatore_id/dirigente_id/preparatore_id/portieri_id + convocato_da
+
 ### Risolti (Luglio 2026)
 - [x] Endpoint senza authMiddleware (partite, calciatori) → protetti
 - [x] 30+ GET endpoint ora richiedono authMiddleware
@@ -241,6 +250,13 @@
 - [x] Calendario GR navigabile in dashboard: frecce ◀▶ per scorrere tutte le giornate, solo visualizzazione (no import)
 - [x] Top Marcatori in dashboard: colonne side-by-side Regionali (top 10 assoluti) e Girone (filtrati per squadre del girone)
 - [x] Staff spostato sotto Ultimi Risultati (desktop), in fondo alla dashboard (mobile)
+- [x] Workspace CRUD completo per superadmin (create/edit/delete con cascade, auto-logo fuzzy match, TC paste parser)
+- [x] Staff TC paste import (parsing tab-separated, duplicate detection, batch import)
+- [x] Disaggrega giocatori (rimuovi aggregazione con bottone ✕ su badge AGG)
+- [x] Fix filtro roster per sezione gridNoRole
+- [x] Report endpoints backend (3 nuovi: partita, stagionale, giocatore) con fallback convocazioni
+- [x] Fix typo commento social "PORTA INVIOLATA"
+- [x] Dashboard marcatori labels: "REGIONALI" → "GENERALE", "GIRONE" → "GIRONE X"
 
 ### Minori
 - [ ] Valutazioni giocatore: sistema incompleto

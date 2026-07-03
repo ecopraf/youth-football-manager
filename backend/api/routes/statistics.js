@@ -177,6 +177,233 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // GET /api/partite/:matchId/report
+  router.get('/api/partite/:matchId/report', authMiddleware, async (req, res) => {
+    try {
+      const { matchId } = req.params;
+      const { data: match } = await supabase.from('match').select('*, competition:competition_id(nome), team:team_id(nome, allenatore_id, dirigente_id, season:season_id(workspace_id))').eq('id', matchId).single();
+      if (!match) return res.status(404).json({ error: 'Partita non trovata' });
+
+      // Workspace name
+      const { data: ws } = await supabase.from('workspace').select('nome').eq('id', match.team?.season?.workspace_id).single();
+
+      // Staff names
+      let allenatore = '', dirigente = '';
+      if (match.team?.allenatore_id) {
+        const { data: s } = await supabase.from('staff').select('nome, cognome').eq('id', match.team.allenatore_id).single();
+        if (s) allenatore = s.cognome + ' ' + s.nome;
+      }
+      if (match.team?.dirigente_id) {
+        const { data: s } = await supabase.from('staff').select('nome, cognome').eq('id', match.team.dirigente_id).single();
+        if (s) dirigente = s.cognome + ' ' + s.nome;
+      }
+
+      // Eventi
+      const { data: events } = await supabase.from('match_event').select('tipo_evento, minuto, player_id').eq('match_id', matchId).order('minuto');
+      // Player names
+      const playerIds = [...new Set((events || []).map(e => e.player_id).filter(Boolean))];
+      let playerMap = {};
+      if (playerIds.length > 0) {
+        const { data: players } = await supabase.from('player').select('id, nome, cognome').in('id', playerIds);
+        (players || []).forEach(p => { playerMap[p.id] = p.cognome + ' ' + p.nome; });
+      }
+
+      // Match assist events to preceding goals
+      const eventi = (events || []).map(e => ({
+        tipo: e.tipo_evento,
+        minuto: e.minuto,
+        principale: playerMap[e.player_id] || 'Sconosciuto',
+        secondario: null
+      }));
+
+      // Formazione
+      const { data: formation } = await supabase.from('match_formation').select('team_player_id, is_starter, numero_maglia').eq('match_id', matchId);
+      const tpIds = (formation || []).map(f => f.team_player_id);
+      let giocatori = [];
+      if (tpIds.length > 0) {
+        const { data: tps } = await supabase.from('team_player').select('id, player:player_id(id, nome, cognome)').in('id', tpIds);
+        const tpMap = {};
+        (tps || []).forEach(tp => { tpMap[tp.id] = tp.player; });
+
+        giocatori = (formation || []).map(f => {
+          const p = tpMap[f.team_player_id];
+          if (!p) return null;
+          const pEvents = (events || []).filter(e => e.player_id === p.id);
+          return {
+            nome: p.nome || '', cognome: p.cognome || '',
+            numeroMaglia: f.numero_maglia || '-',
+            ruolo: f.is_starter ? 'T' : 'P',
+            gol: pEvents.filter(e => e.tipo_evento === 'GOAL').length,
+            assist: pEvents.filter(e => e.tipo_evento === 'ASSIST').length,
+            ammonizioni: pEvents.filter(e => e.tipo_evento === 'YELLOW').length,
+            espulsioni: pEvents.filter(e => e.tipo_evento === 'RED').length
+          };
+        }).filter(Boolean);
+      } else {
+        // Fallback: use convocations if no formation
+        const { data: convs } = await supabase.from('convocation').select('team_player_id, presente').eq('match_id', matchId).eq('presente', true);
+        if (convs && convs.length > 0) {
+          const convTpIds = convs.map(c => c.team_player_id);
+          const { data: tps } = await supabase.from('team_player').select('id, numero_maglia, player:player_id(id, nome, cognome)').in('id', convTpIds);
+          giocatori = (tps || []).map(tp => {
+            const p = tp.player;
+            if (!p) return null;
+            const pEvents = (events || []).filter(e => e.player_id === p.id);
+            return {
+              nome: p.nome || '', cognome: p.cognome || '',
+              numeroMaglia: tp.numero_maglia || '-',
+              ruolo: 'T',
+              gol: pEvents.filter(e => e.tipo_evento === 'GOAL').length,
+              assist: pEvents.filter(e => e.tipo_evento === 'ASSIST').length,
+              ammonizioni: pEvents.filter(e => e.tipo_evento === 'YELLOW').length,
+              espulsioni: pEvents.filter(e => e.tipo_evento === 'RED').length
+            };
+          }).filter(Boolean);
+        }
+      }
+
+      const ammonizioni = (events || []).filter(e => e.tipo_evento === 'YELLOW').length;
+      const espulsioni = (events || []).filter(e => e.tipo_evento === 'RED').length;
+
+      res.json({
+        societa: ws?.nome || '',
+        allenatore,
+        dirigente,
+        partita: {
+          avversario: match.avversario,
+          dataOra: match.data_ora,
+          competizione: match.competition?.nome || '',
+          giornata: match.giornata,
+          luogo: match.luogo,
+          note: match.note
+        },
+        score: { golCasa: match.gol_casa || 0, golOspiti: match.gol_ospite || 0 },
+        eventi,
+        giocatori,
+        ammonizioni,
+        espulsioni
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/squadre/:squadraId/report-stagionale
+  router.get('/api/squadre/:squadraId/report-stagionale', authMiddleware, async (req, res) => {
+    try {
+      const teamId = req.params.squadraId;
+      const { data: team } = await supabase.from('team').select('nome, category:category_id(nome), season:season_id(nome, workspace_id)').eq('id', teamId).single();
+      const { data: ws } = await supabase.from('workspace').select('nome').eq('id', team?.season?.workspace_id).single();
+
+      const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, giornata, competition:competition_id(nome)').eq('team_id', teamId).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora');
+
+      let v = 0, p = 0, s = 0, gf = 0, gs = 0;
+      const partiteList = (partite || []).map(m => {
+        const gc = m.gol_casa || 0, go = m.gol_ospite || 0;
+        gf += gc; gs += go;
+        if (gc > go) v++; else if (gc === go) p++; else s++;
+        return { competizione: m.competition?.nome || 'Campionato', giornata: m.giornata, data: m.data_ora, avversario: m.avversario, luogo: m.luogo, golCasa: gc, golOspiti: go };
+      });
+
+      // Top players
+      const { data: tps } = await supabase.from('team_player').select('id, player:player_id(id, nome, cognome)').eq('team_id', teamId);
+      const matchIds = (partite || []).map(m => m.id);
+      let topMarcatori = [], topAssist = [], topPresenze = [];
+
+      if (matchIds.length > 0) {
+        const { data: events } = await supabase.from('match_event').select('tipo_evento, player_id').in('match_id', matchIds);
+        const golCount = {}, assistCount = {};
+        (events || []).forEach(e => {
+          if (e.tipo_evento === 'GOAL') golCount[e.player_id] = (golCount[e.player_id] || 0) + 1;
+          if (e.tipo_evento === 'ASSIST') assistCount[e.player_id] = (assistCount[e.player_id] || 0) + 1;
+        });
+        topMarcatori = (tps || []).filter(tp => golCount[tp.player?.id]).map(tp => ({ nome: tp.player.nome, cognome: tp.player.cognome, gol: golCount[tp.player.id] })).sort((a, b) => b.gol - a.gol).slice(0, 5);
+        topAssist = (tps || []).filter(tp => assistCount[tp.player?.id]).map(tp => ({ nome: tp.player.nome, cognome: tp.player.cognome, assist: assistCount[tp.player.id] })).sort((a, b) => b.assist - a.assist).slice(0, 5);
+
+        const { data: convs } = await supabase.from('convocation').select('team_player_id').in('match_id', matchIds).eq('presente', true);
+        const presCount = {};
+        (convs || []).forEach(c => { presCount[c.team_player_id] = (presCount[c.team_player_id] || 0) + 1; });
+        topPresenze = (tps || []).filter(tp => presCount[tp.id]).map(tp => ({ nome: tp.player?.nome, cognome: tp.player?.cognome, presenze: presCount[tp.id] })).sort((a, b) => b.presenze - a.presenze).slice(0, 5);
+      }
+
+      const pg = (partite || []).length;
+      res.json({
+        societa: ws?.nome || '',
+        squadra: { categoria: team?.category?.nome || team?.nome || '' },
+        stagione: team?.season?.nome || '',
+        punti: v * 3 + p,
+        partiteGiocate: pg, vittorie: v, pareggi: p, sconfitte: s,
+        golFatti: gf, golSubiti: gs, differenzaReti: gf - gs,
+        topMarcatori, topAssist, topPresenze,
+        partite: partiteList
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/calciatori/:playerId/report
+  router.get('/api/calciatori/:playerId/report', authMiddleware, async (req, res) => {
+    try {
+      const { playerId } = req.params;
+      const { data: player } = await supabase.from('player').select('*').eq('id', playerId).single();
+      if (!player) return res.status(404).json({ error: 'Giocatore non trovato' });
+
+      // Find all team_player records
+      const { data: tps } = await supabase.from('team_player').select('id, team_id').eq('player_id', playerId);
+      const teamIds = (tps || []).map(tp => tp.team_id);
+
+      // All matches for those teams
+      const { data: matches } = teamIds.length > 0
+        ? await supabase.from('match').select('id, data_ora, avversario, giornata, competition:competition_id(nome)').in('team_id', teamIds).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora')
+        : { data: [] };
+      const matchIds = (matches || []).map(m => m.id);
+
+      // Events for this player
+      let eventi = [];
+      if (matchIds.length > 0) {
+        const { data: evts } = await supabase.from('match_event').select('tipo_evento, minuto, match_id').eq('player_id', playerId).in('match_id', matchIds);
+        eventi = evts || [];
+      }
+
+      // Presenze (convocazioni o formazioni)
+      const tpIds = (tps || []).map(tp => tp.id);
+      let presenze = 0;
+      if (matchIds.length > 0 && tpIds.length > 0) {
+        const { count } = await supabase.from('convocation').select('id', { count: 'exact', head: true }).in('team_player_id', tpIds).in('match_id', matchIds).eq('presente', true);
+        presenze = count || 0;
+      }
+
+      const matchMap = {};
+      (matches || []).forEach(m => { matchMap[m.id] = m; });
+
+      const storico = eventi.map(e => {
+        const m = matchMap[e.match_id];
+        return {
+          tipo: e.tipo_evento,
+          minuto: e.minuto,
+          competizione: m?.competition?.nome || '',
+          giornata: m?.giornata || '',
+          partita: m?.avversario || '',
+          data: m?.data_ora || ''
+        };
+      });
+
+      const gol = eventi.filter(e => e.tipo_evento === 'GOAL').length;
+      const assist = eventi.filter(e => e.tipo_evento === 'ASSIST').length;
+      const ammonizioni = eventi.filter(e => e.tipo_evento === 'YELLOW').length;
+      const espulsioni = eventi.filter(e => e.tipo_evento === 'RED').length;
+
+      res.json({
+        giocatore: { nome: player.nome, cognome: player.cognome, data_nascita: player.data_nascita, nazionalita: player.nazionalita },
+        stats: { partiteGiocate: presenze, gol, assist, ammonizioni, espulsioni },
+        storico
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 }
 
