@@ -290,5 +290,31 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  // GET /api/squadre/:squadraId/allenamenti-futuri — prossimi allenamenti (per guest atleta)
+  router.get('/api/squadre/:squadraId/allenamenti-futuri', authMiddleware, async (req, res) => {
+    try {
+      const now = new Date().toISOString();
+      const { data, error } = await supabase.from('training')
+        .select('id, data_ora, durata_minuti, tipo, descrizione')
+        .eq('team_id', req.params.squadraId)
+        .gte('data_ora', now)
+        .order('data_ora', { ascending: true })
+        .limit(20);
+      if (error) return res.status(400).json({ error: error.message });
+
+      // Aggiungi luogo dalla config
+      const { data: configs } = await supabase.from('training_config')
+        .select('giorno_settimana, luogo').eq('team_id', req.params.squadraId);
+      const configMap = {};
+      (configs || []).forEach(c => { configMap[c.giorno_settimana] = c.luogo; });
+
+      const result = (data || []).map(t => {
+        const day = new Date(t.data_ora).getDay();
+        return { ...t, luogo: configMap[day] || null };
+      });
+      res.json(result);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   return router;
 };

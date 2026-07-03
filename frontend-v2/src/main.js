@@ -126,6 +126,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
       if (isSuperAdmin(user)) populateWorkspaceSelect(workspaces);
       window.YFM.navigateTo('dashboard');
+      // Badge notifiche assenze
+      setTimeout(() => { import('./modules/coach/notifications.js').then(m => m.updateNotifBadge()).catch(() => {}); }, 1000);
     } catch (err) {
       console.error('[MAIN] Init error:', err);
       try {

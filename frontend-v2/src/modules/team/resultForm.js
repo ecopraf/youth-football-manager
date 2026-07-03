@@ -22,7 +22,16 @@ export async function openResultForm(mid) {
   
   try {
     const detRes = await apiFetch('/partite/' + mid + '/dettaglio');
-    eventi = (detRes.eventi || []).map(e => ({ ...e, principale: e.player_name || e.principale || '', minuto: e.minuto || '' }));
+    if (detRes.match) {
+      match.gol_casa = detRes.match.gol_casa;
+      match.gol_ospite = detRes.match.gol_ospite;
+    }
+    eventi = (detRes.eventi || []).map(e => ({ ...e, tipo: e.tipo_evento || e.tipo, principale: e.player_name || e.principale || '', minuto: e.minuto || '' }));
+    // Se risultato presente ma nessun evento GOAL/SUBITO, pre-popola placeholder
+    if (eventi.filter(e => e.tipo === 'GOAL' || e.tipo === 'SUBITO').length === 0 && match.gol_casa != null) {
+      for (let i = 0; i < match.gol_casa; i++) eventi.push({ tipo: 'GOAL', minuto: '', principale: '', principale_id: null, autogol: false });
+      for (let i = 0; i < match.gol_ospite; i++) eventi.push({ tipo: 'SUBITO', minuto: '', principale: 'Avversario', principale_id: null, autogol: false });
+    }
   } catch(e) {}
   
   try {
@@ -73,8 +82,8 @@ export async function openResultForm(mid) {
 // VISTA SOLA LETTURA PER PARTITE ARCHIVIATE
 function renderFormReadOnly(match, eventi, modal) {
   const container = document.getElementById('rfContent');
-  const golFatti = eventi.filter(e => e.tipo === 'GOAL').length;
-  const golSubiti = eventi.filter(e => e.tipo === 'SUBITO').length;
+  const golFatti = (match.gol_casa !== null && match.gol_casa !== undefined) ? match.gol_casa : eventi.filter(e => e.tipo === 'GOAL').length;
+  const golSubiti = (match.gol_ospite !== null && match.gol_ospite !== undefined) ? match.gol_ospite : eventi.filter(e => e.tipo === 'SUBITO').length;
   
   let html = '<style>';
   html += '.rf{padding:16px;}.score{text-align:center;padding:24px;background:linear-gradient(135deg,#667eea20,#764ba220);border-radius:16px;margin-bottom:20px;border:2px solid #667eea40;}';
@@ -110,8 +119,8 @@ function renderFormReadOnly(match, eventi, modal) {
 function renderForm(mid, match, eventi, giocatori, modal) {
   const container = document.getElementById('rfContent');
   
-  const golFatti = eventi.filter(e => e.tipo === 'GOAL').length;
-  const golSubiti = eventi.filter(e => e.tipo === 'SUBITO').length;
+  const golFatti = (match.gol_casa !== null && match.gol_casa !== undefined) ? match.gol_casa : eventi.filter(e => e.tipo === 'GOAL').length;
+  const golSubiti = (match.gol_ospite !== null && match.gol_ospite !== undefined) ? match.gol_ospite : eventi.filter(e => e.tipo === 'SUBITO').length;
   
   let html = '<style>';
   html += '.rf{padding:16px;}.score{text-align:center;padding:24px;background:linear-gradient(135deg,#667eea20,#764ba220);border-radius:16px;margin-bottom:20px;border:2px solid #667eea40;}';

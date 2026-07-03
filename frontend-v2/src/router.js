@@ -16,6 +16,7 @@ export function initRouter() {
     trainingSessions: () => import('./modules/coach/trainingSessions.js'),
     trainingPresenze: () => import('./modules/coach/trainingPresenze.js'),
     trainingSettings: () => import('./modules/coach/trainingSettings.js'),
+    notifications: () => import('./modules/coach/notifications.js'),
     stats: () => import('./modules/performance/stats.js'),
     reports: () => import('./modules/performance/reports.js'),
     settings: () => import('./modules/club/settings.js'),
