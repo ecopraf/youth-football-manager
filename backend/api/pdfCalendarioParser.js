@@ -6,6 +6,9 @@ const pdfParse = require('pdf-parse');
 
 const HEADER_REGEX = /\*\s+(UNDER\s+\d+[^*]+?)\s+GIRONE:\s*([A-Z](?:\s*[A-Z]*)?)\s*\*/g;
 
+// Mappa parole senza accento → con accento (dal PDF SGS arrivano senza)
+const ACCENT_MAP = { 'Citta': 'Città', 'Virtus': 'Virtus', 'Universita': 'Università' };
+
 // Normalizza nome squadra da MAIUSCOLO a Title Case, rimuovendo suffissi legali
 function normalizeTeamName(name) {
   // Rimuovi suffissi legali
@@ -13,10 +16,15 @@ function normalizeTeamName(name) {
   // Rimuovi punti e spazi multipli residui
   clean = clean.replace(/\s+/g, ' ').trim();
   // Title Case
-  return clean.split(' ').map(w => {
+  clean = clean.split(' ').map(w => {
     if (w.length <= 2) return w.toUpperCase(); // C.S., FC, etc.
     return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
   }).join(' ');
+  // Ripristina accenti mancanti dal PDF
+  for (const [plain, accented] of Object.entries(ACCENT_MAP)) {
+    clean = clean.replace(new RegExp(`\\b${plain}\\b`, 'g'), accented);
+  }
+  return clean;
 }
 
 /**
