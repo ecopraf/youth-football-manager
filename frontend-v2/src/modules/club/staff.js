@@ -97,7 +97,17 @@ function renderSections() {
   if (!container) return;
   const isAdmin = window.YFM.isAdmin();
 
-  const tecnici = staffList.filter(s => !isSocietario(s.ruolo));
+  const user = window.YFM.getUser();
+  const squadreAccesso = user?.squadre_accesso || [];
+  const filterByCategory = !isAdmin && squadreAccesso.length > 0;
+
+  let tecnici = staffList.filter(s => !isSocietario(s.ruolo));
+  if (filterByCategory) {
+    tecnici = tecnici.filter(s => {
+      const cats = (s.categorie || []).map(c => c.id);
+      return cats.length === 0 || cats.some(cid => squadreAccesso.includes(cid));
+    });
+  }
   const societari = staffList.filter(s => isSocietario(s.ruolo));
 
   let html = '';
