@@ -495,7 +495,7 @@ function openMoveModal(pids) {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
   modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
-  modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:400px;width:90%;"><div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">↗️ Sposta Giocatori</h2><button id="moveModalClose" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button></div><div style="padding:20px;"><p style="margin-bottom:12px;"><strong>' + playerIds.length + ' giocatore(i):</strong></p><p style="color:#666;font-size:12px;margin-bottom:16px;">' + playerNames + '</p><div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:12px;font-weight:600;color:#666;">Sposta nella categoria:</label><select id="targetSquadra" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;">' + otherSquadre.map(s => '<option value="' + s.id + '">' + (s.category?.nome || s.nome) + '</option>').join('') + '</select></div></div><div style="padding:16px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:12px;"><button id="moveModalCancel" class="btn btn-secondary" style="padding:10px 16px;border-radius:8px;cursor:pointer;">Annulla</button><button id="confirmMoveBtn" class="btn btn-primary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:var(--primary,#667eea);color:white;border:none;">Sposta</button></div></div>';
+  modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:400px;width:90%;"><div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">↗️ Sposta Giocatori</h2><button id="moveModalClose" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button></div><div style="padding:20px;"><p style="margin-bottom:12px;"><strong>' + playerIds.length + ' giocatore(i):</strong></p><p style="color:#666;font-size:12px;margin-bottom:16px;">' + playerNames + '</p><div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:12px;font-weight:600;color:#666;">Sposta nella categoria:</label><select id="targetSquadra" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;">' + otherSquadre.map(s => '<option value="' + s.id + '">' + (s.category?.nome || s.nome) + (s._stagione ? ' (' + s._stagione + ')' : '') + '</option>').join('') + '</select></div></div><div style="padding:16px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:12px;"><button id="moveModalCancel" class="btn btn-secondary" style="padding:10px 16px;border-radius:8px;cursor:pointer;">Annulla</button><button id="confirmMoveBtn" class="btn btn-primary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:var(--primary,#667eea);color:white;border:none;">Sposta</button></div></div>';
   document.body.appendChild(modal);
   
   document.getElementById('moveModalClose').addEventListener('click', () => modal.remove());
@@ -657,7 +657,8 @@ async function openImportXlsModal() {
   if (isAdmin && allSquadre.length > 1) {
     teamOptions = allSquadre.map(s => {
       const label = s.category?.nome || s.nome;
-      return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${label}</option>`;
+      const stagione = s._stagione ? ` (${s._stagione})` : '';
+      return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${label}${stagione}</option>`;
     }).join('');
   }
 
