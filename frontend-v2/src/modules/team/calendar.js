@@ -219,11 +219,11 @@ function renderCalendarPage(c, matches, stats) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <div><h1 class="page-title">Calendario ${window.YFM.getSquadraName()}</h1></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-primary" id="btnAdd">+ Nuova</button>
+        ${window.YFM.isAdmin() ? `<button class="btn btn-primary" id="btnAdd">+ Nuova</button>
         ${window.YFM.currentUser?.is_superadmin ? '<button class="btn btn-secondary" id="btnImportTc" style="font-size:13px;">⚽ Tuttocampo</button>' : ''}
         <button class="btn btn-secondary" id="btnImportPdf" style="font-size:13px;">📄 PDF</button>
         <button class="btn btn-secondary" id="btnImport" style="font-size:13px;">📥 CSV</button>
-        <button class="btn btn-secondary" id="btnDeleteAll" style="font-size:13px;color:#E74C3C;">🗑️ Cancella tutto</button>
+        <button class="btn btn-secondary" id="btnDeleteAll" style="font-size:13px;color:#E74C3C;">🗑️ Cancella tutto</button>` : ''}
       </div>
     </div>`;
 
@@ -256,11 +256,11 @@ function renderCalendarPage(c, matches, stats) {
 
   c.innerHTML = html;
 
-  document.getElementById('btnAdd').addEventListener('click', () => openMatchForm());
+  document.getElementById('btnAdd')?.addEventListener('click', () => openMatchForm());
   document.getElementById('btnImportTc')?.addEventListener('click', openImportTuttocampo);
-  document.getElementById('btnImport').addEventListener('click', openImportCSV);
-  document.getElementById('btnImportPdf').addEventListener('click', openImportPdf);
-  document.getElementById('btnDeleteAll').addEventListener('click', deleteAllMatches);
+  document.getElementById('btnImport')?.addEventListener('click', openImportCSV);
+  document.getElementById('btnImportPdf')?.addEventListener('click', openImportPdf);
+  document.getElementById('btnDeleteAll')?.addEventListener('click', deleteAllMatches);
   attachCardListeners();
 }
 
@@ -421,12 +421,13 @@ export function renderMatchCard(m, stats, isNext = false) {
     actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
   }
 
-  // === EDIT/DELETE/ARCHIVIA ===
+  // === EDIT/DELETE/ARCHIVIA (solo admin) ===
   let editBtns = '';
-  if (!isArchiviata) {
+  const _isAdmin = window.YFM.isAdmin();
+  if (_isAdmin && !isArchiviata) {
     const archBtn = (isPast && hasResult) ? `<button class="btn btn-secondary btn-small" style="color:#856404;" onclick="event.stopPropagation();archiveMatch('${m.id}')" title="Archivia">📦</button>` : '';
     editBtns = `${archBtn}<button class="btn btn-secondary btn-small btn-editm" data-mid="${m.id}" title="Modifica">✏️</button><button class="btn btn-secondary btn-small btn-danger btn-del" data-mid="${m.id}" title="Elimina">🗑️</button>`;
-  } else {
+  } else if (_isAdmin && isArchiviata) {
     editBtns = `<button class="btn btn-secondary btn-small" style="background:#6B5B4F;color:white;border-color:#6B5B4F;" onclick="event.stopPropagation();unarchiveMatch('${m.id}')" title="Sblocca">🔓</button>`;
   }
 

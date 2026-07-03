@@ -17,9 +17,9 @@ export default async function loadStaff() {
   const user = window.YFM.getUser();
   const isAdmin = window.YFM.isAdmin();
   const isAllenatore = user?.ruolo === 'allenatore';
-  const canWrite = isAdmin || isAllenatore || (user?.permessi?.rosa === 'write');
+  const canAccess = isAdmin || isAllenatore || (user?.permessi?.rosa === 'write');
 
-  if (!canWrite) {
+  if (!canAccess) {
     c.innerHTML = '<div class="error-box">Accesso non autorizzato</div>';
     return;
   }
@@ -27,10 +27,10 @@ export default async function loadStaff() {
   c.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <h1 class="page-title">👥 Staff</h1>
-      <div style="display:flex;gap:8px;">
-        ${isAdmin ? '<button class="btn btn-secondary" id="btnPasteStaff">📋 Incolla da TC</button>' : ''}
+      ${isAdmin ? `<div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" id="btnPasteStaff">📋 Incolla da TC</button>
         <button class="btn btn-primary" id="btnAddStaff">+ Aggiungi</button>
-      </div>
+      </div>` : ''}
     </div>
     <div id="staffSections"></div>
     <div id="staffModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
@@ -70,8 +70,10 @@ export default async function loadStaff() {
   `;
 
   await loadData();
-  document.getElementById('btnAddStaff').addEventListener('click', () => openStaffModal());
-  if (isAdmin) document.getElementById('btnPasteStaff')?.addEventListener('click', openPasteModal);
+  if (isAdmin) {
+    document.getElementById('btnAddStaff').addEventListener('click', () => openStaffModal());
+    document.getElementById('btnPasteStaff').addEventListener('click', openPasteModal);
+  }
   document.getElementById('staffModalClose').addEventListener('click', closeModal);
   document.getElementById('staffModalCancel').addEventListener('click', closeModal);
   document.getElementById('staffModalSave').addEventListener('click', handleSave);
@@ -121,9 +123,9 @@ function renderSections() {
         <th style="text-align:left;padding:12px;">Ruolo</th>
         <th style="text-align:left;padding:12px;">Matricola</th>
         <th style="text-align:left;padding:12px;">Categorie</th>
-        <th style="text-align:right;padding:12px;">Azioni</th>
+        ${isAdmin ? '<th style="text-align:right;padding:12px;">Azioni</th>' : ''}
       </tr></thead>
-      <tbody>${renderRows(tecnici)}</tbody>
+      <tbody>${renderRows(tecnici, isAdmin)}</tbody>
     </table>
   </div>`;
 
@@ -156,7 +158,7 @@ function renderSections() {
   });
 }
 
-function renderRows(list) {
+function renderRows(list, showActions = true) {
   if (list.length === 0) return '<tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">Nessun membro staff tecnico</td></tr>';
   return list.map(s => {
     const q = s.qualifiche || {};
@@ -166,10 +168,10 @@ function renderRows(list) {
       <td style="padding:12px;color:#666;">${s.ruolo || '-'}</td>
       <td style="padding:12px;color:#666;font-size:13px;">${q.matricola || '-'}</td>
       <td style="padding:12px;font-size:13px;">${cats}</td>
-      <td style="padding:12px;text-align:right;">
+      ${showActions ? `<td style="padding:12px;text-align:right;">
         <button class="btn btn-small" data-edit="${s.id}">✏️</button>
         <button class="btn btn-small btn-danger" data-del="${s.id}">🗑️</button>
-      </td>
+      </td>` : ''}
     </tr>`;
   }).join('');
 }
