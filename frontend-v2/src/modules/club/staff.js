@@ -4,12 +4,22 @@ import { showLoading, hideLoading } from '../../utils/ui';
 let staffList = [];
 let categorie = [];
 
-const RUOLI = ['Allenatore', 'Vice Allenatore', 'Preparatore Atletico', 'Preparatore Portieri', 'Dirigente', 'Direttore Sportivo', 'Direttore Generale', 'Direttore Tecnico', 'Presidente', 'Osservatore', 'Medico', 'Fisioterapista', 'Massaggiatore'];
+const RUOLI_SOCIETARI = ['Presidente', 'Direttore Generale', 'Direttore Tecnico', 'Direttore Sportivo', 'Osservatore'];
+const RUOLI_TECNICI = ['Allenatore', 'Vice Allenatore', 'Preparatore Atletico', 'Preparatore Portieri', 'Dirigente', 'Medico', 'Fisioterapista', 'Massaggiatore'];
+const RUOLI = [...RUOLI_TECNICI, ...RUOLI_SOCIETARI];
+
+function isSocietario(ruolo) {
+  return RUOLI_SOCIETARI.includes(ruolo);
+}
 
 export default async function loadStaff() {
   const c = document.getElementById('pageContent');
-  if (!window.YFM.isAdmin()) {
-    c.innerHTML = '<div class="error-box">Accesso riservato agli amministratori</div>';
+  const user = window.YFM.getUser();
+  const isAdmin = window.YFM.isAdmin();
+  const canWrite = isAdmin || (user?.permessi?.rosa === 'write');
+
+  if (!isAdmin && !canWrite) {
+    c.innerHTML = '<div class="error-box">Accesso non autorizzato</div>';
     return;
   }
 
@@ -17,25 +27,11 @@ export default async function loadStaff() {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <h1 class="page-title">👥 Staff</h1>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-secondary" id="btnPasteStaff">📋 Incolla da TC</button>
+        ${isAdmin ? '<button class="btn btn-secondary" id="btnPasteStaff">📋 Incolla da TC</button>' : ''}
         <button class="btn btn-primary" id="btnAddStaff">+ Aggiungi</button>
       </div>
     </div>
-    <div class="card">
-      <table style="width:100%;border-collapse:collapse;" id="staffTable">
-        <thead>
-          <tr style="border-bottom:2px solid #eee;">
-            <th style="text-align:left;padding:12px;">Nome</th>
-            <th style="text-align:left;padding:12px;">Ruolo</th>
-            <th style="text-align:left;padding:12px;">Matricola</th>
-            <th style="text-align:left;padding:12px;">Tessera</th>
-            <th style="text-align:left;padding:12px;">Categorie</th>
-            <th style="text-align:right;padding:12px;">Azioni</th>
-          </tr>
-        </thead>
-        <tbody id="staffBody"></tbody>
-      </table>
-    </div>
+    <div id="staffSections"></div>
     <div id="staffModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
       <div style="background:white;border-radius:12px;max-width:600px;width:90%;max-height:85vh;overflow-y:auto;">
         <div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;">
@@ -74,7 +70,7 @@ export default async function loadStaff() {
 
   await loadData();
   document.getElementById('btnAddStaff').addEventListener('click', () => openStaffModal());
-  document.getElementById('btnPasteStaff').addEventListener('click', openPasteModal);
+  if (isAdmin) document.getElementById('btnPasteStaff')?.addEventListener('click', openPasteModal);
   document.getElementById('staffModalClose').addEventListener('click', closeModal);
   document.getElementById('staffModalCancel').addEventListener('click', closeModal);
   document.getElementById('staffModalSave').addEventListener('click', handleSave);
@@ -92,24 +88,72 @@ async function loadData() {
     staffList = [];
     categorie = [];
   }
-  renderTable();
+  renderSections();
 }
 
-function renderTable() {
-  const tbody = document.getElementById('staffBody');
-  if (!tbody) return;
-  if (staffList.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#999;">Nessun membro staff</td></tr>';
-    return;
+function renderSections() {
+  const container = document.getElementById('staffSections');
+  if (!container) return;
+  const isAdmin = window.YFM.isAdmin();
+
+  const tecnici = staffList.filter(s => !isSocietario(s.ruolo));
+  const societari = staffList.filter(s => isSocietario(s.ruolo));
+
+  let html = '';
+
+  // Staff Tecnico (visibile a tutti)
+  html += `<div class="card" style="margin-bottom:24px;">
+    <h3 style="margin:0 0 16px;font-size:16px;color:#334155;">⚽ Staff Tecnico</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="border-bottom:2px solid #eee;">
+        <th style="text-align:left;padding:12px;">Nome</th>
+        <th style="text-align:left;padding:12px;">Ruolo</th>
+        <th style="text-align:left;padding:12px;">Matricola</th>
+        <th style="text-align:left;padding:12px;">Categorie</th>
+        <th style="text-align:right;padding:12px;">Azioni</th>
+      </tr></thead>
+      <tbody>${renderRows(tecnici)}</tbody>
+    </table>
+  </div>`;
+
+  // Organigramma Societario (solo admin)
+  if (isAdmin) {
+    html += `<div class="card">
+      <h3 style="margin:0 0 16px;font-size:16px;color:#334155;">🏢 Organigramma Societario</h3>
+      ${societari.length === 0 ? '<p style="color:#999;text-align:center;padding:20px;">Nessun membro societario</p>' : `
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="border-bottom:2px solid #eee;">
+          <th style="text-align:left;padding:12px;">Nome</th>
+          <th style="text-align:left;padding:12px;">Ruolo</th>
+          <th style="text-align:left;padding:12px;">Telefono</th>
+          <th style="text-align:left;padding:12px;">Email</th>
+          <th style="text-align:right;padding:12px;">Azioni</th>
+        </tr></thead>
+        <tbody>${renderRowsSocietario(societari)}</tbody>
+      </table>`}
+    </div>`;
   }
-  tbody.innerHTML = staffList.map(s => {
+
+  container.innerHTML = html;
+
+  // Bind events
+  container.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => openStaffModal(btn.dataset.edit));
+  });
+  container.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', () => handleDelete(btn.dataset.del));
+  });
+}
+
+function renderRows(list) {
+  if (list.length === 0) return '<tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">Nessun membro staff tecnico</td></tr>';
+  return list.map(s => {
     const q = s.qualifiche || {};
     const cats = (s.categorie || []).map(c => c.nome).join(', ') || '-';
     return `<tr style="border-bottom:1px solid #eee;">
       <td style="padding:12px;font-weight:600;">${s.cognome} ${s.nome}</td>
       <td style="padding:12px;color:#666;">${s.ruolo || '-'}</td>
       <td style="padding:12px;color:#666;font-size:13px;">${q.matricola || '-'}</td>
-      <td style="padding:12px;color:#666;font-size:13px;">${q.tessera_figc || q.tessera_lnd || '-'}</td>
       <td style="padding:12px;font-size:13px;">${cats}</td>
       <td style="padding:12px;text-align:right;">
         <button class="btn btn-small" data-edit="${s.id}">✏️</button>
@@ -117,13 +161,21 @@ function renderTable() {
       </td>
     </tr>`;
   }).join('');
+}
 
-  tbody.querySelectorAll('[data-edit]').forEach(btn => {
-    btn.addEventListener('click', () => openStaffModal(btn.dataset.edit));
-  });
-  tbody.querySelectorAll('[data-del]').forEach(btn => {
-    btn.addEventListener('click', () => handleDelete(btn.dataset.del));
-  });
+function renderRowsSocietario(list) {
+  return list.map(s => {
+    return `<tr style="border-bottom:1px solid #eee;">
+      <td style="padding:12px;font-weight:600;">${s.cognome} ${s.nome}</td>
+      <td style="padding:12px;color:#666;">${s.ruolo || '-'}</td>
+      <td style="padding:12px;color:#666;font-size:13px;">${s.telefono || '-'}</td>
+      <td style="padding:12px;color:#666;font-size:13px;">${s.email || '-'}</td>
+      <td style="padding:12px;text-align:right;">
+        <button class="btn btn-small" data-edit="${s.id}">✏️</button>
+        <button class="btn btn-small btn-danger" data-del="${s.id}">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 function openStaffModal(staffId = null) {
@@ -237,20 +289,17 @@ function parseTCStaff(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const result = [];
   for (const line of lines) {
-    // Formato: "Ruolo\tCognome Nome" oppure "Ruolo  Cognome Nome"
     const parts = line.split(/\t+/);
     let ruoloRaw, nomeRaw;
     if (parts.length >= 2) {
       ruoloRaw = parts[0].trim();
       nomeRaw = parts.slice(1).join(' ').trim();
     } else {
-      // Prova split per doppio spazio
       const match = line.match(/^(.+?)\s{2,}(.+)$/);
       if (match) { ruoloRaw = match[1].trim(); nomeRaw = match[2].trim(); }
       else continue;
     }
     const ruolo = RUOLI_MAP[ruoloRaw.toLowerCase()] || ruoloRaw;
-    // Nome formato "Cognome Nome" o "Cognome Nome1 Nome2"
     const nameParts = nomeRaw.split(/\s+/);
     const cognome = nameParts[0] || '';
     const nome = nameParts.slice(1).join(' ') || '';
@@ -288,7 +337,6 @@ function openPasteModal() {
     parsed = parseTCStaff(text);
     if (parsed.length === 0) { alert('Nessun membro staff riconosciuto. Verifica il formato.'); return; }
 
-    // Check duplicati contro staffList esistente
     const existingNames = new Set(staffList.map(s => (s.cognome + ' ' + s.nome).toLowerCase()));
 
     const preview = overlay.querySelector('#staffParsePreview');
