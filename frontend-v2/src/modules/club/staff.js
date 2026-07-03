@@ -4,7 +4,7 @@ import { showLoading, hideLoading } from '../../utils/ui';
 let staffList = [];
 let categorie = [];
 
-const RUOLI = ['Allenatore', 'Vice Allenatore', 'Preparatore Atletico', 'Preparatore Portieri', 'Dirigente', 'Direttore Sportivo', 'Osservatore', 'Medico', 'Fisioterapista', 'Massaggiatore'];
+const RUOLI = ['Allenatore', 'Vice Allenatore', 'Preparatore Atletico', 'Preparatore Portieri', 'Dirigente', 'Direttore Sportivo', 'Direttore Generale', 'Direttore Tecnico', 'Presidente', 'Osservatore', 'Medico', 'Fisioterapista', 'Massaggiatore'];
 
 export default async function loadStaff() {
   const c = document.getElementById('pageContent');
@@ -16,7 +16,10 @@ export default async function loadStaff() {
   c.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <h1 class="page-title">👥 Staff</h1>
-      <button class="btn btn-primary" id="btnAddStaff">+ Aggiungi</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" id="btnPasteStaff">📋 Incolla da TC</button>
+        <button class="btn btn-primary" id="btnAddStaff">+ Aggiungi</button>
+      </div>
     </div>
     <div class="card">
       <table style="width:100%;border-collapse:collapse;" id="staffTable">
@@ -71,6 +74,7 @@ export default async function loadStaff() {
 
   await loadData();
   document.getElementById('btnAddStaff').addEventListener('click', () => openStaffModal());
+  document.getElementById('btnPasteStaff').addEventListener('click', openPasteModal);
   document.getElementById('staffModalClose').addEventListener('click', closeModal);
   document.getElementById('staffModalCancel').addEventListener('click', closeModal);
   document.getElementById('staffModalSave').addEventListener('click', handleSave);
@@ -205,4 +209,124 @@ async function handleDelete(id) {
   } finally {
     hideLoading();
   }
+}
+
+// ── PASTE DA TUTTOCAMPO ──
+const RUOLI_MAP = {
+  'allenatore': 'Allenatore',
+  'vice allenatore': 'Vice Allenatore',
+  'preparatore atletico': 'Preparatore Atletico',
+  'prep. atletico': 'Preparatore Atletico',
+  'preparatore portieri': 'Preparatore Portieri',
+  'all. portieri': 'Preparatore Portieri',
+  'dirigente': 'Dirigente',
+  'direttore sportivo': 'Direttore Sportivo',
+  'dir. sportivo': 'Direttore Sportivo',
+  'direttore generale': 'Direttore Generale',
+  'dir. generale': 'Direttore Generale',
+  'direttore tecnico': 'Direttore Tecnico',
+  'dir. tecnico': 'Direttore Tecnico',
+  'presidente': 'Presidente',
+  'osservatore': 'Osservatore',
+  'medico': 'Medico',
+  'fisioterapista': 'Fisioterapista',
+  'massaggiatore': 'Massaggiatore'
+};
+
+function parseTCStaff(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const result = [];
+  for (const line of lines) {
+    // Formato: "Ruolo\tCognome Nome" oppure "Ruolo  Cognome Nome"
+    const parts = line.split(/\t+/);
+    let ruoloRaw, nomeRaw;
+    if (parts.length >= 2) {
+      ruoloRaw = parts[0].trim();
+      nomeRaw = parts.slice(1).join(' ').trim();
+    } else {
+      // Prova split per doppio spazio
+      const match = line.match(/^(.+?)\s{2,}(.+)$/);
+      if (match) { ruoloRaw = match[1].trim(); nomeRaw = match[2].trim(); }
+      else continue;
+    }
+    const ruolo = RUOLI_MAP[ruoloRaw.toLowerCase()] || ruoloRaw;
+    // Nome formato "Cognome Nome" o "Cognome Nome1 Nome2"
+    const nameParts = nomeRaw.split(/\s+/);
+    const cognome = nameParts[0] || '';
+    const nome = nameParts.slice(1).join(' ') || '';
+    if (cognome) result.push({ nome, cognome, ruolo });
+  }
+  return result;
+}
+
+function openPasteModal() {
+  const overlay = document.createElement('div');
+  overlay.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1001;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:12px;max-width:550px;width:90%;max-height:85vh;overflow-y:auto;">
+      <div style="padding:16px 20px;border-bottom:1px solid #eee;"><h2 style="margin:0;font-size:18px;">📋 Importa Staff da Tuttocampo</h2><p style="margin:4px 0 0;font-size:12px;color:#888;">Incolla la sezione staff dalla scheda società</p></div>
+      <div style="padding:16px 20px;">
+        <textarea id="tcStaffInput" rows="6" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:12px;font-family:monospace;" placeholder="Allenatore\tUrilli Matteo\nDirigente\tCoppola Raffaele\n..."></textarea>
+        <button class="btn btn-primary" id="btnParseStaff" style="margin-top:8px;width:100%;">⚡ Analizza</button>
+        <div id="staffParsePreview" style="margin-top:12px;"></div>
+      </div>
+      <div style="padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn btn-secondary" id="pasteStaffClose">Chiudi</button>
+        <button class="btn btn-primary" id="pasteStaffImport" style="display:none;">✅ Importa selezionati</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#pasteStaffClose').addEventListener('click', () => overlay.remove());
+
+  let parsed = [];
+
+  overlay.querySelector('#btnParseStaff').addEventListener('click', () => {
+    const text = overlay.querySelector('#tcStaffInput').value.trim();
+    if (!text) { alert('Incolla prima i dati'); return; }
+    parsed = parseTCStaff(text);
+    if (parsed.length === 0) { alert('Nessun membro staff riconosciuto. Verifica il formato.'); return; }
+
+    // Check duplicati contro staffList esistente
+    const existingNames = new Set(staffList.map(s => (s.cognome + ' ' + s.nome).toLowerCase()));
+
+    const preview = overlay.querySelector('#staffParsePreview');
+    preview.innerHTML = '<p style="font-weight:600;margin-bottom:8px;">' + parsed.length + ' membri trovati:</p>' +
+      parsed.map((p, i) => {
+        const isDuplicate = existingNames.has((p.cognome + ' ' + p.nome).toLowerCase());
+        return `<label style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;background:${isDuplicate ? '#fff3cd' : '#f8f9fa'};margin-bottom:4px;cursor:pointer;opacity:${isDuplicate ? '0.7' : '1'};">
+          <input type="checkbox" ${isDuplicate ? '' : 'checked'} class="staffPasteCheck" data-idx="${i}" ${isDuplicate ? 'disabled' : ''}>
+          <div style="flex:1;"><span style="font-weight:600;">${p.cognome} ${p.nome}</span>${isDuplicate ? ' <span style="font-size:10px;color:#856404;">✓ già presente</span>' : ''}</div>
+          <span style="font-size:11px;color:#667eea;background:#f0f4ff;padding:3px 8px;border-radius:6px;">${p.ruolo}</span>
+        </label>`;
+      }).join('');
+    overlay.querySelector('#pasteStaffImport').style.display = 'block';
+  });
+
+  overlay.querySelector('#pasteStaffImport').addEventListener('click', async () => {
+    const checked = [...overlay.querySelectorAll('.staffPasteCheck:checked')].map(c => parseInt(c.dataset.idx));
+    const selected = checked.map(i => parsed[i]);
+    if (!selected.length) return;
+
+    const wsId = window.YFM.getUser()?.workspace_id;
+    showLoading('Importazione staff...');
+    let imported = 0;
+    try {
+      for (const s of selected) {
+        await apiFetch(`/workspaces/${wsId}/staff`, {
+          method: 'POST',
+          body: JSON.stringify({ nome: s.nome, cognome: s.cognome, ruolo: s.ruolo })
+        });
+        imported++;
+      }
+      overlay.remove();
+      alert(`✅ ${imported} membri staff importati!`);
+      await loadData();
+    } catch (err) {
+      alert('Errore: ' + err.message);
+    } finally {
+      hideLoading();
+    }
+  });
 }

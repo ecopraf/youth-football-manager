@@ -309,8 +309,8 @@ export default async function loadDashboard() {
     }).join('');
     return '<div class="result-card" style="margin-top:20px;"><h3 style="margin:0 0 12px 0;font-size:15px;color:#333;">⚽ Top Marcatori</h3>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
-      '<div><div style="font-size:11px;font-weight:700;color:#999;margin-bottom:6px;">REGIONALI</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><tbody>' + renderTable(top10Reg) + '</tbody></table></div>' +
-      '<div><div style="font-size:11px;font-weight:700;color:#667eea;margin-bottom:6px;">GIRONE</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><tbody>' + renderTable(top10Gir) + '</tbody></table></div>' +
+      '<div><div style="font-size:11px;font-weight:700;color:#999;margin-bottom:6px;">GENERALE</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><tbody>' + renderTable(top10Reg) + '</tbody></table></div>' +
+      '<div><div style="font-size:11px;font-weight:700;color:#667eea;margin-bottom:6px;">GIRONE ' + (classificaData?.info?.group_name || '') + '</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><tbody>' + renderTable(top10Gir) + '</tbody></table></div>' +
       '</div></div>';
   };
 

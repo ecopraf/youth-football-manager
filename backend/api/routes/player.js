@@ -375,6 +375,24 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     }
   });
 
+  // POST /api/squadre/:squadraId/disaggrega
+  // Rimuove giocatori aggregati dalla squadra (elimina il team_player con aggregato=true)
+  router.post('/api/squadre/:squadraId/disaggrega', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+    try {
+      const { playerIds } = req.body;
+      if (!playerIds || !playerIds.length) return res.status(400).json({ error: 'Nessun giocatore selezionato' });
+      const { error } = await supabase.from('team_player')
+        .delete()
+        .eq('team_id', req.params.squadraId)
+        .eq('aggregato', true)
+        .in('player_id', playerIds);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, count: playerIds.length });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // POST /api/squadre/:squadraId/svincola
   router.post('/api/squadre/:squadraId/svincola', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
     try {

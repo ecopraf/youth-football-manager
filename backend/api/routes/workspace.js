@@ -2,6 +2,8 @@
  * Workspace Routes — workspace CRUD, facility, stagioni, staff, categorie
  */
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   const router = express.Router();
@@ -13,7 +15,7 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
       if (!userId) return res.status(401).json({ error: 'Non autenticato' });
       const { data: user } = await supabase.from('users').select('workspace_id, is_superadmin').eq('id', userId).single();
       if (!user) return res.json([]);
-      let query = supabase.from('workspace').select('id, nome, logo_url');
+      let query = supabase.from('workspace').select('*');
       if (!user.is_superadmin && user.workspace_id) query = query.eq('id', user.workspace_id);
       const { data: workspaces, error } = await query;
       if (error) return res.status(400).json({ error: error.message });
@@ -26,9 +28,9 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   router.post('/api/workspaces', authMiddleware, async (req, res) => {
     try {
       if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin può creare workspace' });
-      const { nome, logo_url, indirizzo, telefono, email, sito_web } = req.body;
+      const { nome, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico } = req.body;
       if (!nome) return res.status(400).json({ error: 'Nome richiesto' });
-      const { data, error } = await supabase.from('workspace').insert({ nome, logo_url, indirizzo, telefono, email, sito_web }).select().single();
+      const { data, error } = await supabase.from('workspace').insert({ nome, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico }).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.status(201).json(data);
     } catch (err) {
@@ -39,8 +41,8 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   router.put('/api/workspaces/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { nome, logo_url, indirizzo, telefono, email, sito_web } = req.body;
-      const { data, error } = await supabase.from('workspace').update({ nome, logo_url, indirizzo, telefono, email, sito_web }).eq('id', id).select().single();
+      const { nome, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico } = req.body;
+      const { data, error } = await supabase.from('workspace').update({ nome, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico }).eq('id', id).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.json(data);
     } catch (err) {
@@ -48,17 +50,107 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // ── RECAP per cascade delete ──
+  router.get('/api/workspaces/:id/recap', authMiddleware, async (req, res) => {
+    try {
+      if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin' });
+      const { id } = req.params;
+      const { data: seasons } = await supabase.from('season').select('id').eq('workspace_id', id);
+      const seasonIds = (seasons || []).map(s => s.id);
+      const { data: teams } = seasonIds.length > 0
+        ? await supabase.from('team').select('id').in('season_id', seasonIds)
+        : { data: [] };
+      const teamIds = (teams || []).map(t => t.id);
+
+      let teamPlayers = 0, matches = 0, trainings = 0;
+      if (teamIds.length > 0) {
+        const { count: tpCount } = await supabase.from('team_player').select('id', { count: 'exact', head: true }).in('team_id', teamIds);
+        const { count: mCount } = await supabase.from('match').select('id', { count: 'exact', head: true }).in('team_id', teamIds);
+        const { count: trCount } = await supabase.from('training').select('id', { count: 'exact', head: true }).in('team_id', teamIds);
+        teamPlayers = tpCount || 0;
+        matches = mCount || 0;
+        trainings = trCount || 0;
+      }
+      const { count: catCount } = await supabase.from('category').select('id', { count: 'exact', head: true }).eq('workspace_id', id);
+      const { count: staffCount } = await supabase.from('staff').select('id', { count: 'exact', head: true }).eq('workspace_id', id);
+      const { count: usersCount } = await supabase.from('users').select('id', { count: 'exact', head: true }).eq('workspace_id', id);
+      const { count: facCount } = await supabase.from('facility').select('id', { count: 'exact', head: true }).eq('workspace_id', id);
+
+      res.json({
+        stagioni: seasonIds.length,
+        squadre: teamIds.length,
+        giocatori: teamPlayers,
+        partite: matches,
+        allenamenti: trainings,
+        categorie: catCount || 0,
+        staff: staffCount || 0,
+        utenti: usersCount || 0,
+        facility: facCount || 0
+      });
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // ── CASCADE DELETE ──
   router.delete('/api/workspaces/:id', authMiddleware, async (req, res) => {
     try {
       if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin può eliminare workspace' });
       const { id } = req.params;
+
+      // Raccogli IDs
       const { data: seasons } = await supabase.from('season').select('id').eq('workspace_id', id);
-      if (seasons && seasons.length > 0) return res.status(400).json({ error: 'Elimina prima le stagioni associate' });
+      const seasonIds = (seasons || []).map(s => s.id);
+      const { data: teams } = seasonIds.length > 0
+        ? await supabase.from('team').select('id').in('season_id', seasonIds)
+        : { data: [] };
+      const teamIds = (teams || []).map(t => t.id);
+
+      if (teamIds.length > 0) {
+        // Match-related
+        const { data: matchRows } = await supabase.from('match').select('id').in('team_id', teamIds);
+        const matchIds = (matchRows || []).map(m => m.id);
+        if (matchIds.length > 0) {
+          await supabase.from('match_event').delete().in('match_id', matchIds);
+          await supabase.from('match_formation').delete().in('match_id', matchIds);
+          await supabase.from('match_statistics').delete().in('match_id', matchIds);
+          await supabase.from('convocation').delete().in('match_id', matchIds);
+          await supabase.from('valutazione_partita').delete().in('partita_id', matchIds);
+          await supabase.from('match').delete().in('id', matchIds);
+        }
+        // Training-related
+        const { data: trainingRows } = await supabase.from('training').select('id').in('team_id', teamIds);
+        const trainingIds = (trainingRows || []).map(t => t.id);
+        if (trainingIds.length > 0) {
+          await supabase.from('training_attendance').delete().in('training_id', trainingIds);
+          await supabase.from('training').delete().in('id', trainingIds);
+        }
+        await supabase.from('training_config').delete().in('team_id', teamIds);
+        await supabase.from('training_template').delete().in('team_id', teamIds);
+        // Team player & staff
+        await supabase.from('team_player').delete().in('team_id', teamIds);
+        await supabase.from('team_staff').delete().in('team_id', teamIds);
+        // Teams
+        await supabase.from('team').delete().in('id', teamIds);
+      }
+
+      // Seasons, categories, staff, facility, users, import_log
+      if (seasonIds.length > 0) await supabase.from('season').delete().in('id', seasonIds);
+      await supabase.from('category').delete().eq('workspace_id', id);
+      await supabase.from('staff').delete().eq('workspace_id', id);
+      await supabase.from('facility').delete().eq('workspace_id', id);
+      await supabase.from('import_log').delete().eq('workspace_id', id);
+      await supabase.from('guest_token').delete().in('utente_id',
+        (await supabase.from('users').select('id').eq('workspace_id', id)).data?.map(u => u.id) || ['x']
+      );
+      await supabase.from('users').delete().eq('workspace_id', id);
+
+      // Workspace itself
       const { error } = await supabase.from('workspace').delete().eq('id', id);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: 'Errore server' });
+      res.status(500).json({ error: err.message || 'Errore server' });
     }
   });
 
@@ -71,6 +163,18 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // ── LOGOS disponibili ──
+  router.get('/api/logos', authMiddleware, async (req, res) => {
+    try {
+      const logosDir = path.join(__dirname, '../../..', 'frontend-v2/public/logos');
+      if (!fs.existsSync(logosDir)) return res.json([]);
+      const files = fs.readdirSync(logosDir).filter(f => /\.(png|jpg|jpeg|svg|webp)$/i.test(f));
+      res.json(files.map(f => '/logos/' + f));
+    } catch (err) {
+      res.json([]);
     }
   });
 
@@ -209,8 +313,18 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
 
   router.delete('/api/staff/:id', authMiddleware, async (req, res) => {
     try {
-      await supabase.from('team_staff').delete().eq('staff_id', req.params.id);
-      const { error } = await supabase.from('staff').delete().eq('id', req.params.id);
+      const staffId = req.params.id;
+      // Rimuovi riferimenti FK da team
+      await supabase.from('team').update({ allenatore_id: null }).eq('allenatore_id', staffId);
+      await supabase.from('team').update({ dirigente_id: null }).eq('dirigente_id', staffId);
+      await supabase.from('team').update({ preparatore_id: null }).eq('preparatore_id', staffId);
+      await supabase.from('team').update({ portieri_id: null }).eq('portieri_id', staffId);
+      // Rimuovi da convocation
+      await supabase.from('convocation').update({ convocato_da: null }).eq('convocato_da', staffId);
+      // Rimuovi da team_staff
+      await supabase.from('team_staff').delete().eq('staff_id', staffId);
+      // Elimina staff
+      const { error } = await supabase.from('staff').delete().eq('id', staffId);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
     } catch (err) {

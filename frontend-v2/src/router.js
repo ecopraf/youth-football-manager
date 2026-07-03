@@ -20,7 +20,8 @@ export function initRouter() {
     reports: () => import('./modules/performance/reports.js'),
     settings: () => import('./modules/club/settings.js'),
     staff: () => import('./modules/club/staff.js'),
-    importCenter: () => import('./modules/import/importCenter.js')
+    importCenter: () => import('./modules/import/importCenter.js'),
+    workspaces: () => import('./modules/admin/workspaces.js')
   };
 
   window.YFM.isAuthenticated = function() {

@@ -79,7 +79,7 @@ function renderRoster(c, players, scadenze) {
     gridsHtml += '<div style="margin-bottom:20px;"><h3 style="font-size:16px;font-weight:600;color:var(--blue);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--green);">' + plur[r] + ' (' + byRole[r].length + ')</h3><div class="roster-grid" id="grid' + r + '">' + renderPlayerCards(byRole[r].sort((a, b) => a.cognome.localeCompare(b.cognome))) + '</div></div>';
   });
 
-  c.innerHTML = toolbarHtml + scadenzeHtml + '<div class="roster-toolbar"><input class="search-bar" placeholder="Cerca giocatore..." id="sInput"><select class="filter-select" id="fRuolo"><option value="">Tutti i ruoli</option>' + ruoli.map(r => '<option value="' + r + '">' + plur[r] + '</option>').join('') + '</select><select class="filter-select" id="fStato"><option value="">Tutti</option><option value="Attivo">Attivo</option><option value="Aggregato">Aggregato</option><option value="Infortunato">Infortunato</option></select></div>' + gridsHtml + renderSvincolatiSection();
+  c.innerHTML = toolbarHtml + scadenzeHtml + '<div class="roster-toolbar"><input class="search-bar" placeholder="Cerca giocatore..." id="sInput"><select class="filter-select" id="fRuolo"><option value="">Tutti i ruoli</option>' + ruoli.map(r => '<option value="' + r + '">' + plur[r] + '</option>').join('') + '</select><select class="filter-select" id="fStato"><option value="">Stato: Tutti</option><option value="Attivo">Attivo</option><option value="Aggregato">Aggregato</option><option value="Infortunato">Infortunato</option></select></div>' + gridsHtml + renderSvincolatiSection();
 
   document.getElementById('btnAdd')?.addEventListener('click', () => {
     const c = document.getElementById('pageContent');
@@ -147,6 +147,11 @@ function renderPlayerCards(players) {
     const badgeText = p.aggregato ? 'AGG' : (p.stato || 'Attivo');
     card += '<span class="badge ' + badgeClass + '" style="font-size:11px;padding:4px 10px;border-radius:12px;' + badgeStyle + '">' + badgeText + '</span>';
     
+    // Bottone rimanda per aggregati (solo admin)
+    if (p.aggregato && isAdminMode && !isSelectionMode) {
+      card += '<button class="btn-disaggrega" data-pid="' + p.id + '" style="font-size:10px;padding:4px 8px;background:#E74C3C;color:white;border:none;border-radius:6px;cursor:pointer;margin-left:4px;" title="Rimanda alla categoria originale">✕</button>';
+    }
+    
     card += '</div>';
     return card;
   }).join('');
@@ -158,10 +163,26 @@ function attachCardListeners() {
   document.querySelectorAll('.roster-grid .player-card').forEach(card => {
     card.addEventListener('click', (e) => {
       if (e.target.tagName === 'BUTTON') return;
+      if (e.target.closest('.btn-disaggrega')) return;
       if (isSelectionMode && isAdminMode) {
         e.stopPropagation();
         togglePlayerSelection(card.dataset.pid, card);
       }
+    });
+  });
+  // Disaggrega buttons
+  document.querySelectorAll('.btn-disaggrega').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const pid = btn.dataset.pid;
+      const p = allPlayers.find(x => x.id === pid);
+      if (!confirm('Rimandare ' + (p ? p.nome + ' ' + p.cognome : '') + ' alla categoria originale?')) return;
+      showLoading();
+      try {
+        await apiFetch('/squadre/' + window.YFM.squadraId + '/disaggrega', { method: 'POST', body: JSON.stringify({ playerIds: [pid] }) });
+        loadRoster();
+      } catch (err) { alert('Errore: ' + err.message); }
+      finally { hideLoading(); }
     });
   });
 }
@@ -299,30 +320,77 @@ async function openAggregaModal() {
     return;
   }
 
+  // Ordina per ruolo poi cognome
+  const ruoloOrd = { Portiere: 0, Difensore: 1, Centrocampista: 2, Attaccante: 3, '-': 4 };
+  disponibili.sort((a, b) => {
+    const ra = ruoloOrd[a.ruolo] ?? 4;
+    const rb = ruoloOrd[b.ruolo] ?? 4;
+    if (ra !== rb) return ra - rb;
+    return a.cognome.localeCompare(b.cognome);
+  });
+
+  let sortMode = 'ruolo'; // 'ruolo' o 'alfa'
+  const sortDisponibili = () => {
+    if (sortMode === 'ruolo') {
+      disponibili.sort((a, b) => {
+        const ra = ruoloOrd[a.ruolo] ?? 4;
+        const rb = ruoloOrd[b.ruolo] ?? 4;
+        if (ra !== rb) return ra - rb;
+        return a.cognome.localeCompare(b.cognome);
+      });
+    } else {
+      disponibili.sort((a, b) => a.cognome.localeCompare(b.cognome));
+    }
+  };
+
   const modal = document.createElement('div');
   modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
   modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:500px;width:90%;max-height:80vh;display:flex;flex-direction:column;">' +
-    '<div style="padding:16px 20px;border-bottom:1px solid #eee;"><h2 style="margin:0;font-size:18px;">\u2795 Aggrega Giocatore</h2><p style="margin:4px 0 0;font-size:12px;color:#888;">Giocatori da categorie inferiori della stessa stagione</p></div>' +
-    '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
-    disponibili.map(p => {
-      const nascita = p.data_nascita ? p.data_nascita.split('T')[0].split('-').reverse().join('/') : '-';
-      return '<label style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:#f8f9fa;">' +
-        '<input type="checkbox" class="aggCheck" value="' + p.id + '">' +
-        '<div style="flex:1;"><div style="font-weight:600;font-size:14px;">' + p.cognome + ' ' + p.nome + '</div>' +
-        '<div style="font-size:11px;color:#888;">' + nascita + ' \u2022 ' + p.ruolo + ' \u2022 ' + p.categoria_origine + '</div></div></label>';
-    }).join('') +
-    '</div>' +
+    '<div style="padding:16px 20px;border-bottom:1px solid #eee;"><h2 style="margin:0;font-size:18px;">\u2795 Aggrega Giocatore</h2><p style="margin:4px 0 0;font-size:12px;color:#888;">Giocatori da categorie inferiori della stessa stagione</p>' +
+    '<div style="margin-top:10px;display:flex;gap:6px;"><button class="aggSortBtn" data-sort="ruolo" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid #667eea;background:#667eea;color:white;">Per Ruolo</button><button class="aggSortBtn" data-sort="alfa" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid #ddd;background:white;color:#333;">A-Z</button></div></div>' +
+    '<div id="aggListContainer" style="padding:16px 20px;overflow-y:auto;flex:1;"></div>' +
     '<div style="padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:10px;">' +
     '<button id="aggCancel" class="btn btn-secondary" style="padding:10px 16px;">Annulla</button>' +
     '<button id="aggConfirm" class="btn btn-primary" style="padding:10px 16px;background:#F39C12;color:white;border:none;" disabled>Aggrega</button></div></div>';
   document.body.appendChild(modal);
 
+  const renderAggList = () => {
+    const container = modal.querySelector('#aggListContainer');
+    container.innerHTML = disponibili.map(p => {
+      const nascita = p.data_nascita ? p.data_nascita.split('T')[0].split('-').reverse().join('/') : '-';
+      return '<label style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:#f8f9fa;">' +
+        '<input type="checkbox" class="aggCheck" value="' + p.id + '">' +
+        '<div style="flex:1;"><div style="font-weight:600;font-size:14px;">' + p.cognome + ' ' + p.nome + '</div>' +
+        '<div style="font-size:11px;color:#888;">' + nascita + ' \u2022 ' + p.ruolo + ' \u2022 ' + p.categoria_origine + '</div></div></label>';
+    }).join('');
+    container.querySelectorAll('.aggCheck').forEach(cb => {
+      cb.addEventListener('change', () => {
+        document.getElementById('aggConfirm').disabled = !modal.querySelector('.aggCheck:checked');
+      });
+    });
+  };
+  renderAggList();
+
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   document.getElementById('aggCancel').addEventListener('click', () => modal.remove());
 
-  modal.querySelectorAll('.aggCheck').forEach(cb => {
-    cb.addEventListener('change', () => {
+  // Sort toggle
+  modal.querySelectorAll('.aggSortBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Salva selezioni correnti
+      const checked = new Set([...modal.querySelectorAll('.aggCheck:checked')].map(c => c.value));
+      sortMode = btn.dataset.sort;
+      sortDisponibili();
+      renderAggList();
+      // Ripristina selezioni
+      modal.querySelectorAll('.aggCheck').forEach(cb => { if (checked.has(cb.value)) cb.checked = true; });
       document.getElementById('aggConfirm').disabled = !modal.querySelector('.aggCheck:checked');
+      modal.querySelectorAll('.aggSortBtn').forEach(b => {
+        const active = b.dataset.sort === sortMode;
+        b.style.background = active ? '#667eea' : 'white';
+        b.style.color = active ? 'white' : '#333';
+        b.style.border = active ? '1px solid #667eea' : '1px solid #ddd';
+      });
     });
   });
 
@@ -470,13 +538,20 @@ function filterRoster() {
   if (stato === 'Aggregato') f = f.filter(p => p.aggregato);
   else if (stato) f = f.filter(p => p.stato === stato && !p.aggregato);
   
-  ['Portiere', 'Difensore', 'Centrocampista', 'Attaccante'].forEach(r => {
+  const ruoli = ['Portiere', 'Difensore', 'Centrocampista', 'Attaccante'];
+  ruoli.forEach(r => {
     const grid = document.getElementById('grid' + r);
     if (grid) {
       const filtered = f.filter(p => p.ruolo === r).sort((a, b) => a.cognome.localeCompare(b.cognome));
       grid.innerHTML = renderPlayerCards(filtered);
     }
   });
+  // Also update gridNoRole
+  const gridNoRole = document.getElementById('gridNoRole');
+  if (gridNoRole) {
+    const noRoleFiltered = f.filter(p => !p.ruolo || !ruoli.includes(p.ruolo)).sort((a, b) => a.cognome.localeCompare(b.cognome));
+    gridNoRole.innerHTML = renderPlayerCards(noRoleFiltered);
+  }
   
   attachCardListeners();
 }
