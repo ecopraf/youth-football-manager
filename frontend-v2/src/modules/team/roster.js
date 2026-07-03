@@ -1,6 +1,7 @@
 import { apiFetch, API_BASE } from '../../services/api';
 import { formatDateShort, getAvatarColor } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
+import { loadNewPlayerForm } from './playerDetail.js';
 
 export { openPlayerForm, filterRoster, updateRosterGrid };
 
@@ -75,7 +76,10 @@ function renderRoster(c, players, scadenze) {
 
   c.innerHTML = toolbarHtml + scadenzeHtml + '<div class="roster-toolbar"><input class="search-bar" placeholder="Cerca giocatore..." id="sInput"><select class="filter-select" id="fRuolo"><option value="">Tutti i ruoli</option>' + ruoli.map(r => '<option value="' + r + '">' + plur[r] + '</option>').join('') + '</select><select class="filter-select" id="fStato"><option value="">Tutti gli stati</option><option value="Attivo">Attivo</option><option value="Infortunato">Infortunato</option></select></div>' + gridsHtml;
 
-  document.getElementById('btnAdd')?.addEventListener('click', () => openPlayerForm());
+  document.getElementById('btnAdd')?.addEventListener('click', () => {
+    const c = document.getElementById('pageContent');
+    if (c) loadNewPlayerForm(c);
+  });
   document.getElementById('btnImportXls')?.addEventListener('click', () => openImportXlsModal());
   document.getElementById('btnImportTc')?.addEventListener('click', () => openImportTcModal());
   document.getElementById('sInput')?.addEventListener('input', filterRoster);

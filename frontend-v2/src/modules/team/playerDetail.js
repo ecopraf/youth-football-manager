@@ -406,3 +406,86 @@ function safeFormatDate(value) {
     return 'n/d';
   }
 }
+
+// Modalità creazione nuovo giocatore — stessa UI del dettaglio
+export function loadNewPlayerForm(container) {
+  if (!container) return;
+  const isAdmin = window.YFM?.isAdmin?.() || false;
+  if (!isAdmin) return;
+
+  container.innerHTML = `
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <button class="btn btn-secondary btn-small" id="btnBackRoster">← Torna alla rosa</button>
+    </div>
+    <h1 class="page-title" style="margin-top:12px;">Nuovo Calciatore</h1>
+    <p class="page-subtitle">${window.YFM.getSquadraName()}</p>
+    <div class="card" style="margin-top:20px;">
+      <h3 class="section-title">📋 Dati Giocatore</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Nome *</label><input id="editNome" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Cognome *</label><input id="editCognome" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Nascita</label><input id="editDataNas" type="date" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Ruolo</label><select id="editRuolo" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="">-- Seleziona --</option><option value="Portiere">Portiere</option><option value="Difensore">Difensore</option><option value="Centrocampista">Centrocampista</option><option value="Attaccante">Attaccante</option></select></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia</label><input id="editNumMaglia" type="number" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Piede Preferito</label><select id="editPiede" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="">-- Seleziona --</option><option value="Destro">Destro</option><option value="Sinistro">Sinistro</option><option value="Ambidestro">Ambidestro</option></select></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Peso (kg)</label><input id="editPeso" type="number" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Altezza (cm)</label><input id="editAltezza" type="number" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="editTelefono" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Stato</label><select id="editStato" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="Attivo" selected>Attivo</option><option value="Infortunato">Infortunato</option></select></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="editCertificato" type="date" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="editMatricola" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Tipo Documento</label><input id="editTipoDoc" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Documento</label><input id="editNumDoc" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Rilasciato Da</label><input id="editRilasciatoDa" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+        <button class="btn btn-secondary" id="btnCancelNew">Annulla</button>
+        <button class="btn btn-primary" id="btnSaveNew" style="background:#667eea;">💾 Crea Giocatore</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btnBackRoster').addEventListener('click', () => window.YFM.navigateTo('roster'));
+  document.getElementById('btnCancelNew').addEventListener('click', () => window.YFM.navigateTo('roster'));
+
+  document.getElementById('btnSaveNew').addEventListener('click', async () => {
+    const capName = s => s ? s.trim().replace(/\s+/g, ' ').replace(/\b\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase()) : '';
+    const nome = capName(document.getElementById('editNome').value);
+    const cognome = capName(document.getElementById('editCognome').value);
+    if (!nome || !cognome) { alert('Nome e Cognome sono obbligatori'); return; }
+    const dataNascita = document.getElementById('editDataNas').value || null;
+    if (dataNascita) {
+      const year = parseInt(dataNascita.split('-')[0]);
+      const squadra = window.YFM.getSquadra();
+      const annoDa = squadra?.category?.anno_da;
+      if (annoDa && (year < annoDa || year > annoDa + 2)) {
+        alert(`Anno di nascita ${year} non compatibile con ${squadra.category.nome} (${annoDa}-${annoDa + 2})`);
+        return;
+      }
+    }
+    const d = {
+      nome, cognome, data_nascita: dataNascita,
+      ruolo: document.getElementById('editRuolo').value || null,
+      numero_maglia: document.getElementById('editNumMaglia').value ? parseInt(document.getElementById('editNumMaglia').value) : null,
+      piede_preferito: document.getElementById('editPiede').value || null,
+      peso: document.getElementById('editPeso').value ? parseFloat(document.getElementById('editPeso').value) : null,
+      altezza: document.getElementById('editAltezza').value ? parseInt(document.getElementById('editAltezza').value) : null,
+      telefono: document.getElementById('editTelefono').value || null,
+      stato: document.getElementById('editStato').value,
+      data_visita_medica: document.getElementById('editCertificato').value || null,
+      matricola_figc: document.getElementById('editMatricola').value || null,
+      tipo_documento: document.getElementById('editTipoDoc').value || null,
+      numero_documento: document.getElementById('editNumDoc').value || null,
+      rilasciato_da: document.getElementById('editRilasciatoDa').value || null
+    };
+    showLoading('Creazione...');
+    try {
+      await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori', { method: 'POST', body: JSON.stringify(d) });
+      window.YFM.navigateTo('roster');
+    } catch (e) {
+      alert('Errore: ' + e.message);
+    } finally {
+      hideLoading();
+    }
+  });
+}
