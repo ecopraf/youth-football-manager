@@ -71,14 +71,15 @@ export async function loadSquadre(stagioneId) {
           return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${displayNome}</option>`;
         }).join('');
       } else {
-        // Più stagioni: optgroup
+        // Più stagioni: optgroup con anno nelle opzioni
         sel.innerHTML = stagKeys.map(stag => {
           const opts = byStag[stag].map(s => {
             const categoriaNome = s.category?.nome || s.categoria || '';
             const tipoCampionato = s.category?.tipo_campionato || '';
-            const displayNome = categoriaNome && tipoCampionato 
+            const base = categoriaNome && tipoCampionato 
               ? `${categoriaNome} ${tipoCampionato}` 
               : (categoriaNome || s.nome);
+            const displayNome = `${base} (${stag})`;
             return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${displayNome}</option>`;
           }).join('');
           return `<optgroup label="📅 ${stag}">${opts}</optgroup>`;
@@ -125,8 +126,8 @@ window.YFM.getSquadraName = () => {
   if (!s) return 'Squadra';
   const categoriaNome = s.category?.nome || s.categoria || '';
   const tipoCampionato = s.category?.tipo_campionato || '';
-  if (categoriaNome && tipoCampionato) return `${categoriaNome} ${tipoCampionato}`;
-  return categoriaNome || s.nome;
+  const base = categoriaNome && tipoCampionato ? `${categoriaNome} ${tipoCampionato}` : (categoriaNome || s.nome);
+  return s._stagione ? `${base} (${s._stagione})` : base;
 };
 
 window.YFM.getSquadra = () => {
