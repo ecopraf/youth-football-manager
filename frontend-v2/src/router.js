@@ -19,6 +19,7 @@ export function initRouter() {
     stats: () => import('./modules/performance/stats.js'),
     reports: () => import('./modules/performance/reports.js'),
     settings: () => import('./modules/club/settings.js'),
+    seasonsCategories: () => import('./modules/club/seasonsCategories.js'),
     staff: () => import('./modules/club/staff.js'),
     importCenter: () => import('./modules/import/importCenter.js'),
     workspaces: () => import('./modules/admin/workspaces.js')

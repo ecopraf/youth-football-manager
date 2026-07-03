@@ -55,6 +55,38 @@ module.exports = function createTeamRouter({ supabase, authMiddleware }) {
     }
   });
 
+  router.put('/api/stagioni/:id', authMiddleware, async (req, res) => {
+    try {
+      const { nome, data_inizio, data_fine, attiva } = req.body;
+      const update = {};
+      if (nome !== undefined) update.nome = nome;
+      if (data_inizio !== undefined) update.data_inizio = data_inizio;
+      if (data_fine !== undefined) update.data_fine = data_fine;
+      if (attiva !== undefined) update.attiva = attiva;
+      const { data, error } = await supabase.from('season').update(update).eq('id', req.params.id).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  router.post('/api/categorie/:catId/team', authMiddleware, async (req, res) => {
+    try {
+      const { season_id, nome } = req.body;
+      if (!season_id) return res.status(400).json({ error: 'season_id richiesto' });
+      const { data: cat } = await supabase.from('category').select('nome').eq('id', req.params.catId).single();
+      const teamName = nome || cat?.nome || 'Squadra';
+      const { data: existing } = await supabase.from('team').select('id').eq('season_id', season_id).eq('category_id', req.params.catId);
+      if (existing && existing.length > 0) return res.status(400).json({ error: 'Team già esistente per questa categoria e stagione' });
+      const { data, error } = await supabase.from('team').insert({ season_id, category_id: req.params.catId, nome: teamName }).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.status(201).json(data);
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
   router.delete('/api/stagioni/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
