@@ -26,6 +26,8 @@ export function setupLayout() {
 
   const sidebar = document.getElementById('sidebar');
   const menuBtn = document.getElementById('menuBtn');
+  const notifBadge = document.getElementById('notifBadge');
+  if (notifBadge) notifBadge.addEventListener('click', () => window.YFM.navigateTo('notifications'));
   const sidebarUser = document.getElementById('sidebarUser');
   const headerUserAvatar = document.getElementById('headerUserAvatar');
   const userDropdown = document.getElementById('userDropdown');

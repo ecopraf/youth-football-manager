@@ -74,7 +74,7 @@ function render() {
               <div style="font-size:12px;color:#666;margin-top:2px;">${s.data_inizio || ''} → ${s.data_fine || ''}</div>
             </div>
             <div style="display:flex;gap:6px;">
-              ${!s.attiva ? `<button class="btn btn-small" data-activate="${s.id}" title="Attiva">✅</button>` : ''}
+              ${!s.attiva ? `<button class="btn btn-small" data-activate="${s.id}" title="Attiva questa stagione" style="background:#22c55e;color:white;border-color:#22c55e;">✅ Attiva</button>` : `<span style="font-size:12px;color:#22c55e;font-weight:600;">● Corrente</span>`}
               <button class="btn btn-small btn-danger" data-del-season="${s.id}" title="Elimina">🗑️</button>
             </div>
           </div>
@@ -178,14 +178,10 @@ async function addSeason() {
 }
 
 async function activateSeason(id) {
-  if (!confirm('Attivare questa stagione? Le altre verranno disattivate.')) return;
+  const s = seasons.find(x => x.id === id);
+  if (!confirm(`Attivare la stagione "${s?.nome}"? L'altra verrà disattivata.`)) return;
   showLoading();
   try {
-    // Disattiva tutte
-    for (const s of seasons) {
-      if (s.attiva) await apiFetch(`/stagioni/${s.id}`, { method: 'PUT', body: JSON.stringify({ attiva: false }) });
-    }
-    // Attiva quella selezionata
     await apiFetch(`/stagioni/${id}`, { method: 'PUT', body: JSON.stringify({ attiva: true }) });
     await loadData();
     render();

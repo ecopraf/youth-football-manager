@@ -62,7 +62,16 @@ module.exports = function createTeamRouter({ supabase, authMiddleware }) {
       if (nome !== undefined) update.nome = nome;
       if (data_inizio !== undefined) update.data_inizio = data_inizio;
       if (data_fine !== undefined) update.data_fine = data_fine;
-      if (attiva !== undefined) update.attiva = attiva;
+      if (attiva !== undefined) {
+        update.attiva = attiva;
+        // Se si attiva una stagione, disattiva le altre dello stesso workspace
+        if (attiva === true) {
+          const { data: thisSeason } = await supabase.from('season').select('workspace_id').eq('id', req.params.id).single();
+          if (thisSeason) {
+            await supabase.from('season').update({ attiva: false }).eq('workspace_id', thisSeason.workspace_id).neq('id', req.params.id);
+          }
+        }
+      }
       const { data, error } = await supabase.from('season').update(update).eq('id', req.params.id).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.json(data);
