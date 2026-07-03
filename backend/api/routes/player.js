@@ -47,6 +47,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         data_visita_medica: r.calciatore.data_visita_medica, scadenza_visita_medica: r.calciatore.scadenza_visita_medica,
         matricola_figc: r.calciatore.matricola_figc, tipo_documento: r.calciatore.tipo_documento,
         numero_documento: r.calciatore.numero_documento, rilasciato_da: r.calciatore.rilasciato_da,
+        contatti_genitori: r.calciatore.contatti_genitori || [],
         numero_maglia: r.numero_maglia, ruolo: r.ruolo_preferito, stato: r.stato,
         aggregato: r.aggregato || false
       })));
@@ -77,7 +78,8 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         tipo_documento: c.tipo_documento || null, numero_documento: c.numero_documento || null,
         rilasciato_da: c.rilasciato_da || null, data_visita_medica: toDate(c.data_visita_medica),
         scadenza_visita_medica: toDate(c.scadenza_visita_medica),
-        tesserato_dal: toDate(c.tesserato_dal), tesserato_fino_al: toDate(c.tesserato_fino_al)
+        tesserato_dal: toDate(c.tesserato_dal), tesserato_fino_al: toDate(c.tesserato_fino_al),
+        contatti_genitori: c.contatti_genitori || []
       }).select().single();
       if (error) return res.status(500).json({ error: error.message });
 
@@ -154,7 +156,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         }
       }
 
-      const { data, error } = await supabase.from('player').update({
+      const updateData = {
         nome: c.nome, cognome: c.cognome, data_nascita: c.data_nascita,
         telefono: c.telefono || null, email: c.email || null,
         ruolo_principale: c.ruolo || c.ruolo_principale || null,
@@ -164,7 +166,9 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         data_visita_medica: toDate(c.data_visita_medica), scadenza_visita_medica: toDate(c.scadenza_visita_medica),
         luogo_nascita: c.luogo_nascita || null, nazionalita: c.nazionalita || null,
         residenza: c.residenza || null, note: c.note || null
-      }).eq('id', req.params.id).select().single();
+      };
+      if (c.contatti_genitori !== undefined) updateData.contatti_genitori = c.contatti_genitori;
+      const { data, error } = await supabase.from('player').update(updateData).eq('id', req.params.id).select().single();
       if (error) return res.status(400).json({ error: error.message });
 
       if (c.numero_maglia !== undefined || c.ruolo || c.stato) {

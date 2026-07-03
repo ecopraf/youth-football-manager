@@ -593,13 +593,38 @@ function openPlayerForm(pid) {
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="pfTel" value="' + (p ? p.telefono || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="pfVM" type="date" value="' + (p && p.data_visita_medica ? p.data_visita_medica.split('T')[0] : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="pfFigc" value="' + (p ? p.matricola_figc || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div></div>' +
-    '<div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;">📄 DOCUMENTAZIONE</div>' +
+    '<div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;margin-top:20px;">👨‍👩‍👦 CONTATTI GENITORI</div>' +
+    '<div id="contattiGenitori"></div>' +
+    '<button type="button" id="addContatto" style="margin-top:8px;padding:6px 12px;border:1px dashed #667eea;background:none;color:#667eea;border-radius:6px;cursor:pointer;font-size:12px;">+ Aggiungi contatto</button>' +
+    '<div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;margin-top:20px;">📄 DOCUMENTAZIONE</div>' +
     '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Tipo Doc</label><input id="pfTD" value="' + (p ? p.tipo_documento || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">N. Doc</label><input id="pfND" value="' + (p ? p.numero_documento || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Rilasciato Da</label><input id="pfRD" value="' + (p ? p.rilasciato_da || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div></div>' +
     '</div><div style="padding:16px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:12px;"><button id="btnCancelForm" class="btn btn-secondary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:#f0f0f0;border:none;">Annulla</button><button id="saveBtn" class="btn btn-primary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:var(--primary,#667eea);color:white;border:none;">Salva</button></div></div>';
   document.body.appendChild(modal);
+  
+  // --- Contatti genitori logic ---
+  const contattiContainer = document.getElementById('contattiGenitori');
+  const existingContatti = (p && p.contatti_genitori) || [];
+  function addContattoRow(c = {}) {
+    const row = document.createElement('div');
+    row.style = 'display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;';
+    row.innerHTML = `<select class="cg-tipo" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;"><option value="Padre" ${c.tipo === 'Padre' ? 'selected' : ''}>Padre</option><option value="Madre" ${c.tipo === 'Madre' ? 'selected' : ''}>Madre</option><option value="Tutore" ${c.tipo === 'Tutore' ? 'selected' : ''}>Tutore</option></select><input class="cg-nome" placeholder="Nome" value="${c.nome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><input class="cg-tel" placeholder="Cellulare" value="${c.telefono || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><button type="button" style="background:none;border:none;color:#E74C3C;font-size:18px;cursor:pointer;">×</button>`;
+    row.querySelector('button').onclick = () => row.remove();
+    contattiContainer.appendChild(row);
+  }
+  existingContatti.forEach(c => addContattoRow(c));
+  document.getElementById('addContatto').onclick = () => addContattoRow();
+  function getContatti() {
+    return [...contattiContainer.querySelectorAll('div')].map(row => {
+      const tipo = row.querySelector('.cg-tipo')?.value;
+      const nome = row.querySelector('.cg-nome')?.value?.trim();
+      const telefono = row.querySelector('.cg-tel')?.value?.trim();
+      return (nome || telefono) ? { tipo, nome, telefono } : null;
+    }).filter(Boolean);
+  }
+  // --- Fine contatti genitori ---
   
   const closeModal = () => modal.remove();
   
@@ -636,7 +661,8 @@ function openPlayerForm(pid) {
       matricola_figc: document.getElementById('pfFigc').value || null,
       tipo_documento: document.getElementById('pfTD').value || null,
       numero_documento: document.getElementById('pfND').value || null,
-      rilasciato_da: document.getElementById('pfRD').value || null
+      rilasciato_da: document.getElementById('pfRD').value || null,
+      contatti_genitori: getContatti()
     };
     
     showLoading();
