@@ -71,7 +71,8 @@ export function setCurrentUser(user) {
 // Funzione per chiamate API con timeout e gestione errori
 export async function apiFetch(endpoint, options = {}) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000); // 30 sec timeout
+  const timeoutMs = options.timeout || 30000;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   
   // Recupera token se presente
   const token = localStorage.getItem('yfm_token');

@@ -244,7 +244,7 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Staff | `modules/club/staff.js` | Due sezioni: Staff Tecnico (filtrato per categorie_accesso per allenatore) + Organigramma Societario (solo admin). TC paste import. Visibile a admin + allenatore |
 | Workspace | `modules/club/workspace.js` | Info società, caricamento facility |
 | Import Center | `modules/import/importCenter.js` | Pagina centralizzata con 6 card import TC + 4 card Gazzetta Regionale, wizard testo SGS, batch formazioni TC, wizard GR 3-step, log storico DB |
-| Loghi Squadre | `frontend-v2/public/logos/` | 40+ loghi PNG da Tuttocampo, matching fuzzy, logo workspace, convocazioni layout PDF (3 colonne), dettaglio partita logo+nome vs logo+nome, distinta 80px, header 40px |
+| Loghi Squadre | `frontend-v2/public/logos/` | 777+ loghi PNG da Tuttocampo e GR, matching fuzzy, logo workspace, convocazioni layout PDF (3 colonne), dettaglio partita logo+nome vs logo+nome, distinta 80px, header 40px, wizard batch GR (superadmin) con confronto aggiornamenti |
 | Gazzetta Regionale | `backend/api/routes/gazzettaRegionale.js` | Import classifica/calendario/marcatori/loghi da GR API pubblica, wizard config, fuzzy match, dashboard widget |
 | Workspace Switcher | `modules/club/workspaceSwitcher.js` | Dropdown select nella sidebar per superadmin |
 | Workspace CRUD | `modules/admin/workspaces.js` | Gestione workspace superadmin: create/edit/delete cascade, TC paste parser, auto-logo fuzzy match |
@@ -290,7 +290,7 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Team counters | 40c6736 | Contatori giocatori/staff nelle card team pagina Stagioni |
 | Gestione giocatori avanzata | 3f7b8ae | Validazione anno nascita per categoria, normalizzazione nomi, creazione da playerDetail, custom alert modale, DELETE endpoint, svincolo/riattivazione, aggregazione categorie inferiori, recupera svincolati workspace |
 | Import Center | - | Pagina centralizzata 6 card, parser testo SGS, batch formazioni TC, log storico DB, voce sidebar |
-| Loghi Squadre TC | - | Scraping automatico loghi da TC, 40+ PNG, matching fuzzy acronimi, logo workspace in dashboard/dettaglio/convocazioni/distinta |
+| Loghi Squadre TC + GR | - | 777+ loghi PNG da TC e GR, matching fuzzy acronimi, logo workspace, wizard batch GR (superadmin), confronto aggiornamenti pending |
 
 ### ⏸️ SOSPESI
 
@@ -616,7 +616,9 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 | 56259b8 | feat: dashboard risultati casa/trasferta, fix penalità classifica, riordino sidebar, ultima giornata GR con loghi |
 | 25e5277 | docs: aggiorna documentazione con integrazione Gazzetta Regionale + fix label import risultati |
 | f0d4423 | feat: integrazione Gazzetta Regionale — classifica, calendario, marcatori, loghi, wizard config, dashboard widget |
-| (pending) | feat: sistema loghi squadre — scraping TC, matching fuzzy, logo workspace, integrazione UI |
+| (pending) | feat: wizard loghi batch GR — scan campionati selezionati, download nuovi, confronto aggiornamenti con provenienza, UI pending (superadmin) |
+| (pending) | fix: card Import Center visibili solo superadmin — corretto window.YFM.getUser() vs currentUser |
+| (pending) | feat: apiFetch timeout configurabile (default 30s, wizard 300s) |
 | 2bc61df | feat: fallback manuale import rosa TC (supporta testo copiato + HTML) |
 | c5044c7 | fix: usa fetch nativo per proxy TC |
 | b549848 | feat: supporto Cloudflare Worker proxy per TC |

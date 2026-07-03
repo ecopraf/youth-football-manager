@@ -83,6 +83,24 @@
   - Distinta: loghi ingranditi (80px)
   - Header app: logo workspace 40px
   - Script manuale: `backend/scripts/scrape-logos.js <url-classifica-tc>`
+- [x] Wizard Loghi Batch da Gazzetta Regionale (solo superadmin)
+  - Script batch `backend/scripts/import-loghi-gr.js`: naviga tutti levels/championships/groups GR
+  - Scarica automaticamente loghi mancanti da CDN GR (webp/png)
+  - 777+ loghi in `frontend-v2/public/logos/` (~4.8 MB totale, media 4.4 KB/logo)
+  - Wizard UI in Import Center con selezione granulare:
+    - Step 1: scelta livello (Giovanili / Dilettanti)
+    - Step 2: multi-select campionati (es. U17 Elite, U15 Regionali, U14 Provinciali Roma)
+    - Scan mirato solo sui campionati selezionati (pochi secondi vs minuti)
+  - Rilevamento aggiornamenti: confronto dimensione file locale vs remoto
+  - Loghi aggiornati salvati in `.pending/` per confronto visivo vecchio→nuovo
+  - UI confronto: griglia con preview affiancata + provenienza (📍 campionato + girone)
+  - Bottoni "Accetta tutti" / "Rifiuta tutti" + select individuale per logo
+  - Endpoint `POST /api/gr/logos-wizard` (scan batch con filtro `championshipIds`, solo superadmin)
+  - Endpoint `POST /api/gr/logos-confirm` (conferma/rifiuta pending)
+  - Endpoint `GET /api/gr/logos-pending` (lista pending per riapertura UI)
+  - `apiFetch` supporta timeout custom (default 30s, wizard usa 300s)
+  - `.pending/` in `.gitignore` (mai committato)
+  - Card Import Center limitate a superadmin (fix `window.YFM.getUser()` vs `currentUser`)
 - [x] Normalizzazione accenti import PDF SGS
   - `ACCENT_MAP` in `pdfCalendarioParser.js` e `importUtils.js`: "Citta" → "Città", "Universita" → "Università"
   - Applicata in `normalizeTeamName()` dopo Title Case

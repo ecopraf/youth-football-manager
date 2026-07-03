@@ -247,17 +247,22 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
   router.post('/api/gr/logos-wizard', authMiddleware, async (req, res) => {
     if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin' });
 
-    const { levels = [1, 2] } = req.body || {};
+    const { levels = [1], championshipIds } = req.body || {};
     if (!fs.existsSync(LOGOS_DIR)) fs.mkdirSync(LOGOS_DIR, { recursive: true });
     if (!fs.existsSync(PENDING_DIR)) fs.mkdirSync(PENDING_DIR, { recursive: true });
 
     let newImported = 0, unchanged = 0, pendingUpdates = 0, errors = 0, groupsScanned = 0;
-    const updates = []; // loghi con dimensione diversa
+    const updates = [];
 
     try {
       for (const levelId of levels) {
-        const championships = await fetchChampionships(levelId);
+        let championships = await fetchChampionships(levelId);
         if (!Array.isArray(championships)) continue;
+
+        // Filtra per championshipIds se forniti
+        if (Array.isArray(championshipIds) && championshipIds.length > 0) {
+          championships = championships.filter(c => championshipIds.includes(String(c.id)));
+        }
 
         for (const champ of championships) {
           await sleep(DELAY_MS);
@@ -267,6 +272,7 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
           for (const group of groups) {
             await sleep(DELAY_MS);
             groupsScanned++;
+            const source = `${champ.text} - Gir. ${group.text}`;
 
             let calData;
             try { calData = await fetchCalendario(levelId, champ.id, group.id); } catch { continue; }
@@ -303,7 +309,8 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
                         nome: logo.nome, fileName, nomeNorm,
                         oldSize: existingSize, newSize: buffer.length,
                         oldPath: '/logos/' + fileName,
-                        newPath: '/logos/.pending/' + fileName
+                        newPath: '/logos/.pending/' + fileName,
+                        source
                       });
                     }
                     pendingUpdates++;
