@@ -6,6 +6,27 @@ const express = require('express');
 function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
   const router = express.Router();
 
+  // Normalizza nome: trim spazi multipli, prima lettera maiuscola ogni parola
+  function normalizeName(str) {
+    if (!str) return str;
+    return str.trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\b\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
+  }
+
+  // Valida anno nascita rispetto alla categoria del team
+  async function validateBirthYear(dataNascita, teamId) {
+    if (!dataNascita) return null; // non obbligatorio
+    const year = parseInt(dataNascita.split('-')[0]);
+    if (!year) return null;
+    const { data: team } = await supabase.from('team').select('category:category_id(anno_da, anno_a, nome)').eq('id', teamId).single();
+    if (!team?.category?.anno_da) return null;
+    const annoDa = team.category.anno_da;
+    // Il giocatore deve essere nato nell'anno di riferimento o successivo (più giovane)
+    if (year < annoDa) {
+      return `Anno di nascita ${year} non compatibile con ${team.category.nome} (anno rif. ${annoDa}+)`;
+    }
+    return null;
+  }
+
   // GET /api/squadre/:squadraId/calciatori
   router.get('/api/squadre/:squadraId/calciatori', authMiddleware, async (req, res) => {
     try {
@@ -29,7 +50,13 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
   router.post('/api/squadre/:squadraId/calciatori', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
     try {
       const c = req.body;
+      c.nome = normalizeName(c.nome);
+      c.cognome = normalizeName(c.cognome);
       const toDate = (val) => val && val.trim() ? val.trim() : null;
+
+      // Validazione anno nascita
+      const birthErr = await validateBirthYear(c.data_nascita, req.params.squadraId);
+      if (birthErr) return res.status(400).json({ error: birthErr });
 
       const { data: cal, error } = await supabase.from('player').insert({
         nome: c.nome, cognome: c.cognome, data_nascita: c.data_nascita || null, sesso: c.sesso || 'M',
@@ -105,7 +132,18 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
   router.put('/api/calciatori/:id', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
     try {
       const c = req.body;
+      if (c.nome) c.nome = normalizeName(c.nome);
+      if (c.cognome) c.cognome = normalizeName(c.cognome);
       const toDate = (val) => val && val.trim() ? val.trim() : null;
+
+      // Validazione anno nascita se cambiata
+      if (c.data_nascita) {
+        const { data: tp } = await supabase.from('team_player').select('team_id').eq('player_id', req.params.id).limit(1).single();
+        if (tp) {
+          const birthErr = await validateBirthYear(c.data_nascita, tp.team_id);
+          if (birthErr) return res.status(400).json({ error: birthErr });
+        }
+      }
 
       const { data, error } = await supabase.from('player').update({
         nome: c.nome, cognome: c.cognome, data_nascita: c.data_nascita,
@@ -155,6 +193,12 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
   router.post('/api/calciatori/:id/move', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
     try {
       const { fromSquadraId, toSquadraId } = req.body;
+      // Validazione anno nascita rispetto alla categoria di destinazione
+      const { data: player } = await supabase.from('player').select('data_nascita').eq('id', req.params.id).single();
+      if (player?.data_nascita) {
+        const birthErr = await validateBirthYear(player.data_nascita, toSquadraId);
+        if (birthErr) return res.status(400).json({ error: birthErr });
+      }
       const { error } = await supabase.from('team_player').update({ team_id: toSquadraId }).eq('player_id', req.params.id).eq('team_id', fromSquadraId);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });

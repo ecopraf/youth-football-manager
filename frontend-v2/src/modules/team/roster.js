@@ -316,13 +316,27 @@ function openPlayerForm(pid) {
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
   
   document.getElementById('saveBtn').addEventListener('click', async () => {
-    const nome = document.getElementById('pfN').value.trim();
-    const cognome = document.getElementById('pfC').value.trim();
+    let nome = document.getElementById('pfN').value.trim().replace(/\s+/g, ' ');
+    let cognome = document.getElementById('pfC').value.trim().replace(/\s+/g, ' ');
     if (!nome || !cognome) { alert('Nome e Cognome sono obbligatori'); return; }
+    // Normalizza: prima lettera maiuscola
+    nome = nome.replace(/\b\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
+    cognome = cognome.replace(/\b\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
+    // Validazione anno nascita rispetto alla categoria
+    const dataNascita = document.getElementById('pfD').value || null;
+    if (dataNascita) {
+      const year = parseInt(dataNascita.split('-')[0]);
+      const squadra = window.YFM.getSquadra();
+      const annoDa = squadra?.category?.anno_da;
+      if (annoDa && year < annoDa) {
+        alert(`Anno di nascita ${year} non compatibile con ${squadra.category.nome} (anno rif. ${annoDa}+)`);
+        return;
+      }
+    }
     const d = {
       nome,
       cognome,
-      data_nascita: document.getElementById('pfD').value || null,
+      data_nascita: dataNascita,
       telefono: document.getElementById('pfTel').value || null,
       data_visita_medica: document.getElementById('pfVM').value || null,
       ruolo: document.getElementById('pfR').value || null,

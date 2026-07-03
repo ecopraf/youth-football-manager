@@ -289,10 +289,25 @@ function renderPlayerDetail(container, data) {
     });
 
     document.getElementById('btnSaveEdit')?.addEventListener('click', async () => {
+      const capName = s => s ? s.trim().replace(/\s+/g, ' ').replace(/\b\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase()) : '';
+      const nome = capName(document.getElementById('editNome').value);
+      const cognome = capName(document.getElementById('editCognome').value);
+      if (!nome || !cognome) { alert('Nome e Cognome sono obbligatori'); return; }
+      const dataNascita = document.getElementById('editDataNas').value || null;
+      // Validazione anno nascita
+      if (dataNascita) {
+        const year = parseInt(dataNascita.split('-')[0]);
+        const squadra = window.YFM.getSquadra();
+        const annoDa = squadra?.category?.anno_da;
+        if (annoDa && year < annoDa) {
+          alert(`Anno di nascita ${year} non compatibile con ${squadra.category.nome} (anno rif. ${annoDa}+)`);
+          return;
+        }
+      }
       const d = {
-        nome: document.getElementById('editNome').value,
-        cognome: document.getElementById('editCognome').value,
-        data_nascita: document.getElementById('editDataNas').value,
+        nome,
+        cognome,
+        data_nascita: dataNascita,
         ruolo: document.getElementById('editRuolo').value,
         numero_maglia: document.getElementById('editNumMaglia').value ? parseInt(document.getElementById('editNumMaglia').value) : null,
         piede_preferito: document.getElementById('editPiede').value || null,
