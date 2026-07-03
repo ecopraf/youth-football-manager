@@ -41,7 +41,7 @@ module.exports = function createTeamRouter({ supabase, authMiddleware }) {
             const ruolo = (sa.ruolo_squadra || '').toLowerCase();
             if ((ruolo.includes('allenatore') || ruolo.includes('capo allenatore')) && !ruolo.includes('portieri')) team.allenatore = team.allenatore || nome;
             else if (ruolo.includes('portieri')) team.allenatore_portieri = team.allenatore_portieri || nome;
-            else if (ruolo.includes('dirigente') || ruolo.includes('direttore')) {
+            else if (ruolo === 'dirigente') {
               if (!team.dirigente) team.dirigente = nome;
               else if (!team.dirigente2) team.dirigente2 = nome;
             }
