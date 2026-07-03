@@ -98,7 +98,7 @@ function renderSections() {
   const isAdmin = window.YFM.isAdmin();
 
   const user = window.YFM.getUser();
-  const squadreAccesso = user?.squadre_accesso || [];
+  const squadreAccesso = user?.categorie_accesso || user?.squadre_accesso || [];
   const filterByCategory = !isAdmin && squadreAccesso.length > 0;
 
   let tecnici = staffList.filter(s => !isSocietario(s.ruolo));
