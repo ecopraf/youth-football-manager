@@ -73,7 +73,8 @@ api/
 ├── helpers/
 │   ├── tuttocampo.js           — Login/request Tuttocampo
 │   ├── importUtils.js          — Normalizzazione nomi, parsing eventi, log, scrape loghi
-│   └── importFormationTC.js    — Import formazioni da Tuttocampo
+│   ├── importFormationTC.js    — Import formazioni da Tuttocampo
+│   └── gazzettaRegionale.js    — Fetch classifica/calendario/marcatori da GR API
 └── routes/
     ├── auth.js                 — Login, register, users CRUD, guest
     ├── workspace.js            — Workspace, facility, stagioni, categorie
@@ -87,7 +88,8 @@ api/
     ├── roster.js               — Import rosa XLS/Tuttocampo
     ├── importCalendario.js     — PDF, testo SGS, import-log
     ├── importTuttocampo.js     — Scraping calendario TC, eventi, loghi automatici
-    └── importConfirm.js        — Confirm TC, formations batch, matches-without-formation
+    ├── importConfirm.js        — Confirm TC, formations batch, matches-without-formation
+    └── gazzettaRegionale.js    — Classifica, calendario, marcatori, loghi da GR API
 ```
 
 ---
@@ -121,7 +123,7 @@ api/
 | `season` | Stagione sportiva | workspace_id |
 | `category` | Categorie (U14, U15...) | workspace_id |
 | `competition` | Campionati | - |
-| `team` | Squadra | season_id, category_id |
+| `team` | Squadra | season_id, category_id, classifica_url |
 | `player` | Giocatore | - |
 | `team_player` | Associazione giocatore-squadra | team_id, player_id |
 | `match` | Partita | team_id, competition_id |

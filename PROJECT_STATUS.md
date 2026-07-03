@@ -241,8 +241,9 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Reports | `modules/performance/reports.js` | Report Partita, Stagionale, Giocatore |
 | Settings | `modules/club/settings.js` | Stagione, categoria, staff |
 | Workspace | `modules/club/workspace.js` | Info società, caricamento facility |
-| Import Center | `modules/import/importCenter.js` | Pagina centralizzata con 6 card import, wizard testo SGS, batch formazioni TC, log storico DB |
+| Import Center | `modules/import/importCenter.js` | Pagina centralizzata con 6 card import TC + 4 card Gazzetta Regionale, wizard testo SGS, batch formazioni TC, wizard GR 3-step, log storico DB |
 | Loghi Squadre | `frontend-v2/public/logos/` | 40+ loghi PNG da Tuttocampo, matching fuzzy, logo workspace, convocazioni layout PDF (3 colonne), dettaglio partita logo+nome vs logo+nome, distinta 80px, header 40px |
+| Gazzetta Regionale | `backend/api/routes/gazzettaRegionale.js` | Import classifica/calendario/marcatori/loghi da GR API pubblica, wizard config, fuzzy match, dashboard widget |
 | Workspace Switcher | `modules/club/workspaceSwitcher.js` | Dropdown select nella sidebar per superadmin |
 | Gestione Utenti | `modules/admin/users.js` | CRUD utenti sistema (Admin) |
 | Link Guest | `modules/admin/guestLinks.js` | Genera/revoca link accesso guest (Admin) |
@@ -272,6 +273,7 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Facility Campo di Casa | - | Endpoint, settings UI, indirizzo in convocazioni/distinta |
 | Workspace Switcher v2 | - | Dropdown select in sidebar per superadmin, rimosso modal |
 | Import TC Formazioni | - | Scraping formazioni da MatchFormations.php, fuzzy match, convocazioni+formazioni+eventi |
+| Gazzetta Regionale | f0d4423 | Import classifica/calendario/marcatori/loghi da API pubblica GR, wizard config, dashboard widget, fuzzy match |
 | Import Center | - | Pagina centralizzata 6 card, parser testo SGS, batch formazioni TC, log storico DB, voce sidebar |
 | Loghi Squadre TC | - | Scraping automatico loghi da TC, 40+ PNG, matching fuzzy acronimi, logo workspace in dashboard/dettaglio/convocazioni/distinta |
 
@@ -561,6 +563,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
+| f0d4423 | feat: integrazione Gazzetta Regionale — classifica, calendario, marcatori, loghi, wizard config, dashboard widget |
 | (pending) | feat: sistema loghi squadre — scraping TC, matching fuzzy, logo workspace, integrazione UI |
 | 2bc61df | feat: fallback manuale import rosa TC (supporta testo copiato + HTML) |
 | c5044c7 | fix: usa fetch nativo per proxy TC |
@@ -580,7 +583,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 ---
 
-*Ultimo aggiornamento: 3 Luglio 2026 (Loghi migliorati, normalizzazione accenti, proxy TC, fallback manuale, workspace Albalonga)*
+*Ultimo aggiornamento: 4 Luglio 2026 (Integrazione Gazzetta Regionale, wizard config, import calendario/loghi GR, dashboard classifica widget)*
 
 ---
 

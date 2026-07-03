@@ -83,7 +83,8 @@ youth-football-manager/
 │   │   ├── helpers/
 │   │   │   ├── tuttocampo.js     # Login/request Tuttocampo
 │   │   │   ├── importUtils.js    # Normalizzazione, parsing, log, scrape loghi
-│   │   │   └── importFormationTC.js # Import formazioni TC
+│   │   │   ├── importFormationTC.js # Import formazioni TC
+│   │   │   └── gazzettaRegionale.js # Fetch classifica/calendario/marcatori GR
 │   │   └── routes/
 │   │       ├── auth.js           # Auth, users, guest
 │   │       ├── workspace.js      # Workspace, facility
@@ -97,7 +98,8 @@ youth-football-manager/
 │   │       ├── roster.js         # Import rosa XLS/TC
 │   │       ├── importCalendario.js  # PDF, testo SGS
 │   │       ├── importTuttocampo.js  # Scraping TC + loghi
-│   │       └── importConfirm.js     # Confirm, batch
+│   │       ├── importConfirm.js     # Confirm, batch
+│   │       └── gazzettaRegionale.js # Classifica, calendario, marcatori, loghi GR
 │   └── package.json
 │
 ├── .agents/                  # Configurazione agenti AI
@@ -170,6 +172,20 @@ youth-football-manager/
 | POST | `/import-formations-batch` | Import formazioni TC batch per partite selezionate |
 | GET | `/matches-without-formation` | Partite con tc_match_url (con/senza formazione) |
 
+#### Gazzetta Regionale
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| GET | `/gr/levels` | Lista livelli (Giovanili, etc.) |
+| GET | `/gr/championships/:levelId` | Campionati per livello |
+| GET | `/gr/groups/:levelId/:championshipId` | Gironi per campionato |
+| GET | `/gr/preview/:l/:c/:g` | Preview classifica girone |
+| POST | `/gr/configure` | Salva classifica_url su team |
+| GET | `/gr/classifica/:teamId` | Classifica da GR |
+| GET | `/gr/calendario/:teamId` | Calendario da GR |
+| GET | `/gr/marcatori/:teamId` | Marcatori da GR |
+| POST | `/gr/import-loghi/:teamId` | Import loghi da GR |
+| POST | `/gr/import-calendario/:teamId` | Import calendario/risultati da GR |
+
 #### Workspace & Facility
 | Metodo | Endpoint | Descrizione |
 |--------|----------|-------------|
@@ -222,7 +238,7 @@ competition (id, nome, tipo, federazione, regione, logo_url, ...)
 facility (id, nome, indirizzo, citta, capienza, superficie, tipo, workspace_id, is_default, ...)
 
 -- Team (ex squadra)
-team (id, season_id, category_id, nome, colori_casa, colori_trasferta, 
+team (id, season_id, category_id, nome, classifica_url, colori_casa, colori_trasferta, 
       venue_id, allenatore_id, dirigente_id, preparatore_id, portieri_id, ...)
 
 -- Staff (personale)

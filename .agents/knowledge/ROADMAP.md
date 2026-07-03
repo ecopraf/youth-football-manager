@@ -54,10 +54,22 @@
   - Sezione "⚠️ Ruolo non assegnato" per giocatori importati senza ruolo
 - [x] Import Center (pagina centralizzata)
   - Pagina dedicata con 6 card: PDF, Testo, Tuttocampo, XLS, Rosa TC, Formazioni TC
+  - Sezione Gazzetta Regionale con 4 card: Config wizard, Calendario, Loghi, Preview
   - Parser testo calendario SGS (copia-incolla o upload .txt) — stesso parser del PDF
   - Import formazioni batch (seleziona partite con tc_match_url senza formazione)
   - Log storico importazioni in DB (tabella `import_log`)
   - Voce sidebar "📥 Import Center" tra Calendario e Coach
+- [x] Integrazione Gazzetta Regionale
+  - API pubblica JSON `v2.apiweb.gazzettaregionale.it` (no IP blocking)
+  - Wizard configurazione 3 step: Campionato → Girone → Preview classifica
+  - Import calendario con fuzzy matching (nomi abbreviati GR vs nomi FIGC)
+  - Due modalità: "Importa calendario + risultati" / "Aggiorna solo Risultati (match esistenti)"
+  - Import loghi da GR (preview griglia prima dell'import)
+  - Preview classifica + marcatori (tabelle side-by-side compatte)
+  - Dashboard widget classifica con evidenziazione squadra
+  - Colonna `classifica_url` su tabella `team` per configurazione GR
+  - Backend: helper `gazzettaRegionale.js` + router con 10+ endpoint
+  - Frontend: sezione dedicata in Import Center
 - [x] Loghi Squadre da Tuttocampo
   - Scraping automatico loghi durante import calendario TC (checkbox "Importa loghi")
   - Download PNG da CDN b2-content.tuttocampo.it e salvataggio in `frontend-v2/public/logos/`
