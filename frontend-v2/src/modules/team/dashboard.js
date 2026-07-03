@@ -141,7 +141,16 @@ export default async function loadDashboard() {
       const tipoEvento = compLower.includes('coppa') ? 'coppa' : compLower.includes('torneo') ? 'torneo' : compLower.includes('amichevole') ? 'amichevole' : 'campionato';
       const dettaglioComp = r.giornata ? 'G.' + r.giornata : '';
       const resStyle = getResultStyle(r.golFatti, r.golSubiti);
-      const badgeColor = resStyle.color;
+      const scoreLeft = isCasa ? r.golFatti : r.golSubiti;
+      const scoreRight = isCasa ? r.golSubiti : r.golFatti;
+      const noi = window.YFM.getSocietaName();
+      const wsLogo = window.YFM.getWorkspaceLogo();
+      const noiLogoHtml = wsLogo ? '<img src="' + wsLogo + '" style="width:22px;height:22px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '';
+      const advLogoHtml = r.logo ? '<img src="' + r.logo + '" style="width:22px;height:22px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '';
+      const leftName = isCasa ? noi : r.avversario;
+      const rightName = isCasa ? r.avversario : noi;
+      const leftLogo = isCasa ? noiLogoHtml : advLogoHtml;
+      const rightLogo = isCasa ? advLogoHtml : noiLogoHtml;
       
       const badges = {
         campionato: { icon: '🏆', bg: '#e8f5e9', color: '#28a745', label: 'Campionato' },
@@ -152,18 +161,19 @@ export default async function loadDashboard() {
       const badge = badges[tipoEvento] || badges.campionato;
       const competitionBadgeHtml = '<span style="display:inline-flex;align-items:center;gap:4px;background:' + badge.bg + ';color:' + badge.color + ';font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;">' + badge.icon + ' ' + badge.label + '</span>';
       
-      return '<div class="match-item" onclick="window.YFM.openMatchDetail(\'' + r.id + '\')" style="padding:0;background:#fafafa;border-radius:12px;margin-bottom:12px;overflow:hidden;border:1px solid #eee;">' +
+      return '<div class="match-item" onclick="window.YFM.openMatchDetail(\'' + r.id + '\')" style="padding:0;background:#fafafa;border-radius:12px;margin-bottom:12px;overflow:hidden;border:1px solid #eee;cursor:pointer;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:linear-gradient(to right,#f8f9fa,#fff);border-bottom:1px solid #eee;">' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
         competitionBadgeHtml +
         '<span style="font-size:11px;color:#667eea;font-weight:700;">' + dettaglioComp + '</span></div>' +
-        '<span style="font-size:11px;color:#666;font-weight:500;">' + formatDateShort(r.dataOra) + '</span></div>' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;">' +
-        '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">' +
-        (r.logo ? '<img src="' + r.logo + '" style="width:22px;height:22px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '<span style="width:12px;height:12px;border-radius:50%;background:' + badgeColor + ';flex-shrink:0;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>') +
-        '<span style="font-size:13px;font-weight:500;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + r.avversario + '</span>' +
-        '<span style="font-size:12px;flex-shrink:0;">' + icon + '</span></div>' +
-        '<span style="font-size:16px;font-weight:800;color:' + resStyle.color + ';background:' + resStyle.bg + ';padding:6px 14px;border-radius:8px;">' + r.golFatti + ' - ' + r.golSubiti + '</span></div></div>';
+        '<span style="font-size:11px;color:#666;font-weight:500;">' + formatDateShort(r.dataOra) + ' ' + icon + '</span></div>' +
+        '<div style="display:flex;align-items:center;justify-content:center;padding:14px 12px;gap:8px;">' +
+        '<div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;">' +
+        '<span style="font-size:13px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + leftName + '</span>' + leftLogo + '</div>' +
+        '<span style="font-size:16px;font-weight:800;color:' + resStyle.color + ';background:' + resStyle.bg + ';padding:6px 14px;border-radius:8px;flex-shrink:0;min-width:60px;text-align:center;">' + scoreLeft + ' - ' + scoreRight + '</span>' +
+        '<div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:6px;min-width:0;">' + rightLogo +
+        '<span style="font-size:13px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + rightName + '</span></div>' +
+        '</div></div>';
     }).join('');
     
     return trendBox + matchesHtml;
@@ -197,11 +207,37 @@ export default async function loadDashboard() {
       const isUs = r.nome.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(r.nome.toLowerCase());
       const cls = isUs ? ' class="classifica-row-highlight"' : '';
       const logo = r.logo ? '<img src="' + r.logo + '" onerror="this.style.display=\'none\'">' : '';
-      return '<tr' + cls + '><td>' + r.pos + '</td><td><div class="cl-team">' + logo + '<span>' + r.nome + '</span></div></td><td><b>' + r.punti + '</b></td><td>' + r.g + '</td><td>' + r.v + '</td><td>' + r.n + '</td><td>' + r.p + '</td><td>' + r.gf + '</td><td>' + r.gs + '</td></tr>';
+      const pen = r.penalita ? ' <span style="font-size:9px;color:#E74C3C;">(' + r.penalita + ')</span>' : '';
+      return '<tr' + cls + '><td>' + r.pos + '</td><td><div class="cl-team">' + logo + '<span>' + r.nome + pen + '</span></div></td><td><b>' + r.punti + '</b></td><td>' + r.g + '</td><td>' + r.v + '</td><td>' + r.n + '</td><td>' + r.p + '</td><td>' + r.gf + '</td><td>' + r.gs + '</td></tr>';
     }).join('');
     return '<div class="result-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">🏆 ' + header + '</h3>' +
       (info.aggiornamento ? '<div style="font-size:10px;color:#999;margin-bottom:8px;">Aggiornata al ' + info.aggiornamento + '</div>' : '') +
       '<div style="overflow-x:auto;"><table class="classifica-table"><thead><tr><th>#</th><th>Squadra</th><th>Pt</th><th>G</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  };
+
+  // Render ultima giornata GR
+  const renderUltimaGiornata = () => {
+    const ris = classificaData?.risultatiUltimaGiornata;
+    if (!ris || ris.length === 0) return '';
+    const teamName = (classificaData.teamName || '').toLowerCase();
+    const round = ris[0].round_number || '';
+    const date = ris[0].date_match || '';
+    // Build logo map from classifica
+    const logoMap = {};
+    (classificaData.classifica || []).forEach(r => { if (r.logo) logoMap[r.nome.toLowerCase()] = r.logo; });
+    const getLogo = (name) => {
+      const n = name.toLowerCase();
+      let l = logoMap[n];
+      if (!l) { const k = Object.keys(logoMap).find(k => k.includes(n) || n.includes(k)); if (k) l = logoMap[k]; }
+      return l ? '<img src="' + l + '" style="width:16px;height:16px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '';
+    };
+    const rows = ris.map(r => {
+      const isUs = r.home_club.toLowerCase().includes(teamName) || r.away_club.toLowerCase().includes(teamName) || teamName.includes(r.home_club.toLowerCase()) || teamName.includes(r.away_club.toLowerCase());
+      const cls = isUs ? ' class="classifica-row-highlight"' : '';
+      return '<tr' + cls + '><td style="text-align:right;padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;">' + r.home_club + getLogo(r.home_club) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;">' + (r.home_points ?? '-') + ' - ' + (r.away_points ?? '-') + '</td><td style="padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;">' + getLogo(r.away_club) + r.away_club + '</span></td></tr>';
+    }).join('');
+    return '<div class="result-card" style="margin-top:20px;"><h3 style="margin:0 0 10px 0;font-size:15px;color:#333;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h3>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:12px;"><tbody>' + rows + '</tbody></table></div>';
   };
 
   // Build final HTML
@@ -267,7 +303,7 @@ export default async function loadDashboard() {
     
     '<div class="bottom-grid">' +
     '<div class="result-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>' +
-    '<div>' + renderClassifica() +
+    '<div>' + renderClassifica() + renderUltimaGiornata() +
     '<div class="staff-card" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div>' +
     '</div></div>';
 }

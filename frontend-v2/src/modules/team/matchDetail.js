@@ -23,6 +23,12 @@ export async function openMatchDetail(mid) {
     ammonizioni = eventi.filter(e => e.tipo === 'YELLOW').length;
     espulsioni = eventi.filter(e => e.tipo === 'RED').length;
     
+    const isCasa = (p.luogo || '').toLowerCase() === 'casa';
+    const teamName = window.YFM.getSocietaName();
+    const leftTeam = isCasa ? teamName : p.avversario;
+    const rightTeam = isCasa ? p.avversario : teamName;
+    const scoreLeft = isCasa ? golCasa : golOspiti;
+    const scoreRight = isCasa ? golOspiti : golCasa;
     const resultBg = golCasa > golOspiti ? 'linear-gradient(135deg, #27AE60, #2ecc71)' : golCasa === golOspiti ? 'linear-gradient(135deg, #F39C12, #f1c40f)' : 'linear-gradient(135deg, #E74C3C, #c0392b)';
     const resultLabel = golCasa > golOspiti ? 'Vittoria!' : golCasa === golOspiti ? 'Pareggio' : 'Sconfitta';
     const resultIcon = golCasa > golOspiti ? '✅' : golCasa === golOspiti ? '🤝' : '❌';
@@ -56,8 +62,8 @@ export async function openMatchDetail(mid) {
     html += '</style>';
     
     html += '<div class="match-header">';
-    html += '<h2>' + window.YFM.getSocietaName() + ' vs ' + p.avversario + '</h2>';
-    html += '<div class="score">' + golCasa + ' - ' + golOspiti + '</div>';
+    html += '<h2>' + leftTeam + ' vs ' + rightTeam + '</h2>';
+    html += '<div class="score">' + scoreLeft + ' - ' + scoreRight + '</div>';
     html += '<div class="result-label">' + resultIcon + ' ' + resultLabel + '</div>';
     html += '<div class="meta">' + formatDate(p.data_ora) + (p.giornata ? ' · G.' + p.giornata : '') + ' · ' + (p.luogo || '') + '</div>';
     html += '</div>';

@@ -53,8 +53,12 @@ async function fetchClassifica(level, championship, group) {
   const rowRe = /<td class="class-num">(.*?)<\/td>.*?<span class="team_name">(.*?)<\/span>.*?<td>(.*?)<\/td>.*?<td>(.*?)<\/td>.*?<td>(.*?)<\/td>.*?<td>(.*?)<\/td>.*?<td>(.*?)<\/td>.*?<td>(.*?)<\/td>.*?<td>(.*?)<\/td>/gs;
   const classifica = [];
   while ((m = rowRe.exec(html)) !== null) {
+    let nome = m[2];
+    let penalita = 0;
+    const penMatch = nome.match(/\s*\(([+-]?\d+)\)$/);
+    if (penMatch) { penalita = +penMatch[1]; nome = nome.replace(/\s*\([+-]?\d+\)$/, ''); }
     classifica.push({
-      pos: +m[1], nome: m[2], logo: logoMap[m[2]] || null,
+      pos: +m[1], nome, penalita, logo: logoMap[m[2]] || logoMap[nome] || null,
       punti: +m[3], g: +m[4], v: +m[5], n: +m[6], p: +m[7], gf: +m[8], gs: +m[9]
     });
   }
