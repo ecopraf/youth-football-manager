@@ -1,11 +1,16 @@
 /**
  * Tuttocampo helpers — login, request, fetch page/ajax
+ * Usa Cloudflare Worker come proxy se PROXY_TC_URL è configurato (per Vercel).
+ * Fallback a richiesta diretta (per sviluppo locale).
  */
 const https = require('https');
 
 const TC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const PROXY_URL = process.env.PROXY_TC_URL || ''; // es: https://tc-proxy.xxx.workers.dev
+const PROXY_SECRET = process.env.PROXY_TC_SECRET || 'yfm-tc-proxy-2026';
 
-function tcRequest(url, options = {}) {
+// --- Direct request (locale) ---
+function tcRequestDirect(url, options = {}) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const opts = {
@@ -18,11 +23,7 @@ function tcRequest(url, options = {}) {
       const cookies = res.headers['set-cookie'] || [];
       res.on('data', c => data += c);
       res.on('end', () => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          resolve({ data, cookies, redirect: res.headers.location, status: res.statusCode });
-        } else {
-          resolve({ data, cookies, status: res.statusCode });
-        }
+        resolve({ data, cookies, redirect: res.headers.location || null, status: res.statusCode });
       });
     });
     req.on('error', reject);
@@ -31,12 +32,60 @@ function tcRequest(url, options = {}) {
   });
 }
 
+// --- Proxy request (via Cloudflare Worker) ---
+function tcRequestProxy(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const payload = JSON.stringify({
+      url,
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      postBody: options.body || null
+    });
+    const proxyUrl = new URL(PROXY_URL);
+    const opts = {
+      hostname: proxyUrl.hostname, path: proxyUrl.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+        'X-Proxy-Secret': PROXY_SECRET
+      }
+    };
+    const req = https.request(opts, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          resolve({
+            data: json.data || '',
+            cookies: json.cookies || [],
+            redirect: json.redirect || null,
+            status: json.status || res.statusCode
+          });
+        } catch (e) {
+          resolve({ data: '', cookies: [], redirect: null, status: 500 });
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+// --- Unified request: proxy if available, else direct ---
+function tcRequest(url, options = {}) {
+  if (PROXY_URL) return tcRequestProxy(url, options);
+  return tcRequestDirect(url, options);
+}
+
 async function tcLogin() {
   const user = process.env.TC_USERNAME || 'youthfootball';
   const pass = process.env.TC_PASSWORD || 'manager';
   const home = await tcRequest('https://www.tuttocampo.it/Homepage');
   const initCookies = home.cookies.map(c => c.split(';')[0]).join('; ');
-  await delay(800);
+  await delay(600);
   const body = `username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&submit_login=Accedi&destination_page=https://www.tuttocampo.it/Homepage`;
   const login = await tcRequest('https://www.tuttocampo.it/Web/Views/Login/LoginModal.php', {
     method: 'POST',
@@ -48,9 +97,8 @@ async function tcLogin() {
 }
 
 async function tcFetchPage(url, cookies) {
-  await delay(1000);
+  await delay(800);
   const res = await tcRequest(url, { headers: { 'Cookie': cookies } });
-  // Retry once if empty response (rate limit)
   if (!res.data || res.data.length < 200) {
     await delay(2000);
     const retry = await tcRequest(url, { headers: { 'Cookie': cookies } });
@@ -60,7 +108,7 @@ async function tcFetchPage(url, cookies) {
 }
 
 async function tcFetchAjax(url, cookies, referer) {
-  await delay(1000);
+  await delay(800);
   const res = await tcRequest(url, {
     headers: { 'Cookie': cookies, 'X-Requested-With': 'XMLHttpRequest', 'Referer': referer }
   });
