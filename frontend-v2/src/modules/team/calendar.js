@@ -217,7 +217,7 @@ function renderCalendarPage(c, matches, stats) {
 
   html += `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
-      <div><h1 class="page-title">Calendario ${window.YFM.getSquadraName()}</h1></div>
+      <div><h1 class="page-title">Calendario</h1></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         ${window.YFM.isAdmin() ? `<button class="btn btn-primary" id="btnAdd">+ Nuova</button>
         ${window.YFM.currentUser?.is_superadmin ? '<button class="btn btn-secondary" id="btnImportTc" style="font-size:13px;">⚽ Tuttocampo</button>' : ''}
@@ -274,7 +274,7 @@ function renderGuestCalendar(c, nextMatch, pastMatches, stats) {
     .result-draw { background:#FFF3CD; color:#856404; }
   </style>`;
 
-  html += `<div style="margin-bottom:24px;"><h1 class="page-title">Calendario ${window.YFM.getSquadraName()}</h1></div>`;
+  html += `<div style="margin-bottom:24px;"><h1 class="page-title">Calendario</h1></div>`;
 
   // Prossima partita
   if (nextMatch) {
