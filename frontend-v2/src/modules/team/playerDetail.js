@@ -197,7 +197,7 @@ function renderPlayerDetail(container, data) {
   // Sezione dati anagrafici
   const datiAnagrafici = `
     <div class="card" style="margin-bottom:20px;">
-      <h3 class="section-title">📋 Dati Anagrafici</h3>
+      <h3 class="section-title">📋 Dati Giocatore</h3>
       <div id="playerDataView" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
         <div><span style="font-size:12px;color:#888;">Nome</span><div style="font-size:14px;font-weight:500;">${nome}</div></div>
         <div><span style="font-size:12px;color:#888;">Cognome</span><div style="font-size:14px;font-weight:500;">${cognome}</div></div>
@@ -299,8 +299,8 @@ function renderPlayerDetail(container, data) {
         const year = parseInt(dataNascita.split('-')[0]);
         const squadra = window.YFM.getSquadra();
         const annoDa = squadra?.category?.anno_da;
-        if (annoDa && year < annoDa) {
-          alert(`Anno di nascita ${year} non compatibile con ${squadra.category.nome} (anno rif. ${annoDa}+)`);
+        if (annoDa && (year < annoDa || year > annoDa + 2)) {
+          alert(`Anno di nascita ${year} non compatibile con ${squadra.category.nome} (${annoDa}-${annoDa + 2})`);
           return;
         }
       }

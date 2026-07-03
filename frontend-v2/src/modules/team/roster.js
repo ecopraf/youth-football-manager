@@ -328,8 +328,8 @@ function openPlayerForm(pid) {
       const year = parseInt(dataNascita.split('-')[0]);
       const squadra = window.YFM.getSquadra();
       const annoDa = squadra?.category?.anno_da;
-      if (annoDa && year < annoDa) {
-        alert(`Anno di nascita ${year} non compatibile con ${squadra.category.nome} (anno rif. ${annoDa}+)`);
+      if (annoDa && (year < annoDa || year > annoDa + 2)) {
+        alert(`Anno di nascita ${year} non compatibile con ${squadra.category.nome} (${annoDa}-${annoDa + 2})`);
         return;
       }
     }

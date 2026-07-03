@@ -20,9 +20,12 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     const { data: team } = await supabase.from('team').select('category:category_id(anno_da, anno_a, nome)').eq('id', teamId).single();
     if (!team?.category?.anno_da) return null;
     const annoDa = team.category.anno_da;
-    // Il giocatore deve essere nato nell'anno di riferimento o successivo (più giovane)
+    // Il giocatore deve essere nato tra anno_da e anno_da+2 (margine aggregati)
     if (year < annoDa) {
       return `Anno di nascita ${year} non compatibile con ${team.category.nome} (anno rif. ${annoDa}+)`;
+    }
+    if (year > annoDa + 2) {
+      return `Anno di nascita ${year} non compatibile con ${team.category.nome} (max ${annoDa + 2})`;
     }
     return null;
   }
