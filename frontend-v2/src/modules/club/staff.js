@@ -16,9 +16,10 @@ export default async function loadStaff() {
   const c = document.getElementById('pageContent');
   const user = window.YFM.getUser();
   const isAdmin = window.YFM.isAdmin();
-  const canWrite = isAdmin || (user?.permessi?.rosa === 'write');
+  const isAllenatore = user?.ruolo === 'allenatore';
+  const canWrite = isAdmin || isAllenatore || (user?.permessi?.rosa === 'write');
 
-  if (!isAdmin && !canWrite) {
+  if (!canWrite) {
     c.innerHTML = '<div class="error-box">Accesso non autorizzato</div>';
     return;
   }
