@@ -33,45 +33,28 @@ function tcRequestDirect(url, options = {}) {
 }
 
 // --- Proxy request (via Cloudflare Worker) ---
-function tcRequestProxy(url, options = {}) {
-  return new Promise((resolve, reject) => {
-    const payload = JSON.stringify({
-      url,
-      method: options.method || 'GET',
-      headers: options.headers || {},
-      postBody: options.body || null
-    });
-    const proxyUrl = new URL(PROXY_URL);
-    const opts = {
-      hostname: proxyUrl.hostname, path: proxyUrl.pathname,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(payload),
-        'X-Proxy-Secret': PROXY_SECRET
-      }
-    };
-    const req = https.request(opts, (res) => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          resolve({
-            data: json.data || '',
-            cookies: json.cookies || [],
-            redirect: json.redirect || null,
-            status: json.status || res.statusCode
-          });
-        } catch (e) {
-          resolve({ data: '', cookies: [], redirect: null, status: 500 });
-        }
-      });
-    });
-    req.on('error', reject);
-    req.write(payload);
-    req.end();
+async function tcRequestProxy(url, options = {}) {
+  const payload = JSON.stringify({
+    url,
+    method: options.method || 'GET',
+    headers: options.headers || {},
+    postBody: options.body || null
   });
+  const resp = await fetch(PROXY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Proxy-Secret': PROXY_SECRET
+    },
+    body: payload
+  });
+  const json = await resp.json();
+  return {
+    data: json.data || '',
+    cookies: json.cookies || [],
+    redirect: json.redirect || null,
+    status: json.status || resp.status
+  };
 }
 
 // --- Unified request: proxy if available, else direct ---
