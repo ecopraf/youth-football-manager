@@ -58,7 +58,7 @@ function renderMain(c, logs, teamName) {
       <div class="import-card-desc">Copia-incolla il testo del calendario dal sito o da file</div>
       <span class="import-card-badge" style="background:#F3E5F5;color:#7B1FA2;">Copia-incolla</span>
     </div>
-    <div class="import-card" id="icTc">
+    <div class="import-card" id="icTc"${window.YFM.currentUser?.is_superadmin ? '' : ' style="display:none;"'}>
       <div class="import-card-icon">🌐</div>
       <div class="import-card-title">Calendario Tuttocampo</div>
       <div class="import-card-desc">Scraping calendario, risultati e marcatori da Tuttocampo.it</div>
@@ -70,13 +70,13 @@ function renderMain(c, logs, teamName) {
       <div class="import-card-desc">Upload tabulato atleti Excel (.xlsx) dalla federazione</div>
       <span class="import-card-badge" style="background:#E3F2FD;color:#1565C0;">Upload file</span>
     </div>
-    <div class="import-card" id="icRosaTc">
+    <div class="import-card" id="icRosaTc"${window.YFM.currentUser?.is_superadmin ? '' : ' style="display:none;"'}>
       <div class="import-card-icon">⚽</div>
       <div class="import-card-title">Rosa Tuttocampo</div>
       <div class="import-card-desc">Scraping rosa giocatori da pagina Tuttocampo</div>
       <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">URL</span>
     </div>
-    <div class="import-card" id="icFormations">
+    <div class="import-card" id="icFormations"${window.YFM.currentUser?.is_superadmin ? '' : ' style="display:none;"'}>
       <div class="import-card-icon">🏟️</div>
       <div class="import-card-title">Formazioni Tuttocampo</div>
       <div class="import-card-desc">Importa formazioni e sostituzioni per partite già in calendario</div>
@@ -106,10 +106,10 @@ function renderMain(c, logs, teamName) {
   // Event listeners
   document.getElementById('icPdf').addEventListener('click', openImportPdf);
   document.getElementById('icText').addEventListener('click', openImportText);
-  document.getElementById('icTc').addEventListener('click', () => { window.YFM.navigateTo('calendar'); setTimeout(() => document.getElementById('btnImportTc')?.click(), 300); });
+  document.getElementById('icTc')?.addEventListener('click', () => { window.YFM.navigateTo('calendar'); setTimeout(() => document.getElementById('btnImportTc')?.click(), 300); });
   document.getElementById('icXls').addEventListener('click', () => { window.YFM.navigateTo('roster'); setTimeout(() => document.getElementById('btnImportXls')?.click(), 300); });
-  document.getElementById('icRosaTc').addEventListener('click', () => { window.YFM.navigateTo('roster'); setTimeout(() => document.getElementById('btnImportTc')?.click(), 300); });
-  document.getElementById('icFormations').addEventListener('click', openImportFormations);
+  document.getElementById('icRosaTc')?.addEventListener('click', () => { window.YFM.navigateTo('roster'); setTimeout(() => document.getElementById('btnImportTc')?.click(), 300); });
+  document.getElementById('icFormations')?.addEventListener('click', openImportFormations);
 }
 
 // === IMPORT PDF (redirect to calendar's existing modal) ===
