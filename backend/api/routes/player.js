@@ -35,7 +35,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     try {
       const includiSvincolati = req.query.includi_svincolati === '1';
       let query = supabase.from('team_player')
-        .select('calciatore:player_id(*), numero_maglia, ruolo_preferito, stato')
+        .select('calciatore:player_id(*), numero_maglia, ruolo_preferito, stato, aggregato')
         .eq('team_id', req.params.squadraId);
       if (!includiSvincolati) {
         query = query.neq('stato', 'Svincolato');
@@ -47,7 +47,8 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         data_visita_medica: r.calciatore.data_visita_medica, scadenza_visita_medica: r.calciatore.scadenza_visita_medica,
         matricola_figc: r.calciatore.matricola_figc, tipo_documento: r.calciatore.tipo_documento,
         numero_documento: r.calciatore.numero_documento, rilasciato_da: r.calciatore.rilasciato_da,
-        numero_maglia: r.numero_maglia, ruolo: r.ruolo_preferito, stato: r.stato
+        numero_maglia: r.numero_maglia, ruolo: r.ruolo_preferito, stato: r.stato,
+        aggregato: r.aggregato || false
       })));
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -194,6 +195,175 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       res.json({ gol: (eventi || []).filter(e => e.tipo_evento === 'GOAL').length, assist: (eventi || []).filter(e => e.tipo_evento === 'ASSIST').length, presenze: (convocazioni || []).filter(c => c.presente).length, partite: partite.length });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // GET /api/squadre/:squadraId/svincolati-workspace
+  // Trova tutti i player svincolati nel workspace che non sono già nel team corrente
+  router.get('/api/squadre/:squadraId/svincolati-workspace', authMiddleware, async (req, res) => {
+    try {
+      // Trova il workspace del team corrente
+      const { data: team } = await supabase.from('team').select('season:season_id(workspace_id)').eq('id', req.params.squadraId).single();
+      if (!team) return res.status(404).json({ error: 'Squadra non trovata' });
+      const workspaceId = team.season.workspace_id;
+
+      // Tutti i team del workspace (tutte le stagioni)
+      const { data: allSeasons } = await supabase.from('season').select('id').eq('workspace_id', workspaceId);
+      const seasonIds = (allSeasons || []).map(s => s.id);
+      const { data: allTeams } = await supabase.from('team').select('id').in('season_id', seasonIds);
+      const teamIds = (allTeams || []).map(t => t.id);
+
+      // Player svincolati in quei team
+      const { data: svincolatiTp } = await supabase.from('team_player')
+        .select('player_id, calciatore:player_id(id, nome, cognome, data_nascita), team:team_id(nome, category:category_id(nome)), stato')
+        .in('team_id', teamIds)
+        .eq('stato', 'Svincolato');
+
+      // Player già nel team corrente (qualsiasi stato)
+      const { data: currentTp } = await supabase.from('team_player').select('player_id').eq('team_id', req.params.squadraId);
+      const currentPlayerIds = new Set((currentTp || []).map(tp => tp.player_id));
+
+      // Filtra: solo quelli non già presenti nel team corrente
+      const result = (svincolatiTp || [])
+        .filter(tp => !currentPlayerIds.has(tp.player_id))
+        .map(tp => ({
+          id: tp.calciatore.id,
+          nome: tp.calciatore.nome,
+          cognome: tp.calciatore.cognome,
+          data_nascita: tp.calciatore.data_nascita,
+          ultima_squadra: tp.team?.category?.nome || tp.team?.nome || '-'
+        }));
+
+      // Deduplica per player_id
+      const seen = new Set();
+      const unique = result.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+
+      res.json(unique);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/squadre/:squadraId/recupera
+  router.post('/api/squadre/:squadraId/recupera', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+    try {
+      const { playerIds } = req.body;
+      if (!playerIds || !playerIds.length) return res.status(400).json({ error: 'Nessun giocatore selezionato' });
+
+      // Validazione anno nascita per ogni giocatore
+      for (const pid of playerIds) {
+        const { data: player } = await supabase.from('player').select('data_nascita').eq('id', pid).single();
+        if (player?.data_nascita) {
+          const birthErr = await validateBirthYear(player.data_nascita, req.params.squadraId);
+          if (birthErr) return res.status(400).json({ error: birthErr });
+        }
+      }
+
+      // Crea nuovi team_player
+      const inserts = playerIds.map(pid => ({
+        team_id: req.params.squadraId,
+        player_id: pid,
+        stato: 'Attivo',
+        data_assegnazione: new Date().toISOString().split('T')[0]
+      }));
+      const { error } = await supabase.from('team_player').insert(inserts);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, count: playerIds.length });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/squadre/:squadraId/aggrega
+  // Aggrega giocatori da categorie inferiori a questa squadra
+  router.post('/api/squadre/:squadraId/aggrega', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+    try {
+      const { playerIds } = req.body;
+      if (!playerIds || !playerIds.length) return res.status(400).json({ error: 'Nessun giocatore selezionato' });
+
+      // Verifica categoria destinazione
+      const { data: destTeam } = await supabase.from('team').select('category:category_id(anno_da, nome)').eq('id', req.params.squadraId).single();
+      if (!destTeam?.category?.anno_da) return res.status(400).json({ error: 'Categoria destinazione non trovata' });
+
+      // Validazione: il giocatore deve essere più giovane (anno nascita > anno_da della categoria)
+      for (const pid of playerIds) {
+        const { data: player } = await supabase.from('player').select('data_nascita, nome, cognome').eq('id', pid).single();
+        if (!player?.data_nascita) continue;
+        const year = parseInt(player.data_nascita.split('-')[0]);
+        if (year <= destTeam.category.anno_da) {
+          return res.status(400).json({ error: `${player.nome} ${player.cognome} (${year}) non pu\u00F2 essere aggregato a ${destTeam.category.nome} (${destTeam.category.anno_da}) - solo categorie superiori` });
+        }
+        // Verifica non sia gi\u00E0 nel team
+        const { data: existing } = await supabase.from('team_player').select('id').eq('player_id', pid).eq('team_id', req.params.squadraId);
+        if (existing && existing.length > 0) {
+          return res.status(400).json({ error: `${player.nome} ${player.cognome} \u00E8 gi\u00E0 nella rosa` });
+        }
+      }
+
+      // Crea team_player con aggregato=true
+      const inserts = playerIds.map(pid => ({
+        team_id: req.params.squadraId,
+        player_id: pid,
+        stato: 'Attivo',
+        aggregato: true,
+        data_assegnazione: new Date().toISOString().split('T')[0]
+      }));
+      const { error } = await supabase.from('team_player').insert(inserts);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, count: playerIds.length });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/squadre/:squadraId/aggregabili
+  // Lista giocatori del workspace che possono essere aggregati (pi\u00F9 giovani della categoria)
+  router.get('/api/squadre/:squadraId/aggregabili', authMiddleware, async (req, res) => {
+    try {
+      const { data: destTeam } = await supabase.from('team')
+        .select('category:category_id(anno_da, nome), season:season_id(id, workspace_id)')
+        .eq('id', req.params.squadraId).single();
+      if (!destTeam?.category?.anno_da) return res.json([]);
+
+      // Tutti i team della stessa stagione
+      const { data: sameSeasonTeams } = await supabase.from('team').select('id, category:category_id(nome)').eq('season_id', destTeam.season.id);
+      const otherTeamIds = (sameSeasonTeams || []).filter(t => t.id !== req.params.squadraId).map(t => t.id);
+      if (otherTeamIds.length === 0) return res.json([]);
+
+      // Giocatori attivi in quei team
+      const { data: candidates } = await supabase.from('team_player')
+        .select('player_id, calciatore:player_id(id, nome, cognome, data_nascita), team:team_id(category:category_id(nome)), ruolo_preferito')
+        .in('team_id', otherTeamIds)
+        .eq('stato', 'Attivo')
+        .eq('aggregato', false);
+
+      // Gi\u00E0 nel team corrente
+      const { data: currentTp } = await supabase.from('team_player').select('player_id').eq('team_id', req.params.squadraId);
+      const currentIds = new Set((currentTp || []).map(tp => tp.player_id));
+
+      // Filtra: solo pi\u00F9 giovani della categoria e non gi\u00E0 presenti
+      const result = (candidates || [])
+        .filter(tp => {
+          if (currentIds.has(tp.player_id)) return false;
+          if (!tp.calciatore?.data_nascita) return false;
+          const year = parseInt(tp.calciatore.data_nascita.split('-')[0]);
+          return year > destTeam.category.anno_da;
+        })
+        .map(tp => ({
+          id: tp.calciatore.id,
+          nome: tp.calciatore.nome,
+          cognome: tp.calciatore.cognome,
+          data_nascita: tp.calciatore.data_nascita,
+          ruolo: tp.ruolo_preferito || '-',
+          categoria_origine: tp.team?.category?.nome || '-'
+        }));
+
+      // Deduplica
+      const seen = new Set();
+      const unique = result.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+      res.json(unique);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
   });
 

@@ -79,7 +79,7 @@ function renderRoster(c, players, scadenze) {
     gridsHtml += '<div style="margin-bottom:20px;"><h3 style="font-size:16px;font-weight:600;color:var(--blue);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--green);">' + plur[r] + ' (' + byRole[r].length + ')</h3><div class="roster-grid" id="grid' + r + '">' + renderPlayerCards(byRole[r].sort((a, b) => a.cognome.localeCompare(b.cognome))) + '</div></div>';
   });
 
-  c.innerHTML = toolbarHtml + scadenzeHtml + '<div class="roster-toolbar"><input class="search-bar" placeholder="Cerca giocatore..." id="sInput"><select class="filter-select" id="fRuolo"><option value="">Tutti i ruoli</option>' + ruoli.map(r => '<option value="' + r + '">' + plur[r] + '</option>').join('') + '</select><select class="filter-select" id="fStato"><option value="">Tutti gli stati</option><option value="Attivo">Attivo</option><option value="Infortunato">Infortunato</option></select></div>' + gridsHtml + renderSvincolatiSection();
+  c.innerHTML = toolbarHtml + scadenzeHtml + '<div class="roster-toolbar"><input class="search-bar" placeholder="Cerca giocatore..." id="sInput"><select class="filter-select" id="fRuolo"><option value="">Tutti i ruoli</option>' + ruoli.map(r => '<option value="' + r + '">' + plur[r] + '</option>').join('') + '</select><select class="filter-select" id="fStato"><option value="">Tutti</option><option value="Attivo">Attivo</option><option value="Aggregato">Aggregato</option><option value="Infortunato">Infortunato</option></select></div>' + gridsHtml + renderSvincolatiSection();
 
   document.getElementById('btnAdd')?.addEventListener('click', () => {
     const c = document.getElementById('pageContent');
@@ -103,6 +103,8 @@ function renderRoster(c, players, scadenze) {
       if (sec.style.display === 'none') { sec.style.display = 'block'; arrow.textContent = '▼'; }
       else { sec.style.display = 'none'; arrow.textContent = '▶'; }
     });
+    document.getElementById('btnRecuperaSvincolato')?.addEventListener('click', openRecuperaModal);
+    document.getElementById('btnAggregaPlayer')?.addEventListener('click', openAggregaModal);
     // Riattiva buttons
     document.querySelectorAll('.btn-riattiva').forEach(btn => {
       btn.addEventListener('click', async (e) => {
@@ -140,7 +142,10 @@ function renderPlayerCards(players) {
     card += '</div>';
     
     // Badge stato
-    card += '<span class="badge ' + (p.stato === 'Attivo' ? 'badge-green' : 'badge-red') + '" style="font-size:11px;padding:4px 10px;border-radius:12px;">' + (p.stato || 'Attivo') + '</span>';
+    const badgeClass = p.aggregato ? '' : (p.stato === 'Attivo' ? 'badge-green' : 'badge-red');
+    const badgeStyle = p.aggregato ? 'background:#F39C12;color:white;' : '';
+    const badgeText = p.aggregato ? 'AGG' : (p.stato || 'Attivo');
+    card += '<span class="badge ' + badgeClass + '" style="font-size:11px;padding:4px 10px;border-radius:12px;' + badgeStyle + '">' + badgeText + '</span>';
     
     card += '</div>';
     return card;
@@ -258,7 +263,7 @@ async function svincolaSelectedPlayers() {
 }
 
 function renderSvincolatiSection() {
-  if (!isAdminMode || svincolati.length === 0) return '';
+  if (!isAdminMode) return '';
   const cards = svincolati.sort((a, b) => a.cognome.localeCompare(b.cognome)).map(p => {
     return '<div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px;opacity:0.7;">' +
       '<div style="background:#999;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:white;">' + (p.nome || '')[0] + (p.cognome || '')[0] + '</div>' +
@@ -267,10 +272,140 @@ function renderSvincolatiSection() {
       '</div>';
   }).join('');
   return '<div style="margin-top:30px;border-top:2px dashed #ddd;padding-top:20px;">' +
-    '<div id="btnToggleSvincolati" style="cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:12px;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+    '<div id="btnToggleSvincolati" style="cursor:pointer;display:flex;align-items:center;gap:8px;">' +
     '<span id="svincolatiArrow" style="font-size:12px;color:#888;">\u25B6</span>' +
     '<h3 style="font-size:15px;font-weight:600;color:#888;margin:0;">Svincolati (' + svincolati.length + ')</h3></div>' +
-    '<div id="svincolatiContent" style="display:none;"><div class="roster-grid">' + cards + '</div></div></div>';
+    '<button class="btn btn-secondary" id="btnRecuperaSvincolato" style="font-size:12px;padding:6px 12px;">\uD83D\uDD0D Recupera</button>' +
+    '<button class="btn btn-secondary" id="btnAggregaPlayer" style="font-size:12px;padding:6px 12px;background:#F39C12;color:white;border:none;">\u2795 Aggrega</button></div>' +
+    (svincolati.length > 0 ? '<div id="svincolatiContent" style="display:none;"><div class="roster-grid">' + cards + '</div></div>' : '<div id="svincolatiContent" style="display:none;"><p style="color:#888;font-size:13px;">Nessuno svincolato in questa stagione</p></div>') +
+    '</div>';
+}
+
+async function openAggregaModal() {
+  showLoading('Ricerca giocatori aggregabili...');
+  let disponibili = [];
+  try {
+    disponibili = await apiFetch('/squadre/' + window.YFM.squadraId + '/aggregabili');
+  } catch (e) {
+    alert('Errore: ' + e.message);
+    hideLoading();
+    return;
+  }
+  hideLoading();
+
+  if (disponibili.length === 0) {
+    alert('Nessun giocatore disponibile per aggregazione (servono giocatori pi\u00F9 giovani in altre categorie della stessa stagione).');
+    return;
+  }
+
+  const modal = document.createElement('div');
+  modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+  modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:500px;width:90%;max-height:80vh;display:flex;flex-direction:column;">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid #eee;"><h2 style="margin:0;font-size:18px;">\u2795 Aggrega Giocatore</h2><p style="margin:4px 0 0;font-size:12px;color:#888;">Giocatori da categorie inferiori della stessa stagione</p></div>' +
+    '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+    disponibili.map(p => {
+      const nascita = p.data_nascita ? p.data_nascita.split('T')[0].split('-').reverse().join('/') : '-';
+      return '<label style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:#f8f9fa;">' +
+        '<input type="checkbox" class="aggCheck" value="' + p.id + '">' +
+        '<div style="flex:1;"><div style="font-weight:600;font-size:14px;">' + p.cognome + ' ' + p.nome + '</div>' +
+        '<div style="font-size:11px;color:#888;">' + nascita + ' \u2022 ' + p.ruolo + ' \u2022 ' + p.categoria_origine + '</div></div></label>';
+    }).join('') +
+    '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:10px;">' +
+    '<button id="aggCancel" class="btn btn-secondary" style="padding:10px 16px;">Annulla</button>' +
+    '<button id="aggConfirm" class="btn btn-primary" style="padding:10px 16px;background:#F39C12;color:white;border:none;" disabled>Aggrega</button></div></div>';
+  document.body.appendChild(modal);
+
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.getElementById('aggCancel').addEventListener('click', () => modal.remove());
+
+  modal.querySelectorAll('.aggCheck').forEach(cb => {
+    cb.addEventListener('change', () => {
+      document.getElementById('aggConfirm').disabled = !modal.querySelector('.aggCheck:checked');
+    });
+  });
+
+  document.getElementById('aggConfirm').addEventListener('click', async () => {
+    const ids = [...modal.querySelectorAll('.aggCheck:checked')].map(c => c.value);
+    if (!ids.length) return;
+    showLoading();
+    try {
+      await apiFetch('/squadre/' + window.YFM.squadraId + '/aggrega', {
+        method: 'POST',
+        body: JSON.stringify({ playerIds: ids })
+      });
+      modal.remove();
+      loadRoster();
+    } catch (e) {
+      alert('Errore: ' + e.message);
+    } finally {
+      hideLoading();
+    }
+  });
+}
+
+async function openRecuperaModal() {
+  showLoading('Ricerca svincolati...');
+  let disponibili = [];
+  try {
+    disponibili = await apiFetch('/squadre/' + window.YFM.squadraId + '/svincolati-workspace');
+  } catch (e) {
+    alert('Errore: ' + e.message);
+    hideLoading();
+    return;
+  }
+  hideLoading();
+
+  if (disponibili.length === 0) {
+    alert('Nessun giocatore svincolato disponibile da recuperare.');
+    return;
+  }
+
+  const modal = document.createElement('div');
+  modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
+  modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:500px;width:90%;max-height:80vh;display:flex;flex-direction:column;">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid #eee;"><h2 style="margin:0;font-size:18px;">\uD83D\uDD0D Recupera Giocatore Svincolato</h2><p style="margin:4px 0 0;font-size:12px;color:#888;">Giocatori svincolati da altre stagioni/categorie</p></div>' +
+    '<div style="padding:16px 20px;overflow-y:auto;flex:1;">' +
+    disponibili.map(p => {
+      const nascita = p.data_nascita ? p.data_nascita.split('T')[0].split('-').reverse().join('/') : '-';
+      return '<label style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:#f8f9fa;">' +
+        '<input type="checkbox" class="recCheck" value="' + p.id + '">' +
+        '<div style="flex:1;"><div style="font-weight:600;font-size:14px;">' + p.cognome + ' ' + p.nome + '</div>' +
+        '<div style="font-size:11px;color:#888;">' + nascita + ' \u2022 ex ' + p.ultima_squadra + '</div></div></label>';
+    }).join('') +
+    '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:10px;">' +
+    '<button id="recCancel" class="btn btn-secondary" style="padding:10px 16px;">Annulla</button>' +
+    '<button id="recConfirm" class="btn btn-primary" style="padding:10px 16px;background:#667eea;color:white;border:none;" disabled>Recupera</button></div></div>';
+  document.body.appendChild(modal);
+
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.getElementById('recCancel').addEventListener('click', () => modal.remove());
+
+  modal.querySelectorAll('.recCheck').forEach(cb => {
+    cb.addEventListener('change', () => {
+      document.getElementById('recConfirm').disabled = !modal.querySelector('.recCheck:checked');
+    });
+  });
+
+  document.getElementById('recConfirm').addEventListener('click', async () => {
+    const ids = [...modal.querySelectorAll('.recCheck:checked')].map(c => c.value);
+    if (!ids.length) return;
+    showLoading();
+    try {
+      await apiFetch('/squadre/' + window.YFM.squadraId + '/recupera', {
+        method: 'POST',
+        body: JSON.stringify({ playerIds: ids })
+      });
+      modal.remove();
+      loadRoster();
+    } catch (e) {
+      alert('Errore: ' + e.message);
+    } finally {
+      hideLoading();
+    }
+  });
 }
 
 function openMoveModal(pids) {
@@ -332,7 +467,8 @@ function filterRoster() {
   let f = allPlayers;
   if (s) f = f.filter(p => (p.nome + ' ' + p.cognome).toLowerCase().includes(s));
   if (ruolo) f = f.filter(p => p.ruolo === ruolo);
-  if (stato) f = f.filter(p => p.stato === stato);
+  if (stato === 'Aggregato') f = f.filter(p => p.aggregato);
+  else if (stato) f = f.filter(p => p.stato === stato && !p.aggregato);
   
   ['Portiere', 'Difensore', 'Centrocampista', 'Attaccante'].forEach(r => {
     const grid = document.getElementById('grid' + r);
