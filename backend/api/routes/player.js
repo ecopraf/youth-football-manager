@@ -33,9 +33,14 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
   // GET /api/squadre/:squadraId/calciatori
   router.get('/api/squadre/:squadraId/calciatori', authMiddleware, async (req, res) => {
     try {
-      const { data } = await supabase.from('team_player')
+      const includiSvincolati = req.query.includi_svincolati === '1';
+      let query = supabase.from('team_player')
         .select('calciatore:player_id(*), numero_maglia, ruolo_preferito, stato')
         .eq('team_id', req.params.squadraId);
+      if (!includiSvincolati) {
+        query = query.neq('stato', 'Svincolato');
+      }
+      const { data } = await query;
       res.json((data || []).map(r => ({
         id: r.calciatore.id, nome: r.calciatore.nome, cognome: r.calciatore.cognome,
         data_nascita: r.calciatore.data_nascita, telefono: r.calciatore.telefono,
@@ -189,6 +194,38 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       res.json({ gol: (eventi || []).filter(e => e.tipo_evento === 'GOAL').length, assist: (eventi || []).filter(e => e.tipo_evento === 'ASSIST').length, presenze: (convocazioni || []).filter(c => c.presente).length, partite: partite.length });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // POST /api/squadre/:squadraId/svincola
+  router.post('/api/squadre/:squadraId/svincola', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+    try {
+      const { playerIds } = req.body;
+      if (!playerIds || !playerIds.length) return res.status(400).json({ error: 'Nessun giocatore selezionato' });
+      const { error } = await supabase.from('team_player')
+        .update({ stato: 'Svincolato' })
+        .eq('team_id', req.params.squadraId)
+        .in('player_id', playerIds);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, count: playerIds.length });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/squadre/:squadraId/riattiva
+  router.post('/api/squadre/:squadraId/riattiva', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+    try {
+      const { playerIds } = req.body;
+      if (!playerIds || !playerIds.length) return res.status(400).json({ error: 'Nessun giocatore selezionato' });
+      const { error } = await supabase.from('team_player')
+        .update({ stato: 'Attivo' })
+        .eq('team_id', req.params.squadraId)
+        .in('player_id', playerIds);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, count: playerIds.length });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
   });
 

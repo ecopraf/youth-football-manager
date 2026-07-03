@@ -6,6 +6,7 @@ import { loadNewPlayerForm } from './playerDetail.js';
 export { openPlayerForm, filterRoster, updateRosterGrid };
 
 let allPlayers = [];
+let svincolati = [];
 let selectedPlayers = new Set();
 let isSelectionMode = false;
 let isAdminMode = false;
@@ -25,11 +26,14 @@ export default async function loadRoster() {
   let allSquadre = [];
   
   try {
-    [players, scadenze, allSquadre] = await Promise.all([
+    let svincolatiData = [];
+    [players, scadenze, allSquadre, svincolatiData] = await Promise.all([
       apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori'),
       apiFetch('/squadre/' + window.YFM.squadraId + '/scadenze-mediche').catch(() => []),
-      apiFetch('/squadre').catch(() => [])
+      apiFetch('/squadre').catch(() => []),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori?includi_svincolati=1').catch(() => [])
     ]);
+    svincolati = svincolatiData.filter(p => p.stato === 'Svincolato');
     allPlayers = players;
     window.YFM.allPlayers = players;
     window.YFM.allSquadreForMove = allSquadre;
@@ -56,6 +60,7 @@ function renderRoster(c, players, scadenze) {
     if (isSelectionMode) {
       toolbarHtml += '<button class="btn btn-secondary" id="btnCancelSelect">Annulla</button>';
       toolbarHtml += '<button class="btn btn-danger" id="btnDeleteSelected" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>🗑️ Elimina (' + selectedPlayers.size + ')</button>';
+      toolbarHtml += '<button class="btn btn-secondary" id="btnSvincolaSelected" style="background:#F39C12;color:white;border:none;" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>📋 Svincola (' + selectedPlayers.size + ')</button>';
       toolbarHtml += '<button class="btn btn-primary" id="btnMoveSelected" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>↗️ Sposta (' + selectedPlayers.size + ')</button>';
     }
   }
@@ -74,7 +79,7 @@ function renderRoster(c, players, scadenze) {
     gridsHtml += '<div style="margin-bottom:20px;"><h3 style="font-size:16px;font-weight:600;color:var(--blue);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--green);">' + plur[r] + ' (' + byRole[r].length + ')</h3><div class="roster-grid" id="grid' + r + '">' + renderPlayerCards(byRole[r].sort((a, b) => a.cognome.localeCompare(b.cognome))) + '</div></div>';
   });
 
-  c.innerHTML = toolbarHtml + scadenzeHtml + '<div class="roster-toolbar"><input class="search-bar" placeholder="Cerca giocatore..." id="sInput"><select class="filter-select" id="fRuolo"><option value="">Tutti i ruoli</option>' + ruoli.map(r => '<option value="' + r + '">' + plur[r] + '</option>').join('') + '</select><select class="filter-select" id="fStato"><option value="">Tutti gli stati</option><option value="Attivo">Attivo</option><option value="Infortunato">Infortunato</option></select></div>' + gridsHtml;
+  c.innerHTML = toolbarHtml + scadenzeHtml + '<div class="roster-toolbar"><input class="search-bar" placeholder="Cerca giocatore..." id="sInput"><select class="filter-select" id="fRuolo"><option value="">Tutti i ruoli</option>' + ruoli.map(r => '<option value="' + r + '">' + plur[r] + '</option>').join('') + '</select><select class="filter-select" id="fStato"><option value="">Tutti gli stati</option><option value="Attivo">Attivo</option><option value="Infortunato">Infortunato</option></select></div>' + gridsHtml + renderSvincolatiSection();
 
   document.getElementById('btnAdd')?.addEventListener('click', () => {
     const c = document.getElementById('pageContent');
@@ -91,6 +96,26 @@ function renderRoster(c, players, scadenze) {
     document.getElementById('btnCancelSelect')?.addEventListener('click', cancelSelection);
     document.getElementById('btnDeleteSelected')?.addEventListener('click', deleteSelectedPlayers);
     document.getElementById('btnMoveSelected')?.addEventListener('click', moveSelectedPlayers);
+    document.getElementById('btnSvincolaSelected')?.addEventListener('click', svincolaSelectedPlayers);
+    document.getElementById('btnToggleSvincolati')?.addEventListener('click', () => {
+      const sec = document.getElementById('svincolatiContent');
+      const arrow = document.getElementById('svincolatiArrow');
+      if (sec.style.display === 'none') { sec.style.display = 'block'; arrow.textContent = '▼'; }
+      else { sec.style.display = 'none'; arrow.textContent = '▶'; }
+    });
+    // Riattiva buttons
+    document.querySelectorAll('.btn-riattiva').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const pid = btn.dataset.pid;
+        showLoading();
+        try {
+          await apiFetch('/squadre/' + window.YFM.squadraId + '/riattiva', { method: 'POST', body: JSON.stringify({ playerIds: [pid] }) });
+          loadRoster();
+        } catch (err) { alert('Errore: ' + err.message); }
+        finally { hideLoading(); }
+      });
+    });
   }
   
   attachCardListeners();
@@ -168,6 +193,7 @@ function togglePlayerSelection(pid, card) {
 function updateBulkButtons() {
   const deleteBtn = document.getElementById('btnDeleteSelected');
   const moveBtn = document.getElementById('btnMoveSelected');
+  const svincolaBtn = document.getElementById('btnSvincolaSelected');
   if (deleteBtn) {
     deleteBtn.innerHTML = '🗑️ Elimina (' + selectedPlayers.size + ')';
     deleteBtn.disabled = selectedPlayers.size === 0;
@@ -175,6 +201,10 @@ function updateBulkButtons() {
   if (moveBtn) {
     moveBtn.innerHTML = '↗️ Sposta (' + selectedPlayers.size + ')';
     moveBtn.disabled = selectedPlayers.size === 0;
+  }
+  if (svincolaBtn) {
+    svincolaBtn.innerHTML = '📋 Svincola (' + selectedPlayers.size + ')';
+    svincolaBtn.disabled = selectedPlayers.size === 0;
   }
 }
 
@@ -206,6 +236,41 @@ async function deleteSelectedPlayers() {
   } finally {
     hideLoading();
   }
+}
+
+async function svincolaSelectedPlayers() {
+  if (selectedPlayers.size === 0) return;
+  if (!confirm('Svincolare ' + selectedPlayers.size + ' giocatori? Resteranno nello storico e potranno essere riattivati.')) return;
+  showLoading();
+  try {
+    await apiFetch('/squadre/' + window.YFM.squadraId + '/svincola', {
+      method: 'POST',
+      body: JSON.stringify({ playerIds: Array.from(selectedPlayers) })
+    });
+    selectedPlayers.clear();
+    isSelectionMode = false;
+    loadRoster();
+  } catch (e) {
+    alert('Errore: ' + e.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+function renderSvincolatiSection() {
+  if (!isAdminMode || svincolati.length === 0) return '';
+  const cards = svincolati.sort((a, b) => a.cognome.localeCompare(b.cognome)).map(p => {
+    return '<div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px;opacity:0.7;">' +
+      '<div style="background:#999;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:white;">' + (p.nome || '')[0] + (p.cognome || '')[0] + '</div>' +
+      '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;">' + p.nome + ' ' + p.cognome + '</div><div style="font-size:12px;color:#888;">' + (p.ruolo || '-') + '</div></div>' +
+      '<button class="btn btn-secondary btn-riattiva" data-pid="' + p.id + '" style="font-size:11px;padding:6px 12px;">\u21A9 Riattiva</button>' +
+      '</div>';
+  }).join('');
+  return '<div style="margin-top:30px;border-top:2px dashed #ddd;padding-top:20px;">' +
+    '<div id="btnToggleSvincolati" style="cursor:pointer;display:flex;align-items:center;gap:8px;margin-bottom:12px;">' +
+    '<span id="svincolatiArrow" style="font-size:12px;color:#888;">\u25B6</span>' +
+    '<h3 style="font-size:15px;font-weight:600;color:#888;margin:0;">Svincolati (' + svincolati.length + ')</h3></div>' +
+    '<div id="svincolatiContent" style="display:none;"><div class="roster-grid">' + cards + '</div></div></div>';
 }
 
 function openMoveModal(pids) {
