@@ -219,12 +219,13 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
         if (logos && match.avversario) {
           const lower = match.avversario.toLowerCase().trim();
-          const compact = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '');
+          const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
           const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
           match.logo = null;
           for (const l of logos) {
             const lLower = l.nome.toLowerCase();
-            const lCompact = l.nome_normalizzato.replace(/-/g, '');
+            const lCompact = stripAccents(l.nome_normalizzato).replace(/[^a-z0-9]/g, '');
             if (lLower === lower || l.nome_normalizzato === norm || compact === lCompact || compact.includes(lCompact) || lCompact.includes(compact) || lower.includes(lLower) || lLower.includes(lower)) {
               match.logo = l.logo_path; break;
             }

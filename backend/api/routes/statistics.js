@@ -35,10 +35,11 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         // Normalizzato con trattini
         const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
         if (logoMap[norm]) return logoMap[norm];
-        // Compatto (senza separatori) per acronimi tipo sa.ma.gor -> samagor, l.v.p.a -> lvpa
-        const compact = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '');
+        // Strip accents + compatto (senza separatori) per acronimi e varianti con accenti
+        const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
         for (const [key, path] of Object.entries(logoMap)) {
-          const keyCompact = key.replace(/[^a-z0-9\u00e0-\u00fa]/g, '');
+          const keyCompact = stripAccents(key).replace(/[^a-z0-9]/g, '');
           if (compact === keyCompact || compact.includes(keyCompact) || keyCompact.includes(compact)) return path;
         }
         // Fuzzy: cerca contenimento
