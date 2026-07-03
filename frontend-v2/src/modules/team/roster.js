@@ -60,7 +60,9 @@ function renderRoster(c, players, scadenze) {
   }
   
   toolbarHtml += '<button class="btn btn-secondary" id="btnImportXls" title="Importa rosa da file Excel">📥 XLS</button>';
-  toolbarHtml += '<button class="btn btn-secondary" id="btnImportTc" title="Importa rosa da Tuttocampo" style="background:#149347;color:#fff;">⚽ Tuttocampo</button>';
+  if (window.YFM.currentUser?.is_superadmin) {
+    toolbarHtml += '<button class="btn btn-secondary" id="btnImportTc" title="Importa rosa da Tuttocampo" style="background:#149347;color:#fff;">⚽ Tuttocampo</button>';
+  }
   toolbarHtml += '<button class="btn btn-primary" id="btnAdd">+ Aggiungi</button></div></div>';
 
   let scadenzeHtml = scadenze.length > 0 ? '<div class="card" style="margin-bottom:20px;border-left:4px solid #F39C12;"><h3>⚠️ Certificati in scadenza</h3>' + scadenze.map(x => '<div>' + x.nome + ' ' + x.cognome + ' - ' + formatDateShort(x.scadenza) + ' (' + (x.giorni_rimanenti || x.giorniRimanenti) + 'gg)</div>').join('') + '</div>' : '';
@@ -96,9 +98,12 @@ function renderPlayerCards(players) {
   if (players.length === 0) return '<p style="color:var(--gray);grid-column:1/-1;">Nessun calciatore</p>';
   return players.map(p => {
     const isSelected = isSelectionMode && selectedPlayers.has(p.id);
-    let card = '<div class="card player-card" data-pid="' + p.id + '" onclick="window.YFM && window.YFM.openPlayerDetail && window.YFM.openPlayerDetail(\'' + p.id + '\')" style="padding:16px;display:flex;align-items:center;gap:16px;cursor:pointer;border:2px solid ' + (isSelected ? 'var(--primary,#667eea)' : 'transparent') + ';background:' + (isSelected ? 'rgba(102,126,234,0.1)' : 'white') + ';transition:all 0.2s;">';
+    let card = '<div class="card player-card" data-pid="' + p.id + '" onclick="' + (isSelectionMode ? '' : 'window.YFM && window.YFM.openPlayerDetail && window.YFM.openPlayerDetail(\'' + p.id + '\')') + '" style="padding:16px;display:flex;align-items:center;gap:16px;cursor:pointer;border:2px solid ' + (isSelected ? 'var(--primary,#667eea)' : 'transparent') + ';background:' + (isSelected ? 'rgba(102,126,234,0.1)' : 'white') + ';transition:all 0.2s;">';
     
     // Avatar
+    if (isSelectionMode) {
+      card += '<div style="width:24px;height:24px;border-radius:4px;border:2px solid ' + (isSelected ? 'var(--primary,#667eea)' : '#ccc') + ';background:' + (isSelected ? 'var(--primary,#667eea)' : 'white') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (isSelected ? '<span style="color:white;font-size:14px;">✓</span>' : '') + '</div>';
+    }
     card += '<div class="player-avatar" style="background:' + getAvatarColor(p.nome || '') + ';flex-shrink:0;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:white;">' + (p.nome || '')[0] + (p.cognome || '')[0] + '</div>';
     
     // Info giocatore

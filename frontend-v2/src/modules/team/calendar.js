@@ -220,7 +220,7 @@ function renderCalendarPage(c, matches, stats) {
       <div><h1 class="page-title">Calendario ${window.YFM.getSquadraName()}</h1></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-primary" id="btnAdd">+ Nuova</button>
-        <button class="btn btn-secondary" id="btnImportTc" style="font-size:13px;">⚽ Tuttocampo</button>
+        ${window.YFM.currentUser?.is_superadmin ? '<button class="btn btn-secondary" id="btnImportTc" style="font-size:13px;">⚽ Tuttocampo</button>' : ''}
         <button class="btn btn-secondary" id="btnImportPdf" style="font-size:13px;">📄 PDF</button>
         <button class="btn btn-secondary" id="btnImport" style="font-size:13px;">📥 CSV</button>
         <button class="btn btn-secondary" id="btnDeleteAll" style="font-size:13px;color:#E74C3C;">🗑️ Cancella tutto</button>
