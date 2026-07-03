@@ -18,3 +18,25 @@ export function hideLoading() {
   const d = document.getElementById('globalLoading');
   if (d) d.remove();
 }
+
+// Custom alert con titolo "Youth Football Manager"
+(function overrideNativeAlert() {
+  window.alert = function(msg) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:99999;';
+    const isError = /errore|non compatibile|obbligatori|troppo corto/i.test(msg);
+    const isSuccess = /\u2705|importat|completat/i.test(msg);
+    const icon = isError ? '⚠️' : isSuccess ? '✅' : 'ℹ️';
+    overlay.innerHTML = `<div style="background:white;border-radius:16px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;animation:fadeIn .15s ease;">
+      <div style="padding:16px 20px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-weight:600;font-size:14px;">Youth Football Manager</div>
+      <div style="padding:24px 20px;font-size:14px;line-height:1.6;white-space:pre-line;">${icon} ${msg}</div>
+      <div style="padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;">
+        <button style="padding:10px 24px;background:#667eea;color:white;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;" onclick="this.closest('div[style*=fixed]').remove()">Ok</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('button').focus();
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') overlay.remove(); });
+  };
+})();

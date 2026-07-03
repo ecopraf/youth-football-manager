@@ -1,4 +1,5 @@
 import './style.css'
+import './utils/ui.js'
 import { setupLayout } from './components/layout/Sidebar'
 import { initRouter } from './router'
 import { loadWorkspaceInfo } from './modules/club/workspace'
