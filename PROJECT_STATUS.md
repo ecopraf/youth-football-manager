@@ -113,6 +113,20 @@ module.exports = createXxxRouter;
 
 ---
 
+## 2b. Infrastruttura Proxy (Tuttocampo)
+
+### Problema
+Tuttocampo blocca tutti gli IP datacenter (Vercel, Cloudflare, AWS). Lo scraping automatico funziona solo da IP residenziali.
+
+### Soluzione
+- **Locale**: connessione diretta (IP residenziale dell'utente)
+- **Produzione**: fallback manuale (l'utente copia/incolla dalla pagina TC)
+- **Cloudflare Worker** (`tc-proxy.yfm-proxy.workers.dev`): deployato ma TC blocca anche CF
+- **Env var Vercel**: `PROXY_TC_URL` configurata ma inefficace
+- **Consiglio**: fare import rosa/calendario TC da backend locale (scrive nello stesso DB prod)
+
+---
+
 ## 3. Sistema di Autenticazione e Autorizzazioni ✅ COMPLETATO
 
 ### Ruoli Utente
@@ -228,7 +242,7 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Settings | `modules/club/settings.js` | Stagione, categoria, staff |
 | Workspace | `modules/club/workspace.js` | Info società, caricamento facility |
 | Import Center | `modules/import/importCenter.js` | Pagina centralizzata con 6 card import, wizard testo SGS, batch formazioni TC, log storico DB |
-| Loghi Squadre | `frontend-v2/public/logos/` | 40+ loghi PNG da Tuttocampo, matching fuzzy, logo workspace |
+| Loghi Squadre | `frontend-v2/public/logos/` | 40+ loghi PNG da Tuttocampo, matching fuzzy, logo workspace, convocazioni layout PDF (3 colonne), dettaglio partita logo+nome vs logo+nome, distinta 80px, header 40px |
 | Workspace Switcher | `modules/club/workspaceSwitcher.js` | Dropdown select nella sidebar per superadmin |
 | Gestione Utenti | `modules/admin/users.js` | CRUD utenti sistema (Admin) |
 | Link Guest | `modules/admin/guestLinks.js` | Genera/revoca link accesso guest (Admin) |
@@ -548,6 +562,12 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 | Hash | Descrizione |
 |------|------------|
 | (pending) | feat: sistema loghi squadre — scraping TC, matching fuzzy, logo workspace, integrazione UI |
+| 2bc61df | feat: fallback manuale import rosa TC (supporta testo copiato + HTML) |
+| c5044c7 | fix: usa fetch nativo per proxy TC |
+| b549848 | feat: supporto Cloudflare Worker proxy per TC |
+| 34ab64e | feat: migliora loghi (dettaglio, convocazioni come PDF, distinta più grandi) + rinomina workspace Albalonga |
+| af378c0 | fix: normalizza accenti (Citta→Città) nell'import PDF/testo SGS |
+| 02f3664 | style: ingrandisce logo workspace nella header (32→40px) |
 | (pending) | refactor: modularizzazione completa backend — 13 router, index.js da ~2000 a ~130 righe |
 | (pending) | feat: Import Center con 6 card, parser testo SGS, batch formazioni TC, log storico DB |
 | (pending) | feat: import formazioni Tuttocampo (MatchFormations.php scraping) |
@@ -560,7 +580,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 ---
 
-*Ultimo aggiornamento: Luglio 2026 (PDF Import, Guest View, Login Fix, Staff)*
+*Ultimo aggiornamento: 3 Luglio 2026 (Loghi migliorati, normalizzazione accenti, proxy TC, fallback manuale, workspace Albalonga)*
 
 ---
 
@@ -576,7 +596,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 | Nome | Ruolo | Email | Password | Workspace |
 |------|-------|-------|----------|-----------|
 | Matteo Urilli | Allenatore | matteo@urilli.it | mister | DF Academy |
-| Francesco Annese | Admin | francesco@annese.it | annex | ACP Annex |
+| Francesco Annese | Admin | francesco@annese.it | annex | Albalonga |
 
 ### Utenti di Test - Demo
 

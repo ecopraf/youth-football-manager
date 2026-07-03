@@ -106,7 +106,7 @@ Le tabelle reali nel DB Supabase sono:
 
 I workspace attivi nel DB sono:
 - `SSD New Team` (ID: `22222222-2222-2222-2222-222222222222`) — Categorie: Under 15, Under 16, Under 17
-- `ACP Annex` (ID: `752eab50-73c1-495b-9e0e-8b851e9c9a99`)
+- `ACP Annex` (ID: `752eab50-73c1-495b-9e0e-8b851e9c9a99`) → **rinominato in "Albalonga"**
 - `DF Academy` (ID: `ab1186e5-a884-4355-b684-28e32b8157c2`) — Categorie: Under 15
 
 **NON ESISTE PIÙ** il workspace demo `ASD Green Academy` (ID: `00000000-0000-0000-0000-000000000001`) — eliminato. Non usare mai questo ID nel codice.

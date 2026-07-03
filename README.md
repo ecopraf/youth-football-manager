@@ -66,7 +66,7 @@ youth-football-manager/
 | Nome | Ruolo | Email | Password | Workspace |
 |------|-------|-------|----------|-----------|
 | Matteo Urilli | Allenatore | matteo@urilli.it | mister | DF Academy |
-| Francesco Annese | Admin | francesco@annese.it | annex | ACP Annex |
+| Francesco Annese | Admin | francesco@annese.it | annex | Albalonga |
 
 ---
 

@@ -63,9 +63,30 @@
   - Download PNG da CDN b2-content.tuttocampo.it e salvataggio in `frontend-v2/public/logos/`
   - Tabella DB `team_logo` (nome, nome_normalizzato, logo_path, tc_team_id)
   - Matching fuzzy avversario → logo (gestisce acronimi: sa.ma.gor → samagor, l.v.p.a → lvpa)
+  - `stripAccents()` per normalizzazione accenti (città→citta) nel matching
   - Logo mostrato in: dashboard, calendario, dettaglio partita, convocazioni, distinta
   - Logo workspace associato a ciascun workspace (colonna `logo_url` su tabella `workspace`)
+  - Convocazioni: layout 3 colonne (logo ws sx, titolo centro, logo LND dx) come PDF ufficiale
+  - Dettaglio partita: `[logo] NomeSquadra vs [logo] Avversario`
+  - Distinta: loghi ingranditi (80px)
+  - Header app: logo workspace 40px
   - Script manuale: `backend/scripts/scrape-logos.js <url-classifica-tc>`
+- [x] Normalizzazione accenti import PDF SGS
+  - `ACCENT_MAP` in `pdfCalendarioParser.js` e `importUtils.js`: "Citta" → "Città", "Universita" → "Università"
+  - Applicata in `normalizeTeamName()` dopo Title Case
+- [x] Cloudflare Worker proxy per Tuttocampo
+  - Worker deployato su `tc-proxy.yfm-proxy.workers.dev` (free tier 100K req/giorno)
+  - Backend usa proxy quando `PROXY_TC_URL` è configurato (env var su Vercel)
+  - **NOTA**: TC blocca anche IP Cloudflare Workers — il proxy non risolve il problema
+  - In locale: connessione diretta (IP residenziale, funziona sempre)
+  - In produzione: fallback manuale (copia/incolla testo dalla pagina TC)
+- [x] Fallback manuale import rosa Tuttocampo
+  - Quando scraping automatico fallisce, mostra box con istruzioni
+  - L'utente apre la pagina TC → seleziona tabella → copia → incolla
+  - Supporta sia HTML (Ctrl+U) che testo semplice (selezione visibile)
+  - Endpoint `POST /api/roster/parse-html-tuttocampo` (HTML)
+  - Endpoint `POST /api/roster/parse-text-tuttocampo` (testo copiato)
+  - Parsing intelligente: rileva date DD-MM-YYYY e ruoli POR/DIF/CEN/ATT
 - [ ] Import Tuttocampo - Fase 3: Archiviazione automatica
   - Partite con risultato importate → archiviata=true automatico
   - Gestione conflitti: se partita già esiste (stesso avversario+giornata) → skip o aggiorna
