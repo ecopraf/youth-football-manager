@@ -17,7 +17,6 @@ export default async function loadStats() {
     const statsArr = (stats || []).sort((a, b) => a.cognome.localeCompare(b.cognome));
 
     const totGol = statsArr.reduce((s, p) => s + p.gol, 0);
-    const totAssist = statsArr.reduce((s, p) => s + p.assist, 0);
     const totAmm = statsArr.reduce((s, p) => s + p.ammonizioni, 0);
     const totEsp = statsArr.reduce((s, p) => s + p.espulsioni, 0);
     const diffidati = statsArr.filter(p => p.ammonizioni >= 4);
@@ -43,7 +42,6 @@ export default async function loadStats() {
     <div class="widgets" style="margin-bottom:20px;">
       <div class="card widget"><div class="widget-value" style="color:#667eea;">${partiteGiocate || 0}</div><div class="widget-label">Partite</div></div>
       <div class="card widget"><div class="widget-value" style="color:#27AE60;">${totGol}</div><div class="widget-label">⚽ Gol</div></div>
-      <div class="card widget"><div class="widget-value" style="color:#3498DB;">${totAssist}</div><div class="widget-label">🅰️ Assist</div></div>
       <div class="card widget"><div class="widget-value" style="color:#F39C12;">${totAmm}</div><div class="widget-label">🟨 Amm.</div></div>
       <div class="card widget"><div class="widget-value" style="color:#E74C3C;">${totEsp}</div><div class="widget-label">🟥 Esp.</div></div>
     </div>
