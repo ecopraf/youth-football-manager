@@ -234,6 +234,49 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
     }
   });
 
+  // POST /api/roster/parse-html-tuttocampo — fallback manuale: l'utente incolla l'HTML
+  router.post('/api/roster/parse-html-tuttocampo', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+    try {
+      const { html } = req.body;
+      if (!html || html.length < 500) return res.status(400).json({ error: 'HTML non valido o troppo corto' });
+
+      const $ = cheerio.load(html);
+      const players = [];
+      const prefixes = ['de', 'di', 'del', 'della', 'dello', 'degli', 'dei', "d'", 'lo', 'la', 'le', 'li', 'el', 'al', 'van', 'von'];
+
+      $('table.team-players tbody tr').each((i, row) => {
+        const nameEl = $(row).find('td.player a[data-player-id]');
+        if (!nameEl.length) return;
+        const fullName = nameEl.text().trim();
+        const birthdate = $(row).find('td.birthdate').text().trim();
+        const ruolo = $(row).find('td').eq(3).text().trim();
+        if (!fullName) return;
+
+        const parts = fullName.split(' ');
+        let cognome = '', nome = '';
+        if (parts.length >= 2) {
+          if (parts.length >= 3 && prefixes.includes(parts[0].toLowerCase())) {
+            cognome = parts[0] + ' ' + parts[1]; nome = parts.slice(2).join(' ');
+          } else { cognome = parts[0]; nome = parts.slice(1).join(' '); }
+        } else { cognome = fullName; }
+
+        let dataNascita = null;
+        if (birthdate && birthdate !== '-') {
+          const [dd, mm, yyyy] = birthdate.split('-');
+          if (dd && mm && yyyy) dataNascita = `${yyyy}-${mm}-${dd}`;
+        }
+
+        const ruoloMap = { 'POR': 'Portiere', 'DIF': 'Difensore', 'CEN': 'Centrocampista', 'ATT': 'Attaccante' };
+        players.push({ cognome, nome, data_nascita: dataNascita, ruolo: ruoloMap[ruolo] || null });
+      });
+
+      if (!players.length) return res.status(400).json({ error: 'Nessun giocatore trovato nell\'HTML. Assicurati di copiare il sorgente della pagina Rosa.' });
+      res.json({ success: true, teamName: 'Import manuale', players });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 }
 

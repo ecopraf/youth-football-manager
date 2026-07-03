@@ -522,7 +522,40 @@ function openImportTcModal() {
         </div>`;
       document.getElementById('tcImportBtn').style.display = 'block';
     } catch (err) {
-      document.getElementById('tcPreview').innerHTML = `<p style="color:red;">❌ ${err.message}</p>`;
+      document.getElementById('tcPreview').innerHTML = `<p style="color:red;">❌ ${err.message}</p>
+        <div style="margin-top:12px;padding:12px;background:#fff3cd;border-radius:8px;border:1px solid #ffc107;">
+          <p style="font-size:12px;margin:0 0 8px 0;"><strong>⚠️ Fallback manuale:</strong> Apri la pagina TC nel browser, fai Ctrl+U (Visualizza sorgente), copia tutto e incolla qui sotto:</p>
+          <textarea id="tcHtmlFallback" rows="4" placeholder="Incolla qui il sorgente HTML della pagina Rosa..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:11px;resize:vertical;"></textarea>
+          <button id="tcParseFallbackBtn" class="btn btn-primary" style="margin-top:8px;width:100%;font-size:13px;">📋 Analizza HTML</button>
+        </div>`;
+      document.getElementById('tcParseFallbackBtn').onclick = async () => {
+        const html = document.getElementById('tcHtmlFallback').value.trim();
+        if (!html || html.length < 200) { alert('HTML troppo corto'); return; }
+        const fbBtn = document.getElementById('tcParseFallbackBtn');
+        fbBtn.disabled = true; fbBtn.textContent = '⏳ Analisi...';
+        try {
+          const resp2 = await fetch(`${API_BASE}/roster/parse-html-tuttocampo`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('yfm_token')}` },
+            body: JSON.stringify({ html })
+          });
+          const data2 = await resp2.json();
+          if (!resp2.ok) throw new Error(data2.error);
+          fetchedPlayers = data2.players;
+          document.getElementById('tcPreview').innerHTML = `<p style="font-weight:600;margin-bottom:8px;">📋 ${fetchedPlayers.length} giocatori trovati</p>
+            <div style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;">
+            ${fetchedPlayers.map((p, i) => `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f5f5f5;">
+              <input type="checkbox" checked data-idx="${i}">
+              <span style="flex:1;font-size:13px;">${p.cognome} ${p.nome}</span>
+              <span style="font-size:11px;color:#888;">${p.ruolo || '?'}</span>
+              <span style="font-size:11px;color:#aaa;">${p.data_nascita || '-'}</span>
+            </label>`).join('')}
+            </div>`;
+          document.getElementById('tcImportBtn').style.display = 'block';
+        } catch (e2) {
+          alert('❌ ' + e2.message);
+          fbBtn.disabled = false; fbBtn.textContent = '📋 Analizza HTML';
+        }
+      };
     }
     btn.disabled = false; btn.textContent = '🔍 Cerca giocatori';
   };
