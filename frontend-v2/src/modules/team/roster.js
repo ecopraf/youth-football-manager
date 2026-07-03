@@ -522,21 +522,30 @@ function openImportTcModal() {
         </div>`;
       document.getElementById('tcImportBtn').style.display = 'block';
     } catch (err) {
-      document.getElementById('tcPreview').innerHTML = `<p style="color:red;">❌ ${err.message}</p>
-        <div style="margin-top:12px;padding:12px;background:#fff3cd;border-radius:8px;border:1px solid #ffc107;">
-          <p style="font-size:12px;margin:0 0 8px 0;"><strong>⚠️ Fallback manuale:</strong> Apri la pagina TC nel browser, fai Ctrl+U (Visualizza sorgente), copia tutto e incolla qui sotto:</p>
-          <textarea id="tcHtmlFallback" rows="4" placeholder="Incolla qui il sorgente HTML della pagina Rosa..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:11px;resize:vertical;"></textarea>
-          <button id="tcParseFallbackBtn" class="btn btn-primary" style="margin-top:8px;width:100%;font-size:13px;">📋 Analizza HTML</button>
+      const tcUrl = document.getElementById('tcRosaUrl').value.trim();
+      document.getElementById('tcPreview').innerHTML = `<p style="color:red;margin-bottom:12px;">❌ ${err.message}</p>
+        <div style="padding:14px;background:#f0f7ff;border-radius:10px;border:1px solid #b3d4fc;">
+          <p style="font-size:13px;font-weight:600;margin:0 0 10px 0;">📋 Import manuale (funziona sempre)</p>
+          <ol style="font-size:12px;color:#444;margin:0 0 12px 16px;line-height:1.8;">
+            <li>Apri la pagina Rosa su Tuttocampo ${tcUrl ? `<a href="${tcUrl}" target="_blank" style="color:#667eea;">→ Apri</a>` : ''}</li>
+            <li>Seleziona tutta la tabella giocatori (o fai Ctrl+A)</li>
+            <li>Copia (Ctrl+C) e incolla qui sotto (Ctrl+V)</li>
+          </ol>
+          <textarea id="tcTextFallback" rows="5" placeholder="Incolla qui il testo copiato dalla pagina Rosa di Tuttocampo..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:vertical;font-family:monospace;"></textarea>
+          <button id="tcParseTextBtn" class="btn btn-primary" style="margin-top:10px;width:100%;">🔍 Analizza testo</button>
         </div>`;
-      document.getElementById('tcParseFallbackBtn').onclick = async () => {
-        const html = document.getElementById('tcHtmlFallback').value.trim();
-        if (!html || html.length < 200) { alert('HTML troppo corto'); return; }
-        const fbBtn = document.getElementById('tcParseFallbackBtn');
+      document.getElementById('tcParseTextBtn').onclick = async () => {
+        const text = document.getElementById('tcTextFallback').value.trim();
+        if (!text || text.length < 50) { alert('Testo troppo corto. Copia più contenuto dalla pagina.'); return; }
+        const fbBtn = document.getElementById('tcParseTextBtn');
         fbBtn.disabled = true; fbBtn.textContent = '⏳ Analisi...';
         try {
-          const resp2 = await fetch(`${API_BASE}/roster/parse-html-tuttocampo`, {
+          // Try as HTML first, then as plain text
+          const isHtml = text.includes('<') && text.includes('>');
+          const endpoint = isHtml ? 'parse-html-tuttocampo' : 'parse-text-tuttocampo';
+          const resp2 = await fetch(`${API_BASE}/roster/${endpoint}`, {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('yfm_token')}` },
-            body: JSON.stringify({ html })
+            body: JSON.stringify(isHtml ? { html: text } : { text })
           });
           const data2 = await resp2.json();
           if (!resp2.ok) throw new Error(data2.error);
@@ -553,7 +562,7 @@ function openImportTcModal() {
           document.getElementById('tcImportBtn').style.display = 'block';
         } catch (e2) {
           alert('❌ ' + e2.message);
-          fbBtn.disabled = false; fbBtn.textContent = '📋 Analizza HTML';
+          fbBtn.disabled = false; fbBtn.textContent = '🔍 Analizza testo';
         }
       };
     }

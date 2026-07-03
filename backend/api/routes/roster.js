@@ -277,6 +277,62 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
     }
   });
 
+  // POST /api/roster/parse-text-tuttocampo — fallback: l'utente incolla il testo copiato dalla pagina
+  router.post('/api/roster/parse-text-tuttocampo', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text || text.length < 50) return res.status(400).json({ error: 'Testo troppo corto' });
+
+      const prefixes = ['de', 'di', 'del', 'della', 'dello', 'degli', 'dei', "d'", 'lo', 'la', 'le', 'li', 'el', 'al', 'van', 'von'];
+      const players = [];
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+
+      // Pattern TC text: "Cognome Nome    DD-MM-YYYY    POS"
+      // Or: lines with name, birthdate pattern, and position code
+      const dateRegex = /\d{2}-\d{2}-\d{4}/;
+      const posRegex = /\b(POR|DIF|CEN|ATT)\b/i;
+
+      for (const line of lines) {
+        const dateMatch = line.match(dateRegex);
+        const posMatch = line.match(posRegex);
+        if (!dateMatch && !posMatch) continue;
+
+        // Extract name (everything before the date or position)
+        let namePart = line;
+        if (dateMatch) namePart = line.substring(0, line.indexOf(dateMatch[0])).trim();
+        else if (posMatch) namePart = line.substring(0, line.indexOf(posMatch[0])).trim();
+
+        // Clean up name - remove numbers, extra spaces
+        namePart = namePart.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+        if (namePart.length < 3) continue;
+
+        const parts = namePart.split(' ').filter(p => p.length > 0);
+        if (parts.length < 2) continue;
+
+        let cognome, nome;
+        if (parts.length >= 3 && prefixes.includes(parts[0].toLowerCase())) {
+          cognome = parts[0] + ' ' + parts[1]; nome = parts.slice(2).join(' ');
+        } else { cognome = parts[0]; nome = parts.slice(1).join(' '); }
+
+        let dataNascita = null;
+        if (dateMatch) {
+          const [dd, mm, yyyy] = dateMatch[0].split('-');
+          dataNascita = `${yyyy}-${mm}-${dd}`;
+        }
+
+        const ruoloMap = { 'POR': 'Portiere', 'DIF': 'Difensore', 'CEN': 'Centrocampista', 'ATT': 'Attaccante' };
+        const ruolo = posMatch ? (ruoloMap[posMatch[0].toUpperCase()] || null) : null;
+
+        players.push({ cognome, nome, data_nascita: dataNascita, ruolo });
+      }
+
+      if (!players.length) return res.status(400).json({ error: 'Nessun giocatore trovato. Assicurati di copiare la tabella giocatori dalla pagina Rosa.' });
+      res.json({ success: true, teamName: 'Import manuale', players });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 }
 
