@@ -144,7 +144,7 @@ export default async function loadDashboard() {
       '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 16px;text-align:center;min-width:60px;">' +
       '<div style="font-size:22px;font-weight:bold;color:' + (dr5 >= 0 ? '#4ade80' : '#f87171') + ';">' + (dr5 >= 0 ? '+' : '') + dr5 + '</div><div style="font-size:10px;color:rgba(255,255,255,0.8);">Diff. Reti</div></div></div></div>';
     
-    // LISTA PARTITE - layout identico alla demo
+    // LISTA PARTITE - layout demo
     const matchesHtml = risultati.map(r => {
       const isCasa = r.luogo === 'Casa';
       const icon = isCasa ? '🏠' : '✈️';
@@ -154,24 +154,23 @@ export default async function loadDashboard() {
       const tipoEvento = compLower.includes('coppa') ? 'coppa' : compLower.includes('torneo') ? 'torneo' : compLower.includes('amichevole') ? 'amichevole' : 'campionato';
       const competitionBadge = getCompetitionBadge(tipoEvento);
       const giornataLabel = r.giornata ? 'G.' + r.giornata : '';
-      const dotColor = r.golFatti > r.golSubiti ? '#28a745' : r.golFatti < r.golSubiti ? '#dc3545' : '#b8860b';
-      const resultClass = r.golFatti > r.golSubiti ? 'match-win' : r.golFatti < r.golSubiti ? 'match-loss' : 'match-draw';
+      const borderColor = r.golFatti > r.golSubiti ? '#28a745' : r.golFatti < r.golSubiti ? '#dc3545' : '#b8860b';
       
-      return `<div class="match-item ${resultClass}" onclick="window.YFM.openMatchDetail('${r.id}')">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f0f0f0;margin-bottom:10px;width:100%;">
-          <div style="display:flex;align-items:center;gap:8px;">
+      return `<div class="match-item" style="border-left-color:${borderColor};" onclick="window.YFM.openMatchDetail('${r.id}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;width:100%;">
+          <div style="display:flex;align-items:center;gap:10px;">
             ${competitionBadge}
-            <span style="font-size:12px;color:#555;font-weight:500;">${giornataLabel}</span>
+            <span style="font-size:13px;color:#444;font-weight:500;">${giornataLabel}</span>
           </div>
-          <span style="font-size:12px;color:#888;">${formatDateShort(r.dataOra)}</span>
+          <span style="font-size:13px;color:#888;">${formatDateShort(r.dataOra)}</span>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
-            <span style="font-size:16px;">${icon}</span>
-            <span style="width:12px;height:12px;border-radius:50%;background:${dotColor};flex-shrink:0;"></span>
-            <span style="font-size:15px;font-weight:600;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.avversario}</span>
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+            <span style="font-size:18px;">${icon}</span>
+            <span style="font-size:16px;font-weight:700;color:#222;">${r.avversario}</span>
+            <span style="width:14px;height:14px;border-radius:50%;background:${borderColor};flex-shrink:0;"></span>
           </div>
-          <span style="font-size:16px;font-weight:bold;color:${resultStyle.color};background:${resultStyle.bg};padding:8px 16px;border-radius:8px;border:1px solid ${resultStyle.color};flex-shrink:0;letter-spacing:1px;">${r.golFatti} - ${r.golSubiti}</span>
+          <span style="font-size:17px;font-weight:bold;color:${resultStyle.color};background:${resultStyle.bg};padding:8px 16px;border-radius:8px;border:1px solid ${resultStyle.color};flex-shrink:0;letter-spacing:1px;">${r.golFatti} - ${r.golSubiti}</span>
         </div>
       </div>`;
     }).join('');
@@ -212,10 +211,7 @@ export default async function loadDashboard() {
     '.bottom-grid { display:grid; gap:20px; grid-template-columns:1fr; }' +
     '@media (min-width: 900px) { .bottom-grid { grid-template-columns: 1.5fr 1fr !important; } }' +
     '.result-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
-    '.match-item { display:flex; flex-direction:column; padding:14px 16px; border-radius:12px; margin-bottom:10px; transition: all 0.2s ease; cursor:pointer; background:white; border:1px solid #e8e8e8; border-left:4px solid #ccc; box-shadow:0 2px 8px rgba(0,0,0,0.04); }' +
-    '.match-item.match-win { border-left-color:#28a745; }' +
-    '.match-item.match-draw { border-left-color:#b8860b; }' +
-    '.match-item.match-loss { border-left-color:#dc3545; }' +
+    '.match-item { display:flex; flex-direction:column; padding:16px 20px; border-radius:12px; margin-bottom:12px; transition: all 0.2s ease; cursor:pointer; background:white; border:1px solid #e8e8e8; border-left:4px solid #28a745; box-shadow:0 2px 8px rgba(0,0,0,0.04); }' +
     '.match-item:hover { background:#f8f9ff; box-shadow:0 4px 12px rgba(0,0,0,0.08); }' +
     '.staff-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
     '.staff-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }' +
