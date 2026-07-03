@@ -56,7 +56,7 @@ export async function openMatchDetail(mid) {
     html += '</style>';
     
     html += '<div class="match-header">';
-    html += '<h2>' + window.YFM.getSocietaName() + ' vs ' + p.avversario + '</h2>';
+    html += '<h2>' + (window.YFM.getWorkspaceLogo() ? '<img src="' + window.YFM.getWorkspaceLogo() + '" style="width:28px;height:28px;border-radius:50%;object-fit:contain;vertical-align:middle;margin-right:8px;" onerror="this.style.display=\'none\'">' : '') + window.YFM.getSocietaName() + ' vs ' + p.avversario + (p.logo ? ' <img src="' + p.logo + '" style="width:28px;height:28px;border-radius:50%;object-fit:contain;vertical-align:middle;margin-left:8px;" onerror="this.style.display=\'none\'">' : '') + '</h2>';
     html += '<div class="score">' + golCasa + ' - ' + golOspiti + '</div>';
     html += '<div class="result-label">' + resultIcon + ' ' + resultLabel + '</div>';
     html += '<div class="meta">' + formatDate(p.data_ora) + (p.giornata ? ' · G.' + p.giornata : '') + ' · ' + (p.luogo || '') + '</div>';

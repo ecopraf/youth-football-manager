@@ -32,6 +32,9 @@ window.YFM.getSquadra = () => {
 window.YFM.getSocietaName = () => {
   return window.YFM.workspaceInfo ? window.YFM.workspaceInfo.nome : 'ASD';
 };
+window.YFM.getWorkspaceLogo = () => {
+  return window.YFM.workspaceInfo ? window.YFM.workspaceInfo.logo_url : null;
+};
 
 window.YFM.handleLogout = function() {
   localStorage.removeItem('yfm_token');

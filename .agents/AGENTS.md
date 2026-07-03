@@ -72,7 +72,7 @@ api/
 ├── pdfCalendarioParser.js      — Parser PDF calendario SGS/LND
 ├── helpers/
 │   ├── tuttocampo.js           — Login/request Tuttocampo
-│   ├── importUtils.js          — Normalizzazione nomi, parsing eventi, log
+│   ├── importUtils.js          — Normalizzazione nomi, parsing eventi, log, scrape loghi
 │   └── importFormationTC.js    — Import formazioni da Tuttocampo
 └── routes/
     ├── auth.js                 — Login, register, users CRUD, guest
@@ -86,7 +86,7 @@ api/
     ├── player.js               — Calciatori CRUD, scadenze, stats, move
     ├── roster.js               — Import rosa XLS/Tuttocampo
     ├── importCalendario.js     — PDF, testo SGS, import-log
-    ├── importTuttocampo.js     — Scraping calendario TC, eventi
+    ├── importTuttocampo.js     — Scraping calendario TC, eventi, loghi automatici
     └── importConfirm.js        — Confirm TC, formations batch, matches-without-formation
 ```
 
@@ -141,6 +141,7 @@ api/
 | `users` | Utente sistema | workspace_id |
 | `guest_token` | Token guest | utente_id |
 | `import_log` | Storico importazioni | workspace_id, team_id, user_id |
+| `team_logo` | Loghi squadre avversarie | nome, nome_normalizzato, logo_path, tc_team_id |
 
 ---
 

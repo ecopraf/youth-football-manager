@@ -3,7 +3,7 @@
  */
 const express = require('express');
 const { tcRequest, tcLogin } = require('../helpers/tuttocampo');
-const { normalizeForMatch, parseEventiFromHtml, logImport } = require('../helpers/importUtils');
+const { normalizeForMatch, parseEventiFromHtml, logImport, scrapeLogosFromHtml } = require('../helpers/importUtils');
 const { importFormationFromTC } = require('../helpers/importFormationTC');
 
 function createImportTuttocampoRouter({ supabase, authMiddleware, requirePermission }) {
@@ -25,6 +25,12 @@ function createImportTuttocampoRouter({ supabase, authMiddleware, requirePermiss
       const mainResp = await tcRequest(baseUrl + '/Calendario', { headers: { 'Cookie': cookies } });
       const mainHtml = mainResp.data;
       if (!mainHtml || mainHtml.length < 1000) return res.status(503).json({ error: 'Tuttocampo non raggiungibile. Riprova tra qualche minuto.' });
+
+      // Scrape loghi squadre dal HTML (non-blocking)
+      let logoResult = null;
+      if (req.body.importLogos !== false) {
+        try { logoResult = await scrapeLogosFromHtml(mainHtml, supabase); } catch (e) { /* skip */ }
+      }
 
       const matchesNumberMatch = mainHtml.match(/matchesNumber='(\d+)'/);
       const totalDays = matchesNumberMatch ? parseInt(matchesNumberMatch[1]) : 30;
@@ -126,7 +132,7 @@ function createImportTuttocampoRouter({ supabase, authMiddleware, requirePermiss
       }
 
       if (partite.length === 0) return res.status(404).json({ error: `Squadra "${teamName}" non trovata nel girone.` });
-      res.json({ success: true, info: { anno, regione, categoria, girone, giornate: totalDays }, partite });
+      res.json({ success: true, info: { anno, regione, categoria, girone, giornate: totalDays }, partite, logos: logoResult });
     } catch (err) {
       res.status(500).json({ error: 'Errore scraping: ' + err.message });
     }

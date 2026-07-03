@@ -435,7 +435,7 @@ export function renderMatchCard(m, stats, isNext = false) {
       <div style="flex:1;min-width:0;">
         <div class="match-badges" style="margin-bottom:6px;">${luogoBadge}${compBadge}${giornBadge}${archivedBadge}</div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <span class="match-opponent">${m.avversario}</span>
+          ${r && r.logo ? `<img src="${r.logo}" style="width:20px;height:20px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : ''}<span class="match-opponent">${m.avversario}</span>
           ${resultHtml}
         </div>
         <div class="match-date-compact">📅 ${formatDateCompact(m.data_ora)}</div>
@@ -520,6 +520,7 @@ function openImportTuttocampo() {
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcImportResults" checked> Importa risultati</label>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcImportEvents"> Importa marcatori</label>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcImportFormations"> Importa formazioni</label>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcImportLogos" checked> Importa loghi</label>
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="tcArchive" checked> Archivia giocate</label>
   </div>
   <div id="tcEventsNote" style="display:none;background:#FFF3CD;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#856404;">\u26a0\ufe0f I marcatori verranno importati solo se Tuttocampo li mostra nella pagina di dettaglio. Il matching con la rosa avviene per cognome.</div>
@@ -546,7 +547,7 @@ function openImportTuttocampo() {
       const archiveCompleted = document.getElementById('tcArchive').checked;
       const data = await apiFetch('/calendario/import-tuttocampo', {
         method: 'POST',
-        body: JSON.stringify({ url, teamName, squadraId: window.YFM.squadraId, importResults, archiveCompleted, importEvents: document.getElementById('tcImportEvents').checked })
+        body: JSON.stringify({ url, teamName, squadraId: window.YFM.squadraId, importResults, archiveCompleted, importEvents: document.getElementById('tcImportEvents').checked, importLogos: document.getElementById('tcImportLogos').checked })
       });
 
       if (!data.partite || data.partite.length === 0) {
@@ -574,10 +575,12 @@ function openImportTuttocampo() {
       if (eventsCount > 0) eventsInfo = `<br><small style="color:#27AE60;">\u26bd ${eventsCount} eventi (marcatori/cartellini) trovati</small>`;
       let noDateInfo = '';
       if (noDate > 0) noDateInfo = `<br><small style="color:#c00;">\u26a0\ufe0f ${noDate} partite senza data (verranno importate senza data/ora)</small>`;
+      let logosInfo = '';
+      if (data.logos && data.logos.downloaded > 0) logosInfo = `<br><small style="color:#667eea;">\ud83c\udfa8 ${data.logos.downloaded} loghi squadre scaricati</small>`;
 
       resultDiv.innerHTML = `
         <div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;">
-          \u2705 <strong>${data.partite.length}</strong> partite trovate (${played} giocate, ${future} da giocare)${eventsInfo}${noDateInfo}
+          \u2705 <strong>${data.partite.length}</strong> partite trovate (${played} giocate, ${future} da giocare)${eventsInfo}${noDateInfo}${logosInfo}
           <br><small style="color:#555;">${data.info.categoria} - ${data.info.girone} - ${data.info.anno}</small>
         </div>
         <div style="max-height:280px;overflow-y:auto;border:1px solid #eee;border-radius:8px;">

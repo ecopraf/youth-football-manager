@@ -109,6 +109,7 @@ module.exports = createXxxRouter;
 | `guest_token` | Token guest temporanei | id, token, utente_id, tipo, squadre_accesso, scadenza |
 | `valutazione_partita` | Valutazioni | id, partita_id, calciatore_id, voto |
 | `import_log` | Storico importazioni | id, workspace_id, team_id, user_id, tipo, fonte, dettagli JSONB, record_importati, record_saltati, esito, errore, created_at |
+| `team_logo` | Loghi squadre avversarie | id, nome, nome_normalizzato UNIQUE, logo_path, tc_team_id, created_at |
 
 ---
 
@@ -227,6 +228,7 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Settings | `modules/club/settings.js` | Stagione, categoria, staff |
 | Workspace | `modules/club/workspace.js` | Info società, caricamento facility |
 | Import Center | `modules/import/importCenter.js` | Pagina centralizzata con 6 card import, wizard testo SGS, batch formazioni TC, log storico DB |
+| Loghi Squadre | `frontend-v2/public/logos/` | 40+ loghi PNG da Tuttocampo, matching fuzzy, logo workspace |
 | Workspace Switcher | `modules/club/workspaceSwitcher.js` | Dropdown select nella sidebar per superadmin |
 | Gestione Utenti | `modules/admin/users.js` | CRUD utenti sistema (Admin) |
 | Link Guest | `modules/admin/guestLinks.js` | Genera/revoca link accesso guest (Admin) |
@@ -257,6 +259,7 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Workspace Switcher v2 | - | Dropdown select in sidebar per superadmin, rimosso modal |
 | Import TC Formazioni | - | Scraping formazioni da MatchFormations.php, fuzzy match, convocazioni+formazioni+eventi |
 | Import Center | - | Pagina centralizzata 6 card, parser testo SGS, batch formazioni TC, log storico DB, voce sidebar |
+| Loghi Squadre TC | - | Scraping automatico loghi da TC, 40+ PNG, matching fuzzy acronimi, logo workspace in dashboard/dettaglio/convocazioni/distinta |
 
 ### ⏸️ SOSPESI
 
@@ -544,6 +547,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
+| (pending) | feat: sistema loghi squadre — scraping TC, matching fuzzy, logo workspace, integrazione UI |
 | (pending) | refactor: modularizzazione completa backend — 13 router, index.js da ~2000 a ~130 righe |
 | (pending) | feat: Import Center con 6 card, parser testo SGS, batch formazioni TC, log storico DB |
 | (pending) | feat: import formazioni Tuttocampo (MatchFormations.php scraping) |

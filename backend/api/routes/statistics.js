@@ -32,13 +32,19 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       function findLogo(avversario) {
         const lower = avversario.toLowerCase().trim();
         if (logoMap[lower]) return logoMap[lower];
+        // Normalizzato con trattini
+        const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        if (logoMap[norm]) return logoMap[norm];
+        // Compatto (senza separatori) per acronimi tipo sa.ma.gor -> samagor, l.v.p.a -> lvpa
+        const compact = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '');
+        for (const [key, path] of Object.entries(logoMap)) {
+          const keyCompact = key.replace(/[^a-z0-9\u00e0-\u00fa]/g, '');
+          if (compact === keyCompact || compact.includes(keyCompact) || keyCompact.includes(compact)) return path;
+        }
         // Fuzzy: cerca contenimento
         for (const [key, path] of Object.entries(logoMap)) {
           if (lower.includes(key) || key.includes(lower)) return path;
         }
-        // Normalizzato
-        const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-        if (logoMap[norm]) return logoMap[norm];
         return null;
       }
 

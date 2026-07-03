@@ -138,7 +138,7 @@ function showConvocationPreview(match, list, isArchiviata = false) {
   }
   
   html += `
-    <div class="t1">CONVOCAZIONE</div>
+    <div class="t1">${window.YFM.getWorkspaceLogo() ? '<img src="' + window.YFM.getWorkspaceLogo() + '" style="width:32px;height:32px;border-radius:50%;object-fit:contain;vertical-align:middle;margin-right:8px;">' : ''}CONVOCAZIONE</div>
     <div class="t2">${window.YFM.getSocietaName()} - ${catYear}</div>
     <div class="t3">${match.giornata ? 'Giornata ' + match.giornata + ' - ' : ''}${match.competizione || ''}</div>
     <div class="info">Partita: <strong>${window.YFM.getSocietaName()} - ${match.avversario}</strong><br>Campo: <strong>${campoInfo}</strong><br>Alle ore: ${dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} del giorno: <strong>${giorni[dt.getDay()]} ${dt.toLocaleDateString('it-IT')}</strong><br>Ritrovo alle ore: <strong>${ritrovo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</strong> al Campo di Giuoco</div>

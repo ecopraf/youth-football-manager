@@ -213,7 +213,24 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
   router.get('/api/partite/:matchId/dettaglio', authMiddleware, async (req, res) => {
     try {
       const { data: match } = await supabase.from('match').select('*, competition:competition_id(nome)').eq('id', req.params.matchId).single();
-      if (match) match.competizione = match.competition?.nome || null;
+      if (match) {
+        match.competizione = match.competition?.nome || null;
+        // Logo lookup
+        const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
+        if (logos && match.avversario) {
+          const lower = match.avversario.toLowerCase().trim();
+          const compact = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '');
+          const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+          match.logo = null;
+          for (const l of logos) {
+            const lLower = l.nome.toLowerCase();
+            const lCompact = l.nome_normalizzato.replace(/-/g, '');
+            if (lLower === lower || l.nome_normalizzato === norm || compact === lCompact || compact.includes(lCompact) || lCompact.includes(compact) || lower.includes(lLower) || lLower.includes(lower)) {
+              match.logo = l.logo_path; break;
+            }
+          }
+        }
+      }
       const { data: eventi } = await supabase.from('match_event').select('*, player:player_id(nome, cognome)').eq('match_id', req.params.matchId).order('minuto');
       const eventiMapped = (eventi || []).map(e => ({
         ...e, player_name: e.player ? e.player.cognome + ' ' + (e.player.nome ? e.player.nome.charAt(0) + '.' : '') : ''

@@ -58,6 +58,14 @@
   - Import formazioni batch (seleziona partite con tc_match_url senza formazione)
   - Log storico importazioni in DB (tabella `import_log`)
   - Voce sidebar "📥 Import Center" tra Calendario e Coach
+- [x] Loghi Squadre da Tuttocampo
+  - Scraping automatico loghi durante import calendario TC (checkbox "Importa loghi")
+  - Download PNG da CDN b2-content.tuttocampo.it e salvataggio in `frontend-v2/public/logos/`
+  - Tabella DB `team_logo` (nome, nome_normalizzato, logo_path, tc_team_id)
+  - Matching fuzzy avversario → logo (gestisce acronimi: sa.ma.gor → samagor, l.v.p.a → lvpa)
+  - Logo mostrato in: dashboard, calendario, dettaglio partita, convocazioni, distinta
+  - Logo workspace associato a ciascun workspace (colonna `logo_url` su tabella `workspace`)
+  - Script manuale: `backend/scripts/scrape-logos.js <url-classifica-tc>`
 - [ ] Import Tuttocampo - Fase 3: Archiviazione automatica
   - Partite con risultato importate → archiviata=true automatico
   - Gestione conflitti: se partita già esiste (stesso avversario+giornata) → skip o aggiorna

@@ -1,6 +1,9 @@
 /**
- * Import utilities — normalizzazione nomi, parsing eventi, log
+ * Import utilities — normalizzazione nomi, parsing eventi, log, loghi
  */
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 // Normalizza nome squadra da MAIUSCOLO a Title Case, rimuovendo suffissi legali
 function normalizeTeamName(name) {
@@ -170,7 +173,83 @@ async function logImport(supabase, { workspace_id, team_id, user_id, tipo, fonte
   });
 }
 
+// Normalizza nome per filename logo
+function normalizeLogoName(name) {
+  return name.toLowerCase()
+    .replace(/[^a-z0-9\u00e0-\u00fa]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+// Download file da URL HTTPS
+function downloadFile(url) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    https.get({ hostname: urlObj.hostname, path: urlObj.pathname + urlObj.search, headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return downloadFile(res.headers.location).then(resolve).catch(reject);
+      }
+      if (res.statusCode !== 200) return reject(new Error('HTTP ' + res.statusCode));
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+// Scrape loghi da HTML Tuttocampo e salva in DB + filesystem
+async function scrapeLogosFromHtml(html, supabase) {
+  if (!html || html.length < 500) return { downloaded: 0, skipped: 0 };
+
+  const LOGOS_DIR = path.join(__dirname, '../../../frontend-v2/public/logos');
+  if (!fs.existsSync(LOGOS_DIR)) fs.mkdirSync(LOGOS_DIR, { recursive: true });
+
+  // Pattern: <img alt="logo NomeSquadra" data-src='https://b2-content.tuttocampo.it/Teams/40/ID.png?v=X'
+  const logoRegex = /<img\s+alt="logo ([^"]+)"\s+data-src='([^']*Teams\/\d+\/(\d+)\.png[^']*)'/gi;
+  const teams = [];
+  let m;
+  while ((m = logoRegex.exec(html)) !== null) {
+    const nome = m[1].trim();
+    const logoUrl = m[2].replace('/40/', '/80/');
+    const tcTeamId = m[3];
+    const normalized = normalizeLogoName(nome);
+    if (!teams.find(t => t.normalized === normalized)) {
+      teams.push({ nome, normalized, logoUrl, tcTeamId });
+    }
+  }
+
+  if (teams.length === 0) return { downloaded: 0, skipped: 0 };
+
+  let downloaded = 0, skipped = 0;
+  for (const team of teams) {
+    const filePath = path.join(LOGOS_DIR, team.normalized + '.png');
+    if (fs.existsSync(filePath)) { skipped++; continue; }
+    try {
+      const buffer = await downloadFile(team.logoUrl);
+      if (buffer.length > 100) {
+        fs.writeFileSync(filePath, buffer);
+        downloaded++;
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  // Save to DB
+  for (const team of teams) {
+    const logoPath = '/logos/' + team.normalized + '.png';
+    const filePath = path.join(LOGOS_DIR, team.normalized + '.png');
+    if (!fs.existsSync(filePath)) continue;
+    await supabase.from('team_logo').upsert(
+      { nome: team.nome, nome_normalizzato: team.normalized, logo_path: logoPath, tc_team_id: team.tcTeamId },
+      { onConflict: 'nome_normalizzato' }
+    );
+  }
+
+  return { downloaded, skipped, total: teams.length };
+}
+
 module.exports = {
   normalizeTeamName, normalizeForMatch, parseMinuto,
-  parseDateText, parseEventiFromHtml, parseMatchesFromText, logImport
+  parseDateText, parseEventiFromHtml, parseMatchesFromText, logImport,
+  scrapeLogosFromHtml, normalizeLogoName, downloadFile
 };

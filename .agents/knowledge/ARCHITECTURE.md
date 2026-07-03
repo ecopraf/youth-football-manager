@@ -70,6 +70,7 @@ youth-football-manager/
 │   │   └── components/
 │   │       └── layout/        # Sidebar, Header
 │   ├── public/
+│   │   ├── logos/            # Loghi squadre (PNG da Tuttocampo)
 │   │   └── assets/           # Static assets
 │   ├── dist/                 # Build output (gitignore)
 │   ├── vite.config.js         # Build config con plugin
@@ -81,7 +82,7 @@ youth-football-manager/
 │   │   ├── pdfCalendarioParser.js # Parser PDF SGS/LND
 │   │   ├── helpers/
 │   │   │   ├── tuttocampo.js     # Login/request Tuttocampo
-│   │   │   ├── importUtils.js    # Normalizzazione, parsing, log
+│   │   │   ├── importUtils.js    # Normalizzazione, parsing, log, scrape loghi
 │   │   │   └── importFormationTC.js # Import formazioni TC
 │   │   └── routes/
 │   │       ├── auth.js           # Auth, users, guest
@@ -95,7 +96,7 @@ youth-football-manager/
 │   │       ├── player.js         # Calciatori CRUD
 │   │       ├── roster.js         # Import rosa XLS/TC
 │   │       ├── importCalendario.js  # PDF, testo SGS
-│   │       ├── importTuttocampo.js  # Scraping TC
+│   │       ├── importTuttocampo.js  # Scraping TC + loghi
 │   │       └── importConfirm.js     # Confirm, batch
 │   └── package.json
 │
@@ -197,6 +198,9 @@ youth-football-manager/
 ```sql
 -- Workspace (Multi-tenant)
 workspace (id, nome, logo_url, created_at)
+
+-- Team Logo (loghi avversari da Tuttocampo)
+team_logo (id, nome, nome_normalizzato UNIQUE, logo_path, tc_team_id, created_at)
 
 -- Users (ex utente)
 users (id, email, password_hash, nome, cognome, ruolo, workspace_id, ...)
