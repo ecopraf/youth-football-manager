@@ -168,6 +168,9 @@ app.use(createImportConfirmRouter({ supabase, authMiddleware, requirePermission 
 const createGazzettaRegionaleRouter = require('./routes/gazzettaRegionale');
 app.use(createGazzettaRegionaleRouter({ supabase, authMiddleware }));
 
+const createTournamentRouter = require('./routes/tournament');
+app.use(createTournamentRouter({ supabase, authMiddleware, requirePermission }));
+
 module.exports = app;
 
 // Avvio server locale

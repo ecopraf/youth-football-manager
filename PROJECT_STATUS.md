@@ -445,11 +445,11 @@ window.YFM.pages = {
 
 ### Ordine Sidebar
 1. 📊 Dashboard
-2. 👥 **Team** — Rosa, Calendario, Import Center
+2. 👥 **Team** — Rosa, Calendario
 3. 📈 **Performance** — Statistiche, Report
-4. 🎯 **Coach** — Allenamenti (Sedute, Presenze, Impostazioni)
-5. 🏢 **Club** — Stagioni (admin), Impostazioni (admin), Staff (admin + allenatore)
-6. 🔐 **Amministrazione** — Workspace (superadmin), Utenti (admin), Link Guest (admin + allenatore)
+4. 🎯 **Coach** — Allenamenti (Sedute, Presenze, Impostazioni), Tornei
+5. 🏢 **Club** — Società (visibile a tutti, incluso guest: organigramma, staff, riferimenti)
+6. 🔐 **Amministrazione** (solo admin) — Stagioni, Import Center, Workspace (superadmin), Utenti, Link Guest
 
 Navigazione: `window.YFM.navigateTo('nomePagina')`
 
