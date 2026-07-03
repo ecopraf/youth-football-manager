@@ -300,14 +300,22 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         }
       }
 
-      // Crea team_player con aggregato=true
-      const inserts = playerIds.map(pid => ({
-        team_id: req.params.squadraId,
-        player_id: pid,
-        stato: 'Attivo',
-        aggregato: true,
-        data_assegnazione: new Date().toISOString().split('T')[0]
-      }));
+      // Crea team_player con aggregato=true, copiando ruolo dal team originale
+      const inserts = [];
+      for (const pid of playerIds) {
+        const { data: origTp } = await supabase.from('team_player')
+          .select('ruolo_preferito, numero_maglia')
+          .eq('player_id', pid).eq('stato', 'Attivo').eq('aggregato', false).limit(1).single();
+        inserts.push({
+          team_id: req.params.squadraId,
+          player_id: pid,
+          stato: 'Attivo',
+          aggregato: true,
+          ruolo_preferito: origTp?.ruolo_preferito || null,
+          numero_maglia: origTp?.numero_maglia || null,
+          data_assegnazione: new Date().toISOString().split('T')[0]
+        });
+      }
       const { error } = await supabase.from('team_player').insert(inserts);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true, count: playerIds.length });
