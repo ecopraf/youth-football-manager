@@ -4,6 +4,7 @@ import { showLoading, hideLoading } from '../../utils/ui';
 let tokens = [];
 let categorie = [];
 let workspaces = [];
+let rosterPlayers = [];
 
 export default async function loadGuestLinks() {
   const c = document.getElementById('pageContent');
@@ -18,9 +19,12 @@ export default async function loadGuestLinks() {
   }
 
   c.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:8px;">
       <h1 class="page-title">🔗 Link di Accesso Guest</h1>
-      <button class="btn btn-primary" id="btnCreateLink">+ Crea Link</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" id="btnCreateLink">+ Crea Link</button>
+        <button class="btn btn-secondary" id="btnBatchLinks">👥 Genera Batch Atleti</button>
+      </div>
     </div>
     
     <div class="card" style="margin-bottom:24px;background:#f8f9fa;">
@@ -35,6 +39,7 @@ export default async function loadGuestLinks() {
         <thead>
           <tr style="border-bottom:2px solid #eee;">
             <th style="text-align:left;padding:12px;">Tipo</th>
+            <th style="text-align:left;padding:12px;">Giocatore</th>
             <th style="text-align:left;padding:12px;">Categoria</th>
             <th style="text-align:left;padding:12px;">Creato da</th>
             <th style="text-align:left;padding:12px;">Scadenza</th>
@@ -64,6 +69,11 @@ export default async function loadGuestLinks() {
             </select>
           </div>
           
+          <div class="form-group" id="playerGroup" style="display:none;">
+            <label>Giocatore *</label>
+            <select id="linkPlayer"><option value="">-- Seleziona giocatore --</option></select>
+          </div>
+          
           <div class="form-group" id="catGroup">
             <label>Categoria *</label>
             <div id="linkCategorie"></div>
@@ -91,10 +101,12 @@ export default async function loadGuestLinks() {
   await loadData();
 
   document.getElementById('btnCreateLink').addEventListener('click', openCreateModal);
+  document.getElementById('btnBatchLinks').addEventListener('click', handleBatchGenerate);
   document.getElementById('linkForm').addEventListener('submit', handleCreate);
   document.getElementById('btnCancelLink').addEventListener('click', () => {
     document.getElementById('linkModal').style.display = 'none';
   });
+  document.getElementById('linkTipo').addEventListener('change', onTipoChange);
 
   if (isSuperadmin) {
     document.getElementById('linkWorkspace').addEventListener('change', onWorkspaceChange);
@@ -106,6 +118,18 @@ async function loadData() {
   try {
     const tokensRes = await apiFetch('/auth/guest-links');
     tokens = tokensRes.links || [];
+
+    // Carica rosa per nomi giocatori e select
+    const teamId = window.YFM.squadraId;
+    if (teamId) {
+      try {
+        const rosterData = await apiFetch('/squadre/' + teamId + '/calciatori');
+        rosterPlayers = (rosterData || []).map(r => ({
+          id: r.player_id || r.id,
+          nome: r.nome, cognome: r.cognome, telefono: r.telefono || null
+        }));
+      } catch(e) { rosterPlayers = []; }
+    }
 
     if (user.is_superadmin) {
       try { workspaces = await apiFetch('/auth/workspaces'); } catch(e) { workspaces = []; }
@@ -131,7 +155,7 @@ function renderTokens() {
   if (!tbody) return;
 
   if (tokens.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#999;">Nessun link creato</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#999;">Nessun link creato</td></tr>';
     return;
   }
 
@@ -145,11 +169,21 @@ function renderTokens() {
     const createdBy = t.utente ? `${t.utente.nome} ${t.utente.cognome}` : '-';
     const link = `${window.location.origin}/guest/${t.token}`;
 
+    // Player info per link atleta personalizzato
+    const playerInfo = t.player_id ? rosterPlayers.find(p => p.id === t.player_id) : null;
+    const playerName = playerInfo ? `${playerInfo.cognome} ${playerInfo.nome}` : (t.player_id ? '(giocatore)' : '-');
+    const telefono = t.telefono || playerInfo?.telefono || '';
+    const waLink = telefono ? `https://wa.me/${telefono.replace(/[^0-9+]/g, '')}?text=${encodeURIComponent('Ciao! Ecco il tuo accesso a Youth Football Manager: ' + link)}` : '';
+
     return `
       <tr style="border-bottom:1px solid #eee;${isExpired ? 'opacity:0.5;' : ''}">
         <td style="padding:12px;">
           ${t.tipo === 'atleta' ? '🏃 Atleta' : '👨‍👩‍👧 Genitore'}
           ${isExpired ? '<span style="color:#E74C3C;font-size:11px;"> (scaduto)</span>' : ''}
+        </td>
+        <td style="padding:12px;font-size:13px;">
+          ${playerName !== '-' ? `<strong>${playerName}</strong>` : '-'}
+          ${telefono ? `<br><span style="color:#888;font-size:11px;">📱 ${telefono}</span>` : ''}
         </td>
         <td style="padding:12px;color:#666;font-size:13px;">${catText}</td>
         <td style="padding:12px;color:#666;font-size:13px;">${createdBy}</td>
@@ -157,7 +191,10 @@ function renderTokens() {
           ${t.scadenza ? new Date(t.scadenza).toLocaleDateString('it-IT') : 'Mai'}
         </td>
         <td style="padding:12px;">
-          <button class="btn btn-small" data-copy="${link}">📋 Copia</button>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <button class="btn btn-small" data-copy="${link}">📋</button>
+            ${waLink ? `<a href="${waLink}" target="_blank" class="btn btn-small" style="background:#25D366;color:white;text-decoration:none;">📤 WA</a>` : ''}
+          </div>
         </td>
         <td style="padding:12px;text-align:right;">
           <button class="btn btn-small btn-danger" data-revoke="${t.token}">🗑️</button>
@@ -247,11 +284,23 @@ async function handleCreate(e) {
     return;
   }
 
+  const body = { tipo, categorie_accesso, scadenza_giorni: scadenza_giorni ? parseInt(scadenza_giorni) : null };
+
+  // Se atleta con giocatore selezionato
+  if (tipo === 'atleta') {
+    const playerId = document.getElementById('linkPlayer').value;
+    if (playerId) {
+      body.player_id = playerId;
+      const p = rosterPlayers.find(r => r.id === playerId);
+      if (p?.telefono) body.telefono = p.telefono;
+    }
+  }
+
   showLoading('Creazione link...');
   try {
     const result = await apiFetch('/auth/guest-link', {
       method: 'POST',
-      body: JSON.stringify({ tipo, categorie_accesso, scadenza_giorni: scadenza_giorni ? parseInt(scadenza_giorni) : null })
+      body: JSON.stringify(body)
     });
     hideLoading();
     document.getElementById('linkModal').style.display = 'none';
@@ -264,5 +313,47 @@ async function handleCreate(e) {
   } catch (err) {
     hideLoading();
     alert('Errore: ' + err.message);
+  }
+}
+
+function onTipoChange() {
+  const tipo = document.getElementById('linkTipo').value;
+  const playerGroup = document.getElementById('playerGroup');
+  playerGroup.style.display = tipo === 'atleta' ? 'block' : 'none';
+  if (tipo === 'atleta' && rosterPlayers.length > 0) {
+    const sel = document.getElementById('linkPlayer');
+    sel.innerHTML = '<option value="">-- Opzionale: associa giocatore --</option>' +
+      rosterPlayers.map(p => `<option value="${p.id}">${p.cognome} ${p.nome}${p.telefono ? ' 📱' : ''}</option>`).join('');
+  }
+}
+
+async function handleBatchGenerate() {
+  const teamId = window.YFM.squadraId;
+  if (!teamId) { alert('Seleziona una squadra'); return; }
+  if (!confirm(`Generare link atleta per tutti i giocatori attivi della rosa?\nI giocatori che hanno già un link valido verranno saltati.`)) return;
+
+  // Determina categorie
+  const user = window.YFM.getUser() || {};
+  let categorie_accesso = [];
+  if (user.ruolo === 'allenatore') {
+    categorie_accesso = user.categorie_accesso || [];
+  } else {
+    // Usa la categoria del team corrente
+    const squad = window.YFM.allSquadre?.find(s => s.id === teamId);
+    if (squad?.category_id) categorie_accesso = [squad.category_id];
+  }
+
+  showLoading('Generazione link batch...');
+  try {
+    const result = await apiFetch('/auth/guest-links-batch', {
+      method: 'POST',
+      body: JSON.stringify({ team_id: teamId, categorie_accesso })
+    });
+    hideLoading();
+    alert(`✅ Batch completato!\n• Generati: ${result.generated}\n• Già esistenti: ${result.skipped}`);
+    await loadData();
+  } catch (err) {
+    hideLoading();
+    alert('❌ ' + err.message);
   }
 }

@@ -140,18 +140,67 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
 
   router.post('/api/auth/guest-link', authMiddleware, async (req, res) => {
     try {
-      const { tipo = 'genitore', categorie_accesso = [], scadenza_giorni } = req.body;
+      const { tipo = 'genitore', categorie_accesso = [], scadenza_giorni, player_id, telefono } = req.body;
       const token = crypto.randomBytes(32).toString('hex');
       const hours = scadenza_giorni ? scadenza_giorni * 24 : 720 * 24;
       const scadenza = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
-      const { data, error } = await supabase.from('guest_token').insert({
-        token, utente_id: req.user.id, tipo, squadre_accesso: categorie_accesso, scadenza
-      }).select().single();
+      const insertData = { token, utente_id: req.user.id, tipo, squadre_accesso: categorie_accesso, scadenza };
+      if (player_id) insertData.player_id = player_id;
+      if (telefono) insertData.telefono = telefono;
+      const { data, error } = await supabase.from('guest_token').insert(insertData).select().single();
       if (error) return res.status(400).json({ error: error.message });
       const link = `${req.headers.origin || 'https://youth-football-manager.vercel.app'}/guest/${data.token}`;
-      res.status(201).json({ success: true, token: data.token, scadenza: data.scadenza, tipo: data.tipo, link });
+      res.status(201).json({ success: true, token: data.token, scadenza: data.scadenza, tipo: data.tipo, link, player_id: data.player_id });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // POST /api/auth/guest-links-batch — genera link atleta per tutti i giocatori della rosa
+  router.post('/api/auth/guest-links-batch', authMiddleware, async (req, res) => {
+    try {
+      const { team_id, categorie_accesso = [], scadenza_giorni } = req.body;
+      if (!team_id) return res.status(400).json({ error: 'team_id richiesto' });
+
+      // Fetch rosa attiva
+      const { data: roster } = await supabase.from('team_player')
+        .select('player_id, player:player_id(id, nome, cognome, telefono)')
+        .eq('team_id', team_id).eq('stato', 'Attivo');
+
+      if (!roster || roster.length === 0) return res.json({ success: true, generated: 0, links: [] });
+
+      // Fetch existing player links per non duplicare
+      const { data: existing } = await supabase.from('guest_token')
+        .select('player_id').eq('tipo', 'atleta')
+        .in('player_id', roster.map(r => r.player_id))
+        .gte('scadenza', new Date().toISOString());
+      const existingPlayerIds = new Set((existing || []).map(e => e.player_id));
+
+      const hours = scadenza_giorni ? scadenza_giorni * 24 : 720 * 24;
+      const scadenza = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+      const generated = [];
+
+      for (const r of roster) {
+        if (existingPlayerIds.has(r.player_id)) continue;
+        const p = r.player || {};
+        const token = crypto.randomBytes(32).toString('hex');
+        const { data, error } = await supabase.from('guest_token').insert({
+          token, utente_id: req.user.id, tipo: 'atleta',
+          squadre_accesso: categorie_accesso, scadenza,
+          player_id: r.player_id, telefono: p.telefono || null
+        }).select().single();
+        if (!error && data) {
+          generated.push({
+            token: data.token, player_id: r.player_id,
+            nome: p.nome, cognome: p.cognome, telefono: p.telefono || null,
+            link: `${req.headers.origin || 'https://youth-football-manager.vercel.app'}/guest/${data.token}`
+          });
+        }
+      }
+
+      res.json({ success: true, generated: generated.length, skipped: existingPlayerIds.size, links: generated });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -204,11 +253,13 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       const { data, error } = await supabase.from('guest_token').select('*').eq('token', token).gte('scadenza', new Date().toISOString()).single();
       if (error || !data) return res.status(404).json({ error: 'Link non valido o scaduto' });
       
-      const guestJwt = jwt.sign({
+      const payload = {
         isGuest: true, tipo: data.tipo, squadre_accesso: data.squadre_accesso || [], guestTokenId: data.id
-      }, JWT_SECRET, { expiresIn: '24h' });
+      };
+      if (data.player_id) payload.player_id = data.player_id;
+      const guestJwt = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
       
-      res.json({ token: data.token, jwt: guestJwt, tipo: data.tipo, squadre_accesso: data.squadre_accesso });
+      res.json({ token: data.token, jwt: guestJwt, tipo: data.tipo, squadre_accesso: data.squadre_accesso, player_id: data.player_id || null });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }

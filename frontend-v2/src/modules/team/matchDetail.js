@@ -18,8 +18,11 @@ export async function openMatchDetail(mid) {
       principale: e.player_name || '',
       secondario: e.player_name_secondary || ''
     }));
-    golCasa = p.gol_casa || 0;
-    golOspiti = p.gol_ospite || 0;
+    // Se gol_casa è null, calcola dai gol degli eventi
+    const golFromEvents = eventi.filter(e => e.tipo === 'GOAL').length;
+    const hasDbResult = p.gol_casa !== null && p.gol_casa !== undefined;
+    golCasa = hasDbResult ? p.gol_casa : golFromEvents;
+    golOspiti = hasDbResult ? p.gol_ospite : (eventi.filter(e => e.tipo === 'SUBITO').length);
     ammonizioni = eventi.filter(e => e.tipo === 'YELLOW').length;
     espulsioni = eventi.filter(e => e.tipo === 'RED').length;
     

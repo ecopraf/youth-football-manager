@@ -27,13 +27,15 @@ export async function openResultForm(mid) {
   
   try {
     const res = await apiFetch('/partite/' + mid + '/formazione');
-    giocatori = Array.isArray(res) ? res : [];
+    const formArr = res?.formazione || (Array.isArray(res) ? res : []);
+    giocatori = formArr.map(f => ({ calciatoreId: f.calciatoreId || f.player_id, nome: f.nome || '', cognome: f.cognome || '' }));
   } catch(e) {}
   
   if (giocatori.length === 0) {
     try {
       const convRes = await apiFetch('/partite/' + mid + '/convocazioni');
-      const convocati = (convRes.convocazioni || []).filter(c => c.presente);
+      const convArr = Array.isArray(convRes) ? convRes : (convRes?.convocazioni || []);
+      const convocati = convArr.filter(c => c.presente);
       if (convocati.length > 0) {
         const rosaRes = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
         const rosaMap = {};
@@ -43,6 +45,13 @@ export async function openResultForm(mid) {
           return { calciatoreId: c.calciatoreId, nome: g.nome || '', cognome: g.cognome || '' };
         });
       }
+    } catch(e) {}
+  }
+  
+  if (giocatori.length === 0) {
+    try {
+      const rosaRes = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori');
+      giocatori = (rosaRes || []).map(g => ({ calciatoreId: g.id, nome: g.nome || '', cognome: g.cognome || '' }));
     } catch(e) {}
   }
   
@@ -301,6 +310,14 @@ async function saveEventi(mid, modal, eventi, giocatori) {
       method: 'POST',
       body: JSON.stringify({ eventi })
     });
+    
+    // Aggiorna risultato nella tabella match
+    const golFatti = eventi.filter(e => e.tipo === 'GOAL').length;
+    const golSubiti = eventi.filter(e => e.tipo === 'SUBITO').length;
+    await apiFetch('/partite/' + mid, {
+      method: 'PUT',
+      body: JSON.stringify({ golCasa: golFatti, golOspite: golSubiti, stato: 'Terminata' })
+    }).catch(() => {});
     
     hideLoading();
     modal.close();

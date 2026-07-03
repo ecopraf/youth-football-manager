@@ -36,6 +36,7 @@ export default async function loadGuest() {
     
     // Carica squadre filtrate per squadre_accesso del guest
     window.YFM.guestSquadreAccesso = guestData.squadre_accesso || [];
+    window.YFM.guestPlayerId = guestData.player_id || null;
     await loadSquadre();
     
     window.YFM.navigateTo('dashboard');

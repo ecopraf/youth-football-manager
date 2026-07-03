@@ -20,6 +20,7 @@ export function initRouter() {
     reports: () => import('./modules/performance/reports.js'),
     settings: () => import('./modules/club/settings.js'),
     club: () => import('./modules/club/club.js'),
+    absence: () => import('./modules/auth/absence.js'),
     seasonsCategories: () => import('./modules/club/seasonsCategories.js'),
     staff: () => import('./modules/club/staff.js'),
     importCenter: () => import('./modules/import/importCenter.js'),
@@ -115,7 +116,7 @@ export function initRouter() {
     console.log('[ROUTER] navigateTo chiamato con:', page);
     
     const publicPages = ['login', 'guest'];
-    const guestAllowedPages = ['dashboard', 'roster', 'calendar', 'stats', 'club'];
+    const guestAllowedPages = ['dashboard', 'roster', 'calendar', 'stats', 'club', 'absence'];
     
     if (!publicPages.includes(page)) {
       const isGuest = window.YFM.isGuest();

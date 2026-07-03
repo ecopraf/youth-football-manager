@@ -48,6 +48,9 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       const updateData = { data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, giornata: p.giornata };
       if (competition_id !== undefined) updateData.competition_id = competition_id;
       if (p.noteAvversario !== undefined) updateData.note_avversario = p.noteAvversario;
+      if (p.golCasa !== undefined) updateData.gol_casa = p.golCasa;
+      if (p.golOspite !== undefined) updateData.gol_ospite = p.golOspite;
+      if (p.stato !== undefined) updateData.stato = p.stato;
       await supabase.from('match').update(updateData).eq('id', req.params.id);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }

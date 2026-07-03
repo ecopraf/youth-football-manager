@@ -171,6 +171,9 @@ app.use(createGazzettaRegionaleRouter({ supabase, authMiddleware }));
 const createTournamentRouter = require('./routes/tournament');
 app.use(createTournamentRouter({ supabase, authMiddleware, requirePermission }));
 
+const createAbsenceRouter = require('./routes/absence');
+app.use(createAbsenceRouter({ supabase, authMiddleware }));
+
 module.exports = app;
 
 // Avvio server locale
