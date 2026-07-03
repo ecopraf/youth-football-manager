@@ -109,6 +109,21 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // GET /api/squadre/:id/classifica — fetch live da Gazzetta Regionale
+  router.get('/api/squadre/:id/classifica', authMiddleware, async (req, res) => {
+    try {
+      const { data: team } = await supabase.from('team').select('classifica_url, nome').eq('id', req.params.id).single();
+      if (!team || !team.classifica_url) return res.json({ classifica: null });
+      const { parseGrUrl, fetchClassifica } = require('../helpers/gazzettaRegionale');
+      const parsed = parseGrUrl(team.classifica_url);
+      if (!parsed) return res.json({ classifica: null });
+      const result = await fetchClassifica(parsed.level, parsed.championship, parsed.group);
+      res.json({ ...result, teamName: team.nome });
+    } catch (err) {
+      res.json({ classifica: null, error: err.message });
+    }
+  });
+
   // GET /api/squadre/:squadraId/stats-giocatori
   router.get('/api/squadre/:squadraId/stats-giocatori', authMiddleware, async (req, res) => {
     try {

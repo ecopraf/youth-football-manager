@@ -5,14 +5,15 @@ export default async function loadDashboard() {
   const c = document.getElementById('pageContent');
   const squadraId = window.YFM.squadraId;
   
-  let stats, top, topValutazioni, partiteFuture;
+  let stats, top, topValutazioni, partiteFuture, classificaData;
   
   try {
-    [stats, top, topValutazioni, partiteFuture] = await Promise.all([
+    [stats, top, topValutazioni, partiteFuture, classificaData] = await Promise.all([
       apiFetch('/squadre/' + squadraId + '/statistiche-complete').catch(() => ({ punti:0, partiteGiocate:0, vittorie:0, pareggi:0, sconfitte:0, golFatti:0, golSubiti:0, differenzaReti:0, risultati:[] })),
       apiFetch('/squadre/' + squadraId + '/top-players').catch(() => ({ marcatori:[], assistmen:[], presenze:[] })),
       apiFetch('/squadre/' + squadraId + '/valutazioni-top').catch(() => ({ topGiocatori:[] })),
-      apiFetch('/squadre/' + squadraId + '/partite-future').catch(() => [])
+      apiFetch('/squadre/' + squadraId + '/partite-future').catch(() => []),
+      apiFetch('/squadre/' + squadraId + '/classifica').catch(() => ({ classifica: null }))
     ]);
   } catch (err) {
     console.error('Dashboard load error:', err);
@@ -20,6 +21,7 @@ export default async function loadDashboard() {
     top = { marcatori: [], assistmen: [], presenze: [] };
     topValutazioni = { topGiocatori: [] };
     partiteFuture = [];
+    classificaData = { classifica: null };
   }
   
   const s = window.YFM.getSquadra();
@@ -184,6 +186,24 @@ export default async function loadDashboard() {
     return staffItems + emptyMsg;
   };
   
+  // Render classifica
+  const renderClassifica = () => {
+    const cl = classificaData?.classifica;
+    if (!cl || cl.length === 0) return '';
+    const teamName = classificaData.teamName || '';
+    const info = classificaData.info || {};
+    const header = info.championship_name ? info.championship_name + ' - Gir. ' + (info.group_name || '') : 'Classifica';
+    const rows = cl.map(r => {
+      const isUs = r.nome.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(r.nome.toLowerCase());
+      const cls = isUs ? ' class="classifica-row-highlight"' : '';
+      const logo = r.logo ? '<img src="' + r.logo + '" onerror="this.style.display=\'none\'">' : '';
+      return '<tr' + cls + '><td>' + r.pos + '</td><td><div class="cl-team">' + logo + '<span>' + r.nome + '</span></div></td><td><b>' + r.punti + '</b></td><td>' + r.g + '</td><td>' + r.v + '</td><td>' + r.n + '</td><td>' + r.p + '</td><td>' + r.gf + '</td><td>' + r.gs + '</td></tr>';
+    }).join('');
+    return '<div class="result-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">🏆 ' + header + '</h3>' +
+      (info.aggiornamento ? '<div style="font-size:10px;color:#999;margin-bottom:8px;">Aggiornata al ' + info.aggiornamento + '</div>' : '') +
+      '<div style="overflow-x:auto;"><table class="classifica-table"><thead><tr><th>#</th><th>Squadra</th><th>Pt</th><th>G</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  };
+
   // Build final HTML
   const styles = '<style>' +
     '.dash-widgets { display:grid; grid-template-columns:repeat(8,1fr); gap:10px; margin-bottom:24px; }' +
@@ -204,6 +224,15 @@ export default async function loadDashboard() {
     '.match-item:hover { opacity:0.9; transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.1); }' +
     '.staff-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
     '.staff-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }' +
+    '.classifica-table { width:100%; border-collapse:collapse; font-size:12px; }' +
+    '.classifica-table th { text-align:center; font-size:10px; color:#999; padding:4px 6px; border-bottom:1px solid #eee; white-space:nowrap; }' +
+    '.classifica-table th:nth-child(2) { text-align:left; }' +
+    '.classifica-table td { text-align:center; padding:5px 6px; border-bottom:1px solid #f5f5f5; white-space:nowrap; }' +
+    '.classifica-table td:nth-child(2) { text-align:left; }' +
+    '.classifica-table .cl-team { display:flex; align-items:center; gap:6px; white-space:nowrap; }' +
+    '.classifica-table .cl-team img { width:20px; height:20px; border-radius:50%; object-fit:contain; flex-shrink:0; }' +
+    '.classifica-row-highlight { background:#f0f4ff !important; font-weight:700; }' +
+    '.classifica-row-highlight td { color:#667eea; }' +
     '</style>';
 
   if (isGuest) {
@@ -238,6 +267,7 @@ export default async function loadDashboard() {
     
     '<div class="bottom-grid">' +
     '<div class="result-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>' +
-    '<div class="staff-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div>' +
-    '</div>';
+    '<div>' + renderClassifica() +
+    '<div class="staff-card" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div>' +
+    '</div></div>';
 }

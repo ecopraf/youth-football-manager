@@ -82,6 +82,37 @@ function renderMain(c, logs, teamName) {
       <div class="import-card-desc">Importa formazioni e sostituzioni per partite già in calendario</div>
       <span class="import-card-badge" style="background:#FFF3E0;color:#E65100;">Batch / URL</span>
     </div>
+  </div>
+
+  <div style="margin-bottom:32px;">
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:12px;">📰 Gazzetta Regionale</h2>
+    <p style="color:#666;font-size:13px;margin-bottom:12px;">Importa classifica, calendario, marcatori e loghi dal portale Gazzetta Regionale. Funziona da qualsiasi dispositivo.</p>
+    <div class="import-cards">
+      <div class="import-card" id="icGrConfig">
+        <div class="import-card-icon">⚙️</div>
+        <div class="import-card-title">Configura URL Girone</div>
+        <div class="import-card-desc">Inserisci l'URL della classifica/calendario del tuo girone su Gazzetta Regionale</div>
+        <span class="import-card-badge" style="background:#E8EAF6;color:#283593;">Setup</span>
+      </div>
+      <div class="import-card" id="icGrCalendario">
+        <div class="import-card-icon">📅</div>
+        <div class="import-card-title">Calendario + Risultati</div>
+        <div class="import-card-desc">Importa tutte le partite con risultati aggiornati dal girone</div>
+        <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">Import</span>
+      </div>
+      <div class="import-card" id="icGrLoghi">
+        <div class="import-card-icon">🏷️</div>
+        <div class="import-card-title">Loghi Squadre</div>
+        <div class="import-card-desc">Scarica automaticamente i loghi di tutte le squadre del girone</div>
+        <span class="import-card-badge" style="background:#FFF3E0;color:#E65100;">Download</span>
+      </div>
+      <div class="import-card" id="icGrPreview">
+        <div class="import-card-icon">👁️</div>
+        <div class="import-card-title">Anteprima Dati</div>
+        <div class="import-card-desc">Visualizza classifica, ultima giornata e marcatori del girone</div>
+        <span class="import-card-badge" style="background:#F3E5F5;color:#7B1FA2;">Preview</span>
+      </div>
+    </div>
   </div>`;
 
   // === LOG STORICO ===
@@ -110,6 +141,10 @@ function renderMain(c, logs, teamName) {
   document.getElementById('icXls').addEventListener('click', () => { window.YFM.navigateTo('roster'); setTimeout(() => document.getElementById('btnImportXls')?.click(), 300); });
   document.getElementById('icRosaTc')?.addEventListener('click', () => { window.YFM.navigateTo('roster'); setTimeout(() => document.getElementById('btnImportTc')?.click(), 300); });
   document.getElementById('icFormations')?.addEventListener('click', openImportFormations);
+  document.getElementById('icGrConfig').addEventListener('click', openGrConfig);
+  document.getElementById('icGrCalendario').addEventListener('click', openGrCalendario);
+  document.getElementById('icGrLoghi').addEventListener('click', openGrLoghi);
+  document.getElementById('icGrPreview').addEventListener('click', openGrPreview);
 }
 
 // === IMPORT PDF (redirect to calendar's existing modal) ===
@@ -297,6 +332,320 @@ async function openImportFormations() {
   }
 }
 
+// === GAZZETTA REGIONALE: CONFIGURA URL ===
+function openGrConfig() {
+  const teamName = window.YFM.getSquadraName();
+  const modal = createModal('⚙️ Configura Girone — ' + teamName, `
+    <div style="background:#f0f4ff;padding:10px 12px;border-radius:8px;margin-bottom:16px;font-size:13px;">
+      🏃 Squadra: <strong>${teamName}</strong>
+    </div>
+    <div id="grWizard">
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>1. Campionato</label>
+        <select id="grChamp" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;">
+          <option value="">Caricamento...</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>2. Girone</label>
+        <select id="grGroup" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;" disabled>
+          <option value="">Seleziona prima il campionato</option>
+        </select>
+      </div>
+      <div id="grPreview" style="margin-top:12px;"></div>
+    </div>
+    <details style="margin-top:16px;">
+      <summary style="font-size:12px;color:#999;cursor:pointer;">Inserimento manuale URL (fallback)</summary>
+      <div class="form-group" style="margin-top:8px;">
+        <input id="grUrl" placeholder="es. https://v2.apiweb.gazzettaregionale.it/classifiche/classifica/1/55/2325" style="font-size:12px;">
+        <button class="btn btn-secondary btn-small" id="grSaveUrl" style="margin-top:6px;">Salva URL</button>
+      </div>
+    </details>
+    <div id="grConfigResult"></div>
+  `, '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grSave" disabled>✅ Conferma</button>', '650px');
+
+  let selectedLevel = '1'; // Giovanili default
+  let selectedChamp = '';
+  let selectedGroup = '';
+
+  // Load championships (level 1 = Giovanili)
+  async function loadChampionships() {
+    const sel = document.getElementById('grChamp');
+    sel.innerHTML = '<option value="">Caricamento...</option>';
+    try {
+      const data = await apiFetch('/gr/championships/1');
+      sel.innerHTML = '<option value="">-- Seleziona campionato --</option>' +
+        data.map(d => '<option value="' + d.id + '">' + d.text + '</option>').join('');
+    } catch (e) {
+      sel.innerHTML = '<option value="">Errore caricamento</option>';
+    }
+  }
+
+  async function loadGroups(champId) {
+    const sel = document.getElementById('grGroup');
+    sel.disabled = true;
+    sel.innerHTML = '<option value="">Caricamento...</option>';
+    document.getElementById('grPreview').innerHTML = '';
+    document.getElementById('grSave').disabled = true;
+    try {
+      const data = await apiFetch('/gr/groups/1/' + champId);
+      if (data.length === 0) {
+        sel.innerHTML = '<option value="">Nessun girone</option>';
+        return;
+      }
+      sel.innerHTML = '<option value="">-- Seleziona girone --</option>' +
+        data.map(d => '<option value="' + d.id + '">Girone ' + d.text + '</option>').join('');
+      sel.disabled = false;
+    } catch (e) {
+      sel.innerHTML = '<option value="">Errore</option>';
+    }
+  }
+
+  async function loadPreview(champId, groupId) {
+    const div = document.getElementById('grPreview');
+    div.innerHTML = '<div style="text-align:center;padding:8px;color:#666;"><div class="spinner" style="margin:0 auto 6px;"></div>Caricamento anteprima...</div>';
+    try {
+      const data = await apiFetch('/gr/preview/1/' + champId + '/' + groupId);
+      if (!data.classifica || data.classifica.length === 0) {
+        div.innerHTML = '<div style="color:#c00;padding:8px;">Nessuna classifica trovata</div>';
+        return;
+      }
+      const info = data.info || {};
+      let html = '<div style="background:#e8f5e9;padding:8px 12px;border-radius:8px;margin-bottom:8px;font-size:12px;">✅ ' + info.championship_name + ' - Gir. ' + (info.group_name || '') + ' (' + data.classifica.length + ' squadre)</div>';
+      html += '<div style="max-height:200px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:4px 8px;font-size:12px;">';
+      data.classifica.forEach(r => {
+        const isUs = r.nome.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(r.nome.toLowerCase());
+        const style = isUs ? 'font-weight:700;color:#667eea;background:#f0f4ff;' : '';
+        html += '<div style="padding:3px 0;border-bottom:1px solid #f5f5f5;' + style + '">' + r.pos + '. ' + r.nome + ' (' + r.punti + ' pt)</div>';
+      });
+      html += '</div>';
+      div.innerHTML = html;
+      document.getElementById('grSave').disabled = false;
+      selectedGroup = groupId;
+      selectedChamp = champId;
+    } catch (e) {
+      div.innerHTML = '<div style="color:#c00;padding:8px;">❌ ' + e.message + '</div>';
+    }
+  }
+
+  loadChampionships();
+
+  document.getElementById('grChamp').addEventListener('change', (e) => {
+    if (e.target.value) loadGroups(e.target.value);
+    else {
+      document.getElementById('grGroup').innerHTML = '<option value="">Seleziona prima il campionato</option>';
+      document.getElementById('grGroup').disabled = true;
+      document.getElementById('grPreview').innerHTML = '';
+      document.getElementById('grSave').disabled = true;
+    }
+  });
+
+  document.getElementById('grGroup').addEventListener('change', (e) => {
+    const champId = document.getElementById('grChamp').value;
+    if (e.target.value && champId) loadPreview(champId, e.target.value);
+  });
+
+  document.getElementById('grSave').addEventListener('click', async () => {
+    if (!selectedChamp || !selectedGroup) return;
+    const url = '1/' + selectedChamp + '/' + selectedGroup;
+    showLoading('Salvataggio...');
+    try {
+      await apiFetch('/gr/configure', { method: 'POST', body: JSON.stringify({ teamId: window.YFM.squadraId, url }) });
+      hideLoading();
+      modal.close();
+      alert('✅ Girone configurato per ' + teamName + '!');
+    } catch (err) {
+      hideLoading();
+      alert('❌ ' + err.message);
+    }
+  });
+
+  // Fallback URL manuale
+  document.getElementById('grSaveUrl')?.addEventListener('click', async () => {
+    const url = document.getElementById('grUrl').value.trim();
+    if (!url) { alert('Inserisci un URL'); return; }
+    showLoading('Salvataggio...');
+    try {
+      await apiFetch('/gr/configure', { method: 'POST', body: JSON.stringify({ teamId: window.YFM.squadraId, url }) });
+      hideLoading();
+      modal.close();
+      alert('✅ URL configurato!');
+    } catch (err) {
+      hideLoading();
+      alert('❌ ' + err.message);
+    }
+  });
+}
+
+// === GAZZETTA REGIONALE: IMPORT CALENDARIO ===
+async function openGrCalendario() {
+  const modal = createModal('📅 Import Calendario da Gazzetta Regionale', '<div class="loading"><div class="spinner"></div>Caricamento anteprima...</div>', '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grCalConfirm" disabled>Importa</button>', '700px');
+
+  try {
+    const data = await apiFetch('/gr/calendario/' + window.YFM.squadraId);
+    const body = document.querySelector('#importModal .modal-body');
+    if (!data.matches || data.matches.length === 0) {
+      body.innerHTML = '<div style="color:#c00;padding:12px;">❌ Nessuna partita trovata. Configura prima il girone.</div>';
+      return;
+    }
+
+    const teamName = data.teamName || '';
+    const ourMatches = data.matches.filter(m =>
+      m.casa.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(m.casa.toLowerCase()) ||
+      m.ospite.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(m.ospite.toLowerCase())
+    );
+
+    let html = `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;">✅ ${ourMatches.length} partite trovate per <strong>${teamName}</strong></div>`;
+    html += '<div style="margin-bottom:12px;"><label style="font-size:13px;cursor:pointer;"><input type="radio" name="grCalMode" value="all" checked> Importa calendario + risultati</label><br><label style="font-size:13px;cursor:pointer;"><input type="radio" name="grCalMode" value="results"> Solo aggiorna risultati (match esistenti)</label></div>';
+    html += '<div style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;font-size:12px;">';
+    ourMatches.forEach(m => {
+      const isCasa = m.casa.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(m.casa.toLowerCase());
+      const avv = isCasa ? m.ospite : m.casa;
+      const icon = isCasa ? '🏠' : '✈️';
+      const score = (m.gol_casa !== null && m.gol_casa !== undefined) ? ` ${m.gol_casa}-${m.gol_ospite}` : '';
+      html += `<div style="padding:3px 0;border-bottom:1px solid #f5f5f5;">G.${m.giornata} | ${m.data} | ${icon} ${avv}${score}</div>`;
+    });
+    html += '</div>';
+    body.innerHTML = html;
+    document.getElementById('grCalConfirm').disabled = false;
+
+    document.getElementById('grCalConfirm').addEventListener('click', async () => {
+      const mode = document.querySelector('input[name="grCalMode"]:checked')?.value || 'all';
+      showLoading('Importazione...');
+      try {
+        const resp = await apiFetch('/gr/import-calendario/' + window.YFM.squadraId, {
+          method: 'POST',
+          body: JSON.stringify({ mode })
+        });
+        hideLoading();
+        modal.close();
+        alert(`✅ Calendario importato!\n• Importate: ${resp.imported}\n• Aggiornate: ${resp.updated || 0}\n• Già presenti: ${resp.skipped}\n• Totale: ${resp.total}`);
+        loadImportCenter();
+      } catch (err) {
+        hideLoading();
+        alert('❌ ' + err.message);
+      }
+    });
+  } catch (err) {
+    const body = document.querySelector('#importModal .modal-body');
+    if (body) body.innerHTML = `<div style="color:#c00;padding:12px;">❌ ${err.message}</div>`;
+  }
+}
+
+// === GAZZETTA REGIONALE: IMPORT LOGHI ===
+async function openGrLoghi() {
+  const modal = createModal('🏷️ Import Loghi da Gazzetta Regionale', '<div class="loading"><div class="spinner"></div>Caricamento anteprima...</div>', '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grLoghiConfirm" disabled>Scarica loghi</button>', '600px');
+
+  try {
+    const data = await apiFetch('/gr/calendario/' + window.YFM.squadraId);
+    const body = document.querySelector('#importModal .modal-body');
+    if (!data.matches || data.matches.length === 0) {
+      body.innerHTML = '<div style="color:#c00;padding:12px;">❌ Configura prima il girone.</div>';
+      return;
+    }
+
+    // Extract unique logos
+    const logos = {};
+    data.matches.forEach(m => {
+      if (m.casa_logo) logos[m.casa] = m.casa_logo;
+      if (m.ospite_logo) logos[m.ospite] = m.ospite_logo;
+    });
+    const logoList = Object.entries(logos);
+
+    let html = `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;">✅ ${logoList.length} loghi disponibili</div>`;
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;max-height:300px;overflow-y:auto;">';
+    logoList.forEach(([nome, url]) => {
+      html += `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid #eee;border-radius:8px;font-size:11px;"><img src="${url}" style="width:24px;height:24px;border-radius:50%;object-fit:contain;">${nome}</div>`;
+    });
+    html += '</div>';
+    body.innerHTML = html;
+    document.getElementById('grLoghiConfirm').disabled = false;
+
+    document.getElementById('grLoghiConfirm').addEventListener('click', async () => {
+      showLoading('Download loghi...');
+      try {
+        const resp = await apiFetch('/gr/import-loghi/' + window.YFM.squadraId, { method: 'POST' });
+        hideLoading();
+        modal.close();
+        alert(`✅ Loghi importati!\n• Nuovi: ${resp.imported}\n• Già presenti: ${resp.skipped}\n• Errori: ${resp.errors}`);
+      } catch (err) {
+        hideLoading();
+        alert('❌ ' + err.message);
+      }
+    });
+  } catch (err) {
+    const body = document.querySelector('#importModal .modal-body');
+    if (body) body.innerHTML = `<div style="color:#c00;padding:12px;">❌ ${err.message}</div>`;
+  }
+}
+
+// === GAZZETTA REGIONALE: ANTEPRIMA ===
+async function openGrPreview() {
+  const modal = createModal('👁️ Anteprima Girone — Gazzetta Regionale', '<div class="loading"><div class="spinner"></div>Caricamento dati...</div>', '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>', '800px');
+
+  try {
+    const teamId = window.YFM.squadraId;
+    const [classifica, marcatori] = await Promise.all([
+      apiFetch('/gr/classifica/' + teamId),
+      apiFetch('/gr/marcatori/' + teamId)
+    ]);
+
+    const body = modal.close.__modal?.querySelector('.modal-body') || document.querySelector('#importModal .modal-body');
+    if (!body) return;
+
+    let html = '';
+    if (!classifica.classifica) {
+      html = '<div style="color:#c00;padding:16px;background:#fee;border-radius:8px;">❌ URL non configurato. Usa "Configura URL Girone" prima.</div>';
+    } else {
+      const info = classifica.info || {};
+      html += `<h3 style="margin:0 0 8px;font-size:14px;">🏆 ${info.championship_name || 'Classifica'} - Gir. ${info.group_name || ''}</h3>`;
+      html += `<div style="font-size:11px;color:#999;margin-bottom:12px;">Aggiornata al ${info.aggiornamento || '?'} • Stagione ${info.season || ''}</div>`;
+      html += '<div style="overflow-x:auto;margin-bottom:24px;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#f5f5f5;"><th style="padding:6px;">#</th><th style="padding:6px;text-align:left;">Squadra</th><th style="padding:6px;">Pt</th><th style="padding:6px;">G</th><th style="padding:6px;">V</th><th style="padding:6px;">N</th><th style="padding:6px;">P</th><th style="padding:6px;">GF</th><th style="padding:6px;">GS</th></tr></thead><tbody>';
+      const teamName = classifica.teamName || '';
+      classifica.classifica.forEach(r => {
+        const isUs = r.nome.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(r.nome.toLowerCase());
+        const style = isUs ? ' style="background:#f0f4ff;font-weight:700;color:#667eea;"' : '';
+        const logo = r.logo ? `<img src="${r.logo}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'">` : '';
+        html += `<tr${style}><td style="padding:4px 6px;text-align:center;">${r.pos}</td><td style="padding:4px 6px;"><div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">${logo}<span>${r.nome}</span></div></td><td style="padding:4px 6px;text-align:center;font-weight:700;">${r.punti}</td><td style="padding:4px 6px;text-align:center;">${r.g}</td><td style="padding:4px 6px;text-align:center;">${r.v}</td><td style="padding:4px 6px;text-align:center;">${r.n}</td><td style="padding:4px 6px;text-align:center;">${r.p}</td><td style="padding:4px 6px;text-align:center;">${r.gf}</td><td style="padding:4px 6px;text-align:center;">${r.gs}</td></tr>`;
+      });
+      html += '</tbody></table></div>';
+
+      // Marcatori
+      if (marcatori.marcatori && marcatori.marcatori.length > 0) {
+        const teamMarcatori = marcatori.marcatori.filter(m => {
+          const mn = m.squadra.toLowerCase();
+          return mn.includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(mn);
+        });
+
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">';
+        html += '<div><h4 style="font-size:13px;margin:0 0 6px;">⚽ Top 10 Regionali</h4>';
+        html += '<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:#f5f5f5;"><th style="padding:3px 4px;text-align:center;">#</th><th style="padding:3px 4px;text-align:left;">Giocatore</th><th style="padding:3px 4px;text-align:center;">Gol</th><th style="padding:3px 4px;text-align:left;">Squadra</th></tr></thead><tbody>';
+        marcatori.marcatori.slice(0, 10).forEach((m, i) => {
+          const isOur = m.squadra.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(m.squadra.toLowerCase());
+          const rowStyle = isOur ? ' style="background:#f0f4ff;font-weight:600;color:#667eea;"' : '';
+          html += `<tr${rowStyle}><td style="padding:2px 4px;text-align:center;">${i + 1}</td><td style="padding:2px 4px;">${m.nome}</td><td style="padding:2px 4px;text-align:center;font-weight:700;">${m.gol}</td><td style="padding:2px 4px;color:#666;">${m.squadra}</td></tr>`;
+        });
+        html += '</tbody></table></div>';
+
+        if (teamMarcatori.length > 0) {
+          html += `<div><h4 style="font-size:13px;margin:0 0 6px;color:#667eea;">⚽ ${teamName}</h4>`;
+          html += '<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:#f5f5f5;"><th style="padding:3px 4px;text-align:left;">Giocatore</th><th style="padding:3px 4px;text-align:center;">Gol</th></tr></thead><tbody>';
+          teamMarcatori.forEach(m => {
+            html += `<tr><td style="padding:2px 4px;">${m.nome}</td><td style="padding:2px 4px;text-align:center;font-weight:700;">${m.gol}</td></tr>`;
+          });
+          html += '</tbody></table></div>';
+        }
+        html += '</div>';
+      }
+    }
+
+    body.innerHTML = html;
+  } catch (err) {
+    const body = document.querySelector('#importModal .modal-body');
+    if (body) body.innerHTML = `<div style="color:#c00;padding:16px;">❌ ${err.message}</div>`;
+  }
+}
+
 // === MODAL HELPER ===
 function createModal(title, content, footer, maxW = '600px') {
   const existing = document.getElementById('importModal');
@@ -311,6 +660,7 @@ function createModal(title, content, footer, maxW = '600px') {
   </div>`;
   document.body.appendChild(el);
   const close = () => { const m = document.getElementById('importModal'); if (m) m.remove(); };
+  close.__modal = el;
   document.getElementById('imCloseX').addEventListener('click', close);
   el.addEventListener('click', e => { if (e.target === el) close(); });
   const cancelBtn = document.getElementById('modalCancel');

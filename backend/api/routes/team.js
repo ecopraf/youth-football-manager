@@ -114,8 +114,10 @@ module.exports = function createTeamRouter({ supabase, authMiddleware }) {
   router.put('/api/squadre/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { nome, categoria, allenatore, dirigente, dirigente2, preparatore_atletico, allenatore_portieri, matricola_dirigente, tessera_lnd_dirigente, tessera_figc_allenatore } = req.body;
-      const { error } = await supabase.from('team').update({ nome, categoria, allenatore, dirigente, dirigente2, preparatore_atletico, allenatore_portieri, matricola_dirigente, tessera_lnd_dirigente, tessera_figc_allenatore }).eq('id', id);
+      const { nome, categoria, allenatore, dirigente, dirigente2, preparatore_atletico, allenatore_portieri, matricola_dirigente, tessera_lnd_dirigente, tessera_figc_allenatore, classifica_url } = req.body;
+      const updateData = { nome, categoria, allenatore, dirigente, dirigente2, preparatore_atletico, allenatore_portieri, matricola_dirigente, tessera_lnd_dirigente, tessera_figc_allenatore };
+      if (classifica_url !== undefined) updateData.classifica_url = classifica_url;
+      const { error } = await supabase.from('team').update(updateData).eq('id', id);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
     } catch (err) {

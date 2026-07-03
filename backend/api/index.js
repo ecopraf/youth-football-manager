@@ -165,6 +165,9 @@ app.use(createImportTuttocampoRouter({ supabase, authMiddleware, requirePermissi
 const createImportConfirmRouter = require('./routes/importConfirm');
 app.use(createImportConfirmRouter({ supabase, authMiddleware, requirePermission }));
 
+const createGazzettaRegionaleRouter = require('./routes/gazzettaRegionale');
+app.use(createGazzettaRegionaleRouter({ supabase, authMiddleware }));
+
 module.exports = app;
 
 // Avvio server locale

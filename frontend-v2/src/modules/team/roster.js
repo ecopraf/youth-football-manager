@@ -60,9 +60,7 @@ function renderRoster(c, players, scadenze) {
   }
   
   toolbarHtml += '<button class="btn btn-secondary" id="btnImportXls" title="Importa rosa da file Excel">📥 XLS</button>';
-  if (window.YFM.currentUser?.is_superadmin) {
-    toolbarHtml += '<button class="btn btn-secondary" id="btnImportTc" title="Importa rosa da Tuttocampo" style="background:#149347;color:#fff;">⚽ Tuttocampo</button>';
-  }
+  toolbarHtml += '<button class="btn btn-secondary" id="btnImportTc" title="Importa rosa da Tuttocampo (copia-incolla)" style="background:#149347;color:#fff;">⚽ Tuttocampo</button>';
   toolbarHtml += '<button class="btn btn-primary" id="btnAdd">+ Aggiungi</button></div></div>';
 
   let scadenzeHtml = scadenze.length > 0 ? '<div class="card" style="margin-bottom:20px;border-left:4px solid #F39C12;"><h3>⚠️ Certificati in scadenza</h3>' + scadenze.map(x => '<div>' + x.nome + ' ' + x.cognome + ' - ' + formatDateShort(x.scadenza) + ' (' + (x.giorni_rimanenti || x.giorniRimanenti) + 'gg)</div>').join('') + '</div>' : '';
@@ -486,10 +484,17 @@ function openImportTcModal() {
   overlay.innerHTML = `
     <div class="modal-content" style="max-width:600px;max-height:90vh;overflow-y:auto;">
       <h2 style="margin-bottom:16px;">⚽ Importa Rosa da Tuttocampo</h2>
-      <p style="margin-bottom:12px;color:#666;font-size:13px;">Incolla l'URL della pagina Rosa della squadra su Tuttocampo.<br>Es: https://www.tuttocampo.it/2025-26/.../Squadra/.../Rosa</p>
-      <input type="text" id="tcRosaUrl" placeholder="URL pagina Rosa Tuttocampo" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:12px;font-size:14px;">
-      <button id="tcFetchBtn" class="btn btn-primary" style="width:100%;margin-bottom:16px;">🔍 Cerca giocatori</button>
-      <div id="tcPreview"></div>
+      <div style="padding:14px;background:#f0f7ff;border-radius:10px;border:1px solid #b3d4fc;">
+        <p style="font-size:13px;font-weight:600;margin:0 0 10px 0;">📋 Copia-incolla dalla pagina Rosa</p>
+        <ol style="font-size:12px;color:#444;margin:0 0 12px 16px;line-height:1.8;">
+          <li>Apri la pagina Rosa della squadra su <a href="https://www.tuttocampo.it" target="_blank" style="color:#667eea;">Tuttocampo.it</a></li>
+          <li>Seleziona tutta la tabella giocatori (Ctrl+A o seleziona con mouse)</li>
+          <li>Copia (Ctrl+C) e incolla qui sotto (Ctrl+V)</li>
+        </ol>
+        <textarea id="tcTextFallback" rows="6" placeholder="Incolla qui il testo o HTML copiato dalla pagina Rosa di Tuttocampo..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:vertical;font-family:monospace;"></textarea>
+        <button id="tcParseTextBtn" class="btn btn-primary" style="margin-top:10px;width:100%;">🔍 Analizza testo</button>
+      </div>
+      <div id="tcPreview" style="margin-top:12px;"></div>
       <div style="display:flex;gap:10px;margin-top:16px;">
         <button class="btn btn-secondary" id="tcCloseBtn" style="flex:1;">Chiudi</button>
         <button class="btn btn-primary" id="tcImportBtn" style="flex:1;display:none;">Importa selezionati</button>
@@ -502,21 +507,22 @@ function openImportTcModal() {
 
   let fetchedPlayers = [];
 
-  document.getElementById('tcFetchBtn').onclick = async () => {
-    const url = document.getElementById('tcRosaUrl').value.trim();
-    if (!url) return;
-    const btn = document.getElementById('tcFetchBtn');
-    btn.disabled = true; btn.textContent = '⏳ Caricamento...';
+  document.getElementById('tcParseTextBtn').onclick = async () => {
+    const text = document.getElementById('tcTextFallback').value.trim();
+    if (!text || text.length < 20) { alert('Testo troppo corto. Copia più contenuto dalla pagina.'); return; }
+    const btn = document.getElementById('tcParseTextBtn');
+    btn.disabled = true; btn.textContent = '⏳ Analisi...';
     try {
-      const resp = await fetch(`${API_BASE}/roster/scrape-tuttocampo`, {
+      const isHtml = text.includes('<') && text.includes('>');
+      const endpoint = isHtml ? 'parse-html-tuttocampo' : 'parse-text-tuttocampo';
+      const resp = await fetch(`${API_BASE}/roster/${endpoint}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('yfm_token')}` },
-        body: JSON.stringify({ url })
+        body: JSON.stringify(isHtml ? { html: text } : { text })
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error);
       fetchedPlayers = data.players;
-      const preview = document.getElementById('tcPreview');
-      preview.innerHTML = `<p style="font-weight:600;margin-bottom:8px;">📋 ${data.teamName} — ${fetchedPlayers.length} giocatori trovati</p>
+      document.getElementById('tcPreview').innerHTML = `<p style="font-weight:600;margin-bottom:8px;">📋 ${fetchedPlayers.length} giocatori trovati</p>
         <div style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;">
         ${fetchedPlayers.map((p, i) => `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f5f5f5;">
           <input type="checkbox" checked data-idx="${i}">
@@ -526,52 +532,10 @@ function openImportTcModal() {
         </label>`).join('')}
         </div>`;
       document.getElementById('tcImportBtn').style.display = 'block';
-    } catch (err) {
-      const tcUrl = document.getElementById('tcRosaUrl').value.trim();
-      document.getElementById('tcPreview').innerHTML = `<p style="color:red;margin-bottom:12px;">❌ ${err.message}</p>
-        <div style="padding:14px;background:#f0f7ff;border-radius:10px;border:1px solid #b3d4fc;">
-          <p style="font-size:13px;font-weight:600;margin:0 0 10px 0;">📋 Import manuale (funziona sempre)</p>
-          <ol style="font-size:12px;color:#444;margin:0 0 12px 16px;line-height:1.8;">
-            <li>Apri la pagina Rosa su Tuttocampo ${tcUrl ? `<a href="${tcUrl}" target="_blank" style="color:#667eea;">→ Apri</a>` : ''}</li>
-            <li>Seleziona tutta la tabella giocatori (o fai Ctrl+A)</li>
-            <li>Copia (Ctrl+C) e incolla qui sotto (Ctrl+V)</li>
-          </ol>
-          <textarea id="tcTextFallback" rows="5" placeholder="Incolla qui il testo copiato dalla pagina Rosa di Tuttocampo..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:vertical;font-family:monospace;"></textarea>
-          <button id="tcParseTextBtn" class="btn btn-primary" style="margin-top:10px;width:100%;">🔍 Analizza testo</button>
-        </div>`;
-      document.getElementById('tcParseTextBtn').onclick = async () => {
-        const text = document.getElementById('tcTextFallback').value.trim();
-        if (!text || text.length < 50) { alert('Testo troppo corto. Copia più contenuto dalla pagina.'); return; }
-        const fbBtn = document.getElementById('tcParseTextBtn');
-        fbBtn.disabled = true; fbBtn.textContent = '⏳ Analisi...';
-        try {
-          // Try as HTML first, then as plain text
-          const isHtml = text.includes('<') && text.includes('>');
-          const endpoint = isHtml ? 'parse-html-tuttocampo' : 'parse-text-tuttocampo';
-          const resp2 = await fetch(`${API_BASE}/roster/${endpoint}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('yfm_token')}` },
-            body: JSON.stringify(isHtml ? { html: text } : { text })
-          });
-          const data2 = await resp2.json();
-          if (!resp2.ok) throw new Error(data2.error);
-          fetchedPlayers = data2.players;
-          document.getElementById('tcPreview').innerHTML = `<p style="font-weight:600;margin-bottom:8px;">📋 ${fetchedPlayers.length} giocatori trovati</p>
-            <div style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;">
-            ${fetchedPlayers.map((p, i) => `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f5f5f5;">
-              <input type="checkbox" checked data-idx="${i}">
-              <span style="flex:1;font-size:13px;">${p.cognome} ${p.nome}</span>
-              <span style="font-size:11px;color:#888;">${p.ruolo || '?'}</span>
-              <span style="font-size:11px;color:#aaa;">${p.data_nascita || '-'}</span>
-            </label>`).join('')}
-            </div>`;
-          document.getElementById('tcImportBtn').style.display = 'block';
-        } catch (e2) {
-          alert('❌ ' + e2.message);
-          fbBtn.disabled = false; fbBtn.textContent = '🔍 Analizza testo';
-        }
-      };
+    } catch (e) {
+      alert('❌ ' + e.message);
     }
-    btn.disabled = false; btn.textContent = '🔍 Cerca giocatori';
+    btn.disabled = false; btn.textContent = '🔍 Analizza testo';
   };
 
   document.getElementById('tcImportBtn').onclick = async () => {
