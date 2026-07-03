@@ -58,6 +58,7 @@ function renderRoster(c, players, scadenze) {
   if (isAdminMode) {
     toolbarHtml += '<button class="btn btn-secondary" id="btnSelectMode">' + (isSelectionMode ? '✓ Selezione Attiva' : '☐ Seleziona') + '</button>';
     if (isSelectionMode) {
+      toolbarHtml += '<button class="btn btn-secondary" id="btnSelectAll">☑ Tutti</button>';
       toolbarHtml += '<button class="btn btn-secondary" id="btnCancelSelect">Annulla</button>';
       toolbarHtml += '<button class="btn btn-danger" id="btnDeleteSelected" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>🗑️ Elimina (' + selectedPlayers.size + ')</button>';
       toolbarHtml += '<button class="btn btn-secondary" id="btnSvincolaSelected" style="background:#F39C12;color:white;border:none;" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>📋 Svincola (' + selectedPlayers.size + ')</button>';
@@ -93,6 +94,7 @@ function renderRoster(c, players, scadenze) {
   
   if (isAdminMode) {
     document.getElementById('btnSelectMode')?.addEventListener('click', toggleSelectionMode);
+    document.getElementById('btnSelectAll')?.addEventListener('click', selectAllPlayers);
     document.getElementById('btnCancelSelect')?.addEventListener('click', cancelSelection);
     document.getElementById('btnDeleteSelected')?.addEventListener('click', deleteSelectedPlayers);
     document.getElementById('btnMoveSelected')?.addEventListener('click', moveSelectedPlayers);
@@ -196,6 +198,16 @@ function toggleSelectionMode() {
 function cancelSelection() {
   isSelectionMode = false;
   selectedPlayers.clear();
+  loadRoster();
+}
+
+function selectAllPlayers() {
+  const activePlayers = allPlayers.filter(p => (p.stato || 'Attivo') !== 'Svincolato');
+  if (selectedPlayers.size === activePlayers.length) {
+    selectedPlayers.clear();
+  } else {
+    activePlayers.forEach(p => selectedPlayers.add(p.id));
+  }
   loadRoster();
 }
 
