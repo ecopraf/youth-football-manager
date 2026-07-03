@@ -240,12 +240,15 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Stats | `modules/performance/stats.js` | Disciplina (ammonizioni, espulsioni) |
 | Reports | `modules/performance/reports.js` | Report Partita (fallback convocazioni), Stagionale (top players, match per competizione), Giocatore (event history), commento social |
 | Settings | `modules/club/settings.js` | Stagione, categoria, staff |
+| Stagioni & Categorie | `modules/club/seasonsCategories.js` | CRUD stagioni (attiva/disattiva), CRUD categorie, creazione team (category+season), card team con contatori giocatori/staff |
+| Staff | `modules/club/staff.js` | Due sezioni: Staff Tecnico (filtrato per categorie_accesso per allenatore) + Organigramma Societario (solo admin). TC paste import. Visibile a admin + allenatore |
 | Workspace | `modules/club/workspace.js` | Info società, caricamento facility |
 | Import Center | `modules/import/importCenter.js` | Pagina centralizzata con 6 card import TC + 4 card Gazzetta Regionale, wizard testo SGS, batch formazioni TC, wizard GR 3-step, log storico DB |
 | Loghi Squadre | `frontend-v2/public/logos/` | 40+ loghi PNG da Tuttocampo, matching fuzzy, logo workspace, convocazioni layout PDF (3 colonne), dettaglio partita logo+nome vs logo+nome, distinta 80px, header 40px |
 | Gazzetta Regionale | `backend/api/routes/gazzettaRegionale.js` | Import classifica/calendario/marcatori/loghi da GR API pubblica, wizard config, fuzzy match, dashboard widget |
 | Workspace Switcher | `modules/club/workspaceSwitcher.js` | Dropdown select nella sidebar per superadmin |
 | Workspace CRUD | `modules/admin/workspaces.js` | Gestione workspace superadmin: create/edit/delete cascade, TC paste parser, auto-logo fuzzy match |
+| Stagioni & Categorie | `modules/club/seasonsCategories.js` | CRUD stagioni, categorie, creazione team, card con contatori giocatori/staff (solo admin) |
 | Gestione Utenti | `modules/admin/users.js` | CRUD utenti sistema (Admin) |
 | Link Guest | `modules/admin/guestLinks.js` | Genera/revoca link accesso guest (Admin) |
 
@@ -280,7 +283,11 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Fix penalità classifica | 56259b8 | Suffisso (-N) rimosso dal nome, mostrato come badge rosso separato |
 | Calendario GR navigabile | (pending) | Widget dashboard con frecce ◀▶ per scorrere tutte le giornate, solo visualizzazione live da GR |
 | Top Marcatori dashboard | (pending) | Regionali (top 10 assoluti) + Girone (filtrati per squadre classifica) side-by-side |
-| Staff layout responsive | (pending) | Sotto Ultimi Risultati su desktop, in fondo su mobile |
+| Staff workspace isolation | 16bb36b | Staff page usa activeWorkspaceId per superadmin |
+| Staff tecnico/societario | 12e7dc5 | Pagina staff separata in due sezioni, visibile anche ad allenatore |
+| Staff widget fix | 92c10e1 | Solo ruolo esatto 'dirigente', rimosso Giannini da team_staff |
+| Stagioni & Categorie | b140eef | Pagina admin CRUD stagioni, categorie, creazione team |
+| Team counters | 40c6736 | Contatori giocatori/staff nelle card team pagina Stagioni |
 | Gestione giocatori avanzata | 3f7b8ae | Validazione anno nascita per categoria, normalizzazione nomi, creazione da playerDetail, custom alert modale, DELETE endpoint, svincolo/riattivazione, aggregazione categorie inferiori, recupera svincolati workspace |
 | Import Center | - | Pagina centralizzata 6 card, parser testo SGS, batch formazioni TC, log storico DB, voce sidebar |
 | Loghi Squadre TC | - | Scraping automatico loghi da TC, 40+ PNG, matching fuzzy acronimi, logo workspace in dashboard/dettaglio/convocazioni/distinta |
@@ -410,7 +417,7 @@ La sezione "Riepilogo Presenze" mostra:
 Il router (`router.js`) definisce le pagine accessibili dalla sidebar:
 
 ```javascript
-indow.YFM.pages = {
+window.YFM.pages = {
   login:      () => import('./modules/auth/login.js'),
   guest:      () => import('./modules/auth/guest.js'),
   users:      () => import('./modules/admin/users.js'),
@@ -418,10 +425,21 @@ indow.YFM.pages = {
   dashboard:  () => import('./modules/team/dashboard.js'),
   roster:     () => import('./modules/team/roster.js'),
   calendar:   () => import('./modules/team/calendar.js'),
-  training:   () => import('./modules/coach/training.js'),
+  matchDetail: () => import('./modules/team/matchDetail.js'),
+  convocazioni: () => import('./modules/team/convocazioni.js'),
+  formazione: () => import('./modules/team/formazione.js'),
+  playerDetail: () => import('./modules/team/playerDetail.js'),
+  training:   () => import('./modules/coach/trainingSessions.js'),
+  trainingSessions: () => import('./modules/coach/trainingSessions.js'),
+  trainingPresenze: () => import('./modules/coach/trainingPresenze.js'),
+  trainingSettings: () => import('./modules/coach/trainingSettings.js'),
   stats:      () => import('./modules/performance/stats.js'),
   reports:    () => import('./modules/performance/reports.js'),
   settings:   () => import('./modules/club/settings.js'),
+  seasonsCategories: () => import('./modules/club/seasonsCategories.js'),
+  staff:      () => import('./modules/club/staff.js'),
+  importCenter: () => import('./modules/import/importCenter.js'),
+  workspaces: () => import('./modules/admin/workspaces.js'),
 };
 ```
 
@@ -430,8 +448,8 @@ indow.YFM.pages = {
 2. 👥 **Team** — Rosa, Calendario, Import Center
 3. 📈 **Performance** — Statistiche, Report
 4. 🎯 **Coach** — Allenamenti (Sedute, Presenze, Impostazioni)
-5. 🏢 **Club** — Impostazioni, Staff (solo admin)
-6. 🔐 **Amministrazione** — Utenti, Link Guest (solo admin)
+5. 🏢 **Club** — Stagioni (admin), Impostazioni (admin), Staff (admin + allenatore)
+6. 🔐 **Amministrazione** — Workspace (superadmin), Utenti (admin), Link Guest (admin + allenatore)
 
 Navigazione: `window.YFM.navigateTo('nomePagina')`
 
@@ -579,7 +597,14 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
-| (pending) | feat: report endpoints backend + fix frontend reports + fix typo INVIOLATA |
+| 40c6736 | feat: contatori giocatori/staff nelle card team della pagina Stagioni |
+| b140eef | feat: pagina Stagioni & Categorie per admin (CRUD stagioni, categorie, creazione team) |
+| 951de11 | fix: usa categorie_accesso (non squadre_accesso) per filtro staff allenatore |
+| eb931fd | fix: allenatore può accedere alla pagina staff tecnico |
+| 12e7dc5 | feat: separa staff tecnico da organigramma societario |
+| 92c10e1 | fix: staff widget solo ruoli squadra (dirigente esatto), rimosso Giannini da team_staff |
+| 16bb36b | fix: staff page usa activeWorkspaceId per superadmin workspace switching |
+| e825b51 | feat: report endpoints backend (partita/stagionale/giocatore), fix typo INVIOLATA, import loghi GR, aggiorna docs |
 | 3665480 | feat: gestione workspace CRUD con cascade delete, parser TC per workspace e staff, fix aggregazione e filtri rosa |
 | 3f7b8ae | feat: aggregazione giocatori da categorie inferiori con badge AGG, filtro, recupera svincolati workspace |
 | c779163 | feat: gestione svincolo giocatori con riattivazione, sezione svincolati collassabile |
@@ -610,7 +635,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 ---
 
-*Ultimo aggiornamento: 7 Luglio 2026 (Workspace CRUD, report endpoints, staff TC paste import, disaggrega, fix filtri rosa, fix typo INVIOLATA)*
+*Ultimo aggiornamento: 8 Luglio 2026 (Staff isolation, staff tecnico/societario, pagina Stagioni & Categorie, team counters)*
 
 ---
 

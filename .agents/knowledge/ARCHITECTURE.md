@@ -58,11 +58,11 @@ youth-football-manager/
 │   │   │   └── api.js        # API_BASE + apiFetch
 │   │   ├── modules/          # Pagine/applicazioni
 │   │   │   ├── auth/         # Login, Guest
-│   │   │   ├── admin/        # Users, Guest Links
+│   │   │   ├── admin/        # Users, Guest Links, Workspaces
 │   │   │   ├── team/         # Dashboard, Roster, Calendar, etc.
 │   │   │   ├── coach/        # Training
 │   │   │   ├── performance/  # Stats, Reports
-│   │   │   ├── club/         # Settings, Workspace, Staff
+│   │   │   ├── club/         # Settings, Staff, Seasons/Categories
 │   │   │   └── import/       # Import Center
 │   │   ├── utils/
 │   │   │   ├── formatters.js # Formattazione date
@@ -87,8 +87,8 @@ youth-football-manager/
 │   │   │   └── gazzettaRegionale.js # Fetch classifica/calendario/marcatori GR
 │   │   └── routes/
 │   │       ├── auth.js           # Auth, users, guest
-│   │       ├── workspace.js      # Workspace, facility
-│   │       ├── team.js           # Squadre CRUD
+│   │       ├── workspace.js      # Workspace, facility, staff workspace
+│   │       ├── team.js           # Squadre CRUD, stagioni PUT, categorie/team POST
 │   │       ├── training.js       # Allenamenti
 │   │       ├── match.js          # Partite, formazione, eventi
 │   │       ├── staff.js          # Staff distinta
@@ -203,6 +203,21 @@ youth-football-manager/
 | GET | `/auth/workspaces` | Lista workspace accessibili |
 | GET | `/workspaces/:id/facility` | Campo di casa del workspace |
 | PUT | `/workspaces/:id/facility` | Aggiorna campo di casa |
+| GET | `/workspaces/:id/staff` | Staff del workspace (con categorie derivate da team_staff) |
+| POST | `/workspaces/:id/staff` | Crea staff con workspace_id e categorie opzionali |
+
+#### Stagioni & Categorie
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| GET | `/stagioni` | Lista stagioni del workspace |
+| POST | `/stagioni` | Crea stagione |
+| PUT | `/stagioni/:id` | Modifica stagione (nome, date, attiva) |
+| DELETE | `/stagioni/:id` | Elimina stagione |
+| GET | `/categorie` | Lista categorie del workspace |
+| POST | `/categorie` | Crea categoria |
+| PUT | `/categorie/:id` | Modifica categoria |
+| DELETE | `/categorie/:id` | Elimina categoria |
+| POST | `/categorie/:catId/team` | Crea team (category + season, con duplicate check) |
 
 #### Lineups & Events
 | Metodo | Endpoint | Descrizione |

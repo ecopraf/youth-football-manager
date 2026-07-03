@@ -188,6 +188,10 @@
 - [x] Fix display duplicato nomi (cognome || nome → solo cognome) nel frontend reports
 - [x] Fix typo "PORTA INVOLATA" → "PORTA INVIOLATA" nel commento social
 - [x] FK constraint error su DELETE staff → nullify allenatore_id/dirigente_id/preparatore_id/portieri_id + convocato_da
+- [x] Staff page usava JWT workspace_id → corretto con activeWorkspaceId per superadmin
+- [x] Dashboard staff widget: solo `ruolo === 'dirigente'` (esatto), rimosso Giannini (ruolo societario) da team_staff
+- [x] Allenatore bloccato su pagina staff → aggiunto isAllenatore in canWrite check
+- [x] Allenatore vedeva staff di altre categorie → filtro con categorie_accesso
 
 ### Risolti (Luglio 2026)
 - [x] Endpoint senza authMiddleware (partite, calciatori) → protetti
@@ -257,6 +261,11 @@
 - [x] Report endpoints backend (3 nuovi: partita, stagionale, giocatore) con fallback convocazioni
 - [x] Fix typo commento social "PORTA INVIOLATA"
 - [x] Dashboard marcatori labels: "REGIONALI" → "GENERALE", "GIRONE" → "GIRONE X"
+- [x] Staff workspace isolation: usa activeWorkspaceId (non JWT workspace_id) per superadmin
+- [x] Staff page separata in Staff Tecnico + Organigramma Societario (admin only)
+- [x] Allenatore accede a Staff Tecnico (filtrato per categorie_accesso)
+- [x] Pagina Stagioni & Categorie per admin (CRUD stagioni, categorie, creazione team)
+- [x] Contatori giocatori/staff nelle card team della pagina Stagioni
 
 ### Minori
 - [ ] Valutazioni giocatore: sistema incompleto

@@ -77,8 +77,8 @@ api/
 │   └── gazzettaRegionale.js    — Fetch classifica/calendario/marcatori da GR API
 └── routes/
     ├── auth.js                 — Login, register, users CRUD, guest
-    ├── workspace.js            — Workspace, facility, stagioni, categorie
-    ├── team.js                 — Squadre CRUD con cascade delete
+    ├── workspace.js            — Workspace, facility, staff workspace (GET/POST con categorie)
+    ├── team.js                 — Squadre CRUD, PUT stagioni, POST categorie/:catId/team
     ├── training.js             — Config, presenze, templates, programma
     ├── match.js                — Partite CRUD, convocazioni, formazione, eventi
     ├── staff.js                — Staff completo per distinta
@@ -136,8 +136,8 @@ api/
 | `training_config` | Settimana tipo (giorni/orari) | team_id |
 | `training_template` | Template programma seduta | team_id, created_by |
 | `valutazione_partita` | Valutazioni | partita_id, calciatore_id |
-| `staff` | Personale (con qualifiche JSONB) | - |
-| `team_staff` | Staff assegnato a squadra | team_id, staff_id |
+| `staff` | Personale (con qualifiche JSONB) | workspace_id |
+| `team_staff` | Staff assegnato a squadra | team_id, staff_id, ruolo_squadra |
 | `facility` | Impianti sportivi | - |
 | `document` | Documenti polimorfici | entita_tipo, entita_id |
 | `users` | Utente sistema | workspace_id |
