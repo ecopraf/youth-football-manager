@@ -149,7 +149,7 @@ export default async function loadDashboard() {
       const isCasa = r.luogo === 'Casa';
       const icon = isCasa ? '🏠' : '✈️';
       const resultStyle = getResultStyle(r.golFatti, r.golSubiti);
-      const comp = r.competizione || 'Amichevole';
+      const comp = r.competizione || (r.giornata ? 'Campionato' : 'Amichevole');
       const compLower = comp.toLowerCase();
       const tipoEvento = compLower.includes('coppa') ? 'coppa' : compLower.includes('torneo') ? 'torneo' : compLower.includes('amichevole') ? 'amichevole' : 'campionato';
       const competitionBadge = getCompetitionBadge(tipoEvento);
