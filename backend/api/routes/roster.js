@@ -123,7 +123,7 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
 
       const cookies = await tcLogin();
       const pageHtml = await tcFetchPage(url, cookies);
-      if (!pageHtml || pageHtml.length < 500) return res.status(503).json({ error: 'Tuttocampo non raggiungibile (protezione anti-bot attiva). Riprova tra qualche minuto.' });
+      if (!pageHtml || pageHtml.length < 500) return res.status(503).json({ error: 'Tuttocampo non raggiungibile (protezione anti-bot). Riprova tra 1-2 minuti oppure verifica che l\'URL sia corretto.' });
 
       const tckkMatch = pageHtml.match(/tckk='([^']+)'/);
       const ttMatch = pageHtml.match(/var tt='([^']+)'/);
