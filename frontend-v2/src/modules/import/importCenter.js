@@ -630,7 +630,7 @@ async function openGrPreview() {
         if (teamMarcatori.length > 0) {
           html += `<div><h4 style="font-size:13px;margin:0 0 6px;color:#667eea;">⚽ ${teamName}</h4>`;
           html += '<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:#f5f5f5;"><th style="padding:3px 4px;text-align:left;">Giocatore</th><th style="padding:3px 4px;text-align:center;">Gol</th></tr></thead><tbody>';
-          teamMarcatori.forEach(m => {
+          teamMarcatori.slice(0, 10).forEach(m => {
             html += `<tr><td style="padding:2px 4px;">${m.nome}</td><td style="padding:2px 4px;text-align:center;font-weight:700;">${m.gol}</td></tr>`;
           });
           html += '</tbody></table></div>';

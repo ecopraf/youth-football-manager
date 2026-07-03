@@ -224,6 +224,11 @@
 - [x] Fix duplicate event listener su #squadraSelect (onchange invece di addEventListener)
 - [x] Import Tuttocampo Formazioni: scraping formazioni da MatchFormations.php, fuzzy match, batch import
 - [x] Import Center: pagina centralizzata con 6 card, parser testo, batch formazioni, log storico DB
+- [x] Dashboard risultati casa/trasferta: layout corretto con nome società + logo workspace + logo avversario, score centrato
+- [x] Match Detail: in trasferta mostra Avversario vs NomeSquadra con score invertito
+- [x] Classifica GR: fix penalità (-N) rimossa dal nome, mostrata come badge rosso separato
+- [x] Ultima giornata GR: widget dashboard con loghi da classifica, fuzzy match, evidenziazione squadra
+- [x] Sidebar riordinata: Dashboard → Team → Performance → Coach → Club → Admin
 
 ### Minori
 - [ ] Valutazioni giocatore: sistema incompleto

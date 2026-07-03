@@ -86,6 +86,15 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     try {
       const { data, error } = await supabase.from('player').select('*').eq('id', req.params.id).single();
       if (error || !data) return res.status(404).json({ error: 'Giocatore non trovato' });
+      // Join team_player per numero_maglia e ruolo_preferito
+      const squadraId = req.query.squadraId;
+      if (squadraId) {
+        const { data: tp } = await supabase.from('team_player').select('numero_maglia, ruolo_preferito, stato').eq('player_id', req.params.id).eq('team_id', squadraId).single();
+        if (tp) { data.numero_maglia = tp.numero_maglia; data.ruolo = tp.ruolo_preferito; data.stato = tp.stato; }
+      } else {
+        const { data: tp } = await supabase.from('team_player').select('numero_maglia, ruolo_preferito, stato').eq('player_id', req.params.id).limit(1).single();
+        if (tp) { data.numero_maglia = tp.numero_maglia; data.ruolo = tp.ruolo_preferito; data.stato = tp.stato; }
+      }
       res.json(data);
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
@@ -111,9 +120,11 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       }).eq('id', req.params.id).select().single();
       if (error) return res.status(400).json({ error: error.message });
 
-      if (c.numero_maglia || c.ruolo || c.stato) {
+      if (c.numero_maglia !== undefined || c.ruolo || c.stato) {
         await supabase.from('team_player').update({
-          numero_maglia: c.numero_maglia || null, ruolo_preferito: c.ruolo || null, stato: c.stato || null
+          numero_maglia: c.numero_maglia != null ? c.numero_maglia : null,
+          ruolo_preferito: c.ruolo || null,
+          stato: c.stato || null
         }).eq('player_id', req.params.id);
       }
 

@@ -219,7 +219,7 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 
 | Modulo | Percorso | Descrizione |
 |--------|----------|-------------|
-| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze, badge competizione, risultati colorati. Guest view semplificata (solo prossima partita + widget + ultimi risultati) |
+| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze, badge competizione, risultati colorati con layout casa/trasferta (logo+nome squadra, score centrato), classifica GR live, ultima giornata GR con loghi. Guest view semplificata (solo prossima partita + widget + ultimi risultati) |
 | Rosa | `modules/team/roster.js` | CRUD giocatori, scadenze mediche, filtri |
 | Calendario | `modules/team/calendar.js` | CRUD partite, pallino lampeggiante, badge sezioni pill, archiviazione, import PDF SGS/LND, import CSV, cancella calendario, guest view |
 | Convocazioni | `modules/team/convocazioni.js` | Vincoli min/max, PDF, sola lettura se archiviata |
@@ -274,6 +274,9 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Workspace Switcher v2 | - | Dropdown select in sidebar per superadmin, rimosso modal |
 | Import TC Formazioni | - | Scraping formazioni da MatchFormations.php, fuzzy match, convocazioni+formazioni+eventi |
 | Gazzetta Regionale | f0d4423 | Import classifica/calendario/marcatori/loghi da API pubblica GR, wizard config, dashboard widget, fuzzy match |
+| Dashboard casa/trasferta | 56259b8 | Risultati con layout corretto casa/trasferta, nome società + loghi, score centrato, match detail invertito in trasferta |
+| Sidebar riordinata | 56259b8 | Dashboard → Team → Performance → Coach → Club → Admin |
+| Fix penalità classifica | 56259b8 | Suffisso (-N) rimosso dal nome, mostrato come badge rosso separato |
 | Import Center | - | Pagina centralizzata 6 card, parser testo SGS, batch formazioni TC, log storico DB, voce sidebar |
 | Loghi Squadre TC | - | Scraping automatico loghi da TC, 40+ PNG, matching fuzzy acronimi, logo workspace in dashboard/dettaglio/convocazioni/distinta |
 
@@ -416,6 +419,14 @@ indow.YFM.pages = {
   settings:   () => import('./modules/club/settings.js'),
 };
 ```
+
+### Ordine Sidebar
+1. 📊 Dashboard
+2. 👥 **Team** — Rosa, Calendario, Import Center
+3. 📈 **Performance** — Statistiche, Report
+4. 🎯 **Coach** — Allenamenti (Sedute, Presenze, Impostazioni)
+5. 🏢 **Club** — Impostazioni, Staff (solo admin)
+6. 🔐 **Amministrazione** — Utenti, Link Guest (solo admin)
 
 Navigazione: `window.YFM.navigateTo('nomePagina')`
 
@@ -563,6 +574,8 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
+| 56259b8 | feat: dashboard risultati casa/trasferta, fix penalità classifica, riordino sidebar, ultima giornata GR con loghi |
+| 25e5277 | docs: aggiorna documentazione con integrazione Gazzetta Regionale + fix label import risultati |
 | f0d4423 | feat: integrazione Gazzetta Regionale — classifica, calendario, marcatori, loghi, wizard config, dashboard widget |
 | (pending) | feat: sistema loghi squadre — scraping TC, matching fuzzy, logo workspace, integrazione UI |
 | 2bc61df | feat: fallback manuale import rosa TC (supporta testo copiato + HTML) |
@@ -583,7 +596,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 ---
 
-*Ultimo aggiornamento: 4 Luglio 2026 (Integrazione Gazzetta Regionale, wizard config, import calendario/loghi GR, dashboard classifica widget)*
+*Ultimo aggiornamento: 4 Luglio 2026 (Dashboard casa/trasferta, fix penalità classifica, riordino sidebar, ultima giornata GR, integrazione Gazzetta Regionale)*
 
 ---
 
