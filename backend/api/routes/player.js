@@ -189,6 +189,26 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     }
   });
 
+  // DELETE /api/squadre/:squadraId/calciatori/:id
+  router.delete('/api/squadre/:squadraId/calciatori/:id', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+    try {
+      const { squadraId, id } = req.params;
+      // Rimuovi da team_player
+      await supabase.from('team_player').delete().eq('player_id', id).eq('team_id', squadraId);
+      // Se non è più in nessuna squadra, elimina il player
+      const { data: remaining } = await supabase.from('team_player').select('id').eq('player_id', id);
+      if (!remaining || remaining.length === 0) {
+        await supabase.from('match_event').delete().eq('player_id', id);
+        await supabase.from('convocation').delete().eq('player_id', id);
+        await supabase.from('valutazione_partita').delete().eq('calciatore_id', id);
+        await supabase.from('player').delete().eq('id', id);
+      }
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // POST /api/calciatori/:id/move
   router.post('/api/calciatori/:id/move', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
     try {
