@@ -32,6 +32,17 @@ async function loadData() {
     const activeSeason = seasons.find(s => s.attiva);
     if (activeSeason) {
       teams = await apiFetch(`/stagioni/${activeSeason.id}/squadre`);
+      // Load counts for each team
+      await Promise.all(teams.map(async t => {
+        try {
+          const players = await apiFetch(`/squadre/${t.id}/calciatori`);
+          t._playerCount = (players || []).length;
+        } catch { t._playerCount = 0; }
+        try {
+          const staff = await apiFetch(`/squadre/${t.id}/staff-completo`);
+          t._staffCount = (staff || []).length;
+        } catch { t._staffCount = 0; }
+      }));
     } else {
       teams = [];
     }
@@ -115,6 +126,10 @@ function render() {
           <div style="padding:14px;background:#f8f9fa;border-radius:10px;border:1px solid #e5e7eb;">
             <div style="font-weight:600;font-size:14px;">${t.category?.nome || t.nome}</div>
             <div style="font-size:12px;color:#666;margin-top:4px;">${t.nome}</div>
+            <div style="display:flex;gap:12px;margin-top:8px;">
+              <span style="font-size:11px;color:#667eea;background:#f0f4ff;padding:3px 8px;border-radius:6px;">👥 ${t._playerCount || 0} giocatori</span>
+              <span style="font-size:11px;color:#059669;background:#ecfdf5;padding:3px 8px;border-radius:6px;">👔 ${t._staffCount || 0} staff</span>
+            </div>
           </div>
         `).join('')}
       </div>
