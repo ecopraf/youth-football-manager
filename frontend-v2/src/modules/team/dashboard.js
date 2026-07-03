@@ -90,23 +90,11 @@ export default async function loadDashboard() {
     return '<div class="top-section"><h3 class="top-section-title">' + title + '</h3><div class="players-row">' + boxes.join('') + '</div></div>';
   };
   
-  // Badge helper per competizione - VERSIONE MIGLIORATA
-  const getCompetitionBadge = (tipoEvento) => {
-    const badges = {
-      campionato: { icon: '🏆', bg: '#e8f5e9', color: '#28a745', label: 'Campionato' },
-      coppa: { icon: '🏅', bg: '#fff3e0', color: '#fd7e14', label: 'Coppa' },
-      torneo: { icon: '🎯', bg: '#e3f2fd', color: '#007bff', label: 'Torneo' },
-      amichevole: { icon: '🤝', bg: '#f5f5f5', color: '#6c757d', label: 'Amichevole' }
-    };
-    const badge = badges[tipoEvento] || badges.amichevole;
-    return `<span style="display:inline-flex;align-items:center;gap:4px;background:${badge.bg};border:1px solid ${badge.color};color:${badge.color};font-size:10px;font-weight:600;padding:4px 8px;border-radius:6px;">${badge.icon} ${badge.label}</span>`;
-  };
-  
   // Helper per stile risultato colorato
   const getResultStyle = (gf, gs) => {
-    if (gf > gs) return { bg: '#e8f5e9', color: '#28a745', label: 'V' };
-    if (gf < gs) return { bg: '#ffebee', color: '#dc3545', label: 'S' };
-    return { bg: '#fff8e1', color: '#b8860b', label: 'P' };
+    if (gf > gs) return { bg: '#e8f5e9', color: '#28a745' };
+    if (gf < gs) return { bg: '#ffebee', color: '#dc3545' };
+    return { bg: '#fff8e1', color: '#b8860b' };
   };
   
   // Render results
@@ -125,18 +113,16 @@ export default async function loadDashboard() {
     // Trend con risultati sotto V/P/S
     const trendHtml = ultimi5.map(r => {
       const style = getResultStyle(r.golFatti, r.golSubiti);
-      return `<div style="text-align:center;">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:${style.color};color:white;font-size:13px;font-weight:bold;border-radius:10px;margin-bottom:4px;">${style.label}</span>
-        <div style="font-size:11px;font-weight:600;color:white;background:rgba(0,0,0,0.25);padding:2px 8px;border-radius:4px;">${r.golFatti}-${r.golSubiti}</div>
-      </div>`;
-    }).join('<span style="color:rgba(255,255,255,0.4);margin:0 10px;align-self:center;font-size:18px;">—</span>');
+      const esito = r.golFatti > r.golSubiti ? 'V' : r.golFatti === r.golSubiti ? 'P' : 'S';
+      return '<div style="text-align:center;"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:' + style.color + ';color:white;font-size:12px;font-weight:bold;border-radius:8px;margin-bottom:4px;">' + esito + '</span><div style="font-size:10px;color:#aaa;">' + r.golFatti + '-' + r.golSubiti + '</div></div>';
+    }).join('<span style="color:#ddd;margin:0 8px;align-self:center;">—</span>');
     
     const trendBox = '<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:14px;padding:16px;margin-bottom:16px;">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
-      '<span style="color:white;font-size:11px;font-weight:600;opacity:0.9;">ANDAMENTO ULTIME 5</span>' +
-      '<span style="color:white;font-size:11px;font-weight:600;opacity:0.9;">' + v5 + 'V ' + p5 + 'P ' + s5 + 'S</span></div>' +
-      '<div style="display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;margin-bottom:14px;">' + trendHtml + '</div>' +
-      '<div style="display:flex;justify-content:center;gap:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.2);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+      '<span style="color:white;font-size:11px;font-weight:600;opacity:0.9;">ANDAMENTO ULTIME ' + ultimi5.length + '</span>' +
+      '<span style="color:white;font-size:10px;opacity:0.8;">' + v5 + 'V ' + p5 + 'P ' + s5 + 'S</span></div>' +
+      '<div style="display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;margin-bottom:12px;">' + trendHtml + '</div>' +
+      '<div style="display:flex;justify-content:center;gap:16px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.2);">' +
       '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 16px;text-align:center;min-width:60px;">' +
       '<div style="font-size:22px;font-weight:bold;color:white;">' + gf5 + '</div><div style="font-size:10px;color:rgba(255,255,255,0.8);">Gol Fatti</div></div>' +
       '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 16px;text-align:center;min-width:60px;">' +
@@ -144,35 +130,38 @@ export default async function loadDashboard() {
       '<div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 16px;text-align:center;min-width:60px;">' +
       '<div style="font-size:22px;font-weight:bold;color:' + (dr5 >= 0 ? '#4ade80' : '#f87171') + ';">' + (dr5 >= 0 ? '+' : '') + dr5 + '</div><div style="font-size:10px;color:rgba(255,255,255,0.8);">Diff. Reti</div></div></div></div>';
     
-    // LISTA PARTITE - layout demo
+    // LISTA PARTITE - layout demo esatto
     const matchesHtml = risultati.map(r => {
       const isCasa = r.luogo === 'Casa';
       const icon = isCasa ? '🏠' : '✈️';
-      const resultStyle = getResultStyle(r.golFatti, r.golSubiti);
       const comp = r.competizione || (r.giornata ? 'Campionato' : 'Amichevole');
       const compLower = comp.toLowerCase();
       const tipoEvento = compLower.includes('coppa') ? 'coppa' : compLower.includes('torneo') ? 'torneo' : compLower.includes('amichevole') ? 'amichevole' : 'campionato';
-      const competitionBadge = getCompetitionBadge(tipoEvento);
-      const giornataLabel = r.giornata ? 'G.' + r.giornata : '';
-      const borderColor = r.golFatti > r.golSubiti ? '#28a745' : r.golFatti < r.golSubiti ? '#dc3545' : '#b8860b';
+      const dettaglioComp = r.giornata ? 'G.' + r.giornata : '';
+      const resStyle = getResultStyle(r.golFatti, r.golSubiti);
+      const badgeColor = resStyle.color;
       
-      return `<div class="match-item" style="border-left-color:${borderColor};" onclick="window.YFM.openMatchDetail('${r.id}')">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;width:100%;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            ${competitionBadge}
-            <span style="font-size:13px;color:#444;font-weight:500;">${giornataLabel}</span>
-          </div>
-          <span style="font-size:13px;color:#888;">${formatDateShort(r.dataOra)}</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-            <span style="font-size:18px;">${icon}</span>
-            <span style="font-size:16px;font-weight:700;color:#222;">${r.avversario}</span>
-            <span style="width:14px;height:14px;border-radius:50%;background:${borderColor};flex-shrink:0;"></span>
-          </div>
-          <span style="font-size:17px;font-weight:bold;color:${resultStyle.color};background:${resultStyle.bg};padding:8px 16px;border-radius:8px;border:1px solid ${resultStyle.color};flex-shrink:0;letter-spacing:1px;">${r.golFatti} - ${r.golSubiti}</span>
-        </div>
-      </div>`;
+      const badges = {
+        campionato: { icon: '🏆', bg: '#e8f5e9', color: '#28a745', label: 'Campionato' },
+        coppa: { icon: '🏅', bg: '#fff3e0', color: '#fd7e14', label: 'Coppa' },
+        torneo: { icon: '🎯', bg: '#e3f2fd', color: '#007bff', label: 'Torneo' },
+        amichevole: { icon: '🤝', bg: '#f5f5f5', color: '#6c757d', label: 'Amichevole' }
+      };
+      const badge = badges[tipoEvento] || badges.campionato;
+      const competitionBadgeHtml = '<span style="display:inline-flex;align-items:center;gap:4px;background:' + badge.bg + ';color:' + badge.color + ';font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;">' + badge.icon + ' ' + badge.label + '</span>';
+      
+      return '<div class="match-item" onclick="window.YFM.openMatchDetail(\'' + r.id + '\')" style="padding:0;background:#fafafa;border-radius:12px;margin-bottom:12px;overflow:hidden;border:1px solid #eee;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:linear-gradient(to right,#f8f9fa,#fff);border-bottom:1px solid #eee;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+        competitionBadgeHtml +
+        '<span style="font-size:11px;color:#667eea;font-weight:700;">' + dettaglioComp + '</span></div>' +
+        '<span style="font-size:11px;color:#666;font-weight:500;">' + formatDateShort(r.dataOra) + '</span></div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">' +
+        '<span style="font-size:12px;">' + icon + '</span>' +
+        '<span style="font-size:13px;font-weight:500;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + r.avversario + '</span>' +
+        '<span style="width:12px;height:12px;border-radius:50%;background:' + badgeColor + ';flex-shrink:0;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span></div>' +
+        '<span style="font-size:16px;font-weight:800;color:' + resStyle.color + ';background:' + resStyle.bg + ';padding:6px 14px;border-radius:8px;">' + r.golFatti + ' - ' + r.golSubiti + '</span></div></div>';
     }).join('');
     
     return trendBox + matchesHtml;
@@ -211,8 +200,8 @@ export default async function loadDashboard() {
     '.bottom-grid { display:grid; gap:20px; grid-template-columns:1fr; }' +
     '@media (min-width: 900px) { .bottom-grid { grid-template-columns: 1.5fr 1fr !important; } }' +
     '.result-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
-    '.match-item { display:flex; flex-direction:column; padding:16px 20px; border-radius:12px; margin-bottom:12px; transition: all 0.2s ease; cursor:pointer; background:white; border:1px solid #e8e8e8; border-left:4px solid #28a745; box-shadow:0 2px 8px rgba(0,0,0,0.04); }' +
-    '.match-item:hover { background:#f8f9ff; box-shadow:0 4px 12px rgba(0,0,0,0.08); }' +
+    '.match-item { cursor:pointer; transition: all 0.2s ease; }' +
+    '.match-item:hover { opacity:0.9; transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.1); }' +
     '.staff-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
     '.staff-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }' +
     '</style>';
