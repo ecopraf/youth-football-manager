@@ -313,6 +313,10 @@ guest_token (id, token, tipo, utente_id, scadenza, ...)
 -- Import Log (storico importazioni)
 import_log (id, workspace_id, team_id, user_id, tipo, fonte, dettagli JSONB,
             record_importati, record_saltati, esito, errore, created_at)
+
+tournament (id UUID PK, workspace_id FK, team_id FK, nome TEXT, data_inizio DATE,
+            data_fine DATE, sede TEXT, modalita TEXT, regolamento JSONB,
+            squadre JSONB, stato TEXT, calendario JSONB, created_at)
 ```
 
 ## Gestione Multi-Workspace

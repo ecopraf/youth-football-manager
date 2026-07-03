@@ -87,6 +87,7 @@ Le tabelle reali nel DB Supabase sono:
 - `valutazione_partita`, `document`
 - `users`, `guest_token`
 - `import_log`
+- `tournament`
 
 **Colonne notevoli `import_log`**: `tipo TEXT` (calendario_pdf, calendario_testo, calendario_tuttocampo, rosa_xls, rosa_tuttocampo, formazioni_tuttocampo), `dettagli JSONB`, `record_importati INT`, `esito TEXT`
 

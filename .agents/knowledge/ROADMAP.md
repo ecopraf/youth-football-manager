@@ -183,6 +183,45 @@
 - [ ] Analisi video (integrazione)
 - [ ] Statistiche Avanzate (xG, heatmaps)
 
+### Media-Bassa Priorità (P2.5)
+
+#### 🏆 Modulo Tornei (implementato, disabilitato in sidebar)
+**Stato**: Codice pronto, testato, disabilitato in UI. Riattivare quando richiesto.
+
+**File coinvolti**:
+- `backend/api/routes/tournament.js` — CRUD completo (GET/POST/PUT/DELETE su `/api/tornei`)
+- `frontend-v2/src/modules/coach/tournaments.js` — Pagina con lista, wizard, dettaglio, PDF
+- `frontend-v2/src/router.js` — Route `tournaments` registrata
+- `frontend-v2/src/components/layout/sidebar.js` — Link commentato sotto Coach
+- DB: tabella `tournament` (già creata in produzione)
+
+**Funzionalità MVP completate**:
+- [x] Tabella DB `tournament` (id, workspace_id, team_id, nome, date, sede, modalita, regolamento JSONB, squadre JSONB, stato, calendario JSONB)
+- [x] Backend CRUD con auth + requirePermission('partite', 'write')
+- [x] Lista tornei filtrata per categoria attiva (team_id)
+- [x] Wizard creazione con: nome, date, sede, modalità, regolamento (durata partita, giocatori per squadra)
+- [x] Squadra organizzatrice con logo workspace
+- [x] Aggiunta squadre manuale con campo logo_url opzionale
+- [x] Import squadre da Gazzetta Regionale (riuso wizard GR: campionato → girone → checkbox)
+- [x] Campo `confermata` per tracciare accettazione invito (toggle nel dettaglio)
+- [x] Generazione PDF invito con jsPDF (logo società, regolamento, lista squadre)
+- [x] Dettaglio torneo con toggle conferma squadre
+
+**Funzionalità future da sviluppare**:
+- [ ] Calendario automatico round-robin (generazione gironi)
+- [ ] Inserimento automatico partite torneo nel calendario normale
+- [ ] Gestione risultati partite torneo
+- [ ] Classifica live del girone
+- [ ] Fase eliminazione diretta con bracket visuale
+- [ ] Condivisione invito via link/WhatsApp
+- [ ] Upload logo squadre invitate (invece di URL manuale)
+- [ ] Storico tornei organizzati
+
+**Per riattivare**: in `sidebar.js` sostituire il commento `/* TORNEI: disabilitato... */` con:
+```
+<a href="#" data-page="tournaments" title="🏆 Gestione tornei e inviti">🏆 Tornei</a>
+```
+
 ### Bassa Priorità (P3)
 
 #### Funzionalità Extra
