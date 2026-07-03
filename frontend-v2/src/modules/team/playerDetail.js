@@ -215,6 +215,13 @@ function renderPlayerDetail(container, data) {
         <div><span style="font-size:12px;color:#888;">Certificato Medico</span><div style="font-size:14px;">${certificato}</div></div>
         <div><span style="font-size:12px;color:#888;">Stato</span><div style="font-size:14px;"><span class="badge ${stato === 'Attivo' ? 'badge-green' : 'badge-red'}">${stato}</span></div></div>
       </div>
+      ${(player.contatti_genitori && player.contatti_genitori.length) ? `
+      <div style="margin-top:16px;">
+        <span style="font-size:12px;font-weight:700;color:#667eea;">👨‍👩‍👦 CONTATTI GENITORI</span>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:8px;">
+          ${player.contatti_genitori.map(c => `<div style="padding:8px 12px;background:#f8f9fa;border-radius:6px;"><span style="font-size:11px;color:#888;">${c.tipo || ''}</span><div style="font-size:14px;font-weight:500;">${c.nome || ''}</div><div style="font-size:13px;color:#667eea;">${c.telefono ? '<a href="tel:' + c.telefono + '" style="color:#667eea;text-decoration:none;">📞 ' + c.telefono + '</a>' : ''}</div></div>`).join('')}
+        </div>
+      </div>` : ''}
       <div id="playerDataEdit" style="display:none;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
           <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Nome</label><input id="editNome" value="${nome}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
@@ -232,6 +239,11 @@ function renderPlayerDetail(container, data) {
           <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Tipo Documento</label><input id="editTipoDoc" value="${tipoDoc !== '-' ? tipoDoc : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
           <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Documento</label><input id="editNumDoc" value="${numDoc !== '-' ? numDoc : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
           <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Rilasciato Da</label><input id="editRilasciatoDa" value="${rilasciatoDa !== '-' ? rilasciatoDa : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <span style="font-size:12px;font-weight:700;color:#667eea;">👨‍👩‍👦 CONTATTI GENITORI</span>
+          <div id="editContattiGenitori" style="margin-top:8px;"></div>
+          <button type="button" id="editAddContatto" style="margin-top:8px;padding:6px 12px;border:1px dashed #667eea;background:none;color:#667eea;border-radius:6px;cursor:pointer;font-size:12px;">+ Aggiungi contatto</button>
         </div>
         <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
           <button class="btn btn-secondary" id="btnCancelEdit">Annulla</button>
@@ -278,9 +290,28 @@ function renderPlayerDetail(container, data) {
 
   if (isAdmin) {
     // Modifica inline
+    // Contatti genitori - helper
+    function addContattoRowDetail(container, c = {}) {
+      const row = document.createElement('div');
+      row.style = 'display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;';
+      row.innerHTML = `<select class="cg-tipo" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:12px;"><option value="Padre" ${c.tipo === 'Padre' ? 'selected' : ''}>Padre</option><option value="Madre" ${c.tipo === 'Madre' ? 'selected' : ''}>Madre</option><option value="Tutore" ${c.tipo === 'Tutore' ? 'selected' : ''}>Tutore</option></select><input class="cg-nome" placeholder="Nome" value="${c.nome || ''}" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;"><input class="cg-tel" placeholder="Cellulare" value="${c.telefono || ''}" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;"><button type="button" style="background:none;border:none;color:#E74C3C;font-size:18px;cursor:pointer;">×</button>`;
+      row.querySelector('button').onclick = () => row.remove();
+      container.appendChild(row);
+    }
+
     document.getElementById('btnEditInline')?.addEventListener('click', () => {
       document.getElementById('playerDataView').style.display = 'none';
       document.getElementById('playerDataEdit').style.display = 'block';
+      // Popola contatti genitori
+      const cgContainer = document.getElementById('editContattiGenitori');
+      if (cgContainer && !cgContainer.hasChildNodes()) {
+        (player.contatti_genitori || []).forEach(c => addContattoRowDetail(cgContainer, c));
+      }
+    });
+
+    document.getElementById('editAddContatto')?.addEventListener('click', () => {
+      const cgContainer = document.getElementById('editContattiGenitori');
+      if (cgContainer) addContattoRowDetail(cgContainer);
     });
 
     document.getElementById('btnCancelEdit')?.addEventListener('click', () => {
@@ -319,7 +350,13 @@ function renderPlayerDetail(container, data) {
         matricola_figc: document.getElementById('editMatricola').value,
         tipo_documento: document.getElementById('editTipoDoc').value,
         numero_documento: document.getElementById('editNumDoc').value,
-        rilasciato_da: document.getElementById('editRilasciatoDa').value
+        rilasciato_da: document.getElementById('editRilasciatoDa').value,
+        contatti_genitori: [...document.querySelectorAll('#editContattiGenitori > div')].map(row => {
+          const tipo = row.querySelector('.cg-tipo')?.value;
+          const nome = row.querySelector('.cg-nome')?.value?.trim();
+          const telefono = row.querySelector('.cg-tel')?.value?.trim();
+          return (nome || telefono) ? { tipo, nome, telefono } : null;
+        }).filter(Boolean)
       };
       showLoading('Salvataggio...');
       try {
