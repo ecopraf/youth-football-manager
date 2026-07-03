@@ -40,21 +40,28 @@ async function tcRequestProxy(url, options = {}) {
     headers: options.headers || {},
     postBody: options.body || null
   });
-  const resp = await fetch(PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Proxy-Secret': PROXY_SECRET
-    },
-    body: payload
-  });
-  const json = await resp.json();
-  return {
-    data: json.data || '',
-    cookies: json.cookies || [],
-    redirect: json.redirect || null,
-    status: json.status || resp.status
-  };
+  try {
+    const resp = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Proxy-Secret': PROXY_SECRET
+      },
+      body: payload
+    });
+    const text = await resp.text();
+    const json = JSON.parse(text);
+    return {
+      data: json.data || '',
+      cookies: json.cookies || [],
+      redirect: json.redirect || null,
+      status: json.status || resp.status
+    };
+  } catch (err) {
+    // Fallback to direct if proxy fails
+    console.error('Proxy error, falling back to direct:', err.message);
+    return tcRequestDirect(url, options);
+  }
 }
 
 // --- Unified request: proxy if available, else direct ---

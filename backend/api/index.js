@@ -34,6 +34,24 @@ app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok', version: '3.15', modular: true, warm: true, proxy: !!process.env.PROXY_TC_URL });
 });
 
+// Test proxy connectivity
+app.get('/api/test-proxy', async (req, res) => {
+  const proxyUrl = process.env.PROXY_TC_URL;
+  if (!proxyUrl) return res.json({ error: 'PROXY_TC_URL not set' });
+  try {
+    const resp = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Proxy-Secret': process.env.PROXY_TC_SECRET || 'yfm-tc-proxy-2026' },
+      body: JSON.stringify({ url: 'https://www.tuttocampo.it/Homepage', method: 'GET' })
+    });
+    const text = await resp.text();
+    const json = JSON.parse(text);
+    res.json({ ok: true, status: json.status, htmlLen: json.data?.length || 0, cookies: json.cookies?.length || 0 });
+  } catch (err) {
+    res.json({ ok: false, error: err.message, type: err.constructor.name });
+  }
+});
+
 app.get('/api/warmup', async (req, res) => {
   try {
     await supabase.from('team').select('id').limit(1);
