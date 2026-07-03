@@ -449,6 +449,27 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     }
   });
 
+  // GET /api/giocatori/:id/valutazioni
+  router.get('/api/giocatori/:id/valutazioni', authMiddleware, async (req, res) => {
+    try {
+      const { data: valutazioni } = await supabase.from('valutazione_partita')
+        .select('voto, partita:partita_id(avversario, data)')
+        .eq('calciatore_id', req.params.id)
+        .order('created_at', { ascending: false });
+      if (!valutazioni || valutazioni.length === 0) return res.json({ partiteValutate: 0, media: 0 });
+      const voti = valutazioni.map(v => parseFloat(v.voto)).filter(v => !isNaN(v));
+      const media = voti.length ? (voti.reduce((a, b) => a + b, 0) / voti.length).toFixed(1) : 0;
+      const best = valutazioni.reduce((a, b) => parseFloat(b.voto) > parseFloat(a.voto) ? b : a);
+      res.json({
+        partiteValutate: voti.length,
+        media,
+        migliore: best ? { voto: parseFloat(best.voto).toFixed(1), avversario: best.partita?.avversario || '-' } : null
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // POST /api/calciatori/:id/move
   router.post('/api/calciatori/:id/move', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
     try {
