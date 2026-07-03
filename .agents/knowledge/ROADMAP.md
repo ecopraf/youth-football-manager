@@ -125,6 +125,15 @@
 ### Alta Priorità (P1)
 
 #### Gestione Giocatori
+- [x] Validazione anno nascita per categoria (anno_da ≤ nascita ≤ anno_da+2)
+- [x] Normalizzazione nomi (capitalize, trim spazi multipli)
+- [x] Svincolo giocatori con preservazione storico
+- [x] Riattivazione giocatori svincolati
+- [x] Aggregazione da categorie inferiori (badge AGG, filtro dedicato)
+- [x] Recupera svincolati da tutto il workspace (cross-stagione)
+- [x] Creazione giocatore con stessa UI di modifica (playerDetail)
+- [x] Custom alert modale (titolo "Youth Football Manager")
+- [x] Endpoint DELETE giocatore dalla rosa
 - [ ] Scheda giocatore avanzata con foto
 - [ ] Storico presenze/assenze
 - [ ] Note allenatore personali

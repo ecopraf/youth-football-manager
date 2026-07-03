@@ -78,6 +78,8 @@ Dopo ogni build significativa (nuove feature, fix di bug multipli, refactoring, 
 Le tabelle reali nel DB Supabase sono:
 - `workspace`, `season`, `category`, `competition`, `facility`
 - `team`, `player`, `team_player`, `staff`, `team_staff`
+
+**Colonne notevoli `team_player`**: `stato TEXT` (Attivo, Infortunato, Svincolato), `aggregato BOOLEAN DEFAULT false` (true se giocatore aggregato da categoria inferiore)
 - `match`, `match_event`, `match_formation`, `match_statistics`, `convocation`
 
 **Colonne notevoli `match`**: `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS), `tc_match_url TEXT` (URL pagina partita Tuttocampo per import formazioni)

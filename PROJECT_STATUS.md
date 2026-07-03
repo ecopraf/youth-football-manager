@@ -92,7 +92,7 @@ module.exports = createXxxRouter;
 | `competition` | Campionati/Competizioni | id, nome, tipo, federazione, regione |
 | `team` | Squadre per stagione | id, season_id, category_id, nome |
 | `player` | Anagrafica calciatori | id, nome, cognome, data_nascita, ruolo_principale, matricola_figc |
-| `team_player` | Assegnazione giocatori-squadra | id, team_id, player_id, numero_maglia, ruolo_preferito, stato |
+| `team_player` | Assegnazione giocatori-squadra | id, team_id, player_id, numero_maglia, ruolo_preferito, stato, aggregato |
 | `match` | Partite | id, team_id, data_ora, avversario, luogo, gol_casa, gol_ospite, archiviata, formazione_meta JSONB, note, note_avversario |
 | `match_event` | Eventi partita | id, match_id, tipo_evento, minuto, player_id |
 | `match_formation` | Formazioni tattiche | id, match_id, team_player_id, posizione, numero_maglia, is_starter, is_captain, ordine |
@@ -220,13 +220,13 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Modulo | Percorso | Descrizione |
 |--------|----------|-------------|
 | Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze, badge competizione, risultati colorati con layout casa/trasferta (logo+nome squadra, score centrato), classifica GR live, calendario GR navigabile con frecce ◀▶, top marcatori regionali/girone, ultima giornata GR con loghi. Staff sotto risultati (desktop) o in fondo (mobile). Guest view semplificata |
-| Rosa | `modules/team/roster.js` | CRUD giocatori, scadenze mediche, filtri |
+| Rosa | `modules/team/roster.js` | CRUD giocatori, scadenze mediche, filtri, selezione multipla, svincolo/riattivazione, aggregazione da categorie inferiori (badge AGG), recupera svincolati workspace, import XLS/TC |
 | Calendario | `modules/team/calendar.js` | CRUD partite, pallino lampeggiante, badge sezioni pill, archiviazione, import PDF SGS/LND, import CSV, cancella calendario, guest view |
 | Convocazioni | `modules/team/convocazioni.js` | Vincoli min/max, PDF, sola lettura se archiviata |
 | Distinta | `modules/team/distinta.js` | Layout FIGC, 24 righe, staff con dropdown selezione + inserimento manuale, stampa PDF |
 | Match Detail | `modules/team/matchDetail.js` | Eventi, timeline per tempo, statistiche |
 | Note Avversario | `modules/team/noteAvversario.js` | Ereditarietà automatica note |
-| Scheda Giocatore | `modules/team/playerDetail.js` | Profilo, stats, carriera, ultime partite |
+| Scheda Giocatore | `modules/team/playerDetail.js` | Profilo, stats, carriera, ultime partite, creazione nuovo giocatore (stessa UI), validazione anno nascita, normalizzazione nomi |
 | Formazione | `modules/team/formazione.js` | Campo visuale con drag&drop, 8 moduli tattici, posizioni custom persistenti |
 | Eventi/Risultato | `modules/team/resultForm.js` | Inserimento eventi, sola lettura se archiviata |
 | Valutazioni | `modules/team/valutazioni.js` | Valutazioni partite |
@@ -280,6 +280,7 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Calendario GR navigabile | (pending) | Widget dashboard con frecce ◀▶ per scorrere tutte le giornate, solo visualizzazione live da GR |
 | Top Marcatori dashboard | (pending) | Regionali (top 10 assoluti) + Girone (filtrati per squadre classifica) side-by-side |
 | Staff layout responsive | (pending) | Sotto Ultimi Risultati su desktop, in fondo su mobile |
+| Gestione giocatori avanzata | 3f7b8ae | Validazione anno nascita per categoria, normalizzazione nomi, creazione da playerDetail, custom alert modale, DELETE endpoint, svincolo/riattivazione, aggregazione categorie inferiori, recupera svincolati workspace |
 | Import Center | - | Pagina centralizzata 6 card, parser testo SGS, batch formazioni TC, log storico DB, voce sidebar |
 | Loghi Squadre TC | - | Scraping automatico loghi da TC, 40+ PNG, matching fuzzy acronimi, logo workspace in dashboard/dettaglio/convocazioni/distinta |
 
@@ -577,6 +578,13 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 | Hash | Descrizione |
 |------|------------|
+| 3f7b8ae | feat: aggregazione giocatori da categorie inferiori con badge AGG, filtro, recupera svincolati workspace |
+| c779163 | feat: gestione svincolo giocatori con riattivazione, sezione svincolati collassabile |
+| 003634b | feat: custom alert modale con titolo Youth Football Manager |
+| a2d6598 | feat: creazione giocatore usa stessa pagina di modifica (playerDetail) |
+| 5123a6a | fix: validazione anno nascita con limite superiore (anno_da+2), rinomina sezione Dati Giocatore |
+| f833b68 | fix: aggiunto endpoint DELETE /squadre/:id/calciatori/:id mancante |
+| 9d15fe7 | feat: validazione anno nascita per categoria + normalizzazione nome/cognome |
 | 56259b8 | feat: dashboard risultati casa/trasferta, fix penalità classifica, riordino sidebar, ultima giornata GR con loghi |
 | 25e5277 | docs: aggiorna documentazione con integrazione Gazzetta Regionale + fix label import risultati |
 | f0d4423 | feat: integrazione Gazzetta Regionale — classifica, calendario, marcatori, loghi, wizard config, dashboard widget |
@@ -599,7 +607,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 ---
 
-*Ultimo aggiornamento: 4 Luglio 2026 (Calendario GR navigabile, top marcatori regionali/girone, staff responsive, fix rosa, selezione multipla, dashboard casa/trasferta)*
+*Ultimo aggiornamento: 4 Luglio 2026 (Gestione giocatori: validazione anno nascita, normalizzazione nomi, svincolo/riattivazione, aggregazione categorie inferiori, recupera svincolati, custom alert, creazione da playerDetail)*
 
 ---
 

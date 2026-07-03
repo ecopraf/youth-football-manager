@@ -125,7 +125,7 @@ api/
 | `competition` | Campionati | - |
 | `team` | Squadra | season_id, category_id, classifica_url |
 | `player` | Giocatore | - |
-| `team_player` | Associazione giocatore-squadra | team_id, player_id |
+| `team_player` | Associazione giocatore-squadra | team_id, player_id, aggregato |
 | `match` | Partita | team_id, competition_id |
 | `match_event` | Eventi (GOAL, ASSIST, YELLOW...) | match_id, player_id |
 | `match_formation` | Formazione | match_id, team_player_id |

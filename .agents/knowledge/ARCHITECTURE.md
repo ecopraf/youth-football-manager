@@ -137,6 +137,14 @@ youth-football-manager/
 | GET | `/squadre/:id` | Dettaglio squadra |
 | GET | `/squadre/:id/statistiche-complete` | Stats complete |
 | GET | `/squadre/:id/top-players` | Top marcatori/assist |
+| GET | `/squadre/:id/calciatori` | Rosa (esclude svincolati, ?includi_svincolati=1) |
+| GET | `/squadre/:id/aggregabili` | Giocatori aggregabili da categorie inferiori |
+| GET | `/squadre/:id/svincolati-workspace` | Svincolati recuperabili da tutto il workspace |
+| POST | `/squadre/:id/svincola` | Svincola giocatori (playerIds[]) |
+| POST | `/squadre/:id/riattiva` | Riattiva giocatori svincolati (playerIds[]) |
+| POST | `/squadre/:id/aggrega` | Aggrega giocatori da categorie inferiori (playerIds[]) |
+| POST | `/squadre/:id/recupera` | Recupera svincolati da altre stagioni (playerIds[]) |
+| DELETE | `/squadre/:id/calciatori/:pid` | Elimina giocatore dalla rosa |
 
 #### Matches
 | Metodo | Endpoint | Descrizione |
@@ -249,7 +257,7 @@ team_staff (id, team_id, staff_id, ruolo_squadra, data_assegnazione, ...)
 
 -- Team Player (ex rosa - associazione giocatore-squadra)
 team_player (id, team_id, player_id, is_primary, numero_maglia, 
-            ruolo_preferito, stato, data_assegnazione, ...)
+            ruolo_preferito, stato, aggregato, data_assegnazione, ...)
 
 -- Match (ex partita)
 match (id, team_id, competition_id, venue_id, data_ora, avversario, luogo,
