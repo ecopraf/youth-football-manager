@@ -1,6 +1,8 @@
 import { apiFetch } from '../../services/api';
 import { getSavedWorkspaceId, saveCurrentWorkspace } from '../club/workspaceSwitcher';
 
+const STORAGE_KEY = 'yfm_squadra_id';
+
 export async function loadSquadre(stagioneId) {
   try {
     let allSquadre;
@@ -49,6 +51,18 @@ export async function loadSquadre(stagioneId) {
     
     window.YFM.allSquadre = allSquadre;
     
+    // Ripristina squadraId da localStorage o seleziona default
+    const savedSquadraId = localStorage.getItem(STORAGE_KEY);
+    if (savedSquadraId && allSquadre.find(s => s.id === savedSquadraId)) {
+      window.YFM.squadraId = savedSquadraId;
+    } else if (allSquadre.length > 0 && !allSquadre.find(s => s.id === window.YFM.squadraId)) {
+      const preferActive = allSquadre.find(s => s._stagioneAttiva) || allSquadre[0];
+      window.YFM.squadraId = preferActive.id;
+    }
+    if (window.YFM.squadraId) {
+      localStorage.setItem(STORAGE_KEY, window.YFM.squadraId);
+    }
+    
     const sel = document.getElementById('squadraSelect');
     if (sel) {
       // Raggruppa per stagione
@@ -61,7 +75,6 @@ export async function loadSquadre(stagioneId) {
       const stagKeys = Object.keys(byStag).sort().reverse();
       
       if (stagKeys.length <= 1) {
-        // Una sola stagione: dropdown semplice
         sel.innerHTML = allSquadre.map(s => {
           const categoriaNome = s.category?.nome || s.categoria || '';
           const tipoCampionato = s.category?.tipo_campionato || '';
@@ -71,7 +84,6 @@ export async function loadSquadre(stagioneId) {
           return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${displayNome}</option>`;
         }).join('');
       } else {
-        // Più stagioni: optgroup con anno nelle opzioni
         sel.innerHTML = stagKeys.map(stag => {
           const opts = byStag[stag].map(s => {
             const categoriaNome = s.category?.nome || s.categoria || '';
@@ -88,6 +100,7 @@ export async function loadSquadre(stagioneId) {
       
       sel.onchange = async (e) => {
         window.YFM.squadraId = e.target.value;
+        localStorage.setItem(STORAGE_KEY, e.target.value);
         window.YFM.allPlayers = [];
         window.YFM.allMatches = [];
         const sq = allSquadre.find(s => s.id === e.target.value);
@@ -109,11 +122,6 @@ export async function loadSquadre(stagioneId) {
         }
         window.YFM.navigateTo(window.YFM.currentPage);
       };
-    }
-    // Se la squadra selezionata non è più nella lista, seleziona la prima della stagione più recente
-    if (allSquadre.length > 0 && !allSquadre.find(s => s.id === window.YFM.squadraId)) {
-      const preferActive = allSquadre.find(s => s._stagioneAttiva) || allSquadre[0];
-      window.YFM.squadraId = preferActive.id;
     }
   } catch (err) {
     console.error('[loadSquadre] ERROR:', err);

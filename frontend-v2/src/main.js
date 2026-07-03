@@ -44,6 +44,7 @@ window.YFM.handleLogout = function() {
   localStorage.removeItem('yfm_active_workspace');
   localStorage.removeItem('yfm_demo_session');
   localStorage.removeItem('yfm_demo_user');
+  localStorage.removeItem('yfm_squadra_id');
   resetWorkspaceCache();
   window.location.href = '/';
 };
