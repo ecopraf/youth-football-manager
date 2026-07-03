@@ -5,15 +5,17 @@ export default async function loadDashboard() {
   const c = document.getElementById('pageContent');
   const squadraId = window.YFM.squadraId;
   
-  let stats, top, topValutazioni, partiteFuture, classificaData;
+  let stats, top, topValutazioni, partiteFuture, classificaData, marcatoriGR, calendarioGR;
   
   try {
-    [stats, top, topValutazioni, partiteFuture, classificaData] = await Promise.all([
+    [stats, top, topValutazioni, partiteFuture, classificaData, marcatoriGR, calendarioGR] = await Promise.all([
       apiFetch('/squadre/' + squadraId + '/statistiche-complete').catch(() => ({ punti:0, partiteGiocate:0, vittorie:0, pareggi:0, sconfitte:0, golFatti:0, golSubiti:0, differenzaReti:0, risultati:[] })),
       apiFetch('/squadre/' + squadraId + '/top-players').catch(() => ({ marcatori:[], assistmen:[], presenze:[] })),
       apiFetch('/squadre/' + squadraId + '/valutazioni-top').catch(() => ({ topGiocatori:[] })),
       apiFetch('/squadre/' + squadraId + '/partite-future').catch(() => []),
-      apiFetch('/squadre/' + squadraId + '/classifica').catch(() => ({ classifica: null }))
+      apiFetch('/squadre/' + squadraId + '/classifica').catch(() => ({ classifica: null })),
+      apiFetch('/gr/marcatori/' + squadraId).catch(() => ({ marcatori: [] })),
+      apiFetch('/gr/calendario/' + squadraId).catch(() => ({ matches: [] }))
     ]);
   } catch (err) {
     console.error('Dashboard load error:', err);
@@ -22,6 +24,8 @@ export default async function loadDashboard() {
     topValutazioni = { topGiocatori: [] };
     partiteFuture = [];
     classificaData = { classifica: null };
+    marcatoriGR = { marcatori: [] };
+    calendarioGR = { matches: [] };
   }
   
   const s = window.YFM.getSquadra();
@@ -215,29 +219,99 @@ export default async function loadDashboard() {
       '<div style="overflow-x:auto;"><table class="classifica-table"><thead><tr><th>#</th><th>Squadra</th><th>Pt</th><th>G</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   };
 
-  // Render ultima giornata GR
-  const renderUltimaGiornata = () => {
-    const ris = classificaData?.risultatiUltimaGiornata;
-    if (!ris || ris.length === 0) return '';
+  // Render calendario GR navigabile
+  const renderCalendarioGR = () => {
+    const matches = calendarioGR?.matches;
+    if (!matches || matches.length === 0) {
+      // Fallback: usa risultatiUltimaGiornata dalla classifica
+      const ris = classificaData?.risultatiUltimaGiornata;
+      if (!ris || ris.length === 0) return '';
+      // render statico come prima
+      const teamName = (classificaData.teamName || '').toLowerCase();
+      const round = ris[0].round_number || '';
+      const date = ris[0].date_match || '';
+      const logoMap = {};
+      (classificaData.classifica || []).forEach(r => { if (r.logo) logoMap[r.nome.toLowerCase()] = r.logo; });
+      const getLogo = (name) => { const n = name.toLowerCase(); let l = logoMap[n]; if (!l) { const k = Object.keys(logoMap).find(k => k.includes(n) || n.includes(k)); if (k) l = logoMap[k]; } return l ? '<img src="' + l + '" style="width:16px;height:16px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : ''; };
+      const rows = ris.map(r => {
+        const isUs = r.home_club.toLowerCase().includes(teamName) || r.away_club.toLowerCase().includes(teamName) || teamName.includes(r.home_club.toLowerCase()) || teamName.includes(r.away_club.toLowerCase());
+        const cls = isUs ? ' class="classifica-row-highlight"' : '';
+        return '<tr' + cls + '><td style="text-align:right;padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;">' + r.home_club + getLogo(r.home_club) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;">' + (r.home_points ?? '-') + ' - ' + (r.away_points ?? '-') + '</td><td style="padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;">' + getLogo(r.away_club) + r.away_club + '</span></td></tr>';
+      }).join('');
+      return '<div class="result-card" style="margin-top:20px;"><h3 style="margin:0 0 10px 0;font-size:15px;color:#333;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h3><table style="width:100%;border-collapse:collapse;font-size:12px;"><tbody>' + rows + '</tbody></table></div>';
+    }
+    // Group by giornata
+    const byRound = {};
+    matches.forEach(m => { const g = m.giornata; if (!byRound[g]) byRound[g] = []; byRound[g].push(m); });
+    const rounds = Object.keys(byRound).map(Number).sort((a, b) => a - b);
+    if (rounds.length === 0) return '';
+    // Find last round with results
+    let defaultRound = rounds[rounds.length - 1];
+    for (let i = rounds.length - 1; i >= 0; i--) {
+      if (byRound[rounds[i]].some(m => m.gol_casa !== null)) { defaultRound = rounds[i]; break; }
+    }
+    return '<div class="result-card" style="margin-top:20px;"><div id="grCalNav" data-round="' + defaultRound + '"></div></div>';
+  };
+
+  // Attach calendario navigation after render
+  const attachCalendarioNav = () => {
+    const nav = document.getElementById('grCalNav');
+    if (!nav) return;
+    const matches = calendarioGR?.matches || [];
+    if (matches.length === 0) return;
+    const byRound = {};
+    matches.forEach(m => { const g = m.giornata; if (!byRound[g]) byRound[g] = []; byRound[g].push(m); });
+    const rounds = Object.keys(byRound).map(Number).sort((a, b) => a - b);
+    let currentIdx = rounds.indexOf(+nav.dataset.round);
+    if (currentIdx < 0) currentIdx = rounds.length - 1;
     const teamName = (classificaData.teamName || '').toLowerCase();
-    const round = ris[0].round_number || '';
-    const date = ris[0].date_match || '';
-    // Build logo map from classifica
     const logoMap = {};
     (classificaData.classifica || []).forEach(r => { if (r.logo) logoMap[r.nome.toLowerCase()] = r.logo; });
-    const getLogo = (name) => {
-      const n = name.toLowerCase();
-      let l = logoMap[n];
-      if (!l) { const k = Object.keys(logoMap).find(k => k.includes(n) || n.includes(k)); if (k) l = logoMap[k]; }
-      return l ? '<img src="' + l + '" style="width:16px;height:16px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '';
-    };
-    const rows = ris.map(r => {
-      const isUs = r.home_club.toLowerCase().includes(teamName) || r.away_club.toLowerCase().includes(teamName) || teamName.includes(r.home_club.toLowerCase()) || teamName.includes(r.away_club.toLowerCase());
-      const cls = isUs ? ' class="classifica-row-highlight"' : '';
-      return '<tr' + cls + '><td style="text-align:right;padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;">' + r.home_club + getLogo(r.home_club) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;">' + (r.home_points ?? '-') + ' - ' + (r.away_points ?? '-') + '</td><td style="padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;">' + getLogo(r.away_club) + r.away_club + '</span></td></tr>';
+    const getLogo = (name) => { const n = name.toLowerCase(); let l = logoMap[n]; if (!l) { const k = Object.keys(logoMap).find(k => k.includes(n) || n.includes(k)); if (k) l = logoMap[k]; } return l ? '<img src="' + l + '" style="width:16px;height:16px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : ''; };
+
+    function renderRound(idx) {
+      const round = rounds[idx];
+      const rMatches = byRound[round];
+      const date = rMatches[0]?.data || '';
+      const rows = rMatches.map(r => {
+        const isUs = r.casa.toLowerCase().includes(teamName) || r.ospite.toLowerCase().includes(teamName) || teamName.includes(r.casa.toLowerCase()) || teamName.includes(r.ospite.toLowerCase());
+        const cls = isUs ? ' class="classifica-row-highlight"' : '';
+        const score = r.gol_casa !== null ? r.gol_casa + ' - ' + r.gol_ospite : '- - -';
+        return '<tr' + cls + '><td style="text-align:right;padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;">' + r.casa + getLogo(r.casa) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;">' + score + '</td><td style="padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;">' + getLogo(r.ospite) + r.ospite + '</span></td></tr>';
+      }).join('');
+      nav.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+        '<button id="grCalPrev" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;opacity:' + (idx > 0 ? '1' : '0.3') + ';">◀</button>' +
+        '<h3 style="margin:0;font-size:15px;color:#333;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h3>' +
+        '<button id="grCalNext" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;opacity:' + (idx < rounds.length - 1 ? '1' : '0.3') + ';">▶</button></div>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:12px;"><tbody>' + rows + '</tbody></table>';
+      document.getElementById('grCalPrev').onclick = () => { if (idx > 0) { currentIdx = idx - 1; renderRound(currentIdx); } };
+      document.getElementById('grCalNext').onclick = () => { if (idx < rounds.length - 1) { currentIdx = idx + 1; renderRound(currentIdx); } };
+    }
+    renderRound(currentIdx);
+  };
+
+  // Render marcatori GR (Top 10 Regionali + Top 10 Girone)
+  const renderMarcatoriGR = () => {
+    const all = marcatoriGR?.marcatori;
+    if (!all || all.length === 0) return '';
+    const cl = classificaData?.classifica;
+    if (!cl || cl.length === 0) return '';
+    const teamName = (classificaData.teamName || '').toLowerCase();
+    const gironeTeams = new Set(cl.map(r => r.nome.toLowerCase()));
+    const gironeMarc = all.filter(m => gironeTeams.has(m.squadra.toLowerCase()));
+    const top10Reg = all.slice(0, 10);
+    const top10Gir = gironeMarc.slice(0, 10);
+    if (top10Gir.length === 0) return '';
+    const renderTable = (items) => items.map((m, i) => {
+      const isOur = m.squadra.toLowerCase().includes(teamName) || teamName.includes(m.squadra.toLowerCase());
+      const s = isOur ? ' style="background:#f0f4ff;font-weight:600;color:#667eea;"' : '';
+      return '<tr' + s + '><td style="padding:3px 4px;text-align:center;color:#999;font-size:10px;">' + (i + 1) + '</td><td style="padding:3px 4px;">' + m.nome + '</td><td style="padding:3px 4px;text-align:center;font-weight:700;">' + m.gol + '</td><td style="padding:3px 4px;color:#888;font-size:10px;">' + m.squadra + '</td></tr>';
     }).join('');
-    return '<div class="result-card" style="margin-top:20px;"><h3 style="margin:0 0 10px 0;font-size:15px;color:#333;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h3>' +
-      '<table style="width:100%;border-collapse:collapse;font-size:12px;"><tbody>' + rows + '</tbody></table></div>';
+    return '<div class="result-card" style="margin-top:20px;"><h3 style="margin:0 0 12px 0;font-size:15px;color:#333;">⚽ Top Marcatori</h3>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+      '<div><div style="font-size:11px;font-weight:700;color:#999;margin-bottom:6px;">REGIONALI</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><tbody>' + renderTable(top10Reg) + '</tbody></table></div>' +
+      '<div><div style="font-size:11px;font-weight:700;color:#667eea;margin-bottom:6px;">GIRONE</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><tbody>' + renderTable(top10Gir) + '</tbody></table></div>' +
+      '</div></div>';
   };
 
   // Build final HTML
@@ -259,6 +333,9 @@ export default async function loadDashboard() {
     '.match-item { cursor:pointer; transition: all 0.2s ease; }' +
     '.match-item:hover { opacity:0.9; transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.1); }' +
     '.staff-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
+    '.staff-desktop { display:block; }' +
+    '.staff-mobile { display:none; }' +
+    '@media (max-width: 900px) { .staff-desktop { display:none !important; } .staff-mobile { display:block !important; } }' +
     '.staff-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }' +
     '.classifica-table { width:100%; border-collapse:collapse; font-size:12px; }' +
     '.classifica-table th { text-align:center; font-size:10px; color:#999; padding:4px 6px; border-bottom:1px solid #eee; white-space:nowrap; }' +
@@ -302,8 +379,11 @@ export default async function loadDashboard() {
     '</div>' +
     
     '<div class="bottom-grid">' +
-    '<div class="result-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>' +
-    '<div>' + renderClassifica() + renderUltimaGiornata() +
-    '<div class="staff-card" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div>' +
-    '</div></div>';
+    '<div><div class="result-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>' +
+    '<div class="staff-card staff-desktop" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
+    '<div>' + renderClassifica() + renderCalendarioGR() + renderMarcatoriGR() + '</div>' +
+    '</div>' +
+    '<div class="staff-card staff-mobile" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div>';
+
+  attachCalendarioNav();
 }

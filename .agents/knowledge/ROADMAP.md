@@ -229,6 +229,9 @@
 - [x] Classifica GR: fix penalità (-N) rimossa dal nome, mostrata come badge rosso separato
 - [x] Ultima giornata GR: widget dashboard con loghi da classifica, fuzzy match, evidenziazione squadra
 - [x] Sidebar riordinata: Dashboard → Team → Performance → Coach → Club → Admin
+- [x] Calendario GR navigabile in dashboard: frecce ◀▶ per scorrere tutte le giornate, solo visualizzazione (no import)
+- [x] Top Marcatori in dashboard: colonne side-by-side Regionali (top 10 assoluti) e Girone (filtrati per squadre del girone)
+- [x] Staff spostato sotto Ultimi Risultati (desktop), in fondo alla dashboard (mobile)
 
 ### Minori
 - [ ] Valutazioni giocatore: sistema incompleto

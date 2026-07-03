@@ -219,7 +219,7 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 
 | Modulo | Percorso | Descrizione |
 |--------|----------|-------------|
-| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze, badge competizione, risultati colorati con layout casa/trasferta (logo+nome squadra, score centrato), classifica GR live, ultima giornata GR con loghi. Guest view semplificata (solo prossima partita + widget + ultimi risultati) |
+| Dashboard | `modules/team/dashboard.js` | Widget riepilogo, prossima partita, trend GF/GS/DR, top marcatori/assist/presenze, badge competizione, risultati colorati con layout casa/trasferta (logo+nome squadra, score centrato), classifica GR live, calendario GR navigabile con frecce ◀▶, top marcatori regionali/girone, ultima giornata GR con loghi. Staff sotto risultati (desktop) o in fondo (mobile). Guest view semplificata |
 | Rosa | `modules/team/roster.js` | CRUD giocatori, scadenze mediche, filtri |
 | Calendario | `modules/team/calendar.js` | CRUD partite, pallino lampeggiante, badge sezioni pill, archiviazione, import PDF SGS/LND, import CSV, cancella calendario, guest view |
 | Convocazioni | `modules/team/convocazioni.js` | Vincoli min/max, PDF, sola lettura se archiviata |
@@ -277,6 +277,9 @@ Ogni GET funziona (JWT valido) | Ogni POST/PUT/DELETE → 403
 | Dashboard casa/trasferta | 56259b8 | Risultati con layout corretto casa/trasferta, nome società + loghi, score centrato, match detail invertito in trasferta |
 | Sidebar riordinata | 56259b8 | Dashboard → Team → Performance → Coach → Club → Admin |
 | Fix penalità classifica | 56259b8 | Suffisso (-N) rimosso dal nome, mostrato come badge rosso separato |
+| Calendario GR navigabile | (pending) | Widget dashboard con frecce ◀▶ per scorrere tutte le giornate, solo visualizzazione live da GR |
+| Top Marcatori dashboard | (pending) | Regionali (top 10 assoluti) + Girone (filtrati per squadre classifica) side-by-side |
+| Staff layout responsive | (pending) | Sotto Ultimi Risultati su desktop, in fondo su mobile |
 | Import Center | - | Pagina centralizzata 6 card, parser testo SGS, batch formazioni TC, log storico DB, voce sidebar |
 | Loghi Squadre TC | - | Scraping automatico loghi da TC, 40+ PNG, matching fuzzy acronimi, logo workspace in dashboard/dettaglio/convocazioni/distinta |
 
@@ -596,7 +599,7 @@ Per provare l'applicazione senza account, usa la **Demo Standalone**:
 
 ---
 
-*Ultimo aggiornamento: 4 Luglio 2026 (Dashboard casa/trasferta, fix penalità classifica, riordino sidebar, ultima giornata GR, integrazione Gazzetta Regionale)*
+*Ultimo aggiornamento: 4 Luglio 2026 (Calendario GR navigabile, top marcatori regionali/girone, staff responsive, fix rosa, selezione multipla, dashboard casa/trasferta)*
 
 ---
 
