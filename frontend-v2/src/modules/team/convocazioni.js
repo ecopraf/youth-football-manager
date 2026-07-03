@@ -137,11 +137,18 @@ function showConvocationPreview(match, list, isArchiviata = false) {
     html += '<div style="background:#8B7355;color:white;padding:10px 20px;border-radius:12px;margin-bottom:20px;text-align:center;font-weight:600;">📦 Partita Archiviata</div>';
   }
   
+  const logoWs = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : '';
   html += `
-    <div class="t1">${window.YFM.getWorkspaceLogo() ? '<img src="' + window.YFM.getWorkspaceLogo() + '" style="width:32px;height:32px;border-radius:50%;object-fit:contain;vertical-align:middle;margin-right:8px;">' : ''}CONVOCAZIONE</div>
-    <div class="t2">${window.YFM.getSocietaName()} - ${catYear}</div>
-    <div class="t3">${match.giornata ? 'Giornata ' + match.giornata + ' - ' : ''}${match.competizione || ''}</div>
-    <div class="info">Partita: <strong>${window.YFM.getSocietaName()} - ${match.avversario}</strong><br>Campo: <strong>${campoInfo}</strong><br>Alle ore: ${dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} del giorno: <strong>${giorni[dt.getDay()]} ${dt.toLocaleDateString('it-IT')}</strong><br>Ritrovo alle ore: <strong>${ritrovo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</strong> al Campo di Giuoco</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4mm;">
+      <div style="width:80px;text-align:left;">${logoWs ? '<img src="' + logoWs + '" style="height:70px;object-fit:contain;">' : ''}</div>
+      <div style="flex:1;text-align:center;">
+        <div class="t1">CONVOCAZIONE</div>
+        <div class="t2">U.15 Regionali - (${catYear})</div>
+        <div class="t3">${match.competizione || 'Campionato'}${match.giornata ? ' (' + match.giornata + 'a) ' : ' '}${match.girone ? '- Gir. ' + match.girone : ''}</div>
+      </div>
+      <div style="width:80px;text-align:right;"><img src="/img/logo-lnd.png" style="height:70px;object-fit:contain;" onerror="this.style.display='none'"></div>
+    </div>
+    <div class="info">Partita: <strong>${window.YFM.getSocietaName().toUpperCase()} - ${match.avversario}</strong><br>Campo: <strong>${campoInfo}</strong><br>Alle ore: ${dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} del giorno: <strong>${giorni[dt.getDay()]} ${dt.toLocaleDateString('it-IT')}</strong><br>Ritrovo alle ore: <strong>${ritrovo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</strong> al Campo di Giuoco</div>
     <table class="list-table" style="border:2px solid #000;border-collapse:collapse;width:100%;"><thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000;padding:5px 8px;">N.</th><th style="border:1px solid #000;padding:5px 8px;">Cognome</th><th style="border:1px solid #000;padding:5px 8px;">Nome</th><th style="border:1px solid #000;padding:5px 8px;">P</th></tr></thead><tbody>`;
   for (let i = 0; i < 25; i++) {
     if (i < list.length) {
@@ -158,7 +165,7 @@ function showConvocationPreview(match, list, isArchiviata = false) {
     const el = document.getElementById('convPreviewInner');
     if (el) {
       const w = window.open('', '_blank', 'width=800,height=600');
-      w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Convocazione</title><style>@page{margin:10mm;size:A4 portrait}body{font-family:Arial,sans-serif;margin:0;padding:8mm;}.t1{text-align:center;font-size:18px;font-weight:bold;margin-bottom:2mm;}.t2{text-align:center;font-size:15px;font-weight:bold;margin-bottom:1mm;}.t3{text-align:center;font-size:14px;font-weight:bold;margin-bottom:4mm;}.info{font-size:13px;margin-bottom:6mm;line-height:1.6;}.list-table{width:100%;border-collapse:collapse;margin-bottom:6mm;}.list-table td{padding:3px 5px;font-size:13px;border:1px solid #000;}.note{font-weight:bold;font-size:13px;margin-top:4mm;}.firma{margin-top:10mm;text-align:right;font-size:14px;font-weight:bold;}@media print{body{padding:6mm;}}</style></head><body>' + el.innerHTML + '<script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)}<\/script></body></html>');
+      w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Convocazione</title><style>@page{margin:10mm;size:A4 portrait}body{font-family:Arial,sans-serif;margin:0;padding:8mm;}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.t1{text-align:center;font-size:22px;font-weight:bold;margin-bottom:2mm;}.t2{text-align:center;font-size:16px;font-weight:bold;margin-bottom:1mm;}.t3{text-align:center;font-size:14px;font-weight:bold;margin-bottom:4mm;}.info{font-size:13px;margin-bottom:6mm;line-height:1.8;}.list-table{width:100%;border-collapse:collapse;margin-bottom:6mm;}.list-table td,.list-table th{padding:4px 6px;font-size:13px;border:1px solid #000;}.note{font-weight:bold;font-style:italic;font-size:13px;margin-top:6mm;text-align:center;color:#E74C3C;}.firma{margin-top:12mm;text-align:right;font-size:15px;font-weight:bold;}@media print{body{padding:6mm;}}</style></head><body>' + el.innerHTML + '<script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)}<\/script></body></html>');
       w.document.close();
     }
   });

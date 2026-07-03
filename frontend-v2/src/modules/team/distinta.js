@@ -242,7 +242,7 @@ function renderDistinta(d, staff) {
   
   const societa = window.YFM.getSocietaName ? window.YFM.getSocietaName() : (d.societa || 'La tua Società');
   const logoSocieta = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : '';
-  const logoSocietaHtml = logoSocieta ? '<img src="' + logoSocieta + '" alt="Logo" style="height:60px;">' : '<div style="width:60px;"></div>';
+  const logoSocietaHtml = logoSocieta ? '<img src="' + logoSocieta + '" alt="Logo" style="height:80px;">' : '<div style="width:80px;"></div>';
   const fac = window.YFM.facility;
   const campoCasa = fac ? fac.nome + ' - ' + fac.indirizzo + ', ' + fac.citta : '';
   const campoInfo = d.partita.luogo === 'Trasferta' ? (d.partita.indirizzo_campo || 'Trasferta') : (campoCasa || 'Casa');
@@ -273,7 +273,7 @@ function renderDistinta(d, staff) {
   c.innerHTML = 
     // HEADER: Logo LND | Testo centrale | Logo società
     '<div style="display:flex;align-items:center;margin-bottom:6px;">' +
-      '<img src="/img/logo-lnd.png" alt="FIGC LND" style="height:60px;">' +
+      '<img src="/img/logo-lnd.png" alt="FIGC LND" style="height:80px;">' +
       '<div style="flex:1;text-align:center;">' +
         '<div style="font-size:11px;">Distinta n° ________</div>' +
         '<strong>F.I.G.C. - LEGA NAZIONALE DILETTANTI</strong><br>' +
