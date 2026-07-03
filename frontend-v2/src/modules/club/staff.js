@@ -81,7 +81,7 @@ export default async function loadStaff() {
 }
 
 async function loadData() {
-  const wsId = window.YFM.getUser()?.workspace_id;
+  const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
   if (!wsId) return;
   try {
     [staffList, categorie] = await Promise.all([
@@ -177,7 +177,7 @@ async function handleSave() {
       tipo_tessera: document.getElementById('sfTipoTessera').value
     },
     categorie_ids: Array.from(document.querySelectorAll('#sfCategorie input:checked')).map(cb => cb.value),
-    workspace_id: window.YFM.getUser()?.workspace_id
+    workspace_id: window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id
   };
 
   const editId = document.getElementById('staffModal').dataset.editId;
@@ -186,7 +186,7 @@ async function handleSave() {
     if (editId) {
       await apiFetch(`/staff/${editId}`, { method: 'PUT', body: JSON.stringify(body) });
     } else {
-      await apiFetch(`/workspaces/${window.YFM.getUser().workspace_id}/staff`, { method: 'POST', body: JSON.stringify(body) });
+      await apiFetch(`/workspaces/${window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id}/staff`, { method: 'POST', body: JSON.stringify(body) });
     }
     closeModal();
     await loadData();
@@ -309,7 +309,7 @@ function openPasteModal() {
     const selected = checked.map(i => parsed[i]);
     if (!selected.length) return;
 
-    const wsId = window.YFM.getUser()?.workspace_id;
+    const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
     showLoading('Importazione staff...');
     let imported = 0;
     try {

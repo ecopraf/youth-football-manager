@@ -58,7 +58,7 @@ function renderMain(c, logs, teamName) {
       <div class="import-card-desc">Copia-incolla il testo del calendario dal sito o da file</div>
       <span class="import-card-badge" style="background:#F3E5F5;color:#7B1FA2;">Copia-incolla</span>
     </div>
-    <div class="import-card" id="icTc"${window.YFM.currentUser?.is_superadmin ? '' : ' style="display:none;"'}>
+    <div class="import-card" id="icTc"${window.YFM.getUser()?.is_superadmin ? '' : ' style="display:none;"'}>
       <div class="import-card-icon">🌐</div>
       <div class="import-card-title">Calendario Tuttocampo</div>
       <div class="import-card-desc">Scraping calendario, risultati e marcatori da Tuttocampo.it</div>
@@ -70,13 +70,13 @@ function renderMain(c, logs, teamName) {
       <div class="import-card-desc">Upload tabulato atleti Excel (.xlsx) dalla federazione</div>
       <span class="import-card-badge" style="background:#E3F2FD;color:#1565C0;">Upload file</span>
     </div>
-    <div class="import-card" id="icRosaTc"${window.YFM.currentUser?.is_superadmin ? '' : ' style="display:none;"'}>
+    <div class="import-card" id="icRosaTc"${window.YFM.getUser()?.is_superadmin ? '' : ' style="display:none;"'}>
       <div class="import-card-icon">⚽</div>
       <div class="import-card-title">Rosa Tuttocampo</div>
       <div class="import-card-desc">Scraping rosa giocatori da pagina Tuttocampo</div>
       <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">URL</span>
     </div>
-    <div class="import-card" id="icFormations"${window.YFM.currentUser?.is_superadmin ? '' : ' style="display:none;"'}>
+    <div class="import-card" id="icFormations"${window.YFM.getUser()?.is_superadmin ? '' : ' style="display:none;"'}>
       <div class="import-card-icon">🏟️</div>
       <div class="import-card-title">Formazioni Tuttocampo</div>
       <div class="import-card-desc">Importa formazioni e sostituzioni per partite già in calendario</div>
@@ -100,12 +100,18 @@ function renderMain(c, logs, teamName) {
         <div class="import-card-desc">Importa tutte le partite con risultati aggiornati dal girone</div>
         <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">Import</span>
       </div>
-      <div class="import-card" id="icGrLoghi">
+      ${window.YFM.getUser()?.is_superadmin ? `<div class="import-card" id="icGrLoghi">
         <div class="import-card-icon">🏷️</div>
-        <div class="import-card-title">Loghi Squadre</div>
-        <div class="import-card-desc">Scarica automaticamente i loghi di tutte le squadre del girone</div>
-        <span class="import-card-badge" style="background:#FFF3E0;color:#E65100;">Download</span>
-      </div>
+        <div class="import-card-title">Loghi Squadre (Girone)</div>
+        <div class="import-card-desc">Scarica loghi delle squadre del girone configurato</div>
+        <span class="import-card-badge" style="background:#FFF3E0;color:#E65100;">Superadmin</span>
+      </div>` : ''}
+      ${window.YFM.getUser()?.is_superadmin ? `<div class="import-card" id="icGrLoghiWizard">
+        <div class="import-card-icon">🧙</div>
+        <div class="import-card-title">Wizard Loghi (Batch)</div>
+        <div class="import-card-desc">Scansiona tutti i gironi GR, scarica nuovi loghi e verifica aggiornamenti</div>
+        <span class="import-card-badge" style="background:#EDE7F6;color:#4527A0;">Superadmin</span>
+      </div>` : ''}
       <div class="import-card" id="icGrPreview">
         <div class="import-card-icon">👁️</div>
         <div class="import-card-title">Anteprima Dati</div>
@@ -143,7 +149,8 @@ function renderMain(c, logs, teamName) {
   document.getElementById('icFormations')?.addEventListener('click', openImportFormations);
   document.getElementById('icGrConfig').addEventListener('click', openGrConfig);
   document.getElementById('icGrCalendario').addEventListener('click', openGrCalendario);
-  document.getElementById('icGrLoghi').addEventListener('click', openGrLoghi);
+  document.getElementById('icGrLoghi')?.addEventListener('click', openGrLoghi);
+  document.getElementById('icGrLoghiWizard')?.addEventListener('click', openGrLoghiWizard);
   document.getElementById('icGrPreview').addEventListener('click', openGrPreview);
 }
 
@@ -644,6 +651,109 @@ async function openGrPreview() {
     const body = document.querySelector('#importModal .modal-body');
     if (body) body.innerHTML = `<div style="color:#c00;padding:16px;">❌ ${err.message}</div>`;
   }
+}
+
+// === WIZARD LOGHI BATCH (superadmin) ===
+function openGrLoghiWizard() {
+  const modal = createModal('🧙 Wizard Loghi — Batch GR', `
+    <p style="margin-bottom:16px;color:#666;font-size:13px;">Scansiona tutti i campionati e gironi di Gazzetta Regionale per scaricare loghi mancanti e rilevare aggiornamenti.</p>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:13px;font-weight:600;margin-bottom:8px;display:block;">Scope scansione:</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;margin-bottom:4px;"><input type="checkbox" id="wizLvl1" checked> Giovanili</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;"><input type="checkbox" id="wizLvl2" checked> Dilettanti</label>
+    </div>
+    <div id="wizResult"></div>
+  `, '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="wizStart">🚀 Avvia Scansione</button>', '700px');
+
+  document.getElementById('wizStart').addEventListener('click', async () => {
+    const levels = [];
+    if (document.getElementById('wizLvl1').checked) levels.push(1);
+    if (document.getElementById('wizLvl2').checked) levels.push(2);
+    if (levels.length === 0) { alert('Seleziona almeno un livello'); return; }
+
+    const resultDiv = document.getElementById('wizResult');
+    resultDiv.innerHTML = '<div style="text-align:center;padding:24px;"><div class="spinner" style="margin:0 auto 8px;"></div><p style="color:#666;font-size:13px;">Scansione in corso... Potrebbe richiedere qualche minuto.</p><p style="color:#999;font-size:11px;">Naviga tutti i gironi, scarica nuovi loghi, rileva aggiornamenti.</p></div>';
+    document.getElementById('wizStart').disabled = true;
+
+    try {
+      const resp = await apiFetch('/gr/logos-wizard', {
+        method: 'POST',
+        body: JSON.stringify({ levels })
+      });
+
+      let html = `<div style="background:#e8f5e9;padding:12px;border-radius:8px;margin-bottom:16px;">
+        <strong>✅ Scansione completata</strong><br>
+        <span style="font-size:12px;color:#555;">Gironi: ${resp.groupsScanned} | Nuovi: <strong style="color:#27AE60;">+${resp.newImported}</strong> | Invariati: ${resp.unchanged} | Errori: ${resp.errors} | Totale file: ${resp.totalLogos}</span>
+      </div>`;
+
+      if (resp.updates && resp.updates.length > 0) {
+        html += `<h3 style="font-size:14px;margin-bottom:8px;">🔄 ${resp.updates.length} loghi con aggiornamenti disponibili</h3>
+        <p style="font-size:12px;color:#666;margin-bottom:12px;">Confronta vecchio e nuovo, poi scegli per ciascuno.</p>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="btn btn-small btn-secondary" id="wizAcceptAll">✅ Accetta tutti</button>
+          <button class="btn btn-small btn-secondary" id="wizRejectAll">❌ Rifiuta tutti</button>
+        </div>
+        <div id="wizUpdates" style="max-height:400px;overflow-y:auto;">`;
+        resp.updates.forEach((u, i) => {
+          const sizeDiff = u.newSize - u.oldSize;
+          const diffLabel = sizeDiff > 0 ? `+${(sizeDiff/1024).toFixed(1)}KB` : `${(sizeDiff/1024).toFixed(1)}KB`;
+          html += `<div class="wiz-update-row" style="display:grid;grid-template-columns:1fr 80px 80px 120px;align-items:center;gap:8px;padding:8px;border:1px solid #eee;border-radius:8px;margin-bottom:6px;" data-idx="${i}">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <img src="${u.oldPath}" style="width:32px;height:32px;object-fit:contain;border:1px solid #ddd;border-radius:4px;" title="Vecchio">
+              <span style="font-size:18px;">→</span>
+              <img src="${u.newPath}" style="width:32px;height:32px;object-fit:contain;border:1px solid #667eea;border-radius:4px;" title="Nuovo">
+              <span style="font-size:12px;">${u.nome || u.fileName}</span>
+            </div>
+            <span style="font-size:11px;color:#888;">${(u.oldSize/1024).toFixed(1)}KB</span>
+            <span style="font-size:11px;color:#667eea;">${(u.newSize/1024).toFixed(1)}KB (${diffLabel})</span>
+            <select class="wiz-decision" data-idx="${i}" style="padding:4px 8px;border-radius:6px;border:1px solid #ddd;font-size:12px;">
+              <option value="accept">✅ Aggiorna</option>
+              <option value="reject">❌ Mantieni vecchio</option>
+            </select>
+          </div>`;
+        });
+        html += '</div><button class="btn btn-primary" id="wizConfirm" style="margin-top:12px;width:100%;">💾 Conferma scelte</button>';
+      } else {
+        html += '<p style="color:#27AE60;font-size:13px;">Tutti i loghi sono aggiornati, nessuna differenza rilevata.</p>';
+      }
+
+      resultDiv.innerHTML = html;
+
+      // Store updates for confirm
+      const updatesData = resp.updates || [];
+
+      document.getElementById('wizAcceptAll')?.addEventListener('click', () => {
+        document.querySelectorAll('.wiz-decision').forEach(s => { s.value = 'accept'; });
+      });
+      document.getElementById('wizRejectAll')?.addEventListener('click', () => {
+        document.querySelectorAll('.wiz-decision').forEach(s => { s.value = 'reject'; });
+      });
+
+      document.getElementById('wizConfirm')?.addEventListener('click', async () => {
+        const decisions = updatesData.map((u, i) => {
+          const sel = document.querySelector(`.wiz-decision[data-idx="${i}"]`);
+          return { fileName: u.fileName, nomeNorm: u.nomeNorm, nome: u.nome, action: sel?.value || 'reject' };
+        });
+
+        showLoading('Applicazione scelte...');
+        try {
+          const confirmResp = await apiFetch('/gr/logos-confirm', {
+            method: 'POST',
+            body: JSON.stringify({ decisions })
+          });
+          hideLoading();
+          modal.close();
+          alert(`✅ Completato!\n• Aggiornati: ${confirmResp.accepted}\n• Mantenuti: ${confirmResp.rejected}`);
+        } catch (err) {
+          hideLoading();
+          alert('❌ ' + err.message);
+        }
+      });
+    } catch (err) {
+      resultDiv.innerHTML = `<div style="color:#c00;padding:12px;background:#fee;border-radius:8px;">❌ ${err.message}</div>`;
+      document.getElementById('wizStart').disabled = false;
+    }
+  });
 }
 
 // === MODAL HELPER ===

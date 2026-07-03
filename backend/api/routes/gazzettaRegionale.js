@@ -228,5 +228,161 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
     }
   });
 
+  // === WIZARD LOGHI (solo superadmin, locale) ===
+
+  const LOGOS_DIR = path.join(__dirname, '..', '..', '..', 'frontend-v2', 'public', 'logos');
+  const PENDING_DIR = path.join(LOGOS_DIR, '.pending');
+  const DELAY_MS = 250;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function normalizeLogoName(name) {
+    return name.toLowerCase()
+      .replace(/\b(s\.?s\.?d\.?|s\.?r\.?l\.?|a\.?s\.?d\.?|a\.?r\.?l\.?|s\.?s\.?|a\.?c\.?|f\.?c\.?)\b\.?/gi, '')
+      .replace(/[^a-z0-9\u00e0-\u00fa]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  // POST /api/gr/logos-wizard — scan levels/groups, scarica nuovi, rileva aggiornamenti
+  router.post('/api/gr/logos-wizard', authMiddleware, async (req, res) => {
+    if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin' });
+
+    const { levels = [1, 2] } = req.body || {};
+    if (!fs.existsSync(LOGOS_DIR)) fs.mkdirSync(LOGOS_DIR, { recursive: true });
+    if (!fs.existsSync(PENDING_DIR)) fs.mkdirSync(PENDING_DIR, { recursive: true });
+
+    let newImported = 0, unchanged = 0, pendingUpdates = 0, errors = 0, groupsScanned = 0;
+    const updates = []; // loghi con dimensione diversa
+
+    try {
+      for (const levelId of levels) {
+        const championships = await fetchChampionships(levelId);
+        if (!Array.isArray(championships)) continue;
+
+        for (const champ of championships) {
+          await sleep(DELAY_MS);
+          const groups = await fetchGroups(levelId, champ.id);
+          if (!Array.isArray(groups)) continue;
+
+          for (const group of groups) {
+            await sleep(DELAY_MS);
+            groupsScanned++;
+
+            let calData;
+            try { calData = await fetchCalendario(levelId, champ.id, group.id); } catch { continue; }
+            const logos = extractLogos(calData);
+            if (logos.length === 0) continue;
+
+            for (const logo of logos) {
+              const nomeNorm = normalizeLogoName(logo.nome);
+              if (!nomeNorm) { errors++; continue; }
+              const fileName = nomeNorm + '.png';
+              const filePath = path.join(LOGOS_DIR, fileName);
+
+              try {
+                const resp = await fetch(logo.url);
+                if (!resp.ok) { errors++; continue; }
+                const buffer = Buffer.from(await resp.arrayBuffer());
+                if (buffer.length < 100) { errors++; continue; }
+
+                if (!fs.existsSync(filePath)) {
+                  // Nuovo: salva direttamente
+                  fs.writeFileSync(filePath, buffer);
+                  await supabase.from('team_logo').upsert({
+                    nome: logo.nome, nome_normalizzato: nomeNorm, logo_path: '/logos/' + fileName
+                  }, { onConflict: 'nome_normalizzato' });
+                  newImported++;
+                } else {
+                  // Esistente: confronta dimensione
+                  const existingSize = fs.statSync(filePath).size;
+                  if (Math.abs(existingSize - buffer.length) > 50) {
+                    // Diverso → salva in pending
+                    fs.writeFileSync(path.join(PENDING_DIR, fileName), buffer);
+                    if (!updates.find(u => u.fileName === fileName)) {
+                      updates.push({
+                        nome: logo.nome, fileName, nomeNorm,
+                        oldSize: existingSize, newSize: buffer.length,
+                        oldPath: '/logos/' + fileName,
+                        newPath: '/logos/.pending/' + fileName
+                      });
+                    }
+                    pendingUpdates++;
+                  } else {
+                    unchanged++;
+                  }
+                }
+              } catch { errors++; }
+            }
+          }
+        }
+      }
+
+      res.json({
+        success: true, groupsScanned, newImported, unchanged, pendingUpdates: updates.length, errors,
+        updates, // lista loghi con differenze per confronto UI
+        totalLogos: fs.readdirSync(LOGOS_DIR).filter(f => f.endsWith('.png')).length
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/gr/logos-confirm — conferma/rifiuta aggiornamenti pending
+  router.post('/api/gr/logos-confirm', authMiddleware, async (req, res) => {
+    if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin' });
+
+    const { decisions } = req.body; // [{fileName, action: 'accept'|'reject'}]
+    if (!Array.isArray(decisions)) return res.status(400).json({ error: 'decisions array richiesto' });
+
+    let accepted = 0, rejected = 0;
+    for (const { fileName, action, nomeNorm, nome } of decisions) {
+      const pendingPath = path.join(PENDING_DIR, fileName);
+      const finalPath = path.join(LOGOS_DIR, fileName);
+
+      if (!fs.existsSync(pendingPath)) continue;
+
+      if (action === 'accept') {
+        fs.copyFileSync(pendingPath, finalPath);
+        fs.unlinkSync(pendingPath);
+        if (nomeNorm) {
+          await supabase.from('team_logo').upsert({
+            nome: nome || fileName.replace('.png', ''), nome_normalizzato: nomeNorm, logo_path: '/logos/' + fileName
+          }, { onConflict: 'nome_normalizzato' });
+        }
+        accepted++;
+      } else {
+        fs.unlinkSync(pendingPath);
+        rejected++;
+      }
+    }
+
+    // Pulisci pending dir se vuota
+    const remaining = fs.existsSync(PENDING_DIR) ? fs.readdirSync(PENDING_DIR).length : 0;
+    if (remaining === 0 && fs.existsSync(PENDING_DIR)) fs.rmdirSync(PENDING_DIR);
+
+    res.json({ success: true, accepted, rejected, remaining });
+  });
+
+  // GET /api/gr/logos-pending — lista pending per UI
+  router.get('/api/gr/logos-pending', authMiddleware, async (req, res) => {
+    if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin' });
+    if (!fs.existsSync(PENDING_DIR)) return res.json({ updates: [] });
+
+    const files = fs.readdirSync(PENDING_DIR).filter(f => f.endsWith('.png'));
+    const updates = files.map(fileName => {
+      const finalPath = path.join(LOGOS_DIR, fileName);
+      const pendingPath = path.join(PENDING_DIR, fileName);
+      return {
+        fileName,
+        nomeNorm: fileName.replace('.png', ''),
+        oldSize: fs.existsSync(finalPath) ? fs.statSync(finalPath).size : 0,
+        newSize: fs.statSync(pendingPath).size,
+        oldPath: '/logos/' + fileName,
+        newPath: '/logos/.pending/' + fileName
+      };
+    });
+    res.json({ updates });
+  });
+
   return router;
 };
