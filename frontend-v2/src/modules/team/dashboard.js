@@ -351,7 +351,7 @@ export default async function loadDashboard() {
   if (isGuest) {
     // GUEST VIEW: solo prossima partita + widgets + ultimi risultati
     c.innerHTML = styles +
-      '<div style="margin-bottom:24px;"><h1 class="page-title">Dashboard ' + window.YFM.getSquadraName() + '</h1>' +
+      '<div style="margin-bottom:24px;"><h1 class="page-title">Dashboard</h1>' +
       '<p class="page-subtitle">Stagione 2025/26 · ' + stats.partiteGiocate + ' partite</p></div>' +
       renderProssimaPartitaSection() +
       '<div class="dash-widgets">' +
@@ -363,7 +363,7 @@ export default async function loadDashboard() {
     
   c.innerHTML = styles +
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">' +
-    '<div><h1 class="page-title">Dashboard ' + window.YFM.getSquadraName() + '</h1>' +
+    '<div><h1 class="page-title">Dashboard</h1>' +
     '<p class="page-subtitle">Stagione 2025/26 · ' + stats.partiteGiocate + ' partite</p></div></div>' +
     
     renderProssimaPartitaSection() +
