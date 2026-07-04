@@ -31,6 +31,45 @@ function normalizeForMatch(name) {
     .replace(/\s+/g, ' ').trim();
 }
 
+// Estrae il "core" del nome squadra per matching GR
+// Rimuove prefissi legali + espande/rimuove abbreviazioni comuni calcio italiano
+const ABBREVIATIONS = {
+  'pol': 'polisportiva', 'polisport': 'polisportiva',
+  'atl': 'atletico',
+  'din': 'dinamo', 'sp': 'sporting', 'sport': 'sporting',
+  'real': 'real', 'virt': 'virtus', 'acc': 'accademia',
+  'gio': 'giovani', 'giov': 'giovani',
+  'c': 'citta', 'cit': 'citta',
+  'ol': 'olimpia', 'olim': 'olimpia',
+  'prog': 'progresso', 'ind': 'indipendente',
+  'mon': 'monterotondo', 'mont': 'monte'
+};
+
+function coreTeamName(name) {
+  let n = name.toLowerCase()
+    // Rimuovi suffissi legali
+    .replace(/\b(s\.?s\.?d\.?|s\.?r\.?l\.?|a\.?s\.?d\.?|a\.?r\.?l\.?|s\.?s\.?|a\.?c\.?|f\.?c\.?)\b\.?/gi, '')
+    // Normalizza accenti → senza accento per confronto
+    .replace(/à/g, 'a').replace(/è/g, 'e').replace(/é/g, 'e').replace(/ì/g, 'i').replace(/ò/g, 'o').replace(/ù/g, 'u')
+    // Rimuovi punteggiatura ma tieni le lettere singole (abbreviazioni GR)
+    .replace(/\./g, ' ').replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ').trim();
+  // Espandi abbreviazioni
+  const words = n.split(' ');
+  const expanded = words.map(w => ABBREVIATIONS[w] || w);
+  // Rimuovi parole generiche per tenere solo il "core"
+  const GENERIC = ['polisportiva', 'atletico', 'atletica', 'calcio', 'football', 'club', 'sporting', 'dinamo', 'virtus', 'real', 'accademia', 'giovani', 'citta', 'olimpia', 'di', 'del', 'dei', 'la', 'le'];
+  const core = expanded.filter(w => !GENERIC.includes(w) && w.length > 1);
+  return core.length > 0 ? core.join(' ') : expanded.join(' ');
+}
+
+// Match GR: confronta i core names
+function matchTeamNameGR(teamDbName, grName) {
+  const coreDb = coreTeamName(teamDbName);
+  const coreGr = coreTeamName(grName);
+  return coreDb === coreGr || coreDb.includes(coreGr) || coreGr.includes(coreDb);
+}
+
 // Parsing minuto da stringa tipo "30' st" → 75
 function parseMinuto(str) {
   if (!str) return null;
@@ -257,7 +296,7 @@ async function scrapeLogosFromHtml(html, supabase) {
 }
 
 module.exports = {
-  normalizeTeamName, normalizeForMatch, parseMinuto,
+  normalizeTeamName, normalizeForMatch, coreTeamName, matchTeamNameGR, parseMinuto,
   parseDateText, parseEventiFromHtml, parseMatchesFromText, logImport,
   scrapeLogosFromHtml, normalizeLogoName, downloadFile
 };

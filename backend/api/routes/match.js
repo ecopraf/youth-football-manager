@@ -2,6 +2,7 @@
  * Match Routes - partite CRUD, archivia/sblocca, convocazioni, formazione, eventi, distinta
  */
 const express = require('express');
+const { coreTeamName } = require('../helpers/importUtils');
 
 module.exports = function createMatchRouter({ supabase, authMiddleware, requirePermission }) {
   const router = express.Router();
@@ -225,11 +226,17 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
           const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
           const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
           const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+          const coreAvv = coreTeamName(match.avversario);
           match.logo = null;
           for (const l of logos) {
             const lLower = l.nome.toLowerCase();
             const lCompact = stripAccents(l.nome_normalizzato).replace(/[^a-z0-9]/g, '');
             if (lLower === lower || l.nome_normalizzato === norm || compact === lCompact || compact.includes(lCompact) || lCompact.includes(compact) || lower.includes(lLower) || lLower.includes(lower)) {
+              match.logo = l.logo_path; break;
+            }
+            // Fallback: core name matching (handles abbreviations like Pol., C., Atl.)
+            const coreLogo = coreTeamName(l.nome);
+            if (coreAvv && coreLogo && (coreAvv === coreLogo || coreAvv.includes(coreLogo) || coreLogo.includes(coreAvv))) {
               match.logo = l.logo_path; break;
             }
           }

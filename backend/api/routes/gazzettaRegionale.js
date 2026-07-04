@@ -3,7 +3,7 @@
  */
 const express = require('express');
 const { parseGrUrl, fetchClassifica, fetchCalendario, fetchMarcatori, extractLogos, fetchLevels, fetchChampionships, fetchGroups } = require('../helpers/gazzettaRegionale');
-const { normalizeTeamName } = require('../helpers/importUtils');
+const { normalizeTeamName, matchTeamNameGR } = require('../helpers/importUtils');
 const path = require('path');
 const fs = require('fs');
 
@@ -152,12 +152,9 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
       if (!parsed) return res.status(400).json({ error: 'URL non valido' });
 
       const calData = await fetchCalendario(parsed.level, parsed.championship, parsed.group);
-      const teamNameLower = team.nome.toLowerCase();
-
-      // Filtra solo partite della nostra squadra
+      // Filtra solo partite della nostra squadra (matching fuzzy con abbreviazioni)
       const ourMatches = calData.matches.filter(m =>
-        m.casa.toLowerCase().includes(teamNameLower) || teamNameLower.includes(m.casa.toLowerCase()) ||
-        m.ospite.toLowerCase().includes(teamNameLower) || teamNameLower.includes(m.ospite.toLowerCase())
+        matchTeamNameGR(team.nome, m.casa) || matchTeamNameGR(team.nome, m.ospite)
       );
 
       if (ourMatches.length === 0) return res.json({ success: true, imported: 0, updated: 0, skipped: 0, total: 0, message: 'Nessuna partita trovata per ' + team.nome });
@@ -181,7 +178,7 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
 
       let imported = 0, skipped = 0, updated = 0;
       for (const m of ourMatches) {
-        const isCasa = m.casa.toLowerCase().includes(teamNameLower) || teamNameLower.includes(m.casa.toLowerCase());
+        const isCasa = matchTeamNameGR(team.nome, m.casa);
         const avversario = isCasa ? m.ospite : m.casa;
         const luogo = isCasa ? 'Casa' : 'Trasferta';
 

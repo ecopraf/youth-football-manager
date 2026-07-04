@@ -2,7 +2,7 @@
  * Statistics routes — statistiche squadra e giocatori
  */
 const express = require('express');
-
+const { coreTeamName } = require('../helpers/importUtils');
 function createStatisticsRouter({ supabase, authMiddleware }) {
   const router = express.Router();
 
@@ -45,6 +45,14 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         // Fuzzy: cerca contenimento
         for (const [key, path] of Object.entries(logoMap)) {
           if (lower.includes(key) || key.includes(lower)) return path;
+        }
+        // Core name matching (abbreviazioni GR: Pol., C., Atl.)
+        const coreAvv = coreTeamName(avversario);
+        if (coreAvv) {
+          for (const [key, path] of Object.entries(logoMap)) {
+            const coreKey = coreTeamName(key);
+            if (coreKey && (coreAvv === coreKey || coreAvv.includes(coreKey) || coreKey.includes(coreAvv))) return path;
+          }
         }
         return null;
       }
@@ -305,6 +313,14 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
         if (logoMap[norm]) return logoMap[norm];
         for (const [key, path] of Object.entries(logoMap)) { if (lower.includes(key) || key.includes(lower)) return path; }
+        // Core name matching (abbreviazioni GR)
+        const coreAvv = coreTeamName(avv || '');
+        if (coreAvv) {
+          for (const [key, path] of Object.entries(logoMap)) {
+            const coreKey = coreTeamName(key);
+            if (coreKey && (coreAvv === coreKey || coreAvv.includes(coreKey) || coreKey.includes(coreAvv))) return path;
+          }
+        }
         return null;
       }
 

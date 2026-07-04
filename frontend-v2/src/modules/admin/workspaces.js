@@ -94,13 +94,30 @@ function parseTCText(text) {
 }
 
 // ── FUZZY MATCH ──
+const ABBREV = { 'pol': 'polisportiva', 'polisport': 'polisportiva', 'atl': 'atletico', 'din': 'dinamo', 'sp': 'sporting', 'sport': 'sporting', 'virt': 'virtus', 'acc': 'accademia', 'c': 'citta', 'cit': 'citta', 'ol': 'olimpia', 'olim': 'olimpia' };
+const GENERIC_WORDS = ['polisportiva', 'atletico', 'atletica', 'calcio', 'football', 'club', 'sporting', 'dinamo', 'virtus', 'real', 'accademia', 'giovani', 'citta', 'olimpia', 'di', 'del', 'dei', 'la', 'le'];
+
+function coreName(name) {
+  let n = name.toLowerCase()
+    .replace(/\b(s\.?s\.?d\.?|s\.?r\.?l\.?|a\.?s\.?d\.?|a\.?r\.?l\.?|s\.?s\.?|a\.?c\.?|f\.?c\.?)\b\.?/gi, '')
+    .replace(/à/g, 'a').replace(/è/g, 'e').replace(/é/g, 'e').replace(/ì/g, 'i').replace(/ò/g, 'o').replace(/ù/g, 'u')
+    .replace(/\./g, ' ').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  const words = n.split(' ').map(w => ABBREV[w] || w);
+  const core = words.filter(w => !GENERIC_WORDS.includes(w) && w.length > 1);
+  return core.length > 0 ? core.join('') : words.join('');
+}
+
 function fuzzyMatch(name, filePath) {
   const normalize = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const n = normalize(name);
   const f = normalize(filePath.replace('/logos/', '').replace(/\.(png|jpg|jpeg|svg|webp)$/i, ''));
   if (f.includes(n) || n.includes(f)) return true;
   const nWords = name.toLowerCase().split(/\s+/);
-  return nWords.filter(w => w.length > 2).some(w => f.includes(w.replace(/[^a-z]/g, '')));
+  if (nWords.filter(w => w.length > 2).some(w => f.includes(w.replace(/[^a-z]/g, '')))) return true;
+  // Core name matching (handles Pol. Ciampino ↔ Polisportiva Ciampino)
+  const coreN = coreName(name);
+  const coreF = coreName(filePath.replace('/logos/', '').replace(/\.(png|jpg|jpeg|svg|webp)$/i, '').replace(/-/g, ' '));
+  return coreN === coreF || coreN.includes(coreF) || coreF.includes(coreN);
 }
 
 function findLogo(nome) {
