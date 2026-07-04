@@ -202,21 +202,88 @@ async function deleteSeason(id) {
 }
 
 async function addCategory() {
-  const nome = prompt('Nome categoria (es. Under 15):');
-  if (!nome) return;
-  const annoDa = prompt('Anno nascita (es. 2011):', '');
-  const genere = prompt('Genere (M/F):', 'M');
-
   const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
-  showLoading();
-  try {
-    await apiFetch(`/workspaces/${wsId}/categorie`, {
-      method: 'POST', body: JSON.stringify({ nome, anno_da: parseInt(annoDa) || 0, anno_a: parseInt(annoDa) || 0, genere: genere || 'M' })
-    });
-    await loadData();
-    render();
-  } catch (e) { alert('Errore: ' + e.message); }
-  finally { hideLoading(); }
+  if (!wsId) return;
+
+  const CATEGORIE = ['U14', 'U15', 'U16', 'U17', 'U19'];
+  const TIPI = ['Provinciale', 'Regionale', 'Elite', 'Nazionale'];
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:28px;width:90%;max-width:380px;">
+      <h3 style="margin:0 0 20px;font-size:16px;">Nuova Categoria</h3>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Categoria</label>
+        <select id="catNomeSelect" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;">
+          ${CATEGORIE.map(c => `<option value="${c}">${c}</option>`).join('')}
+          <option value="__altro">Altro...</option>
+        </select>
+        <input id="catNomeManual" type="text" placeholder="Nome personalizzato" style="display:none;width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;margin-top:6px;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Tipo Campionato</label>
+        <select id="catTipoSelect" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;">
+          ${TIPI.map(t => `<option value="${t}">${t}</option>`).join('')}
+          <option value="__altro">Altro...</option>
+        </select>
+        <input id="catTipoManual" type="text" placeholder="Tipo personalizzato" style="display:none;width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;margin-top:6px;box-sizing:border-box;">
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:14px;">
+        <div style="flex:1;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Anno nascita</label><input id="catAnno" type="number" placeholder="2011" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;box-sizing:border-box;"></div>
+        <div style="flex:1;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Genere</label><select id="catGenere" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;"><option value="M">👦 Maschile</option><option value="F">👧 Femminile</option></select></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="catCancel" class="btn btn-secondary btn-small">Annulla</button>
+        <button id="catConfirm" class="btn btn-primary btn-small">Crea</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Toggle input manuale
+  modal.querySelector('#catNomeSelect').addEventListener('change', (e) => {
+    modal.querySelector('#catNomeManual').style.display = e.target.value === '__altro' ? 'block' : 'none';
+  });
+  modal.querySelector('#catTipoSelect').addEventListener('change', (e) => {
+    modal.querySelector('#catTipoManual').style.display = e.target.value === '__altro' ? 'block' : 'none';
+  });
+
+  modal.querySelector('#catCancel').addEventListener('click', () => modal.remove());
+  modal.querySelector('#catConfirm').addEventListener('click', async () => {
+    const nomeSelect = modal.querySelector('#catNomeSelect').value;
+    const nome = nomeSelect === '__altro' ? modal.querySelector('#catNomeManual').value.trim() : nomeSelect;
+    const tipoSelect = modal.querySelector('#catTipoSelect').value;
+    const tipo_campionato = tipoSelect === '__altro' ? modal.querySelector('#catTipoManual').value.trim() : tipoSelect;
+    const anno = parseInt(modal.querySelector('#catAnno').value) || 0;
+    const genere = modal.querySelector('#catGenere').value;
+
+    if (!nome) { alert('Inserisci un nome categoria'); return; }
+    if (!tipo_campionato) { alert('Inserisci il tipo campionato'); return; }
+
+    modal.remove();
+    showLoading();
+    try {
+      const newCat = await apiFetch(`/workspaces/${wsId}/categorie`, {
+        method: 'POST', body: JSON.stringify({ nome, tipo_campionato, anno_da: anno, anno_a: anno, genere })
+      });
+
+      // Auto-creazione team se c'è una stagione attiva
+      const activeSeason = seasons.find(s => s.attiva);
+      if (activeSeason && newCat?.id) {
+        const teamName = window.YFM.workspaceInfo?.nome || nome;
+        await apiFetch(`/categorie/${newCat.id}/team`, {
+          method: 'POST', body: JSON.stringify({ season_id: activeSeason.id, nome: teamName })
+        });
+        const { loadSquadre } = await import('../team/squadre.js');
+        await loadSquadre();
+      }
+
+      await loadData();
+      render();
+    } catch (e) { alert('Errore: ' + e.message); }
+    finally { hideLoading(); }
+  });
 }
 
 async function editCategory(id) {

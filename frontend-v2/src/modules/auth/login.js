@@ -238,43 +238,101 @@ export default async function loadLogin() {
       window.YFM.setUser(res.user);
       const user = res.user;
       
-      // Determina workspace
-      const { loadAvailableWorkspaces, getSavedWorkspaceId, saveCurrentWorkspace } = await import('../../modules/club/workspaceSwitcher');
-      const workspaces = await loadAvailableWorkspaces();
-      
-      let currentWs = null;
+      // Superadmin: mostra selezione workspace
       if (user.is_superadmin) {
-        const savedId = getSavedWorkspaceId();
-        currentWs = (savedId && workspaces.find(w => w.id === savedId)) || workspaces[0];
-      } else {
-        currentWs = workspaces.find(w => w.id === user.workspace_id) || workspaces[0];
-      }
-      if (currentWs) {
-        saveCurrentWorkspace(currentWs.id);
-        window.YFM.workspaceInfo = currentWs;
-        window.YFM.activeWorkspaceId = currentWs.id;
+        const { loadAvailableWorkspaces } = await import('../../modules/club/workspaceSwitcher');
+        const workspaces = await loadAvailableWorkspaces();
+        hideLoading();
+        showWorkspaceSelector(workspaces, user);
+        return;
       }
       
-      // Costruisci layout
-      const { setupLayout } = await import('../../components/layout/Sidebar');
-      setupLayout();
-      const { initRouter } = await import('../../router');
-      initRouter();
-      
-      // Carica dati
-      const { loadWorkspaceInfo } = await import('../../modules/club/workspace');
-      const { loadSquadre } = await import('../../modules/team/squadre');
-      const { populateWorkspaceSelect } = await import('../../modules/club/workspaceSwitcher');
-      
-      await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
-      if (user.is_superadmin) populateWorkspaceSelect(workspaces);
-      
-      hideLoading();
-      window.YFM.navigateTo('dashboard');
+      await proceedToApp(user);
     } catch (err) {
       hideLoading();
       errorDiv.textContent = err.message;
       errorDiv.style.display = 'block';
     }
   });
+}
+
+function showWorkspaceSelector(workspaces, user) {
+  const c = document.getElementById('pageContent');
+  const savedId = localStorage.getItem('yfm_active_workspace') || null;
+
+  c.innerHTML = `
+    <div class="login-container">
+      <div class="login-welcome" style="max-width:400px;padding:40px;">
+        <p style="font-size:36px;margin-bottom:8px;">🏢</p>
+        <h2 style="margin:0 0 8px;">Ciao ${user.nome || 'Admin'}!</h2>
+        <p style="color:#666;font-size:14px;margin-bottom:24px;">Su quale workspace vuoi lavorare?</p>
+        <div id="wsOptions" style="display:flex;flex-direction:column;gap:8px;">
+          ${workspaces.map(ws => `
+            <button class="ws-option" data-ws-id="${ws.id}" style="
+              padding:14px 16px;border:2px solid ${ws.id === savedId ? '#667eea' : '#e0e0e0'};
+              border-radius:12px;background:${ws.id === savedId ? '#f8f9ff' : 'white'};
+              cursor:pointer;text-align:left;font-size:15px;font-weight:500;transition:all 0.2s;
+            ">
+              ${ws.nome} ${ws.id === savedId ? '<span style="float:right;font-size:12px;color:#667eea;">ultimo usato</span>' : ''}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+
+  c.querySelectorAll('.ws-option').forEach(btn => {
+    btn.addEventListener('mouseenter', () => { btn.style.borderColor = '#667eea'; btn.style.background = '#f8f9ff'; });
+    btn.addEventListener('mouseleave', () => {
+      if (btn.dataset.wsId !== savedId) { btn.style.borderColor = '#e0e0e0'; btn.style.background = 'white'; }
+    });
+    btn.addEventListener('click', async () => {
+      const wsId = btn.dataset.wsId;
+      const ws = workspaces.find(w => w.id === wsId);
+      const { saveCurrentWorkspace } = await import('../../modules/club/workspaceSwitcher');
+      saveCurrentWorkspace(wsId);
+      window.YFM.workspaceInfo = ws;
+      window.YFM.activeWorkspaceId = wsId;
+      showLoading('Caricamento...');
+      await proceedToApp(user, workspaces);
+    });
+  });
+}
+
+async function proceedToApp(user, workspaces) {
+  try {
+    if (!workspaces) {
+      const { loadAvailableWorkspaces } = await import('../../modules/club/workspaceSwitcher');
+      workspaces = await loadAvailableWorkspaces();
+    }
+
+    if (!window.YFM.activeWorkspaceId) {
+      const { getSavedWorkspaceId, saveCurrentWorkspace } = await import('../../modules/club/workspaceSwitcher');
+      const savedId = getSavedWorkspaceId();
+      const currentWs = (savedId && workspaces.find(w => w.id === savedId)) || workspaces.find(w => w.id === user.workspace_id) || workspaces[0];
+      if (currentWs) {
+        saveCurrentWorkspace(currentWs.id);
+        window.YFM.workspaceInfo = currentWs;
+        window.YFM.activeWorkspaceId = currentWs.id;
+      }
+    }
+
+    const { setupLayout } = await import('../../components/layout/Sidebar');
+    setupLayout();
+    const { initRouter } = await import('../../router');
+    initRouter();
+
+    const { loadWorkspaceInfo } = await import('../../modules/club/workspace');
+    const { loadSquadre } = await import('../../modules/team/squadre');
+    const { populateWorkspaceSelect } = await import('../../modules/club/workspaceSwitcher');
+
+    await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+    if (user.is_superadmin) populateWorkspaceSelect(workspaces);
+
+    hideLoading();
+    window.YFM.navigateTo('dashboard');
+  } catch (err) {
+    hideLoading();
+    console.error('[proceedToApp]', err);
+  }
 }

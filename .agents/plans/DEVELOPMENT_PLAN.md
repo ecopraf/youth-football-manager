@@ -201,6 +201,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | style: notifiche — layout griglia compatto, animazione segna-letta, spunta verde |
 | (pending) | fix: guest logout mostra "Sessione terminata" invece di redirect a login |
 | (pending) | style: nasconde avatar utente su mobile per liberare spazio header |
+| (pending) | feat: superadmin login con selezione workspace, workspace_id=NULL |
+| (pending) | feat: creazione categoria con dropdown (U14-U19 + tipo campionato) e auto-creazione team |
 | (pending) | refactor: rimosse colonne staff ridondanti da team, report usa team_staff |
 | 9be406a | feat: allenamenti-futuri virtuali da config + indicatore ⚠️ assenza segnalata in presenze |
 | 612882a | perf: cache intelligente dashboard+stats (memory 2min, sessionStorage 10min, lazy load GR) |

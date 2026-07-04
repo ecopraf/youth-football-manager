@@ -340,10 +340,10 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
 
   router.post('/api/workspaces/:id/categorie', authMiddleware, async (req, res) => {
     try {
-      const { nome, anno_da, anno_a, genere, descrizione } = req.body;
+      const { nome, anno_da, anno_a, genere, descrizione, tipo_campionato } = req.body;
       if (!nome) return res.status(400).json({ error: 'Nome richiesto' });
       const { data, error } = await supabase.from('category').insert({
-        workspace_id: req.params.id, nome, anno_da: anno_da || 0, anno_a: anno_a || 0, genere: genere || 'M', descrizione
+        workspace_id: req.params.id, nome, anno_da: anno_da || 0, anno_a: anno_a || 0, genere: genere || 'M', descrizione, tipo_campionato: tipo_campionato || null
       }).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.status(201).json(data);
@@ -354,8 +354,8 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
 
   router.put('/api/categorie/:id', authMiddleware, async (req, res) => {
     try {
-      const { nome, anno_da, anno_a, genere, descrizione } = req.body;
-      const { data, error } = await supabase.from('category').update({ nome, anno_da, anno_a, genere, descrizione }).eq('id', req.params.id).select().single();
+      const { nome, anno_da, anno_a, genere, descrizione, tipo_campionato } = req.body;
+      const { data, error } = await supabase.from('category').update({ nome, anno_da, anno_a, genere, descrizione, tipo_campionato }).eq('id', req.params.id).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.json(data);
     } catch (err) {
