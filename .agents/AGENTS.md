@@ -59,6 +59,7 @@ git status
 | **Deploy** | Vercel (auto su push a main) |
 | **Auth** | JWT + permessi granulari JSONB |
 | **Guest** | JWT guest (24h, solo lettura) |
+| **Help** | Sistema help interattivo contestuale (PageHelp.js + helpData.js) |
 
 ### Backend Dependencies
 - `express`, `cors`, `bcryptjs`, `jsonwebtoken`

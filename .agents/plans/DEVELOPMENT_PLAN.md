@@ -38,6 +38,7 @@
 | Workspace CRUD | ✅ | modules/admin/workspaces.js |
 | Stagioni & Categorie | ✅ | modules/club/seasonsCategories.js |
 | Guest View | ✅ | modules/auth/guest.js |
+| Help Interattivo | ✅ | components/PageHelp.js, components/helpData.js |
 | Loghi Squadre | ✅ | 777+ loghi, wizard GR |
 | Gazzetta Regionale | ✅ | routes/gazzettaRegionale.js |
 | Tornei | ⏸️ | modules/coach/tournaments.js (disabilitato) |
@@ -196,6 +197,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | Commit | Descrizione |
 |--------|-------------|
 | — | feat: guest links — multi-select delete/renew batch, badge stato, colonna attivo dal |
+| — | feat: help interattivo contestuale (popover + modalità interattiva con overlay) |
 | — | fix: 401 handling su endpoint /auth/* (token scaduto non triggerava logout) |
 | — | feat: scadenza guest links allineata a stagione calcistica (30/06) |
 | d517f09 | fix: endpoint GET /api/giocatori/:id/valutazioni |
