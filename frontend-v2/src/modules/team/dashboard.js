@@ -1,5 +1,6 @@
 import { apiFetch } from '../../services/api';
 import { formatDate, formatDateShort, formatTime } from '../../utils/formatters';
+import { isOurTeam } from '../../utils/teamMatch';
 
 const CACHE_TTL_LAZY = 10 * 60 * 1000; // 10 min per classifica/GR
 const CACHE_TTL_FAST = 2 * 60 * 1000; // 2 min per dati principali
@@ -232,7 +233,7 @@ export default async function loadDashboard() {
     const info = classificaData.info || {};
     const header = info.championship_name ? info.championship_name + ' - Gir. ' + (info.group_name || '') : 'Classifica';
     const rows = cl.map(r => {
-      const isUs = r.nome.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(r.nome.toLowerCase());
+      const isUs = isOurTeam(r.nome, teamName);
       const cls = isUs ? ' class="classifica-row-highlight"' : '';
       const logo = r.logo ? '<img src="' + r.logo + '" onerror="this.style.display=\'none\'">' : '';
       const pen = r.penalita ? ' <span style="font-size:9px;color:#E74C3C;">(' + r.penalita + ')</span>' : '';
@@ -258,7 +259,7 @@ export default async function loadDashboard() {
       (classificaData.classifica || []).forEach(r => { if (r.logo) logoMap[r.nome.toLowerCase()] = r.logo; });
       const getLogo = (name) => { const n = name.toLowerCase(); let l = logoMap[n]; if (!l) { const k = Object.keys(logoMap).find(k => k.includes(n) || n.includes(k)); if (k) l = logoMap[k]; } return l ? '<img src="' + l + '" style="width:16px;height:16px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : ''; };
       const rows = ris.map(r => {
-        const isUs = r.home_club.toLowerCase().includes(teamName) || r.away_club.toLowerCase().includes(teamName) || teamName.includes(r.home_club.toLowerCase()) || teamName.includes(r.away_club.toLowerCase());
+        const isUs = isOurTeam(r.home_club, teamName) || isOurTeam(r.away_club, teamName);
         const cls = isUs ? ' class="classifica-row-highlight"' : '';
         return '<tr' + cls + '><td style="text-align:right;padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;">' + r.home_club + getLogo(r.home_club) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;">' + (r.home_points ?? '-') + ' - ' + (r.away_points ?? '-') + '</td><td style="padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;">' + getLogo(r.away_club) + r.away_club + '</span></td></tr>';
       }).join('');
@@ -298,7 +299,7 @@ export default async function loadDashboard() {
       const rMatches = byRound[round];
       const date = rMatches[0]?.data || '';
       const rows = rMatches.map(r => {
-        const isUs = r.casa.toLowerCase().includes(teamName) || r.ospite.toLowerCase().includes(teamName) || teamName.includes(r.casa.toLowerCase()) || teamName.includes(r.ospite.toLowerCase());
+        const isUs = isOurTeam(r.casa, teamName) || isOurTeam(r.ospite, teamName);
         const cls = isUs ? ' class="classifica-row-highlight"' : '';
         const score = r.gol_casa !== null ? r.gol_casa + ' - ' + r.gol_ospite : '- - -';
         return '<tr' + cls + '><td style="text-align:right;padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;">' + r.casa + getLogo(r.casa) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;">' + score + '</td><td style="padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;">' + getLogo(r.ospite) + r.ospite + '</span></td></tr>';
@@ -327,7 +328,7 @@ export default async function loadDashboard() {
     const top10Gir = gironeMarc.slice(0, 10);
     if (top10Gir.length === 0) return '';
     const renderTable = (items) => items.map((m, i) => {
-      const isOur = m.squadra.toLowerCase().includes(teamName) || teamName.includes(m.squadra.toLowerCase());
+      const isOur = isOurTeam(m.squadra, teamName);
       const s = isOur ? ' style="background:#f0f4ff;font-weight:600;color:#667eea;"' : '';
       return '<tr' + s + '><td style="padding:3px 4px;text-align:center;color:#999;font-size:10px;white-space:nowrap;">' + (i + 1) + '</td><td style="padding:3px 4px;white-space:nowrap;">' + m.nome + '</td><td style="padding:3px 4px;text-align:center;font-weight:700;white-space:nowrap;">' + m.gol + '</td><td style="padding:3px 4px;color:#888;font-size:10px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;">' + m.squadra + '</td></tr>';
     }).join('');

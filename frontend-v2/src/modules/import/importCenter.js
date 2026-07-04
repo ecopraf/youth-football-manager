@@ -1,6 +1,7 @@
 import { apiFetch, API_BASE } from '../../services/api.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
 import { formatDate } from '../../utils/formatters.js';
+import { isOurTeam } from '../../utils/teamMatch.js';
 
 export default async function loadImportCenter() {
   const c = document.getElementById('pageContent');
@@ -498,15 +499,14 @@ async function openGrCalendario() {
 
     const teamName = data.teamName || '';
     const ourMatches = data.matches.filter(m =>
-      m.casa.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(m.casa.toLowerCase()) ||
-      m.ospite.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(m.ospite.toLowerCase())
+      isOurTeam(m.casa, teamName) || isOurTeam(m.ospite, teamName)
     );
 
     let html = `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;">✅ ${ourMatches.length} partite trovate per <strong>${teamName}</strong></div>`;
     html += '<div style="margin-bottom:12px;"><label style="font-size:13px;cursor:pointer;"><input type="radio" name="grCalMode" value="all" checked> Importa calendario + risultati</label><br><label style="font-size:13px;cursor:pointer;"><input type="radio" name="grCalMode" value="results"> Aggiorna solo Risultati (match esistenti)</label></div>';
     html += '<div style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;font-size:12px;">';
     ourMatches.forEach(m => {
-      const isCasa = m.casa.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(m.casa.toLowerCase());
+      const isCasa = isOurTeam(m.casa, teamName);
       const avv = isCasa ? m.ospite : m.casa;
       const icon = isCasa ? '🏠' : '✈️';
       const score = (m.gol_casa !== null && m.gol_casa !== undefined) ? ` ${m.gol_casa}-${m.gol_ospite}` : '';
