@@ -84,7 +84,7 @@ api/
     ├── auth.js                 — Login, register, users CRUD, guest (batch delete/renew)
     ├── workspace.js            — Workspace, facility, staff workspace (GET/POST con categorie)
     ├── team.js                 — Squadre CRUD, PUT stagioni, POST categorie/:catId/team
-    ├── training.js             — Config, presenze, templates, programma
+    ├── training.js             — Config, presenze, templates, programma, allenamenti-futuri (virtuali da config)
     ├── match.js                — Partite CRUD, convocazioni, formazione, eventi
     ├── staff.js                — Staff completo per distinta
     ├── admin.js                — Migrazioni schema DB
@@ -94,7 +94,8 @@ api/
     ├── importCalendario.js     — PDF, testo SGS, import-log
     ├── importTuttocampo.js     — Scraping calendario TC, eventi, loghi automatici
     ├── importConfirm.js        — Confirm TC, formations batch, matches-without-formation
-    └── gazzettaRegionale.js    — Classifica, calendario, marcatori, loghi da GR API, wizard loghi batch (superadmin)
+    ├── gazzettaRegionale.js    — Classifica, calendario, marcatori, loghi da GR API, wizard loghi batch (superadmin)
+    └── absence.js              — Segnalazione assenze atleti (notifiche, storico, motivi)
 ```
 
 ### Script Utility
@@ -156,6 +157,7 @@ backend/scripts/
 | `guest_token` | Token guest | utente_id |
 | `import_log` | Storico importazioni | workspace_id, team_id, user_id |
 | `team_logo` | Loghi squadre avversarie | nome, nome_normalizzato UNIQUE, logo_path, tc_team_id (777+ file in logos/) |
+| `absence_notification` | Segnalazioni assenza atleti | player_id, team_id, training_id (nullable), data_allenamento, motivo, messaggio, letto |
 
 ---
 

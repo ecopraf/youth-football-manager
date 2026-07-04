@@ -156,6 +156,7 @@ youth-football-manager/
 |--------|----------|-------------|
 | GET | `/partite/:id/dettaglio` | Dettaglio con eventi |
 | GET | `/squadre/:id/partite-future` | Prossime partite |
+| GET | `/squadre/:id/allenamenti-futuri` | Prossimi allenamenti (reali + virtuali da config, 3 settimane) |
 | PUT | `/partite/:id/archivia` | Archivia partita |
 | PUT | `/partite/:id/sblocca` | Sblocca partita |
 | DELETE | `/squadre/:id/partite-all` | Elimina TUTTE le partite |
@@ -220,6 +221,17 @@ youth-football-manager/
 | PUT | `/categorie/:id` | Modifica categoria |
 | DELETE | `/categorie/:id` | Elimina categoria |
 | POST | `/categorie/:catId/team` | Crea team (category + season, con duplicate check) |
+
+#### Absence (Segnalazione Assenze Atleti)
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| POST | `/absence` | Atleta segnala assenza (guest con player_id) |
+| GET | `/absence/team/:teamId` | Lista notifiche per il mister |
+| GET | `/absence/unread/:teamId` | Conteggio non lette (badge) |
+| PUT | `/absence/:id/read` | Segna come letta |
+| PUT | `/absence/read-all/:teamId` | Segna tutte come lette |
+| GET | `/absence/player/:playerId` | Storico assenze atleta |
+| GET | `/absence/motivi` | Lista motivi disponibili |
 
 #### Lineups & Events
 | Metodo | Endpoint | Descrizione |
@@ -319,6 +331,11 @@ import_log (id, workspace_id, team_id, user_id, tipo, fonte, dettagli JSONB,
 tournament (id UUID PK, workspace_id FK, team_id FK, nome TEXT, data_inizio DATE,
             data_fine DATE, sede TEXT, modalita TEXT, regolamento JSONB,
             squadre JSONB, stato TEXT, calendario JSONB, created_at)
+
+-- Absence Notification (segnalazioni assenza atleti)
+absence_notification (id UUID PK, player_id FK, team_id FK, training_id FK nullable,
+                      data_allenamento DATE, motivo TEXT, messaggio TEXT, letto BOOLEAN DEFAULT false,
+                      created_at TIMESTAMPTZ)
 ```
 
 ## Gestione Multi-Workspace

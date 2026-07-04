@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 15 Luglio 2026 | Versione: v3.15 | Commit: 612882a
+> Ultimo aggiornamento: 15 Luglio 2026 | Versione: v3.15 | Commit: 9be406a
 
 ---
 
@@ -196,6 +196,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| 9be406a | feat: allenamenti-futuri virtuali da config + indicatore ⚠️ assenza segnalata in presenze |
 | 612882a | perf: cache intelligente dashboard+stats (memory 2min, sessionStorage 10min, lazy load GR) |
 | — | perf: skip loadAvailableWorkspaces per non-superadmin (-250ms init) |
 | — | feat: custom alert/confirm dialogs (no URL nel titolo, async confirm) |
