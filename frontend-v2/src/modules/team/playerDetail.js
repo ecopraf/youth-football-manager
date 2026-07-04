@@ -94,7 +94,7 @@ function renderPlayerDetail(container, data) {
 
   // Sezione valutazioni
   const valutazioniSection = valutazioni && valutazioni.partiteValutate > 0 ? `
-    <div class="card" style="background:linear-gradient(135deg,#667eea10,#764ba210);border:1px solid #667eea30;">
+    <div class="card" data-help="player.valutazioni" style="background:linear-gradient(135deg,#667eea10,#764ba210);border:1px solid #667eea30;">
       <h3 class="section-title" style="color:#667eea;">⭐ Valutazioni</h3>
       <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
         <div style="text-align:center;">
@@ -128,7 +128,7 @@ function renderPlayerDetail(container, data) {
     </tr>`).join('');
 
   const careerSection = career && career.length ? `
-    <div class="card">
+    <div class="card" data-help="player.carriera">
       <h3 class="section-title">Carriera</h3>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -158,7 +158,7 @@ function renderPlayerDetail(container, data) {
     </tr>`).join('');
 
   const lastMatchesSection = lastMatches && lastMatches.length ? `
-    <div class="card" style="margin-top:20px;">
+    <div class="card" data-help="player.ultimePartite" style="margin-top:20px;">
       <h3 class="section-title">Ultime partite</h3>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -178,7 +178,7 @@ function renderPlayerDetail(container, data) {
 
   // Costruisci i pulsanti azione per Admin
   const adminActions = isAdmin ? `
-    <div class="card" style="margin-bottom:20px;border:2px solid #667eea30;background:linear-gradient(135deg,#667eea08,#764ba208);">
+    <div class="card" data-help="player.azioniAdmin" style="margin-bottom:20px;border:2px solid #667eea30;background:linear-gradient(135deg,#667eea08,#764ba208);">
       <h3 class="section-title" style="color:#667eea;margin-bottom:12px;">⚙️ Azioni Admin</h3>
       <div style="display:flex;flex-wrap:wrap;gap:10px;">
         <button class="btn btn-primary" id="btnEditInline" style="background:#667eea;">
@@ -196,7 +196,7 @@ function renderPlayerDetail(container, data) {
 
   // Sezione dati anagrafici
   const datiAnagrafici = `
-    <div class="card" style="margin-bottom:20px;">
+    <div class="card" data-help="player.anagrafica" style="margin-bottom:20px;">
       <h3 class="section-title">📋 Dati Giocatore</h3>
       <div id="playerDataView" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
         <div><span style="font-size:12px;color:#888;">Nome</span><div style="font-size:14px;font-weight:500;">${nome}</div></div>
@@ -264,7 +264,7 @@ function renderPlayerDetail(container, data) {
     ${adminActions}
     ${datiAnagrafici}
     <div class="grid-2" style="margin-bottom:20px;">
-      <div class="card" style="display:flex;align-items:center;gap:16px;">
+      <div class="card" data-help="player.stats" style="display:flex;align-items:center;gap:16px;">
         <div class="player-avatar" style="width:64px;height:64px;font-size:24px;background:${getAvatarColor(nome)};">${initials.toUpperCase()}</div>
         <div style="flex:1;">
           <div style="font-size:14px;color:var(--gray);margin-bottom:4px;">Stagione ${stagioneCorrente}</div>
@@ -287,6 +287,9 @@ function renderPlayerDetail(container, data) {
     if (window.YFM?.navigateTo) window.YFM.navigateTo('roster');
     else if (window.navigateTo) window.navigateTo('roster');
   });
+
+  // Attiva help contestuale per la scheda giocatore
+  import('../../components/PageHelp.js').then(m => m.injectPageHelp('playerDetail')).catch(() => {});
 
   if (isAdmin) {
     // Modifica inline

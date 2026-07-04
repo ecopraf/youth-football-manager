@@ -62,7 +62,7 @@ function render() {
     <div class="card" style="margin-bottom:24px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h3 style="margin:0;font-size:16px;color:#334155;">📅 Stagioni</h3>
-        <button class="btn btn-primary btn-small" id="btnAddSeason">+ Nuova Stagione</button>
+        <button class="btn btn-primary btn-small" id="btnAddSeason" data-help="seasons.nuovaStagione">+ Nuova Stagione</button>
       </div>
       ${seasons.length === 0 ? '<p style="color:#999;text-align:center;padding:20px;">Nessuna stagione creata</p>' : `
       <div style="display:flex;flex-direction:column;gap:8px;">
@@ -86,7 +86,7 @@ function render() {
     <div class="card" style="margin-bottom:24px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h3 style="margin:0;font-size:16px;color:#334155;">📋 Categorie</h3>
-        <button class="btn btn-primary btn-small" id="btnAddCategory">+ Nuova Categoria</button>
+        <button class="btn btn-primary btn-small" id="btnAddCategory" data-help="seasons.nuovaCategoria">+ Nuova Categoria</button>
       </div>
       ${categories.length === 0 ? '<p style="color:#999;text-align:center;padding:20px;">Nessuna categoria creata</p>' : `
       <table style="width:100%;border-collapse:collapse;">

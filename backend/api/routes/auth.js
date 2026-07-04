@@ -142,8 +142,16 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
     try {
       const { tipo = 'genitore', categorie_accesso = [], scadenza_giorni, player_id, telefono } = req.body;
       const token = crypto.randomBytes(32).toString('hex');
-      const hours = scadenza_giorni ? scadenza_giorni * 24 : 720 * 24;
-      const scadenza = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+      let scadenza;
+      if (!scadenza_giorni) {
+        scadenza = null;
+      } else if (scadenza_giorni >= 365) {
+        const now = new Date();
+        const endYear = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+        scadenza = new Date(endYear, 5, 30, 23, 59, 59).toISOString();
+      } else {
+        scadenza = new Date(Date.now() + scadenza_giorni * 24 * 60 * 60 * 1000).toISOString();
+      }
       const insertData = { token, utente_id: req.user.id, tipo, squadre_accesso: categorie_accesso, scadenza };
       if (player_id) insertData.player_id = player_id;
       if (telefono) insertData.telefono = telefono;
@@ -159,7 +167,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   // POST /api/auth/guest-links-batch — genera link atleta per tutti i giocatori della rosa
   router.post('/api/auth/guest-links-batch', authMiddleware, async (req, res) => {
     try {
-      const { team_id, categorie_accesso = [], scadenza_giorni } = req.body;
+      const { team_id, categorie_accesso = [] } = req.body;
       if (!team_id) return res.status(400).json({ error: 'team_id richiesto' });
 
       // Fetch rosa attiva
@@ -176,8 +184,10 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         .gte('scadenza', new Date().toISOString());
       const existingPlayerIds = new Set((existing || []).map(e => e.player_id));
 
-      const hours = scadenza_giorni ? scadenza_giorni * 24 : 720 * 24;
-      const scadenza = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+      // Scadenza = fine stagione calcistica (30 Giugno)
+      const now = new Date();
+      const endYear = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+      const scadenza = new Date(endYear, 5, 30, 23, 59, 59).toISOString();
       const generated = [];
 
       for (const r of roster) {
@@ -242,6 +252,33 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       const { error } = await supabase.from('guest_token').delete().eq('token', token);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  router.delete('/api/auth/guest-links-batch', authMiddleware, async (req, res) => {
+    try {
+      const { tokens } = req.body;
+      if (!Array.isArray(tokens) || tokens.length === 0) return res.status(400).json({ error: 'tokens array richiesto' });
+      const { error } = await supabase.from('guest_token').delete().in('token', tokens);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, deleted: tokens.length });
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  router.put('/api/auth/guest-links-renew', authMiddleware, async (req, res) => {
+    try {
+      const { tokens } = req.body;
+      if (!Array.isArray(tokens) || tokens.length === 0) return res.status(400).json({ error: 'tokens array richiesto' });
+      const now = new Date();
+      const endYear = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+      const scadenza = new Date(endYear, 5, 30, 23, 59, 59).toISOString();
+      const { error } = await supabase.from('guest_token').update({ scadenza }).in('token', tokens);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, renewed: tokens.length, scadenza });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }

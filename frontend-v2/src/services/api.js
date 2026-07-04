@@ -86,10 +86,10 @@ export async function apiFetch(endpoint, options = {}) {
     });
     clearTimeout(timeout);
     
-    // Gestisci 401 per richieste non-auth
-    if (response.status === 401 && !endpoint.includes('/auth/')) {
+    // Gestisci 401: logout automatico tranne per login
+    if (response.status === 401 && !endpoint.includes('/auth/login')) {
       if (window.YFM && window.YFM.logout) window.YFM.logout();
-      throw new Error('Sessione scaduta, effettua il login');
+      throw new Error('Non autenticato');
     }
     
     if (!response.ok) {

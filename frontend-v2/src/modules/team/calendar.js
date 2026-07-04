@@ -219,11 +219,11 @@ function renderCalendarPage(c, matches, stats) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <div><h1 class="page-title">Calendario</h1></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${window.YFM.isAdmin() ? `<button class="btn btn-primary" id="btnAdd">+ Nuova</button>
+        ${window.YFM.isAdmin() ? `<button class="btn btn-primary" id="btnAdd" data-help="calendar.btnNuova">+ Nuova</button>
         ${window.YFM.currentUser?.is_superadmin ? '<button class="btn btn-secondary" id="btnImportTc" style="font-size:13px;">⚽ Tuttocampo</button>' : ''}
-        <button class="btn btn-secondary" id="btnImportPdf" style="font-size:13px;">📄 PDF</button>
-        <button class="btn btn-secondary" id="btnImport" style="font-size:13px;">📥 CSV</button>
-        <button class="btn btn-secondary" id="btnDeleteAll" style="font-size:13px;color:#E74C3C;">🗑️ Cancella tutto</button>` : ''}
+        <button class="btn btn-secondary" id="btnImportPdf" data-help="calendar.btnImporta" style="font-size:13px;">📄 PDF</button>
+        <button class="btn btn-secondary" id="btnImport" data-help="calendar.btnImportCSV" style="font-size:13px;">📥 CSV</button>
+        <button class="btn btn-secondary" id="btnDeleteAll" data-help="calendar.eliminaTutte" style="font-size:13px;color:#E74C3C;">🗑️ Cancella tutto</button>` : ''}
       </div>
     </div>`;
 
@@ -387,11 +387,11 @@ export function renderMatchCard(m, stats, isNext = false) {
     else { cls = 'result-draw'; icon = '🤝'; }
     resultHtml = `<span class="result-badge ${cls}" style="cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')"><span class="result-score">${golFatti} - ${golSubiti}</span>${icon}</span>`;
   } else if (!isPast) {
-    resultHtml = `<button class="btn btn-primary btn-small" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">⚽ Risultato</button>`;
+    resultHtml = `<button class="btn btn-primary btn-small" data-help="calendar.btnRisultato" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">⚽ Risultato</button>`;
   }
 
   // === PROGRESS DOTS (placeholder, aggiornati in background) ===
-  const progressHtml = (!isPast && !isArchiviata) ? `<div class="match-progress" data-mid="${m.id}"></div>` : '';
+  const progressHtml = (!isPast && !isArchiviata) ? `<div class="match-progress" data-help="calendar.pallini" data-mid="${m.id}"></div>` : '';
 
   // === PULSANTI AZIONE ===
   let actionsHtml = '';
@@ -425,7 +425,7 @@ export function renderMatchCard(m, stats, isNext = false) {
   let editBtns = '';
   const _isAdmin = window.YFM.isAdmin();
   if (_isAdmin && !isArchiviata) {
-    const archBtn = (isPast && hasResult) ? `<button class="btn btn-secondary btn-small" style="color:#856404;" onclick="event.stopPropagation();archiveMatch('${m.id}')" title="Archivia">📦</button>` : '';
+    const archBtn = (isPast && hasResult) ? `<button class="btn btn-secondary btn-small" data-help="calendar.archivia" style="color:#856404;" onclick="event.stopPropagation();archiveMatch('${m.id}')" title="Archivia">📦</button>` : '';
     editBtns = `${archBtn}<button class="btn btn-secondary btn-small btn-editm" data-mid="${m.id}" title="Modifica">✏️</button><button class="btn btn-secondary btn-small btn-danger btn-del" data-mid="${m.id}" title="Elimina">🗑️</button>`;
   } else if (_isAdmin && isArchiviata) {
     editBtns = `<button class="btn btn-secondary btn-small" style="background:#6B5B4F;color:white;border-color:#6B5B4F;" onclick="event.stopPropagation();unarchiveMatch('${m.id}')" title="Sblocca">🔓</button>`;
@@ -445,7 +445,7 @@ export function renderMatchCard(m, stats, isNext = false) {
       <div class="match-card-actions">${editBtns}</div>
     </div>
     <button class="match-actions-toggle" onclick="event.stopPropagation();this.nextElementSibling.classList.toggle('expanded');this.textContent=this.nextElementSibling.classList.contains('expanded')?'▲ Chiudi':'⋯ Azioni'">⋯ Azioni</button>
-    <div class="match-actions-row">${actionsHtml}</div>
+    <div class="match-actions-row" data-help="calendar.flussoOperativo">${actionsHtml}</div>
   </div>`;
 }
 

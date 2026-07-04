@@ -141,21 +141,21 @@ function renderForm(mid, match, eventi, giocatori, modal) {
   html += '<div class="score"><div class="score-num"><span style="color:#27AE60;">' + golFatti + '</span> - <span style="color:#E74C3C;">' + golSubiti + '</span></div>';
   html += '<div class="score-sub">' + societaNome2 + ' - ' + match.avversario + '</div></div>';
   
-  html += '<div id="evtList">';
+  html += '<div id="evtList" data-help="risultato.listaEventi">';
   const eventiOrd = [...eventi].sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0));
   eventiOrd.forEach((e, i) => {
     const cfg = EVENTI[e.tipo] || EVENTI['GOAL'];
     const isAutogol = e.autogol;
     html += '<div class="evt-item">';
-    html += '<span class="evt-badge" style="background:' + cfg.color + '20;color:' + cfg.color + ';border:2px solid ' + cfg.color + ';">' + (isAutogol ? '🟡 ' : '') + cfg.icon + ' ' + cfg.label + '</span>';
+    html += '<span class="evt-badge" style="background:' + cfg.color + '20;color:' + cfg.color + ';border:2px solid ' + cfg.color + ';">' + (isAutogol ? '\ud83d\udfe1 ' : '') + cfg.icon + ' ' + cfg.label + '</span>';
     const nomeMostrato = e.principale || (e.tipo === 'SUBITO' ? 'Avversario' : (e.autogol ? 'Autogol' : ''));
     html += '<div class="evt-info">' + (e.minuto ? e.minuto + "'" : '') + (e.minuto && nomeMostrato ? ' - ' : '') + nomeMostrato + '</div>';
-    html += '<button class="evt-del" id="delEvt' + i + '">✕</button></div>';
+    html += '<button class="evt-del" id="delEvt' + i + '">\u2715</button></div>';
   });
   if (eventi.length === 0) html += '<div class="empty">Nessun evento registrato</div>';
   html += '</div>';
   
-  html += '<div class="form-row">';
+  html += '<div class="form-row" data-help="risultato.formEvento">';
   html += '<input type="number" id="evtMin" placeholder="Min" min="1" max="150" style="width:60px;">';
   html += '<select id="evtTipo">';
   Object.entries(EVENTI).forEach(([k, v]) => { html += '<option value="' + k + '">' + v.icon + ' ' + v.label + '</option>'; });
@@ -169,7 +169,7 @@ function renderForm(mid, match, eventi, giocatori, modal) {
   
   html += '<div id="magliaGroup" class="form-group" style="display:none;"><label>N° Maglia Avversario</label><input type="number" id="evtMagliaAvv" placeholder="es. 9" min="1" max="99"></div>';
   
-  html += '<button class="add-btn" id="addEvtBtn">+ Aggiungi Evento</button>';
+  html += '<button class="add-btn" id="addEvtBtn" data-help="risultato.aggiungi">+ Aggiungi Evento</button>';
   html += '<button class="add-btn" id="importTcEvtBtn" style="background:#17a2b8;margin-top:8px;">\u26bd Importa da Tuttocampo</button></div>';
   
   container.innerHTML = html;

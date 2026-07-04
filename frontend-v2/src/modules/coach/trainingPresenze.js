@@ -99,7 +99,7 @@ function renderPresenzeDetail(date) {
     </div>`;
   });
 
-  html += `</div><div style="margin-top:16px;"><button class="btn btn-primary" id="btnSavePresenze">💾 Salva Presenze</button></div>`;
+  html += `</div><div style="margin-top:16px;"><button class="btn btn-primary" id="btnSavePresenze" data-help="presenze.salva">💾 Salva Presenze</button></div>`;
   return html;
 }
 
@@ -133,7 +133,7 @@ function attachPresenzeListeners(date) {
 
 function renderSummary(giocatori, summary, settimana) {
   const sorted = [...giocatori].sort((a, b) => a.cognome.localeCompare(b.cognome));
-  let html = `<div class="card" style="margin-bottom:20px;">
+  let html = `<div class="card" data-help="presenze.riepilogo" style="margin-bottom:20px;">
     <h3 class="section-title">📊 Riepilogo Presenze <span style="font-size:12px;color:var(--gray);font-weight:normal;">(${settimana.da ? formatDateShort(settimana.da) : ''} - ${settimana.a ? formatDateShort(settimana.a) : ''})</span></h3>
     <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
       <thead><tr style="background:#F8F9FA;">

@@ -9,10 +9,13 @@
 ```
 .agents/                    # Configurazione agenti AI
 ├── AGENTS.md              # ← Questo file (entry point)
+├── plans/                 # ⭐ DEVELOPMENT PLAN (fonte di verità)
+│   └── DEVELOPMENT_PLAN.md # Stato, Epic, micro-task, dipendenze
 ├── knowledge/             # Conoscenza del prodotto
 │   ├── VISION.md          # Missione, valori, target
-│   ├── ARCHITECTURE.md    # Stack, API, database
-│   └── ROADMAP.md         # Backlog, priorità
+│   ├── ARCHITECTURE.md    # Stack, API, struttura file
+│   ├── DATABASE_SCHEMA.md # Schema DB completo (fonte unica)
+│   └── ROADMAP.md         # [DEPRECATO] → usa DEVELOPMENT_PLAN.md
 ├── standards/             # Convenzioni e regole
 │   └── CODING_STANDARDS.md
 ├── tasks/                 # Template task
@@ -27,9 +30,10 @@
 
 ### 1. Leggi i documenti di contesto
 ```
-.agents/knowledge/VISION.md      → Cosa stiamo costruendo
-.agents/knowledge/ARCHITECTURE.md → Come è fatto il sistema
-.agents/knowledge/ROADMAP.md     → Cosa c'è da fare
+.agents/plans/DEVELOPMENT_PLAN.md  → ⭐ Stato, task, priorità (LEGGERE SEMPRE)
+.agents/knowledge/VISION.md        → Cosa stiamo costruendo
+.agents/knowledge/ARCHITECTURE.md  → Come è fatto il sistema
+.agents/knowledge/DATABASE_SCHEMA.md → Schema DB completo
 .agents/standards/CODING_STANDARDS.md → Come scrivere codice
 ```
 
@@ -76,7 +80,7 @@ api/
 │   ├── importFormationTC.js    — Import formazioni da Tuttocampo
 │   └── gazzettaRegionale.js    — Fetch classifica/calendario/marcatori da GR API
 └── routes/
-    ├── auth.js                 — Login, register, users CRUD, guest
+    ├── auth.js                 — Login, register, users CRUD, guest (batch delete/renew)
     ├── workspace.js            — Workspace, facility, staff workspace (GET/POST con categorie)
     ├── team.js                 — Squadre CRUD, PUT stagioni, POST categorie/:catId/team
     ├── training.js             — Config, presenze, templates, programma

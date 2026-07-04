@@ -128,7 +128,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
   router.get('/api/squadre/:squadraId/stats-giocatori', authMiddleware, async (req, res) => {
     try {
       const teamId = req.params.squadraId;
-      const { data: tps } = await supabase.from('team_player').select('id, player_id, ruolo_preferito, player:player_id(id, nome, cognome)').eq('team_id', teamId);
+      const { data: tps } = await supabase.from('team_player').select('id, player_id, ruolo_preferito, player:player_id(id, nome, cognome)').eq('team_id', teamId).neq('stato', 'Svincolato');
       const { data: matches } = await supabase.from('match').select('id').eq('team_id', teamId).eq('stato', 'Terminata');
       const matchIds = (matches || []).map(m => m.id);
 
@@ -297,12 +297,25 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
 
       const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, giornata, competition:competition_id(nome)').eq('team_id', teamId).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora');
 
+      // Loghi avversari
+      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
+      const logoMap = {};
+      (logos || []).forEach(l => { logoMap[l.nome.toLowerCase()] = l.logo_path; if (l.nome_normalizzato) logoMap[l.nome_normalizzato] = l.logo_path; });
+      function findLogo(avv) {
+        const lower = (avv || '').toLowerCase().trim();
+        if (logoMap[lower]) return logoMap[lower];
+        const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        if (logoMap[norm]) return logoMap[norm];
+        for (const [key, path] of Object.entries(logoMap)) { if (lower.includes(key) || key.includes(lower)) return path; }
+        return null;
+      }
+
       let v = 0, p = 0, s = 0, gf = 0, gs = 0;
       const partiteList = (partite || []).map(m => {
         const gc = m.gol_casa || 0, go = m.gol_ospite || 0;
         gf += gc; gs += go;
         if (gc > go) v++; else if (gc === go) p++; else s++;
-        return { competizione: m.competition?.nome || 'Campionato', giornata: m.giornata, data: m.data_ora, avversario: m.avversario, luogo: m.luogo, golCasa: gc, golOspiti: go };
+        return { competizione: m.competition?.nome || 'Campionato', giornata: m.giornata, data: m.data_ora, avversario: m.avversario, luogo: m.luogo, golCasa: gc, golOspiti: go, logo: findLogo(m.avversario) };
       });
 
       // Top players

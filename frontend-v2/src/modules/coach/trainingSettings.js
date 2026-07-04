@@ -32,7 +32,7 @@ export default async function loadTrainingSettings() {
 
 function renderConfig(config) {
   const giorni = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
-  let html = `<div class="card" style="margin-bottom:16px;">
+  let html = `<div class="card" data-help="settings.settimana" style="margin-bottom:16px;">
     <h3 class="section-title">📅 Settimana Tipo</h3>
     ${config.length === 0
       ? '<p style="color:var(--gray);">Nessun allenamento configurato.</p>'
@@ -48,7 +48,7 @@ function renderConfig(config) {
             <button class="btn btn-secondary btn-small btn-del-config" data-tid="${c.id}">🗑️</button>
           </div>
         </div>`).join('')}
-    <button class="btn btn-primary btn-small" id="btnAddConfig" style="margin-top:12px;">+ Aggiungi giorno</button>
+    <button class="btn btn-primary btn-small" id="btnAddConfig" data-help="settings.aggiungiGiorno" style="margin-top:12px;">+ Aggiungi giorno</button>
   </div>`;
   return html;
 }
@@ -64,7 +64,7 @@ function renderTemplates(templates) {
   ];
   const TIPO_COLORS = { 'Tattico': '#8b5cf6', 'Tecnico': '#3b82f6', 'Atletico': '#ef4444', 'Partita a tema': '#22c55e', 'Possesso palla': '#06b6d4', 'Difensivo': '#f59e0b', 'Misto': '#6b7280' };
 
-  let html = `<div class="card" style="margin-bottom:16px;">
+  let html = `<div class="card" data-help="settings.templateList" style="margin-bottom:16px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
       <h3 class="section-title" style="margin:0;">📋 Template Sedute</h3>
       <button class="btn btn-primary btn-small" id="btnNewTemplate">+ Nuovo Template</button>
@@ -159,17 +159,17 @@ function openTemplateModal(template, allTemplates) {
   if (existing) existing.remove();
 
   let content = `<div style="max-height:70vh;overflow-y:auto;padding:4px;">`;
-  content += `<div class="form-group" style="margin-bottom:12px;"><label style="font-size:12px;font-weight:600;">Nome template</label><input id="tplNome" value="${template?.nome || ''}" placeholder="Es. Riscaldamento + Possesso" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>`;
+  content += `<div class="form-group" style="margin-bottom:12px;" data-help="template.nome"><label style="font-size:12px;font-weight:600;">Nome template</label><input id="tplNome" value="${template?.nome || ''}" placeholder="Es. Riscaldamento + Possesso" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>`;
   content += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">`;
   content += `<div class="form-group" style="margin:0;"><label style="font-size:12px;font-weight:600;">Tipo seduta</label><select id="tplTipo" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;"><option value="">-- Seleziona --</option>${TIPI_SEDUTA.map(t => `<option value="${t}" ${prog.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>`;
   content += `<div class="form-group" style="margin:0;"><label style="font-size:12px;font-weight:600;">Obiettivo</label><input id="tplObiettivo" value="${prog.obiettivo || ''}" placeholder="Es. Sviluppo gioco" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>`;
   content += `</div>`;
   // Fasi
-  content += `<div style="margin-bottom:12px;"><label style="display:block;font-size:12px;font-weight:600;margin-bottom:8px;">Fasi della seduta</label><div id="tplFasiContainer">${modalFasi.length > 0 ? modalFasi.map((f,i) => renderTplFase(f,i)).join('') : '<p style="font-size:12px;color:#94a3b8;">Nessuna fase.</p>'}</div>`;
+  content += `<div style="margin-bottom:12px;" data-help="template.fasi"><label style="display:block;font-size:12px;font-weight:600;margin-bottom:8px;">Fasi della seduta</label><div id="tplFasiContainer">${modalFasi.length > 0 ? modalFasi.map((f,i) => renderTplFase(f,i)).join('') : '<p style="font-size:12px;color:#94a3b8;">Nessuna fase.</p>'}</div>`;
   content += `<div id="tplDurata" style="font-size:11px;color:#64748b;margin-top:6px;text-align:right;">Durata: <strong>${modalFasi.reduce((s,f)=>s+(f.durata||0),0)}</strong> min</div>`;
   content += `<button class="btn btn-secondary btn-small" id="btnTplAddFase" style="margin-top:6px;">+ Aggiungi Fase</button></div>`;
   // Materiale
-  content += `<div class="form-group" style="margin-bottom:12px;"><label style="font-size:12px;font-weight:600;">Materiale</label><div id="tplMaterialeGrid" style="display:flex;flex-wrap:wrap;gap:6px;">${MATERIALE_OPTIONS.map(m => `<span class="tpl-mat-chip" data-mat="${m.id}" style="padding:4px 10px;border-radius:16px;font-size:11px;cursor:pointer;border:1px solid #e2e8f0;background:${materialeUsato.includes(m.id)?'#667eea':'white'};color:${materialeUsato.includes(m.id)?'white':'#333'};transition:all 0.15s;">${m.label}</span>`).join('')}</div></div>`;
+  content += `<div class="form-group" style="margin-bottom:12px;" data-help="template.materiale"><label style="font-size:12px;font-weight:600;">Materiale</label><div id="tplMaterialeGrid" style="display:flex;flex-wrap:wrap;gap:6px;">${MATERIALE_OPTIONS.map(m => `<span class="tpl-mat-chip" data-mat="${m.id}" style="padding:4px 10px;border-radius:16px;font-size:11px;cursor:pointer;border:1px solid #e2e8f0;background:${materialeUsato.includes(m.id)?'#667eea':'white'};color:${materialeUsato.includes(m.id)?'white':'#333'};transition:all 0.15s;">${m.label}</span>`).join('')}</div></div>`;
   // Note
   content += `<div class="form-group"><label style="font-size:12px;font-weight:600;">Note</label><textarea id="tplNote" rows="2" style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;">${prog.note || ''}</textarea></div>`;
   content += `</div>`;

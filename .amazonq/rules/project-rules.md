@@ -1,15 +1,49 @@
 # Regole di Progetto - Youth Football Manager
 
+## Modello Operativo
+
+Questo progetto lavora per **micro-task atomici** (max 15min ciascuno), organizzati in **Epic** nel Development Plan.
+
+### Principi:
+- Ogni modifica è un micro-task con ID univoco (es. `2.3`)
+- Ogni task ha dipendenze esplicite, file coinvolti, effort stimato
+- Lo stato viene aggiornato nel DEVELOPMENT_PLAN ad ogni completamento
+- Mai lavorare su task non tracciati — se serve qualcosa di nuovo, prima aggiungerlo al plan
+
 ## Onboarding Obbligatorio (Inizio Chat)
 
-All'inizio di ogni nuova conversazione, l'agente DEVE leggere i seguenti file per allinearsi allo stato attuale del progetto:
+All'inizio di ogni nuova conversazione, l'agente DEVE leggere i seguenti file per allinearsi:
 
-1. **`backend/.env`** — Credenziali DB, Supabase, JWT (per operazioni dirette sul DB)
-2. **`.agents/AGENTS.md`** — Entry point, schema DB, comandi, workflow
-3. **`.agents/knowledge/ROADMAP.md`** — Backlog, bug noti, priorità
-4. **`PROJECT_STATUS.md`** — Stato moduli, ultimi commit, architettura
+1. **`.agents/plans/DEVELOPMENT_PLAN.md`** — ⭐ FONTE DI VERITÀ: stato, task, priorità, dipendenze
+2. **`backend/.env`** — Credenziali DB, Supabase, JWT
+3. **`.agents/AGENTS.md`** — Entry point, schema DB, comandi, workflow
 
 Solo dopo aver letto questi file l'agente può procedere con il task richiesto dall'utente.
+
+## Workflow Micro-Task
+
+### Prima di implementare:
+1. Identificare l'Epic e il task ID nel DEVELOPMENT_PLAN
+2. Se il task non esiste → aggiungerlo al plan con ID, dipendenze, file, effort
+3. Verificare che le dipendenze siano soddisfatte (task precedenti ✅)
+4. Comunicare all'utente: "Lavoro su task X.Y: [descrizione]"
+
+### Durante l'implementazione:
+1. Aggiornare stato task: ⬜ → ⏳
+2. Lavorare su UN task alla volta
+3. Ogni task = 1 commit (o raggruppare 2-3 task correlati)
+
+### Dopo il completamento:
+1. Aggiornare stato task: ⏳ → ✅
+2. Aggiornare changelog nel DEVELOPMENT_PLAN
+3. Se la modifica tocca schema DB → aggiornare DATABASE_SCHEMA.md
+4. Comunicare: "Task X.Y completato. Prossimo: X.Z"
+
+### Regole task:
+- Max 15min per task. Se supera → spezzare in sotto-task
+- Ogni task deve essere committabile singolarmente
+- Mai modificare più di 200 righe senza conferma utente
+- Dipendenze devono essere esplicite ("Dipende da: 2.1")
 
 ## Accesso Diretto al Database
 
@@ -66,12 +100,14 @@ curl -s 'https://csxdlxbhcnyfppojwwzy.supabase.co/rest/v1/TABELLA?select=*' \
 
 ## Documentazione Obbligatoria
 
-Dopo ogni build significativa (nuove feature, fix di bug multipli, refactoring, modifiche allo schema DB, aggiunta/rimozione endpoint API), l'agente DEVE aggiornare la documentazione:
+Dopo ogni task completato, l'agente DEVE aggiornare:
 
-1. **`.agents/knowledge/ROADMAP.md`** — Spostare task completati nella sezione "Risolti", aggiornare bug noti
-2. **`.agents/knowledge/ARCHITECTURE.md`** — Aggiornare se cambiano tabelle DB, endpoint API, struttura file
-3. **`.agents/AGENTS.md`** — Aggiornare schema DB, versione, comandi utili
-4. **`PROJECT_STATUS.md`** — Aggiornare ultimi commit, stato moduli, tabelle DB
+1. **`.agents/plans/DEVELOPMENT_PLAN.md`** — Stato task (⬜→✅), changelog, bug noti
+2. **`.agents/knowledge/DATABASE_SCHEMA.md`** — Solo se cambiano tabelle/colonne DB
+3. **`.agents/AGENTS.md`** — Solo se cambiano endpoint API o struttura file
+
+> ⚠️ I file `PROJECT_STATUS.md` e `.agents/knowledge/ROADMAP.md` sono deprecati.
+> La fonte di verità unica è `DEVELOPMENT_PLAN.md`.
 
 ## Schema Database (Fonte di verità)
 

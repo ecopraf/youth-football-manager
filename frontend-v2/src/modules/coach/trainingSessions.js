@@ -98,17 +98,17 @@ function renderSessionDetail(date) {
 
   html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
     <div style="font-size:15px;font-weight:600;color:#1a1a2e;">🎯 ${dayLabel}</div>
-    <button class="btn btn-secondary btn-small" id="btnApplyTemplate">📋 Usa Template</button>
+    <button class="btn btn-secondary btn-small" id="btnApplyTemplate" data-help="training.template">📋 Usa Template</button>
   </div>`;
 
   html += `<div class="program-section">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="program-field"><label>Tipo seduta</label><select id="sessionTipo"><option value="">-- Seleziona --</option>${TIPI_SEDUTA.map(t => `<option value="${t}" ${tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="program-field"><label>Tipo seduta</label><select id="sessionTipo" data-help="training.tipoSeduta"><option value="">-- Seleziona --</option>${TIPI_SEDUTA.map(t => `<option value="${t}" ${tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="program-field"><label>Obiettivo</label><input type="text" id="sessionObiettivo" value="${obiettivo}" placeholder="Es. Sviluppo gioco sulle fasce"></div>
     </div>
     <div style="margin-top:12px;">
       <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:8px;">Fasi della seduta</label>
-      <div id="fasiContainer">${currentFasi.length > 0 ? currentFasi.map((f,i) => renderFaseCard(f,i)).join('') : '<p style="font-size:12px;color:#94a3b8;margin:0;">Nessuna fase. Clicca "+ Aggiungi Fase".</p>'}</div>
+      <div id="fasiContainer" data-help="training.fasi">${currentFasi.length > 0 ? currentFasi.map((f,i) => renderFaseCard(f,i)).join('') : '<p style="font-size:12px;color:#94a3b8;margin:0;">Nessuna fase. Clicca "+ Aggiungi Fase".</p>'}</div>
       <div id="durataTotale" style="font-size:12px;color:#64748b;margin-top:8px;text-align:right;">Durata: <strong>${currentFasi.reduce((s,f)=>s+(f.durata||0),0)}</strong> min</div>
       <button class="btn btn-secondary btn-small" id="btnAddFase" style="margin-top:8px;">+ Aggiungi Fase</button>
     </div>
@@ -120,7 +120,7 @@ function renderSessionDetail(date) {
 
   html += `<div style="display:flex;gap:8px;flex-wrap:wrap;">
     <button class="btn btn-primary" id="btnSaveProgram">🎯 Salva Programma</button>
-    <button class="btn btn-secondary" id="btnSaveTemplate" style="font-size:12px;">📋 Salva come Template</button>
+    <button class="btn btn-secondary" id="btnSaveTemplate" data-help="training.salvaTemplate" style="font-size:12px;">📋 Salva come Template</button>
   </div>`;
 
   return html;

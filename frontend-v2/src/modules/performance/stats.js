@@ -45,14 +45,14 @@ export default async function loadStats() {
       <div class="card widget"><div class="widget-value" style="color:#F39C12;">${totAmm}</div><div class="widget-label">🟨 Amm.</div></div>
       <div class="card widget"><div class="widget-value" style="color:#E74C3C;">${totEsp}</div><div class="widget-label">🟥 Esp.</div></div>
     </div>
-    ${diffidati.length > 0 ? `<div class="card" style="margin-bottom:16px;border-left:4px solid #F39C12;padding:14px 16px;">
+    ${diffidati.length > 0 ? `<div class="card" data-help="stats.diffidati" style="margin-bottom:16px;border-left:4px solid #F39C12;padding:14px 16px;">
       <h3 style="margin:0 0 8px 0;font-size:14px;color:#F39C12;">⚠️ Diffidati (4 ammonizioni)</h3>
       ${diffidati.map(p => `<div style="font-size:13px;margin-bottom:4px;">• <strong>${p.cognome} ${p.nome}</strong> — ${p.ammonizioni} 🟨 (prossimo giallo = squalifica)</div>`).join('')}
     </div>` : ''}
     <div class="card">
       <h3 class="section-title">📊 Statistiche Giocatori</h3>
       <div style="overflow-x:auto;">
-        <table class="stats-table" id="statsTable">
+        <table class="stats-table" id="statsTable" data-help="stats.tabella">
           <thead><tr>
             <th data-col="cognome" class="sorted-asc">Giocatore</th>
             <th data-col="ruolo">Ruolo</th>

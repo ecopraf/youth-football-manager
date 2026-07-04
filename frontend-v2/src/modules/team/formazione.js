@@ -126,12 +126,12 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
 
   let html = `<style>${PITCH_CSS}</style>`;
   html += `<p style="margin-bottom:8px;font-size:13px;color:#666;">Trascina i giocatori dalla lista al campo.</p>`;
-  html += `<div class="modulo-select" id="moduloSelect">`;
+  html += `<div class="modulo-select" id="moduloSelect" data-help="formazione.modulo">`;
   Object.keys(MODULI).forEach(k => { html += `<button class="modulo-btn${k===savedModulo?' active':''}" data-modulo="${k}">${k}</button>`; });
   html += `</div><div class="pitch-container">`;
-  html += `<div class="pitch-panel"><div class="pitch" id="pitchField">${buildPitchSlots(savedModulo, titolariIds, allPlayers, formazione?.positions)}</div>`;
+  html += `<div class="pitch-panel"><div class="pitch" id="pitchField" data-help="formazione.campo">${buildPitchSlots(savedModulo, titolariIds, allPlayers, formazione?.positions)}</div>`;
   html += `<div id="pitchCount" style="text-align:center;margin-top:8px;font-size:12px;font-weight:600;color:#667eea;">${titolariIds.length}/11 titolari</div></div>`;
-  html += `<div class="pitch-roster" id="rosterList"><h5 style="margin:0 0 8px;font-size:12px;color:#333;">📋 Convocati</h5>`;
+  html += `<div class="pitch-roster" id="rosterList" data-help="formazione.roster"><h5 style="margin:0 0 8px;font-size:12px;color:#333;">📋 Convocati</h5>`;
   giocatoriConvocati.forEach(g => {
     const num = g.numero_maglia || '?';
     const placed = titolariIds.includes(g.id) ? ' placed' : '';
@@ -139,7 +139,7 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
   });
   html += `</div></div>`;
 
-  const footer = '<button class="btn btn-secondary" id="modalCancelBtn">Annulla</button><button class="btn btn-primary" id="saveFormBtn">💾 Salva</button>';
+  const footer = '<button class="btn btn-secondary" id="modalCancelBtn">Annulla</button><button class="btn btn-primary" id="saveFormBtn" data-help="formazione.salva">💾 Salva</button>';
   const modal = createModal('🏟️ Formazione vs ' + match.avversario, html, footer, '850px');
 
   let currentModulo = savedModulo;

@@ -46,7 +46,7 @@ function renderMain(c, logs, teamName) {
 
   // === CARDS ===
   html += `<div class="import-cards">
-    <div class="import-card" id="icPdf">
+    <div class="import-card" id="icPdf" data-help="import.calendarioPDF">
       <div class="import-card-icon">📄</div>
       <div class="import-card-title">Calendario PDF SGS</div>
       <div class="import-card-desc">Upload file PDF del calendario federale SGS/LND</div>
@@ -64,7 +64,7 @@ function renderMain(c, logs, teamName) {
       <div class="import-card-desc">Scraping calendario, risultati e marcatori da Tuttocampo.it</div>
       <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">URL</span>
     </div>
-    <div class="import-card" id="icXls">
+    <div class="import-card" id="icXls" data-help="import.rosaXls">
       <div class="import-card-icon">📊</div>
       <div class="import-card-title">Rosa XLS FIGC</div>
       <div class="import-card-desc">Upload tabulato atleti Excel (.xlsx) dalla federazione</div>
@@ -88,13 +88,13 @@ function renderMain(c, logs, teamName) {
     <h2 style="font-size:16px;font-weight:600;margin-bottom:12px;">📰 Gazzetta Regionale</h2>
     <p style="color:#666;font-size:13px;margin-bottom:12px;">Importa classifica, calendario, marcatori e loghi dal portale Gazzetta Regionale. Funziona da qualsiasi dispositivo.</p>
     <div class="import-cards">
-      <div class="import-card" id="icGrConfig">
+      <div class="import-card" id="icGrConfig" data-help="import.grConfig">
         <div class="import-card-icon">⚙️</div>
         <div class="import-card-title">Configura URL Girone</div>
         <div class="import-card-desc">Inserisci l'URL della classifica/calendario del tuo girone su Gazzetta Regionale</div>
         <span class="import-card-badge" style="background:#E8EAF6;color:#283593;">Setup</span>
       </div>
-      <div class="import-card" id="icGrCalendario">
+      <div class="import-card" id="icGrCalendario" data-help="import.grCalendario">
         <div class="import-card-icon">📅</div>
         <div class="import-card-title">Calendario + Risultati</div>
         <div class="import-card-desc">Importa tutte le partite con risultati aggiornati dal girone</div>
@@ -112,7 +112,7 @@ function renderMain(c, logs, teamName) {
         <div class="import-card-desc">Scansiona tutti i gironi GR, scarica nuovi loghi e verifica aggiornamenti</div>
         <span class="import-card-badge" style="background:#EDE7F6;color:#4527A0;">Superadmin</span>
       </div>` : ''}
-      <div class="import-card" id="icGrPreview">
+      <div class="import-card" id="icGrPreview" data-help="import.grPreview">
         <div class="import-card-icon">👁️</div>
         <div class="import-card-title">Anteprima Dati</div>
         <div class="import-card-desc">Visualizza classifica, ultima giornata e marcatori del girone</div>
@@ -122,7 +122,7 @@ function renderMain(c, logs, teamName) {
   </div>`;
 
   // === LOG STORICO ===
-  html += `<div style="margin-top:16px;"><h2 style="font-size:16px;font-weight:600;margin-bottom:12px;">📜 Storico Importazioni</h2>`;
+  html += `<div data-help="import.storico" style="margin-top:16px;"><h2 style="font-size:16px;font-weight:600;margin-bottom:12px;">📜 Storico Importazioni</h2>`;
   if (logs.length === 0) {
     html += `<p style="color:#999;text-align:center;padding:24px;">Nessuna importazione registrata</p>`;
   } else {

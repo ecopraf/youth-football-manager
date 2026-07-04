@@ -21,9 +21,11 @@ export default async function loadGuestLinks() {
   c.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:8px;">
       <h1 class="page-title">🔗 Link di Accesso Guest</h1>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" id="btnCreateLink">+ Crea Link</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btnCreateLink" data-help="guest.genera">+ Crea Link</button>
         <button class="btn btn-secondary" id="btnBatchLinks">👥 Genera Batch Atleti</button>
+        <button class="btn btn-danger" id="btnDeleteSelected" style="display:none;">🗑️ Elimina</button>
+        <button class="btn btn-secondary" id="btnRenewSelected" style="display:none;">🔄 Rinnova</button>
       </div>
     </div>
     
@@ -38,10 +40,12 @@ export default async function loadGuestLinks() {
       <table style="width:100%;border-collapse:collapse;">
         <thead>
           <tr style="border-bottom:2px solid #eee;">
+            <th style="padding:12px;width:40px;"><input type="checkbox" id="selectAllLinks"></th>
+            <th style="text-align:left;padding:12px;">Stato</th>
             <th style="text-align:left;padding:12px;">Tipo</th>
             <th style="text-align:left;padding:12px;">Giocatore</th>
             <th style="text-align:left;padding:12px;">Categoria</th>
-            <th style="text-align:left;padding:12px;">Creato da</th>
+            <th style="text-align:left;padding:12px;">Attivo dal</th>
             <th style="text-align:left;padding:12px;">Scadenza</th>
             <th style="text-align:left;padding:12px;">Link</th>
             <th style="text-align:right;padding:12px;">Azioni</th>
@@ -65,7 +69,7 @@ export default async function loadGuestLinks() {
             <label>Tipo di accesso *</label>
             <select id="linkTipo" required>
               <option value="atleta">🏃 Atleta</option>
-              <option value="genitore">👨‍👩‍👧 Genitore</option>
+              <option value="genitore">👨👩👧 Genitore</option>
             </select>
           </div>
           
@@ -84,7 +88,7 @@ export default async function loadGuestLinks() {
             <select id="linkScadenza">
               <option value="30">30 giorni</option>
               <option value="90">90 giorni</option>
-              <option value="365">1 anno</option>
+              <option value="365">Fine stagione (30/06)</option>
               <option value="">Nessuna scadenza</option>
             </select>
           </div>
@@ -102,6 +106,12 @@ export default async function loadGuestLinks() {
 
   document.getElementById('btnCreateLink').addEventListener('click', openCreateModal);
   document.getElementById('btnBatchLinks').addEventListener('click', handleBatchGenerate);
+  document.getElementById('btnDeleteSelected').addEventListener('click', handleDeleteSelected);
+  document.getElementById('btnRenewSelected').addEventListener('click', handleRenewSelected);
+  document.getElementById('selectAllLinks').addEventListener('change', (e) => {
+    document.querySelectorAll('.link-checkbox').forEach(cb => { cb.checked = e.target.checked; });
+    updateActionBtns();
+  });
   document.getElementById('linkForm').addEventListener('submit', handleCreate);
   document.getElementById('btnCancelLink').addEventListener('click', () => {
     document.getElementById('linkModal').style.display = 'none';
@@ -113,13 +123,58 @@ export default async function loadGuestLinks() {
   }
 }
 
+function updateActionBtns() {
+  const selected = document.querySelectorAll('.link-checkbox:checked').length;
+  const show = selected > 0;
+  document.getElementById('btnDeleteSelected').style.display = show ? 'inline-flex' : 'none';
+  document.getElementById('btnRenewSelected').style.display = show ? 'inline-flex' : 'none';
+}
+
+async function handleDeleteSelected() {
+  const checked = document.querySelectorAll('.link-checkbox:checked');
+  if (checked.length === 0) return;
+  if (!confirm(`Revocare ${checked.length} link selezionati?`)) return;
+
+  showLoading('Eliminazione...');
+  try {
+    const tkns = Array.from(checked).map(cb => cb.value);
+    await apiFetch('/auth/guest-links-batch', { method: 'DELETE', body: JSON.stringify({ tokens: tkns }) });
+    hideLoading();
+    document.getElementById('selectAllLinks').checked = false;
+    updateActionBtns();
+    await loadData();
+  } catch (err) {
+    hideLoading();
+    alert('Errore: ' + err.message);
+  }
+}
+
+async function handleRenewSelected() {
+  const checked = document.querySelectorAll('.link-checkbox:checked');
+  if (checked.length === 0) return;
+  if (!confirm(`Rinnovare ${checked.length} link fino a fine stagione (30/06)?`)) return;
+
+  showLoading('Rinnovo...');
+  try {
+    const tkns = Array.from(checked).map(cb => cb.value);
+    const result = await apiFetch('/auth/guest-links-renew', { method: 'PUT', body: JSON.stringify({ tokens: tkns }) });
+    hideLoading();
+    document.getElementById('selectAllLinks').checked = false;
+    updateActionBtns();
+    alert(`✅ ${result.renewed} link rinnovati fino al ${new Date(result.scadenza).toLocaleDateString('it-IT')}`);
+    await loadData();
+  } catch (err) {
+    hideLoading();
+    alert('Errore: ' + err.message);
+  }
+}
+
 async function loadData() {
   const user = window.YFM.getUser() || {};
   try {
     const tokensRes = await apiFetch('/auth/guest-links');
     tokens = tokensRes.links || [];
 
-    // Carica rosa per nomi giocatori e select
     const teamId = window.YFM.squadraId;
     if (teamId) {
       try {
@@ -134,7 +189,6 @@ async function loadData() {
     if (user.is_superadmin) {
       try { workspaces = await apiFetch('/auth/workspaces'); } catch(e) { workspaces = []; }
       workspaces = Array.isArray(workspaces) ? workspaces : (workspaces.data || []);
-      // Carica categorie di tutti i workspace per risolvere i nomi
       const allCats = await Promise.all(workspaces.map(w => apiFetch(`/workspaces/${w.id}/categorie`).catch(() => [])));
       categorie = allCats.flat();
     } else {
@@ -146,7 +200,7 @@ async function loadData() {
 
     renderTokens();
   } catch (err) {
-    document.getElementById('linksTableBody').innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:#c00;">${err.message}</td></tr>`;
+    document.getElementById('linksTableBody').innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#c00;">${err.message}</td></tr>`;
   }
 }
 
@@ -155,7 +209,7 @@ function renderTokens() {
   if (!tbody) return;
 
   if (tokens.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#999;">Nessun link creato</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#999;">Nessun link creato</td></tr>';
     return;
   }
 
@@ -166,28 +220,32 @@ function renderTokens() {
     const catText = catIds.length > 0
       ? catIds.map(id => categorie.find(c => c.id === id)?.nome || id.substring(0, 8) + '...').join(', ')
       : 'Tutte';
-    const createdBy = t.utente ? `${t.utente.nome} ${t.utente.cognome}` : '-';
     const link = `${window.location.origin}/guest/${t.token}`;
+    const createdAt = t.created_at ? new Date(t.created_at).toLocaleDateString('it-IT') : '-';
 
-    // Player info per link atleta personalizzato
     const playerInfo = t.player_id ? rosterPlayers.find(p => p.id === t.player_id) : null;
     const playerName = playerInfo ? `${playerInfo.cognome} ${playerInfo.nome}` : (t.player_id ? '(giocatore)' : '-');
     const telefono = t.telefono || playerInfo?.telefono || '';
     const waLink = telefono ? `https://wa.me/${telefono.replace(/[^0-9+]/g, '')}?text=${encodeURIComponent('Ciao! Ecco il tuo accesso a Youth Football Manager: ' + link)}` : '';
 
     return `
-      <tr style="border-bottom:1px solid #eee;${isExpired ? 'opacity:0.5;' : ''}">
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:12px;"><input type="checkbox" class="link-checkbox" value="${t.token}"></td>
         <td style="padding:12px;">
-          ${t.tipo === 'atleta' ? '🏃 Atleta' : '👨‍👩‍👧 Genitore'}
-          ${isExpired ? '<span style="color:#E74C3C;font-size:11px;"> (scaduto)</span>' : ''}
+          ${isExpired
+            ? '<span style="display:inline-flex;align-items:center;gap:4px;color:#E74C3C;font-size:12px;font-weight:600;">🔴 Scaduto</span>'
+            : '<span style="display:inline-flex;align-items:center;gap:4px;color:#27AE60;font-size:12px;font-weight:600;">🟢 Attivo</span>'}
+        </td>
+        <td style="padding:12px;">
+          ${t.tipo === 'atleta' ? '🏃 Atleta' : '👨👩👧 Genitore'}
         </td>
         <td style="padding:12px;font-size:13px;">
           ${playerName !== '-' ? `<strong>${playerName}</strong>` : '-'}
           ${telefono ? `<br><span style="color:#888;font-size:11px;">📱 ${telefono}</span>` : ''}
         </td>
         <td style="padding:12px;color:#666;font-size:13px;">${catText}</td>
-        <td style="padding:12px;color:#666;font-size:13px;">${createdBy}</td>
-        <td style="padding:12px;color:#666;">
+        <td style="padding:12px;color:#666;font-size:13px;">${createdAt}</td>
+        <td style="padding:12px;color:#666;font-size:13px;">
           ${t.scadenza ? new Date(t.scadenza).toLocaleDateString('it-IT') : 'Mai'}
         </td>
         <td style="padding:12px;">
@@ -197,14 +255,31 @@ function renderTokens() {
           </div>
         </td>
         <td style="padding:12px;text-align:right;">
-          <button class="btn btn-small btn-danger" data-revoke="${t.token}">🗑️</button>
+          <div style="display:flex;gap:4px;justify-content:flex-end;">
+            ${isExpired ? `<button class="btn btn-small" data-renew="${t.token}" title="Rinnova fino a fine stagione">🔄</button>` : ''}
+            <button class="btn btn-small btn-danger" data-revoke="${t.token}">🗑️</button>
+          </div>
         </td>
       </tr>`;
   }).join('');
 
+  tbody.querySelectorAll('.link-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateActionBtns);
+  });
+
   tbody.querySelectorAll('[data-copy]').forEach(btn => {
     btn.addEventListener('click', () => {
       navigator.clipboard.writeText(btn.dataset.copy).then(() => alert('Link copiato!')).catch(() => prompt('Copia:', btn.dataset.copy));
+    });
+  });
+
+  tbody.querySelectorAll('[data-renew]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Rinnovare questo link fino a fine stagione (30/06)?')) return;
+      try {
+        await apiFetch('/auth/guest-links-renew', { method: 'PUT', body: JSON.stringify({ tokens: [btn.dataset.renew] }) });
+        await loadData();
+      } catch (err) { alert('Errore: ' + err.message); }
     });
   });
 
@@ -231,7 +306,6 @@ async function openCreateModal() {
   }
 
   if (user.ruolo === 'allenatore') {
-    // Allenatore: categorie fisse (le sue)
     const userCats = user.categorie_accesso || [];
     renderCatCheckboxes(userCats, true);
   } else if (user.ruolo === 'admin') {
@@ -286,7 +360,6 @@ async function handleCreate(e) {
 
   const body = { tipo, categorie_accesso, scadenza_giorni: scadenza_giorni ? parseInt(scadenza_giorni) : null };
 
-  // Se atleta con giocatore selezionato
   if (tipo === 'atleta') {
     const playerId = document.getElementById('linkPlayer').value;
     if (playerId) {
@@ -332,13 +405,11 @@ async function handleBatchGenerate() {
   if (!teamId) { alert('Seleziona una squadra'); return; }
   if (!confirm(`Generare link atleta per tutti i giocatori attivi della rosa?\nI giocatori che hanno già un link valido verranno saltati.`)) return;
 
-  // Determina categorie
   const user = window.YFM.getUser() || {};
   let categorie_accesso = [];
   if (user.ruolo === 'allenatore') {
     categorie_accesso = user.categorie_accesso || [];
   } else {
-    // Usa la categoria del team corrente
     const squad = window.YFM.allSquadre?.find(s => s.id === teamId);
     if (squad?.category_id) categorie_accesso = [squad.category_id];
   }

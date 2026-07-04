@@ -61,16 +61,16 @@ function renderRoster(c, players, scadenze) {
       toolbarHtml += '<button class="btn btn-secondary" id="btnSelectAll">☑ Tutti</button>';
       toolbarHtml += '<button class="btn btn-secondary" id="btnCancelSelect">Annulla</button>';
       toolbarHtml += '<button class="btn btn-danger" id="btnDeleteSelected" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>🗑️ Elimina (' + selectedPlayers.size + ')</button>';
-      toolbarHtml += '<button class="btn btn-secondary" id="btnSvincolaSelected" style="background:#F39C12;color:white;border:none;" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>📋 Svincola (' + selectedPlayers.size + ')</button>';
+      toolbarHtml += '<button class="btn btn-secondary" id="btnSvincolaSelected" style="background:#F39C12;color:white;border:none;" data-help="roster.btnSvincola" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>📋 Svincola (' + selectedPlayers.size + ')</button>';
       toolbarHtml += '<button class="btn btn-primary" id="btnMoveSelected" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>↗️ Sposta (' + selectedPlayers.size + ')</button>';
     }
   }
   
-  toolbarHtml += '<button class="btn btn-secondary" id="btnImportXls" title="Importa rosa da file Excel">📥 XLS</button>';
+  toolbarHtml += '<button class="btn btn-secondary" id="btnImportXls" title="Importa rosa da file Excel" data-help="roster.btnAggiungi">📥 XLS</button>';
   toolbarHtml += '<button class="btn btn-secondary" id="btnImportTc" title="Importa rosa da Tuttocampo (copia-incolla)" style="background:#149347;color:#fff;">⚽ Tuttocampo</button>';
-  toolbarHtml += '<button class="btn btn-primary" id="btnAdd">+ Aggiungi</button></div></div>';
+  toolbarHtml += '<button class="btn btn-primary" id="btnAdd" data-help="roster.btnAggiungi">+ Aggiungi</button></div></div>';
 
-  let scadenzeHtml = scadenze.length > 0 ? '<div class="card" style="margin-bottom:20px;border-left:4px solid #F39C12;"><h3>⚠️ Certificati in scadenza</h3>' + scadenze.map(x => '<div>' + x.nome + ' ' + x.cognome + ' - ' + formatDateShort(x.scadenza) + ' (' + (x.giorni_rimanenti || x.giorniRimanenti) + 'gg)</div>').join('') + '</div>' : '';
+  let scadenzeHtml = scadenze.length > 0 ? '<div class="card" data-help="roster.alertMedico" style="margin-bottom:20px;border-left:4px solid #F39C12;"><h3>⚠️ Certificati in scadenza</h3>' + scadenze.map(x => '<div>' + x.nome + ' ' + x.cognome + ' - ' + formatDateShort(x.scadenza) + ' (' + (x.giorni_rimanenti || x.giorniRimanenti) + 'gg)</div>').join('') + '</div>' : '';
 
   let gridsHtml = '';
   if (noRole.length > 0) {
@@ -80,7 +80,7 @@ function renderRoster(c, players, scadenze) {
     gridsHtml += '<div style="margin-bottom:20px;"><h3 style="font-size:16px;font-weight:600;color:var(--blue);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--green);">' + plur[r] + ' (' + byRole[r].length + ')</h3><div class="roster-grid" id="grid' + r + '">' + renderPlayerCards(byRole[r].sort((a, b) => a.cognome.localeCompare(b.cognome))) + '</div></div>';
   });
 
-  c.innerHTML = toolbarHtml + scadenzeHtml + '<div class="roster-toolbar"><input class="search-bar" placeholder="Cerca giocatore..." id="sInput"><select class="filter-select" id="fRuolo"><option value="">Tutti i ruoli</option>' + ruoli.map(r => '<option value="' + r + '">' + plur[r] + '</option>').join('') + '</select><select class="filter-select" id="fStato"><option value="">Stato: Tutti</option><option value="Attivo">Attivo</option><option value="Aggregato">Aggregato</option><option value="Infortunato">Infortunato</option></select></div>' + gridsHtml + renderSvincolatiSection();
+  c.innerHTML = toolbarHtml + scadenzeHtml + '<div class="roster-toolbar"><input class="search-bar" placeholder="Cerca giocatore..." id="sInput" data-help="roster.cerca"><select class="filter-select" id="fRuolo" data-help="roster.filtroRuolo"><option value="">Tutti i ruoli</option>' + ruoli.map(r => '<option value="' + r + '">' + plur[r] + '</option>').join('') + '</select><select class="filter-select" id="fStato" data-help="roster.filtroStato"><option value="">Stato: Tutti</option><option value="Attivo">Attivo</option><option value="Aggregato">Aggregato</option><option value="Infortunato">Infortunato</option></select></div>' + gridsHtml + renderSvincolatiSection();
 
   document.getElementById('btnAdd')?.addEventListener('click', () => {
     const c = document.getElementById('pageContent');
@@ -309,8 +309,8 @@ function renderSvincolatiSection() {
     '<div id="btnToggleSvincolati" style="cursor:pointer;display:flex;align-items:center;gap:8px;">' +
     '<span id="svincolatiArrow" style="font-size:12px;color:#888;">\u25B6</span>' +
     '<h3 style="font-size:15px;font-weight:600;color:#888;margin:0;">Svincolati (' + svincolati.length + ')</h3></div>' +
-    '<button class="btn btn-secondary" id="btnRecuperaSvincolato" style="font-size:12px;padding:6px 12px;">\uD83D\uDD0D Recupera</button>' +
-    '<button class="btn btn-secondary" id="btnAggregaPlayer" style="font-size:12px;padding:6px 12px;background:#F39C12;color:white;border:none;">\u2795 Aggrega</button></div>' +
+    '<button class="btn btn-secondary" id="btnRecuperaSvincolato" data-help="roster.btnRiattiva" style="font-size:12px;padding:6px 12px;">\uD83D\uDD0D Recupera</button>' +
+    '<button class="btn btn-secondary" id="btnAggregaPlayer" data-help="roster.btnAggrega" style="font-size:12px;padding:6px 12px;background:#F39C12;color:white;border:none;">\u2795 Aggrega</button></div>' +
     (svincolati.length > 0 ? '<div id="svincolatiContent" style="display:none;"><div class="roster-grid">' + cards + '</div></div>' : '<div id="svincolatiContent" style="display:none;"><p style="color:#888;font-size:13px;">Nessuno svincolato in questa stagione</p></div>') +
     '</div>';
 }

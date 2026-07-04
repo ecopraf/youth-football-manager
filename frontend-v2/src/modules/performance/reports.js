@@ -9,9 +9,9 @@ export default async function loadReports() {
     <p class="page-subtitle">Genera e scarica report della stagione</p>
     
     <div class="report-tabs" style="margin-bottom:24px;">
-      <button class="report-tab active" data-tab="match">📄 Report Partita</button>
-      <button class="report-tab" data-tab="seasonal">📊 Report Stagionale</button>
-      <button class="report-tab" data-tab="player">👤 Report Giocatore</button>
+      <button class="report-tab active" data-tab="match" data-help="reports.partita">📄 Report Partita</button>
+      <button class="report-tab" data-tab="seasonal" data-help="reports.stagionale">📊 Report Stagionale</button>
+      <button class="report-tab" data-tab="player" data-help="reports.giocatore">👤 Report Giocatore</button>
     </div>
     
     <!-- Tab Report Partita -->
@@ -169,14 +169,18 @@ function renderReport(report) {
         <div id="socialCommentBox" style="font-size:14px;line-height:1.6;white-space:pre-wrap;background:rgba(255,255,255,0.15);padding:16px;border-radius:8px;">${socialComment}</div>
       </div>
 
-      <!-- Header Report -->
-      <div style="text-align:center;border-bottom:2px solid #333;padding-bottom:16px;margin-bottom:24px;">
-        <h1 style="margin:0 0 8px 0;font-size:28px;">${report.societa} vs ${report.partita.avversario}</h1>
-        <p style="margin:0;color:#666;">
-          ${formatDate(report.partita.dataOra)} · ${report.partita.competizione}
-          ${report.partita.giornata ? ' · Giornata ' + report.partita.giornata : ''}
-          ${report.partita.luogo ? (report.partita.luogo.toLowerCase().includes('casa') ? '(Casa)' : '(Trasferta)') : ''}
-        </p>
+      <!-- Header Report con loghi -->
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:20px;">
+        <div style="width:70px;">${(() => { const l = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : ''; return l ? '<img src="' + l + '" style="height:60px;object-fit:contain;">' : ''; })()}</div>
+        <div style="flex:1;text-align:center;">
+          <h1 style="margin:0 0 4px 0;font-size:22px;">${report.societa} vs ${report.partita.avversario}</h1>
+          <p style="margin:0;color:#666;font-size:13px;">
+            ${formatDate(report.partita.dataOra)} · ${report.partita.competizione}
+            ${report.partita.giornata ? ' · Giornata ' + report.partita.giornata : ''}
+            ${report.partita.luogo ? (report.partita.luogo.toLowerCase().includes('casa') ? '(Casa)' : '(Trasferta)') : ''}
+          </p>
+        </div>
+        <div style="width:70px;text-align:right;"><img src="/img/logo-lnd.png" style="height:60px;object-fit:contain;" onerror="this.style.display='none'"></div>
       </div>
 
       <!-- Score e Stats -->
@@ -301,6 +305,7 @@ function printReport() {
   const clone = printArea.cloneNode(true);
   const socialSection = clone.querySelector('[style*="linear-gradient"]');
   if (socialSection) socialSection.remove();
+  clone.querySelectorAll('img').forEach(img => { if (img.src) img.setAttribute('src', img.src); });
 
   const html = `<!DOCTYPE html>
 <html>
@@ -316,7 +321,8 @@ function printReport() {
     table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 10px; }
     th, td { padding: 3px 5px; text-align: left; border: 1px solid #eee; }
     th { background: #f5f5f5; font-weight: 600; }
-    @page { size: A4; margin: 8mm; }
+    img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    @page { size: A4 portrait; margin: 8mm; }
   </style>
 </head>
 <body>${clone.innerHTML}</body>
@@ -411,7 +417,11 @@ async function generateSeasonalReport() {
   showLoading('Generazione report stagionale...');
   
   try {
-    const report = await apiFetch('/squadre/' + window.YFM.squadraId + '/report-stagionale');
+    const [report, statsData] = await Promise.all([
+      apiFetch('/squadre/' + window.YFM.squadraId + '/report-stagionale'),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/stats-giocatori')
+    ]);
+    report.statsGiocatori = statsData.stats || [];
     renderSeasonalReport(report);
     document.getElementById('btnPrintSeasonalReport').style.display = 'inline-block';
   } catch (err) {
@@ -424,175 +434,111 @@ async function generateSeasonalReport() {
 function renderSeasonalReport(report) {
   const container = document.getElementById('seasonalReportContent');
   container.style.display = 'block';
+  const logoWs = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : '';
   
   container.innerHTML = `
-    <div id="seasonalPrintArea" style="background:white;padding:24px;">
-      <!-- Header -->
-      <div style="text-align:center;border-bottom:2px solid #333;padding-bottom:16px;margin-bottom:24px;">
-        <h2 style="margin:0 0 8px 0;">${report.societa}</h2>
-        <h1 style="margin:0;font-size:28px;">Report Stagionale</h1>
-        <p style="margin:8px 0 0 0;color:#666;font-size:18px;font-weight:600;">${report.squadra.categoria}</p>
-        <p style="margin:4px 0 0 0;color:#666;">${report.stagione}</p>
+    <div id="seasonalPrintArea" style="background:white;padding:20px;">
+      <!-- Header con loghi -->
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:16px;">
+        <div style="width:70px;">${logoWs ? '<img src="' + logoWs + '" style="height:60px;object-fit:contain;">' : ''}</div>
+        <div style="flex:1;text-align:center;">
+          <h2 style="margin:0;font-size:16px;">${report.societa}</h2>
+          <h1 style="margin:4px 0 0 0;font-size:22px;">Report Stagionale</h1>
+          <p style="margin:4px 0 0 0;color:#666;font-size:14px;font-weight:600;">${report.squadra.categoria} — ${report.stagione}</p>
+        </div>
+        <div style="width:70px;text-align:right;"><img src="/img/logo-lnd.png" style="height:60px;object-fit:contain;" onerror="this.style.display='none'"></div>
       </div>
       
-      <!-- Stats Squadra -->
-      <div class="stats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;">
-        <div class="stat-card" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:12px 6px;border-radius:8px;text-align:center;color:white;">
-          <div style="font-size:18px;font-weight:bold;">${report.punti || 0}</div>
-          <div style="font-size:9px;opacity:0.9;">Punti</div>
-        </div>
-        <div class="stat-card" style="background:#cce5ff;padding:12px 6px;border-radius:8px;text-align:center;">
-          <div style="font-size:18px;font-weight:bold;color:#004085;">${report.partiteGiocate || 0}</div>
-          <div style="color:#666;font-size:9px;">Giocate</div>
-        </div>
-        <div class="stat-card" style="background:#d4edda;padding:12px 6px;border-radius:8px;text-align:center;">
-          <div style="font-size:18px;font-weight:bold;color:#28a745;">${report.vittorie || 0}</div>
-          <div style="color:#666;font-size:9px;">V</div>
-        </div>
-        <div class="stat-card" style="background:#fff3cd;padding:12px 6px;border-radius:8px;text-align:center;">
-          <div style="font-size:18px;font-weight:bold;color:#856404;">${report.pareggi || 0}</div>
-          <div style="color:#666;font-size:9px;">P</div>
-        </div>
-        <div class="stat-card" style="background:#f8d7da;padding:12px 6px;border-radius:8px;text-align:center;">
-          <div style="font-size:18px;font-weight:bold;color:#dc3545;">${report.sconfitte || 0}</div>
-          <div style="color:#666;font-size:9px;">S</div>
-        </div>
-        <div class="stat-card" style="background:#cce5ff;padding:12px 6px;border-radius:8px;text-align:center;">
-          <div style="font-size:18px;font-weight:bold;color:#28a745;">${report.golFatti || 0}</div>
-          <div style="color:#666;font-size:9px;">GF</div>
-        </div>
-        <div class="stat-card" style="background:#e2e3e5;padding:12px 6px;border-radius:8px;text-align:center;">
-          <div style="font-size:18px;font-weight:bold;color:#495057;">${report.golSubiti || 0}</div>
-          <div style="color:#666;font-size:9px;">GS</div>
-        </div>
-        <div class="stat-card" style="background:#f8f9fa;padding:12px 6px;border-radius:8px;text-align:center;">
-          <div style="font-size:18px;font-weight:bold;color:#495057;">${report.differenzaReti > 0 ? '+' : ''}${report.differenzaReti || 0}</div>
-          <div style="color:#666;font-size:9px;">DR</div>
-        </div>
-      </div>
-      <style>
-        @media (max-width: 800px) { .stats-grid { grid-template-columns: repeat(4, 1fr) !important; } }
-        @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr) !important; } }
-        @media (max-width: 400px) { .stats-grid { grid-template-columns: repeat(2, 1fr) !important; } }
-      </style>
-      
-      <!-- Top Rankings -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-bottom:24px;">
-        <!-- Top 3 Marcatori -->
-        <div>
-          <h3 style="margin:0 0 12px 0;">⚽ Top 3 Marcatori</h3>
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr style="background:#f8f9fa;">
-                <th style="padding:8px;text-align:left;border-bottom:2px solid #dee2e6;font-size:13px;">#</th>
-                <th style="padding:8px;text-align:left;border-bottom:2px solid #dee2e6;font-size:13px;">Giocatore</th>
-                <th style="padding:8px;text-align:center;border-bottom:2px solid #dee2e6;font-size:13px;">Gol</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${report.topMarcatori.slice(0, 3).map((m, i) => `
-                <tr style="background:${i === 0 ? '#fff9e6' : 'white'};">
-                  <td style="padding:8px;font-weight:bold;">${i + 1}</td>
-                  <td style="padding:8px;">${m.cognome} ${m.nome}</td>
-                  <td style="padding:8px;text-align:center;font-weight:bold;">${m.gol}</td>
-                </tr>
-              `).join('')}
-              ${report.topMarcatori.length === 0 ? '<tr><td colspan="3" style="padding:12px;text-align:center;color:#666;">-</td></tr>' : ''}
-            </tbody>
-          </table>
-        </div>
-        
-        <!-- Top 3 Assist -->
-        <div>
-          <h3 style="margin:0 0 12px 0;">🅰️ Top 3 Assist</h3>
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr style="background:#f8f9fa;">
-                <th style="padding:8px;text-align:left;border-bottom:2px solid #dee2e6;font-size:13px;">#</th>
-                <th style="padding:8px;text-align:left;border-bottom:2px solid #dee2e6;font-size:13px;">Giocatore</th>
-                <th style="padding:8px;text-align:center;border-bottom:2px solid #dee2e6;font-size:13px;">Assist</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${report.topAssist.slice(0, 3).map((a, i) => `
-                <tr style="background:${i === 0 ? '#e6f3ff' : 'white'};">
-                  <td style="padding:8px;font-weight:bold;">${i + 1}</td>
-                  <td style="padding:8px;">${a.cognome} ${a.nome}</td>
-                  <td style="padding:8px;text-align:center;font-weight:bold;">${a.assist}</td>
-                </tr>
-              `).join('')}
-              ${report.topAssist.length === 0 ? '<tr><td colspan="3" style="padding:12px;text-align:center;color:#666;">-</td></tr>' : ''}
-            </tbody>
-          </table>
-        </div>
-        
-        <!-- Top 3 Presenze -->
-        <div>
-          <h3 style="margin:0 0 12px 0;">👕 Top 3 Presenze</h3>
-          <table style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr style="background:#f8f9fa;">
-                <th style="padding:8px;text-align:left;border-bottom:2px solid #dee2e6;font-size:13px;">#</th>
-                <th style="padding:8px;text-align:left;border-bottom:2px solid #dee2e6;font-size:13px;">Giocatore</th>
-                <th style="padding:8px;text-align:center;border-bottom:2px solid #dee2e6;font-size:13px;">Pres.</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${report.topPresenze.slice(0, 3).map((p, i) => `
-                <tr style="background:${i === 0 ? '#e6f3ff' : 'white'};">
-                  <td style="padding:8px;font-weight:bold;">${i + 1}</td>
-                  <td style="padding:8px;">${p.cognome} ${p.nome}</td>
-                  <td style="padding:8px;text-align:center;font-weight:bold;">${p.presenze}</td>
-                </tr>
-              `).join('')}
-              ${report.topPresenze.length === 0 ? '<tr><td colspan="3" style="padding:12px;text-align:center;color:#666;">-</td></tr>' : ''}
-            </tbody>
-          </table>
-        </div>
+      <!-- Stats Squadra compatte -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;">
+        <span style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;">${report.punti || 0} Punti</span>
+        <span style="background:#f0f0f0;padding:6px 12px;border-radius:6px;font-size:12px;">${report.partiteGiocate || 0} PG</span>
+        <span style="background:#d4edda;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;color:#28a745;">${report.vittorie || 0} V</span>
+        <span style="background:#fff3cd;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;color:#856404;">${report.pareggi || 0} P</span>
+        <span style="background:#f8d7da;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;color:#dc3545;">${report.sconfitte || 0} S</span>
+        <span style="background:#e8f5e9;padding:6px 12px;border-radius:6px;font-size:12px;">GF <strong>${report.golFatti || 0}</strong></span>
+        <span style="background:#fce4ec;padding:6px 12px;border-radius:6px;font-size:12px;">GS <strong>${report.golSubiti || 0}</strong></span>
+        <span style="background:#f0f0f0;padding:6px 12px;border-radius:6px;font-size:12px;">DR <strong>${report.differenzaReti > 0 ? '+' : ''}${report.differenzaReti || 0}</strong></span>
       </div>
       
-      <!-- Calendario Stagionale Raggruppato -->
-      <div>
-        <h3 style="margin:0 0 12px 0;">📅 Calendario Stagionale</h3>
+      <!-- Calendario Stagionale -->
+      <div style="margin-bottom:16px;">
+        <h3 style="margin:0 0 6px 0;font-size:13px;border-bottom:1px solid #ddd;padding-bottom:4px;">📅 Calendario</h3>
         ${(() => {
-          // Raggruppa partite per competizione
           const gruppi = {};
           (report.partite || []).forEach(p => {
             const comp = p.competizione || 'Altro';
             if (!gruppi[comp]) gruppi[comp] = [];
             gruppi[comp].push(p);
           });
-          return Object.entries(gruppi).map(([comp, partite]) => `
-            <div style="margin-bottom:20px;">
-              <h4 style="margin:0 0 8px 0;padding:8px 12px;background:#667eea;color:white;border-radius:6px;font-size:13px;">${comp}</h4>
-              <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
-                <thead>
-                  <tr style="background:#f0f0f0;">
-                    <th style="padding:6px;text-align:center;border-bottom:2px solid #dee2e6;font-size:10px;width:30px;">G.</th>
-                    <th style="padding:6px;text-align:left;border-bottom:2px solid #dee2e6;font-size:10px;">Data</th>
-                    <th style="padding:6px;text-align:center;border-bottom:2px solid #dee2e6;font-size:10px;width:40px;">C/T</th>
-                    <th style="padding:6px;text-align:left;border-bottom:2px solid #dee2e6;font-size:10px;">Avversario</th>
-                    <th style="padding:6px;text-align:center;border-bottom:2px solid #dee2e6;font-size:10px;width:70px;">Risultato</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${partite.map((p, i) => {
-                    const isCasa = p.luogo === 'Casa';
-                    const resultClass = p.golCasa > p.golOspiti ? 'color:#28a745;' : p.golCasa === p.golOspiti ? 'color:#856404;' : 'color:#dc3545;';
-                    const resultIcon = p.golCasa > p.golOspiti ? '✅' : p.golCasa === p.golOspiti ? '🤝' : '❌';
-                    return `
-                    <tr style="background:${i % 2 === 0 ? 'white' : '#f8f9fa'};">
-                      <td style="padding:6px;text-align:center;font-weight:bold;color:#667eea;font-size:10px;">${p.giornata || '-'}</td>
-                      <td style="padding:6px;font-size:10px;">${formatDateShort(p.data)}</td>
-                      <td style="padding:6px;text-align:center;font-size:10px;"><span style="padding:2px 4px;background:${isCasa ? '#e6f3ff' : '#fff3cd'};border-radius:3px;color:${isCasa ? '#004085' : '#856404'};font-size:9px;">${isCasa ? 'C' : 'T'}</span></td>
-                      <td style="padding:6px;font-size:10px;">${p.avversario}</td>
-                      <td style="padding:6px;text-align:center;font-size:10px;"><span style="font-weight:bold;${resultClass}">${p.golCasa} - ${p.golOspiti}</span> <span style="font-size:10px;">${resultIcon}</span></td>
-                    </tr>`;}).join('')}
-                </tbody>
-              </table>
-            </div>
-          `).join('');
+          return Object.entries(gruppi).map(([comp, partite]) => {
+            const mid = Math.ceil(partite.length / 2);
+            const col1 = partite.slice(0, mid);
+            const col2 = partite.slice(mid);
+            const renderCol = (rows) => rows.map((p, i) => {
+              const isCasa = p.luogo === 'Casa';
+              const resultColor = p.golCasa > p.golOspiti ? '#28a745' : p.golCasa === p.golOspiti ? '#856404' : '#dc3545';
+              const logoImg = p.logo ? '<img src="' + p.logo + '" style="height:12px;width:12px;object-fit:contain;" onerror="this.style.display=\'none\'">' : '';
+              return '<tr style="background:' + (i % 2 === 0 ? 'white' : '#fafafa') + ';">'
+                + '<td style="padding:1px 3px;text-align:center;font-size:9px;font-weight:600;color:#667eea;">' + (p.giornata || '-') + '</td>'
+                + '<td style="padding:1px 3px;font-size:9px;">' + formatDateShort(p.data) + '</td>'
+                + '<td style="padding:1px 3px;text-align:center;"><span style="font-size:8px;padding:0 2px;background:' + (isCasa ? '#e6f3ff' : '#fff3cd') + ';border-radius:2px;color:' + (isCasa ? '#004085' : '#856404') + ';">' + (isCasa ? 'C' : 'T') + '</span></td>'
+                + '<td style="padding:1px 3px;font-size:9px;white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:3px;">' + logoImg + p.avversario + '</span></td>'
+                + '<td style="padding:1px 3px;text-align:center;font-size:9px;font-weight:700;color:' + resultColor + ';">' + p.golCasa + '-' + p.golOspiti + '</td>'
+                + '</tr>';
+            }).join('');
+            const thRow = '<tr style="background:#f0f0f0;"><th style="padding:2px 3px;text-align:center;font-size:8px;border-bottom:1px solid #dee2e6;width:20px;">G</th><th style="padding:2px 3px;text-align:left;font-size:8px;border-bottom:1px solid #dee2e6;width:52px;">Data</th><th style="padding:2px 3px;text-align:center;font-size:8px;border-bottom:1px solid #dee2e6;width:18px;"></th><th style="padding:2px 3px;text-align:left;font-size:8px;border-bottom:1px solid #dee2e6;">Avversario</th><th style="padding:2px 3px;text-align:center;font-size:8px;border-bottom:1px solid #dee2e6;width:36px;">Ris</th></tr>';
+            return `
+            <div style="margin-bottom:10px;">
+              <div style="background:#667eea;color:white;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:600;margin-bottom:4px;">${comp}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <table style="width:100%;border-collapse:collapse;"><thead>${thRow}</thead><tbody>${renderCol(col1)}</tbody></table>
+                <table style="width:100%;border-collapse:collapse;"><thead>${thRow}</thead><tbody>${renderCol(col2)}</tbody></table>
+              </div>
+            </div>`;
+          }).join('');
         })()}
+      </div>
+      
+      <!-- Statistiche Giocatori -->
+      <div>
+        <h3 style="margin:0 0 8px 0;font-size:13px;border-bottom:1px solid #ddd;padding-bottom:4px;">📊 Statistiche Giocatori</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:10px;">
+          <thead>
+            <tr style="background:#f8f9fa;">
+              <th style="padding:4px 6px;text-align:left;border-bottom:2px solid #dee2e6;">Giocatore</th>
+              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">Ruolo</th>
+              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">Pres.</th>
+              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">⚽</th>
+              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">🅰️</th>
+              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">🟨</th>
+              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">🟥</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(report.statsGiocatori || []).sort((a, b) => {
+              const ruoloOrder = ['Portiere','Difensore','Centrocampista','Attaccante'];
+              const ra = ruoloOrder.indexOf(a.ruolo), rb = ruoloOrder.indexOf(b.ruolo);
+              if (ra !== rb) return ra - rb;
+              return a.cognome.localeCompare(b.cognome);
+            }).map(p => `
+              <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="padding:3px 6px;font-weight:500;">${p.cognome} ${p.nome}</td>
+                <td style="padding:3px 4px;text-align:center;font-size:9px;color:#666;">${p.ruolo || '-'}</td>
+                <td style="padding:3px 4px;text-align:center;">${p.presenze || '-'}</td>
+                <td style="padding:3px 4px;text-align:center;font-weight:${p.gol ? '700' : '400'};color:${p.gol ? '#27AE60' : '#ccc'};">${p.gol || '-'}</td>
+                <td style="padding:3px 4px;text-align:center;font-weight:${p.assist ? '700' : '400'};color:${p.assist ? '#3498DB' : '#ccc'};">${p.assist || '-'}</td>
+                <td style="padding:3px 4px;text-align:center;color:${p.ammonizioni ? '#F39C12' : '#ccc'};">${p.ammonizioni || '-'}</td>
+                <td style="padding:3px 4px;text-align:center;color:${p.espulsioni ? '#E74C3C' : '#ccc'};">${p.espulsioni || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Footer -->
+      <div style="margin-top:16px;padding-top:8px;border-top:1px solid #ddd;text-align:center;color:#999;font-size:10px;">
+        <p style="margin:0;">Report generato da Youth Football Manager</p>
       </div>
     </div>
   `;
@@ -602,6 +548,12 @@ function printSeasonalReport() {
   const printArea = document.getElementById('seasonalPrintArea');
   if (!printArea) { alert('Area di stampa non trovata'); return; }
 
+  // Converti path relativi immagini in URL assoluti per la finestra di stampa
+  const clone = printArea.cloneNode(true);
+  clone.querySelectorAll('img').forEach(img => {
+    if (img.src) img.setAttribute('src', img.src); // forza URL assoluto
+  });
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -609,17 +561,18 @@ function printSeasonalReport() {
   <meta charset="UTF-8">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; padding: 15px; color: #333; font-size: 10px; background: white; }
-    h1 { font-size: 14px; margin: 0 0 5px 0; }
-    h2 { font-size: 12px; margin: 8px 0 4px 0; }
-    h3 { font-size: 11px; margin: 8px 0 4px 0; border-bottom: 1px solid #ddd; padding-bottom: 3px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9px; }
-    th, td { padding: 2px 4px; text-align: left; border: 1px solid #eee; }
+    body { font-family: Arial, sans-serif; padding: 10px; color: #333; font-size: 9px; background: white; }
+    h1 { font-size: 14px; margin: 0 0 4px 0; }
+    h2 { font-size: 12px; margin: 6px 0 3px 0; }
+    h3 { font-size: 10px; margin: 6px 0 3px 0; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 2px; font-size: 8px; }
+    th, td { padding: 1px 3px; text-align: left; border: 1px solid #eee; }
     th { background: #f5f5f5; font-weight: 600; }
-    @page { size: A4 landscape; margin: 5mm; }
+    img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    @page { size: A4 portrait; margin: 5mm; }
   </style>
 </head>
-<body>${printArea.innerHTML}</body>
+<body>${clone.innerHTML}</body>
 </html>`;
 
   const blob = new Blob([html], { type: 'text/html' });
@@ -686,13 +639,17 @@ function renderPlayerReport(report) {
   
   container.innerHTML = `
     <div id="playerPrintArea" style="background:white;padding:24px;">
-      <!-- Header -->
-      <div style="text-align:center;border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:16px;">
-        <h1 style="margin:0;font-size:24px;">${report.giocatore.cognome || ''} ${report.giocatore.nome}</h1>
-        <p style="margin:4px 0 0 0;color:#666;font-size:13px;">
-          ${report.giocatore.data_nascita ? 'Nato: ' + formatBirthDate(report.giocatore.data_nascita) : ''}
-          ${report.giocatore.nazionalita ? ' | ' + report.giocatore.nazionalita : ''}
-        </p>
+      <!-- Header con loghi -->
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:16px;">
+        <div style="width:70px;">${(() => { const l = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : ''; return l ? '<img src="' + l + '" style="height:60px;object-fit:contain;">' : ''; })()}</div>
+        <div style="flex:1;text-align:center;">
+          <h1 style="margin:0;font-size:22px;">${report.giocatore.cognome || ''} ${report.giocatore.nome}</h1>
+          <p style="margin:4px 0 0 0;color:#666;font-size:12px;">
+            ${report.giocatore.data_nascita ? 'Nato: ' + formatBirthDate(report.giocatore.data_nascita) : ''}
+            ${report.giocatore.nazionalita ? ' | ' + report.giocatore.nazionalita : ''}
+          </p>
+        </div>
+        <div style="width:70px;text-align:right;"><img src="/img/logo-lnd.png" style="height:60px;object-fit:contain;" onerror="this.style.display='none'"></div>
       </div>
       
       <!-- Stats Grid - Auto sizing -->
@@ -770,6 +727,9 @@ function printPlayerReport() {
   const printArea = document.getElementById('playerPrintArea');
   if (!printArea) { alert('Area di stampa non trovata'); return; }
 
+  const clone = printArea.cloneNode(true);
+  clone.querySelectorAll('img').forEach(img => { if (img.src) img.setAttribute('src', img.src); });
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -781,10 +741,11 @@ function printPlayerReport() {
     h1 { font-size: 16px; margin: 0 0 6px 0; }
     table { width: 100%; border-collapse: collapse; font-size: 10px; }
     th, td { padding: 3px 5px; border: 1px solid #eee; }
-    @page { size: A4; margin: 8mm; }
+    img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    @page { size: A4 portrait; margin: 8mm; }
   </style>
 </head>
-<body>${printArea.innerHTML}</body>
+<body>${clone.innerHTML}</body>
 </html>`;
 
   const blob = new Blob([html], { type: 'text/html' });

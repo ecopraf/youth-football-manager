@@ -64,7 +64,7 @@ export async function openMatchDetail(mid) {
     html += '.timeline-divider span{font-size:11px;font-weight:700;color:#667eea;padding:4px 14px;background:#f0f4ff;border-radius:12px;text-transform:uppercase;letter-spacing:0.5px;}';
     html += '</style>';
     
-    html += '<div class="match-header">';
+    html += '<div class="match-header" data-help="match.risultato">';
     html += '<h2>' + leftTeam + ' vs ' + rightTeam + '</h2>';
     html += '<div class="score">' + scoreLeft + ' - ' + scoreRight + '</div>';
     html += '<div class="result-label">' + resultIcon + ' ' + resultLabel + '</div>';
@@ -82,7 +82,7 @@ export async function openMatchDetail(mid) {
       return fullName || '';
     };
     
-    html += '<div class="timeline-title">📋 Cronologia Eventi</div>';
+    html += '<div class="timeline-title" data-help="match.eventi">📋 Cronologia Eventi</div>';
     
     if (eventi.length === 0) {
       html += '<p style="text-align:center;color:#888;padding:30px;font-size:14px;">Nessun evento registrato per questa partita</p>';

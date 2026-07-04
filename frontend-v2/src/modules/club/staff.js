@@ -29,7 +29,7 @@ export default async function loadStaff() {
       <h1 class="page-title">👥 Staff</h1>
       ${isAdmin ? `<div style="display:flex;gap:8px;">
         <button class="btn btn-secondary" id="btnPasteStaff">📋 Incolla da TC</button>
-        <button class="btn btn-primary" id="btnAddStaff">+ Aggiungi</button>
+        <button class="btn btn-primary" id="btnAddStaff" data-help="staff.aggiungi">+ Aggiungi</button>
       </div>` : ''}
     </div>
     <div id="staffSections"></div>

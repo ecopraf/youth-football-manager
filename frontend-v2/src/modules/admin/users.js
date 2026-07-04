@@ -17,7 +17,7 @@ export default async function loadUsers() {
   c.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <h1 class="page-title">👥 Gestione Utenti</h1>
-      <button class="btn btn-primary" id="btnAddUser">+ Nuovo Utente</button>
+      <button class="btn btn-primary" id="btnAddUser" data-help="users.crea">+ Nuovo Utente</button>
     </div>
     
     <div class="card">

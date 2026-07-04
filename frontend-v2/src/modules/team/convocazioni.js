@@ -37,7 +37,7 @@ export async function openConvocation(mid, readOnly) {
 
   const content = `
     <p style="margin-bottom:8px;color:var(--gray);">${formatDate(match.data_ora)}</p>
-    <div style="display:flex;gap:8px;margin-bottom:12px;">
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;" data-help="convocazioni.selezione">
       <button class="btn btn-secondary btn-small" id="btnSelAll">✅ Tutti</button>
       <button class="btn btn-secondary btn-small" id="btnDeselAll">❌ Nessuno</button>
       <span style="font-size:12px;color:var(--gray);" id="convCount">${ids.length} convocati</span>
@@ -54,8 +54,8 @@ export async function openConvocation(mid, readOnly) {
 
   const footer = `
     <button class="btn btn-secondary" id="modalCancel">Chiudi</button>
-    <button class="btn btn-primary" id="saveBtn">💾 Salva</button>
-    <button class="btn btn-primary" id="previewBtn" style="background:#0A1C3A;">📄 Vedi Convocazione</button>`;
+    <button class="btn btn-primary" id="saveBtn" data-help="convocazioni.salva">💾 Salva</button>
+    <button class="btn btn-primary" id="previewBtn" style="background:#0A1C3A;" data-help="convocazioni.anteprima">📄 Vedi Convocazione</button>`;
 
   const modal = createModal('📋 Convocazioni - vs ' + (match.avversario || '...'), content, footer, '650px');
 

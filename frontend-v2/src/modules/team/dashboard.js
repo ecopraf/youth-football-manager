@@ -58,7 +58,7 @@ export default async function loadDashboard() {
       const luogoHtml = prossimaPartita.luogo === 'Casa' ? ' · 🏠 Casa' : ' · ✈️ Trasferta';
       const compHtml = prossimaPartita.competizione ? ' · 🏆 ' + prossimaPartita.competizione : '';
       const btnHtml = convButton ? '<div style="margin-top:10px;">' + convButton + '</div>' : '';
-      return '<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;margin-bottom:24px;color:white;border-radius:16px;box-shadow:0 8px 25px rgba(102,126,234,0.4);">' +
+      return '<div data-help="dashboard.prossimaPartita" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;margin-bottom:24px;color:white;border-radius:16px;box-shadow:0 8px 25px rgba(102,126,234,0.4);">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">' +
         '<div>' +
         '<div style="font-size:11px;font-weight:600;opacity:0.9;text-transform:uppercase;margin-bottom:4px;">⏱ Prossima Partita</div>' +
@@ -123,7 +123,7 @@ export default async function loadDashboard() {
       return '<div style="text-align:center;"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:' + style.color + ';color:white;font-size:12px;font-weight:bold;border-radius:8px;margin-bottom:4px;">' + esito + '</span><div style="font-size:10px;color:#aaa;">' + r.golFatti + '-' + r.golSubiti + '</div></div>';
     }).join('<span style="color:#ddd;margin:0 8px;align-self:center;">—</span>');
     
-    const trendBox = '<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:14px;padding:16px;margin-bottom:16px;">' +
+    const trendBox = '<div data-help="dashboard.trend" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:14px;padding:16px;margin-bottom:16px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
       '<span style="color:white;font-size:11px;font-weight:600;opacity:0.9;">ANDAMENTO ULTIME ' + ultimi5.length + '</span>' +
       '<span style="color:white;font-size:10px;opacity:0.8;">' + v5 + 'V ' + p5 + 'P ' + s5 + 'S</span></div>' +
@@ -214,7 +214,7 @@ export default async function loadDashboard() {
       const pen = r.penalita ? ' <span style="font-size:9px;color:#E74C3C;">(' + r.penalita + ')</span>' : '';
       return '<tr' + cls + '><td>' + r.pos + '</td><td><div class="cl-team">' + logo + '<span>' + r.nome + pen + '</span></div></td><td><b>' + r.punti + '</b></td><td>' + r.g + '</td><td>' + r.v + '</td><td>' + r.n + '</td><td>' + r.p + '</td><td>' + r.gf + '</td><td>' + r.gs + '</td></tr>';
     }).join('');
-    return '<div class="result-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">🏆 ' + header + '</h3>' +
+    return '<div class="result-card" data-help="dashboard.classifica"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">🏆 ' + header + '</h3>' +
       (info.aggiornamento ? '<div style="font-size:10px;color:#999;margin-bottom:8px;">Aggiornata al ' + info.aggiornamento + '</div>' : '') +
       '<div style="overflow-x:auto;"><table class="classifica-table"><thead><tr><th>#</th><th>Squadra</th><th>Pt</th><th>G</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   };
@@ -307,7 +307,7 @@ export default async function loadDashboard() {
       const s = isOur ? ' style="background:#f0f4ff;font-weight:600;color:#667eea;"' : '';
       return '<tr' + s + '><td style="padding:3px 4px;text-align:center;color:#999;font-size:10px;white-space:nowrap;">' + (i + 1) + '</td><td style="padding:3px 4px;white-space:nowrap;">' + m.nome + '</td><td style="padding:3px 4px;text-align:center;font-weight:700;white-space:nowrap;">' + m.gol + '</td><td style="padding:3px 4px;color:#888;font-size:10px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;">' + m.squadra + '</td></tr>';
     }).join('');
-    return '<div class="result-card" style="margin-top:20px;"><h3 style="margin:0 0 12px 0;font-size:15px;color:#333;">⚽ Top Marcatori</h3>' +
+    return '<div class="result-card" data-help="dashboard.marcatori" style="margin-top:20px;"><h3 style="margin:0 0 12px 0;font-size:15px;color:#333;">⚽ Top Marcatori</h3>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
       '<div><div style="font-size:11px;font-weight:700;color:#999;margin-bottom:6px;">GENERALE</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><tbody>' + renderTable(top10Reg) + '</tbody></table></div>' +
       '<div><div style="font-size:11px;font-weight:700;color:#667eea;margin-bottom:6px;">GIRONE ' + (classificaData?.info?.group_name || '') + '</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><tbody>' + renderTable(top10Gir) + '</tbody></table></div>' +
@@ -368,19 +368,19 @@ export default async function loadDashboard() {
     
     renderProssimaPartitaSection() +
     
-    '<div class="dash-widgets">' +
+    '<div class="dash-widgets" data-help="dashboard.widgets">' +
     widgets.map(w => '<div class="dash-card"><div style="font-size:20px;font-weight:bold;color:' + (w.c || 'var(--text)') + ';">' + w.v + '</div><div style="font-size:10px;color:var(--gray);margin-top:4px;">' + w.l + '</div></div>').join('') +
     '</div>' +
     
-    '<div class="top-grid">' +
+    '<div class="top-grid" data-help="dashboard.topPlayers">' +
     renderTopSection('⚽ Top 3 Marcatori', (top.marcatori || []).slice(0, 3), 'gol') +
     renderTopSection('🅰️ Top 3 Assist', (top.assistmen || []).slice(0, 3), 'assist') +
     renderTopSection('🏃 Top 3 Presenze', (top.presenze || []).slice(0, 3), 'presenze') +
     '</div>' +
     
     '<div class="bottom-grid">' +
-    '<div><div class="result-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>' +
-    '<div class="staff-card staff-desktop" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
+    '<div><div class="result-card" data-help="dashboard.risultati"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>' +
+    '<div class="staff-card staff-desktop" data-help="dashboard.staff" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
     '<div>' + renderClassifica() + renderCalendarioGR() + renderMarcatoriGR() + '</div>' +
     '</div>' +
     '<div class="staff-card staff-mobile" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div>';
