@@ -332,10 +332,10 @@ function renderGuestCalendar(c, nextMatch, pastMatches, stats) {
 
 function attachCardListeners() {
   // Desktop actions (in position absolute)
-  document.querySelectorAll('.desktop-actions .btn-editm').forEach(b => {
+  document.querySelectorAll('.match-card-actions .btn-editm').forEach(b => {
   b.addEventListener('click', (e) => { e.stopPropagation(); openMatchForm(b.dataset.mid); });
   });
-  document.querySelectorAll('.desktop-actions .btn-del').forEach(b => {
+  document.querySelectorAll('.match-card-actions .btn-del').forEach(b => {
   b.addEventListener('click', (e) => { e.stopPropagation(); deleteMatch(b.dataset.mid); });
   });
 }
