@@ -1,19 +1,34 @@
+// Parse ISO-like datetime string without timezone conversion
+// DB stores "2026-07-05T10:30:00" meaning local time (no TZ)
+function parseLocal(d) {
+  if (!d) return null;
+  const s = String(d);
+  // "2026-07-05T10:30:00" or "2026-07-05T10:30"
+  const m = s.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  // "2026-07-05" (date only)
+  const d2 = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (d2) return new Date(+d2[1], +d2[2] - 1, +d2[3]);
+  return new Date(d);
+}
+
 export function formatDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('it-IT', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
+  const date = parseLocal(d);
+  return date.toLocaleDateString('it-IT', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
 }
 
 export function formatDateShort(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('it-IT');
+  const date = parseLocal(d);
+  return date.toLocaleDateString('it-IT');
 }
 
 export function formatDateCompact(d) {
   if (!d) return '';
-  const date = new Date(d);
+  const date = parseLocal(d);
   const giorni = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
   const mesi = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
   const giorno = giorni[date.getDay()];
@@ -26,17 +41,17 @@ export function formatDateCompact(d) {
 
 export function formatBirthDate(d) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('it-IT', {
+  const date = parseLocal(d);
+  return date.toLocaleDateString('it-IT', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
 }
 
 export function formatTime(t) {
   if (!t) return '';
-  // Se è un ISO datetime, estrai ore:minuti
   if (t.includes('T')) {
-    const date = new Date(t);
-    return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+    const m = t.match(/T(\d{2}):(\d{2})/);
+    return m ? m[1] + ':' + m[2] : '';
   }
   return t.slice(0, 5);
 }

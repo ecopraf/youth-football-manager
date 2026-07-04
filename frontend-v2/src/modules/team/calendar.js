@@ -476,8 +476,9 @@ window.unarchiveMatch = async function(id) {
 
 export function openMatchForm(mid) {
   const m = mid ? allMatches.find(x => x.id === mid) : null;
+  const editDate = m && m.data_ora ? m.data_ora.slice(0, 16) : '';
   const content = `
-  <div class="form-group" style="margin-bottom:12px;"><label>Data e Ora</label><input id="mfD" type="datetime-local" value="${m ? new Date(m.data_ora).toISOString().slice(0, 16) : ''}"></div>
+  <div class="form-group" style="margin-bottom:12px;"><label>Data e Ora</label><input id="mfD" type="datetime-local" value="${editDate}"></div>
   <div class="form-group" style="margin-bottom:12px;"><label>Avversario</label><input id="mfA" value="${m ? m.avversario || '' : ''}"></div>
   <div class="form-group" style="margin-bottom:12px;"><label>Luogo</label><select id="mfL"><option ${m && m.luogo === 'Casa' ? 'selected' : ''}>Casa</option><option ${m && m.luogo === 'Trasferta' ? 'selected' : ''}>Trasferta</option></select></div>
   <div class="form-group" style="margin-bottom:12px;"><label>Competizione</label><input id="mfC" value="${m ? m.competizione || '' : ''}"></div>
@@ -485,8 +486,9 @@ export function openMatchForm(mid) {
   const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="saveBtn">Salva</button>';
   const modal = createModal(m ? 'Modifica' : 'Nuova Partita', content, footer, '500px');
   document.getElementById('saveBtn').addEventListener('click', async () => {
+  const rawDate = document.getElementById('mfD').value; // "2026-07-05T10:30" (local)
   const d = {
-    dataOra: new Date(document.getElementById('mfD').value).toISOString(),
+    dataOra: rawDate ? rawDate + ':00' : null,
     avversario: document.getElementById('mfA').value,
     luogo: document.getElementById('mfL').value,
     competizione: document.getElementById('mfC').value,
