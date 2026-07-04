@@ -14,7 +14,7 @@
 | Frontend | Vite + JS ES Modules → Vercel |
 | Backend | Node.js/Express (13 router) → Vercel |
 | Database | Supabase PostgreSQL |
-| Workspace attivi | SSD New Team, Albalonga, DF Academy |
+| Workspace attivi | Albalonga, DF Academy |
 
 ---
 
