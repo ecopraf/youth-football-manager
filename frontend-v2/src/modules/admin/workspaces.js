@@ -465,7 +465,7 @@ async function openDeleteModal(wsId) {
   `;
 
   document.getElementById('delConfirm').onclick = async () => {
-    if (!confirm(`Confermi l'eliminazione DEFINITIVA di "${ws.nome}"?`)) return;
+    if (!await confirm(`Confermi l'eliminazione DEFINITIVA di "${ws.nome}"?`)) return;
     showLoading('Eliminazione in corso...');
     try {
       await apiFetch(`/workspaces/${wsId}`, { method: 'DELETE' });

@@ -318,7 +318,7 @@ function renderUsers() {
   
   window._editUser = (id) => openModal(id);
   window._deleteUser = async (id) => {
-    if (!confirm('Disattivare questo utente?')) return;
+    if (!await confirm('Disattivare questo utente?')) return;
     try {
       await apiFetch(`/auth/users/${id}`, { method: 'DELETE' });
       await loadData();

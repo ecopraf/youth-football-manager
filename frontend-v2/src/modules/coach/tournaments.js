@@ -47,7 +47,7 @@ function attachListListeners() {
   const c = document.getElementById('pageContent');
   c.querySelectorAll('[data-action="delete"]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Eliminare questo torneo?')) return;
+      if (!await confirm('Eliminare questo torneo?')) return;
       await apiFetch('/tornei/' + btn.dataset.id, { method: 'DELETE' });
       tournaments = tournaments.filter(t => t.id !== btn.dataset.id);
       document.getElementById('torneiList').innerHTML = renderList();

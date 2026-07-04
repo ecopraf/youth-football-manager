@@ -133,7 +133,7 @@ function updateActionBtns() {
 async function handleDeleteSelected() {
   const checked = document.querySelectorAll('.link-checkbox:checked');
   if (checked.length === 0) return;
-  if (!confirm(`Revocare ${checked.length} link selezionati?`)) return;
+  if (!await confirm(`Revocare ${checked.length} link selezionati?`)) return;
 
   showLoading('Eliminazione...');
   try {
@@ -152,7 +152,7 @@ async function handleDeleteSelected() {
 async function handleRenewSelected() {
   const checked = document.querySelectorAll('.link-checkbox:checked');
   if (checked.length === 0) return;
-  if (!confirm(`Rinnovare ${checked.length} link fino a fine stagione (30/06)?`)) return;
+  if (!await confirm(`Rinnovare ${checked.length} link fino a fine stagione (30/06)?`)) return;
 
   showLoading('Rinnovo...');
   try {
@@ -275,7 +275,7 @@ function renderTokens() {
 
   tbody.querySelectorAll('[data-renew]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Rinnovare questo link fino a fine stagione (30/06)?')) return;
+      if (!await confirm('Rinnovare questo link fino a fine stagione (30/06)?')) return;
       try {
         await apiFetch('/auth/guest-links-renew', { method: 'PUT', body: JSON.stringify({ tokens: [btn.dataset.renew] }) });
         await loadData();
@@ -285,7 +285,7 @@ function renderTokens() {
 
   tbody.querySelectorAll('[data-revoke]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Revocare questo link?')) return;
+      if (!await confirm('Revocare questo link?')) return;
       try {
         await apiFetch(`/auth/guest-link/${btn.dataset.revoke}`, { method: 'DELETE' });
         await loadData();
@@ -403,7 +403,7 @@ function onTipoChange() {
 async function handleBatchGenerate() {
   const teamId = window.YFM.squadraId;
   if (!teamId) { alert('Seleziona una squadra'); return; }
-  if (!confirm(`Generare link atleta per tutti i giocatori attivi della rosa?\nI giocatori che hanno già un link valido verranno saltati.`)) return;
+  if (!await confirm(`Generare link atleta per tutti i giocatori attivi della rosa?\nI giocatori che hanno già un link valido verranno saltati.`)) return;
 
   const user = window.YFM.getUser() || {};
   let categorie_accesso = [];

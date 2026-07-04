@@ -94,8 +94,8 @@ export default async function loadSettings() {
   });
 
   document.getElementById('btnDel').addEventListener('click', async () => {
-    if (!confirm('⚠️ Eliminare ' + window.YFM.getSquadraName() + '?')) return;
-    if (!confirm('Sei SICURO?')) return;
+    if (!await confirm('⚠️ Eliminare ' + window.YFM.getSquadraName() + '?')) return;
+    if (!await confirm('Sei SICURO?')) return;
     showLoading();
     await apiFetch('/squadre/' + window.YFM.squadraId, { method: 'DELETE' });
     const { loadSquadre } = await import('../team/squadre.js');

@@ -179,7 +179,7 @@ async function addSeason() {
 
 async function activateSeason(id) {
   const s = seasons.find(x => x.id === id);
-  if (!confirm(`Attivare la stagione "${s?.nome}"? L'altra verrà disattivata.`)) return;
+  if (!await confirm(`Attivare la stagione "${s?.nome}"? L'altra verrà disattivata.`)) return;
   showLoading();
   try {
     await apiFetch(`/stagioni/${id}`, { method: 'PUT', body: JSON.stringify({ attiva: true }) });
@@ -191,7 +191,7 @@ async function activateSeason(id) {
 
 async function deleteSeason(id) {
   const s = seasons.find(x => x.id === id);
-  if (!confirm(`Eliminare la stagione "${s?.nome}"?`)) return;
+  if (!await confirm(`Eliminare la stagione "${s?.nome}"?`)) return;
   showLoading();
   try {
     await apiFetch(`/stagioni/${id}`, { method: 'DELETE' });
@@ -240,7 +240,7 @@ async function editCategory(id) {
 
 async function deleteCategory(id) {
   const cat = categories.find(c => c.id === id);
-  if (!confirm(`Eliminare la categoria "${cat?.nome}"?`)) return;
+  if (!await confirm(`Eliminare la categoria "${cat?.nome}"?`)) return;
   showLoading();
   try {
     await apiFetch(`/categorie/${id}`, { method: 'DELETE' });

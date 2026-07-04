@@ -178,7 +178,7 @@ function attachCardListeners() {
       e.stopPropagation();
       const pid = btn.dataset.pid;
       const p = allPlayers.find(x => x.id === pid);
-      if (!confirm('Rimandare ' + (p ? p.nome + ' ' + p.cognome : '') + ' alla categoria originale?')) return;
+      if (!await confirm('Rimandare ' + (p ? p.nome + ' ' + p.cognome : '') + ' alla categoria originale?')) return;
       showLoading();
       try {
         await apiFetch('/squadre/' + window.YFM.squadraId + '/disaggrega', { method: 'POST', body: JSON.stringify({ playerIds: [pid] }) });
@@ -260,7 +260,7 @@ async function deletePlayer(pid) {
 
 async function deleteSelectedPlayers() {
   if (selectedPlayers.size === 0) return;
-  if (!confirm('Eliminare ' + selectedPlayers.size + ' giocatori dalla rosa?')) return;
+  if (!await confirm('Eliminare ' + selectedPlayers.size + ' giocatori dalla rosa?')) return;
   showLoading();
   try {
     for (const pid of selectedPlayers) {
@@ -278,7 +278,7 @@ async function deleteSelectedPlayers() {
 
 async function svincolaSelectedPlayers() {
   if (selectedPlayers.size === 0) return;
-  if (!confirm('Svincolare ' + selectedPlayers.size + ' giocatori? Resteranno nello storico e potranno essere riattivati.')) return;
+  if (!await confirm('Svincolare ' + selectedPlayers.size + ' giocatori? Resteranno nello storico e potranno essere riattivati.')) return;
   showLoading();
   try {
     await apiFetch('/squadre/' + window.YFM.squadraId + '/svincola', {

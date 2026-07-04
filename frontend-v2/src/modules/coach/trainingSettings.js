@@ -201,7 +201,7 @@ function openTemplateModal(template, allTemplates) {
 
   // Delete
   document.getElementById('tplDelete')?.addEventListener('click', async () => {
-    if (!confirm('Eliminare questo template?')) return;
+    if (!await confirm('Eliminare questo template?')) return;
     showLoading();
     try {
       await apiFetch('/training-templates/' + template.id, { method: 'DELETE' });

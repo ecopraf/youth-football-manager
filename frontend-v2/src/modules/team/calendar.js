@@ -451,7 +451,7 @@ export function renderMatchCard(m, stats, isNext = false) {
 
 // Funzioni globali per archivia/sblocca
 window.archiveMatch = async function(id) {
-  if (!confirm('Archiviare questa partita? La partita verrà spostata nelle partite giocate e non sarà più possibile modificare eventi, formazione e convocazioni.')) return;
+  if (!await confirm('Archiviare questa partita? La partita verrà spostata nelle partite giocate e non sarà più possibile modificare eventi, formazione e convocazioni.')) return;
   showLoading();
   try {
     await apiFetch('/partite/' + id + '/archivia', { method: 'PUT' });
@@ -461,7 +461,7 @@ window.archiveMatch = async function(id) {
 };
 
 window.unarchiveMatch = async function(id) {
-  if (!confirm('Sbloccare questa partita? Sarà possibile modificare eventi, formazione e convocazioni.')) return;
+  if (!await confirm('Sbloccare questa partita? Sarà possibile modificare eventi, formazione e convocazioni.')) return;
   showLoading();
   try {
     await apiFetch('/partite/' + id + '/sblocca', { method: 'PUT' });
@@ -500,7 +500,7 @@ export function openMatchForm(mid) {
 }
 
 async function deleteMatch(id) {
-  if (!confirm('Eliminare?')) return;
+  if (!await confirm('Eliminare?')) return;
   await apiFetch('/partite/' + id, { method: 'DELETE' });
   loadCalendar();
 }
@@ -654,8 +654,8 @@ function openImportCSV() {
 async function deleteAllMatches() {
   const count = window.YFM.allMatches ? window.YFM.allMatches.length : 0;
   if (count === 0) { alert('Nessuna partita da eliminare'); return; }
-  if (!confirm(`⚠️ Eliminare TUTTE le ${count} partite del calendario?\n\nQuesta azione è irreversibile.`)) return;
-  if (!confirm('Sei davvero sicuro? Verranno eliminate tutte le partite, eventi, convocazioni e formazioni associate.')) return;
+  if (!await confirm(`⚠️ Eliminare TUTTE le ${count} partite del calendario?\n\nQuesta azione è irreversibile.`)) return;
+  if (!await confirm('Sei davvero sicuro? Verranno eliminate tutte le partite, eventi, convocazioni e formazioni associate.')) return;
   
   showLoading('Eliminazione...');
   try {

@@ -264,7 +264,7 @@ async function handleSave() {
 
 async function handleDelete(id) {
   const s = staffList.find(x => x.id === id);
-  if (!confirm(`Eliminare ${s?.cognome} ${s?.nome}?`)) return;
+  if (!await confirm(`Eliminare ${s?.cognome} ${s?.nome}?`)) return;
   showLoading();
   try {
     await apiFetch(`/staff/${id}`, { method: 'DELETE' });

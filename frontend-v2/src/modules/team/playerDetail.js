@@ -379,8 +379,8 @@ function renderPlayerDetail(container, data) {
     });
 
     // Elimina
-    document.getElementById('btnDeletePlayer')?.addEventListener('click', () => {
-      if (confirm('Eliminare questo giocatore dalla rosa?')) {
+    document.getElementById('btnDeletePlayer')?.addEventListener('click', async () => {
+      if (await confirm('Eliminare questo giocatore dalla rosa?')) {
         deletePlayer(player.id);
       }
     });
