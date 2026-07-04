@@ -213,18 +213,118 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // POST nuova stagione — input: { anno_inizio: 2026 }
+  // Auto-genera nome "2026/27", date 01/07/2026→30/06/2027
+  // Auto-crea un team per ogni categoria del workspace
+  // Disattiva stagione precedente
   router.post('/api/workspaces/:id/stagioni', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { nome, data_inizio, data_fine } = req.body;
-      if (!nome || !data_inizio || !data_fine) return res.status(400).json({ error: 'Nome, data inizio e data fine richiesti' });
-      const { data, error } = await supabase.from('season').insert({
-        workspace_id: id, nome, data_inizio, data_fine, attiva: true
+      const { anno_inizio, nome, data_inizio, data_fine } = req.body;
+
+      let seasonName, startDate, endDate;
+      if (anno_inizio) {
+        const anno = parseInt(anno_inizio);
+        if (isNaN(anno) || anno < 2020 || anno > 2050) return res.status(400).json({ error: 'Anno non valido' });
+        seasonName = `${anno}/${(anno + 1).toString().slice(2)}`;
+        startDate = `${anno}-07-01`;
+        endDate = `${anno + 1}-06-30`;
+      } else if (nome && data_inizio && data_fine) {
+        seasonName = nome; startDate = data_inizio; endDate = data_fine;
+      } else {
+        return res.status(400).json({ error: 'anno_inizio richiesto' });
+      }
+
+      // Check duplicato
+      const { data: existing } = await supabase.from('season').select('id').eq('workspace_id', id).eq('nome', seasonName);
+      if (existing && existing.length > 0) return res.status(400).json({ error: `Stagione ${seasonName} già esistente` });
+
+      // Disattiva stagioni precedenti
+      await supabase.from('season').update({ attiva: false }).eq('workspace_id', id);
+
+      // Crea stagione
+      const { data: season, error } = await supabase.from('season').insert({
+        workspace_id: id, nome: seasonName, data_inizio: startDate, data_fine: endDate, attiva: true
       }).select().single();
       if (error) return res.status(400).json({ error: error.message });
-      res.status(201).json(data);
+
+      // Auto-crea team per ogni categoria
+      const { data: categories } = await supabase.from('category').select('id, nome').eq('workspace_id', id);
+      const { data: ws } = await supabase.from('workspace').select('nome').eq('id', id).single();
+      const teamName = ws?.nome || 'Squadra';
+      const createdTeams = [];
+      for (const cat of (categories || [])) {
+        const { data: team } = await supabase.from('team').insert({
+          season_id: season.id, category_id: cat.id, nome: teamName
+        }).select().single();
+        if (team) createdTeams.push(team);
+      }
+
+      res.status(201).json({ ...season, teams_created: createdTeams.length });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // POST migrazione dati dalla stagione precedente alla nuova
+  // body: { from_season_id, migra_rosa: bool, migra_staff: bool, migra_config: bool }
+  router.post('/api/stagioni/:id/migra', authMiddleware, async (req, res) => {
+    try {
+      const newSeasonId = req.params.id;
+      const { from_season_id, migra_rosa, migra_staff, migra_config } = req.body;
+      if (!from_season_id) return res.status(400).json({ error: 'from_season_id richiesto' });
+
+      const { data: oldTeams } = await supabase.from('team').select('id, category_id').eq('season_id', from_season_id);
+      const { data: newTeams } = await supabase.from('team').select('id, category_id').eq('season_id', newSeasonId);
+      if (!oldTeams?.length || !newTeams?.length) return res.status(400).json({ error: 'Nessun team trovato' });
+
+      const result = { rosa: 0, staff: 0, config: 0 };
+
+      for (const newTeam of newTeams) {
+        const oldTeam = oldTeams.find(t => t.category_id === newTeam.category_id);
+        if (!oldTeam) continue;
+
+        if (migra_rosa) {
+          const { data: oldPlayers } = await supabase.from('team_player')
+            .select('player_id, numero_maglia, ruolo_preferito')
+            .eq('team_id', oldTeam.id).eq('stato', 'Attivo');
+          if (oldPlayers?.length) {
+            const inserts = oldPlayers.map(p => ({
+              team_id: newTeam.id, player_id: p.player_id,
+              numero_maglia: p.numero_maglia, ruolo_preferito: p.ruolo_preferito,
+              stato: 'Attivo', aggregato: false
+            }));
+            const { data: inserted } = await supabase.from('team_player').insert(inserts).select();
+            result.rosa += (inserted || []).length;
+          }
+        }
+
+        if (migra_staff) {
+          const { data: oldStaff } = await supabase.from('team_staff')
+            .select('staff_id, ruolo_squadra').eq('team_id', oldTeam.id);
+          if (oldStaff?.length) {
+            const inserts = oldStaff.map(s => ({
+              team_id: newTeam.id, staff_id: s.staff_id, ruolo_squadra: s.ruolo_squadra
+            }));
+            const { data: inserted } = await supabase.from('team_staff').insert(inserts).select();
+            result.staff += (inserted || []).length;
+          }
+        }
+
+        if (migra_config) {
+          const { data: oldConfig } = await supabase.from('training_config')
+            .select('giorno_settimana, ora_inizio, ora_fine, luogo').eq('team_id', oldTeam.id);
+          if (oldConfig?.length) {
+            const inserts = oldConfig.map(c => ({ ...c, team_id: newTeam.id }));
+            const { data: inserted } = await supabase.from('training_config').insert(inserts).select();
+            result.config += (inserted || []).length;
+          }
+        }
+      }
+
+      res.json({ success: true, migrated: result });
+    } catch (err) {
+      res.status(500).json({ error: err.message || 'Errore server' });
     }
   });
 

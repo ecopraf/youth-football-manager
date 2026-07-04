@@ -125,7 +125,6 @@ export function setupGuestLayout(tipo, playerName) {
       </div>
       <nav class="sidebar-nav">
         <a href="#" class="active" data-page="dashboard">📊 Dashboard</a>
-        <a href="#" data-page="roster">👥 Rosa</a>
         <a href="#" data-page="calendar">📅 Calendario</a>
         ${isAtleta ? '<a href="#" data-page="stats">📊 Statistiche</a>' : ''}
         ${isAtleta ? '<a href="#" data-page="absence">⚠️ Segnala Assenza</a>' : ''}

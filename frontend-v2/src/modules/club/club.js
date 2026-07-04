@@ -33,19 +33,14 @@ function renderClub(c, ws, facility, staff) {
   const teamName = window.YFM.getSquadraName();
   const logo = ws?.logo_url || '';
 
-  // Raggruppa staff per ruolo
-  const staffTecnico = staff.filter(s => ['allenatore', 'preparatore_atletico', 'allenatore_portieri', 'collaboratore'].includes(s.ruolo_squadra));
-  const staffDirigenziale = staff.filter(s => ['dirigente', 'direttore_sportivo', 'osservatore'].includes(s.ruolo_squadra));
+  // Raggruppa staff per ruolo (case-insensitive)
+  const normalize = r => (r || '').toLowerCase().replace(/[_ ]+/g, ' ').trim();
+  const isTecnico = r => { const n = normalize(r); return n.includes('allenatore') || n.includes('preparatore') || n.includes('collaboratore'); };
+  const isDirigente = r => { const n = normalize(r); return n.includes('dirigente') || n.includes('direttore') || n.includes('osservatore'); };
+  const staffTecnico = staff.filter(s => isTecnico(s.ruolo_squadra));
+  const staffDirigenziale = staff.filter(s => isDirigente(s.ruolo_squadra));
+  const staffAltro = staff.filter(s => !isTecnico(s.ruolo_squadra) && !isDirigente(s.ruolo_squadra));
 
-  const ruoloLabels = {
-    allenatore: 'Allenatore',
-    preparatore_atletico: 'Preparatore Atletico',
-    allenatore_portieri: 'Allenatore Portieri',
-    collaboratore: 'Collaboratore Tecnico',
-    dirigente: 'Dirigente',
-    direttore_sportivo: 'Direttore Sportivo',
-    osservatore: 'Osservatore'
-  };
 
   let html = `<style>
     .club-header { display:flex; align-items:center; gap:16px; margin-bottom:24px; }
@@ -84,7 +79,7 @@ function renderClub(c, ws, facility, staff) {
       const initials = (s.nome?.[0] || '') + (s.cognome?.[0] || '');
       html += `<div class="club-staff-item">
         <div class="club-staff-avatar">${initials.toUpperCase()}</div>
-        <div><div class="club-staff-name">${s.cognome} ${s.nome}</div><div class="club-staff-role">${ruoloLabels[s.ruolo_squadra] || s.ruolo_squadra}</div></div>
+        <div><div class="club-staff-name">${s.cognome} ${s.nome}</div><div class="club-staff-role">${s.ruolo_squadra || s.ruolo || ''}</div></div>
       </div>`;
     });
   } else {
@@ -100,11 +95,20 @@ function renderClub(c, ws, facility, staff) {
       const initials = (s.nome?.[0] || '') + (s.cognome?.[0] || '');
       html += `<div class="club-staff-item">
         <div class="club-staff-avatar" style="background:linear-gradient(135deg, #F39C12, #E74C3C);">${initials.toUpperCase()}</div>
-        <div><div class="club-staff-name">${s.cognome} ${s.nome}</div><div class="club-staff-role">${ruoloLabels[s.ruolo_squadra] || s.ruolo_squadra}</div></div>
+        <div><div class="club-staff-name">${s.cognome} ${s.nome}</div><div class="club-staff-role">${s.ruolo_squadra || s.ruolo || ''}</div></div>
       </div>`;
     });
   } else {
     html += '<div class="club-empty">Nessun dirigente assegnato</div>';
+  }
+  if (staffAltro.length > 0) {
+    staffAltro.forEach(s => {
+      const initials = (s.nome?.[0] || '') + (s.cognome?.[0] || '');
+      html += `<div class="club-staff-item">
+        <div class="club-staff-avatar" style="background:linear-gradient(135deg, #6b7280, #374151);">${initials.toUpperCase()}</div>
+        <div><div class="club-staff-name">${s.cognome} ${s.nome}</div><div class="club-staff-role">${s.ruolo_squadra || s.ruolo || ''}</div></div>
+      </div>`;
+    });
   }
   html += '</div>';
 

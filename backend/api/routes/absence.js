@@ -47,6 +47,31 @@ module.exports = function createAbsenceRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // GET /api/absence/team/:teamId/week — assenze della settimana corrente (per convocazioni)
+  router.get('/api/absence/team/:teamId/week', authMiddleware, async (req, res) => {
+    try {
+      const now = new Date();
+      const day = now.getDay();
+      const diffToMon = day === 0 ? 6 : day - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - diffToMon);
+      const mondayStr = monday.toISOString().slice(0, 10);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const sundayStr = sunday.toISOString().slice(0, 10);
+
+      const { data, error } = await supabase.from('absence_notification')
+        .select('player_id, data_allenamento')
+        .eq('team_id', req.params.teamId)
+        .gte('data_allenamento', mondayStr)
+        .lte('data_allenamento', sundayStr);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data || []);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // GET /api/absence/unread/:teamId — conteggio non lette + totali settimana (per badge)
   // Effettua anche cleanup automatico delle notifiche precedenti alla settimana corrente
   router.get('/api/absence/unread/:teamId', authMiddleware, async (req, res) => {

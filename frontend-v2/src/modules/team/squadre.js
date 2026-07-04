@@ -38,14 +38,15 @@ export async function loadSquadre(stagioneId) {
       
       stagioni = await apiFetch(`/workspaces/${currentWorkspace.id}/stagioni`);
       
-      // Carica team di TUTTE le stagioni
-      const allTeams = [];
-      for (const s of stagioni) {
-        const teams = await apiFetch(`/stagioni/${s.id}/squadre`);
-        (teams || []).forEach(t => { t._stagione = s.nome; t._stagioneAttiva = s.attiva; });
-        allTeams.push(...(teams || []));
+      // Carica team SOLO della stagione attiva
+      const activeSeason = stagioni.find(s => s.attiva);
+      if (activeSeason) {
+        const teams = await apiFetch(`/stagioni/${activeSeason.id}/squadre`);
+        (teams || []).forEach(t => { t._stagione = activeSeason.nome; t._stagioneAttiva = true; });
+        allSquadre = teams || [];
+      } else {
+        allSquadre = [];
       }
-      allSquadre = allTeams;
     }
     
     // Filtra per categorie_accesso dell'utente (se non admin/superadmin e non guest)
@@ -77,38 +78,15 @@ export async function loadSquadre(stagioneId) {
         if (allSquadre.length === 1) window.YFM.squadraId = allSquadre[0].id;
         return;
       }
-      // Raggruppa per stagione
-      const byStag = {};
-      allSquadre.forEach(s => {
-        const stag = s._stagione || 'Corrente';
-        if (!byStag[stag]) byStag[stag] = [];
-        byStag[stag].push(s);
-      });
-      const stagKeys = Object.keys(byStag).sort().reverse();
-      
-      if (stagKeys.length <= 1) {
-        sel.innerHTML = allSquadre.map(s => {
-          const categoriaNome = s.category?.nome || s.categoria || '';
-          const tipoCampionato = s.category?.tipo_campionato || '';
-          const displayNome = categoriaNome && tipoCampionato 
-            ? `${categoriaNome} ${tipoCampionato}` 
-            : (categoriaNome || s.nome);
-          return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${displayNome}</option>`;
-        }).join('');
-      } else {
-        sel.innerHTML = stagKeys.map(stag => {
-          const opts = byStag[stag].map(s => {
-            const categoriaNome = s.category?.nome || s.categoria || '';
-            const tipoCampionato = s.category?.tipo_campionato || '';
-            const base = categoriaNome && tipoCampionato 
-              ? `${categoriaNome} ${tipoCampionato}` 
-              : (categoriaNome || s.nome);
-            const displayNome = `${base} (${stag})`;
-            return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${displayNome}</option>`;
-          }).join('');
-          return `<optgroup label="📅 ${stag}">${opts}</optgroup>`;
-        }).join('');
-      }
+      // Raggruppa per stagione (ora solo attiva)
+      sel.innerHTML = allSquadre.map(s => {
+        const categoriaNome = s.category?.nome || s.categoria || '';
+        const tipoCampionato = s.category?.tipo_campionato || '';
+        const displayNome = categoriaNome && tipoCampionato 
+          ? `${categoriaNome} ${tipoCampionato}` 
+          : (categoriaNome || s.nome);
+        return `<option value="${s.id}" ${s.id === window.YFM.squadraId ? 'selected' : ''}>${displayNome}</option>`;
+      }).join('');
       
       sel.onchange = async (e) => {
         window.YFM.squadraId = e.target.value;

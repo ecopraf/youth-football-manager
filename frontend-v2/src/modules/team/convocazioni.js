@@ -8,11 +8,20 @@ export async function openConvocation(mid, readOnly) {
   
   let conv = [];
   let gioc = [];
+  let weekAbsences = [];
   
-  [conv, gioc] = await Promise.all([
+  [conv, gioc, weekAbsences] = await Promise.all([
     apiFetch('/partite/' + mid + '/convocazioni').catch(() => []),
-    apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori')
+    apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori'),
+    apiFetch('/absence/team/' + window.YFM.squadraId + '/week').catch(() => [])
   ]);
+
+  // Conta assenze per giocatore nella settimana
+  const absCountByPlayer = {};
+  (weekAbsences || []).forEach(a => {
+    const pid = a.player_id;
+    absCountByPlayer[pid] = (absCountByPlayer[pid] || 0) + 1;
+  });
 
   const ids = conv.filter(c => c.presente === true).map(c => c.calciatoreId);
   const sorted = [...gioc].sort((a, b) => {
@@ -43,14 +52,20 @@ export async function openConvocation(mid, readOnly) {
       <span style="font-size:12px;color:var(--gray);" id="convCount">${ids.length} convocati</span>
       <span id="convWarning" style="color:#E74C3C;font-weight:600;font-size:12px;display:none;"></span>
     </div>
-    ${sorted.map(g => `
+    ${sorted.map(g => {
+      const abs = absCountByPlayer[g.id] || 0;
+      const isInj = g.stato === 'Infortunato';
+      const badges = [];
+      if (isInj) badges.push('<span style="background:#FDEDEE;color:#E74C3C;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">🤕 Infortunato</span>');
+      if (abs > 0) badges.push(`<span style="background:#FFF3E0;color:#E65100;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">⚠️ ${abs} assenz${abs > 1 ? 'e' : 'a'} sett.</span>`);
+      return `
       <div class="convocation-item">
         <input type="checkbox" ${ids.includes(g.id) ? 'checked' : ''} data-pid="${g.id}" class="conv-check" style="width:20px;height:20px;cursor:pointer;accent-color:var(--green);">
         <div class="player-avatar" style="width:32px;height:32px;font-size:12px;background:${getAvatarColor(g.nome)};">${g.nome[0]}${g.cognome[0]}</div>
-        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.nome} ${g.cognome}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.nome} ${g.cognome}${badges.length ? ' ' + badges.join(' ') : ''}</span>
         <span style="color:var(--gray);font-size:13px;white-space:nowrap;">${g.ruolo} · #${g.numeroMaglia}</span>
       </div>
-    `).join('')}`;
+    `}).join('')}`;
 
   const footer = `
     <button class="btn btn-secondary" id="modalCancel">Chiudi</button>

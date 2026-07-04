@@ -36,7 +36,7 @@
 | Import Center | ✅ | modules/import/importCenter.js |
 | Staff | ✅ | modules/club/staff.js, routes/staff.js |
 | Workspace CRUD | ✅ | modules/admin/workspaces.js |
-| Stagioni & Categorie | ✅ | modules/club/seasonsCategories.js |
+| Stagioni & Categorie | ✅ | modules/club/seasonsCategories.js (redesign v2) |
 | Guest View | ✅ | modules/auth/guest.js |
 | Help Interattivo | ✅ | components/PageHelp.js, components/helpData.js |
 | Loghi Squadre | ✅ | 777+ loghi, wizard GR |
@@ -145,6 +145,25 @@
 
 ---
 
+### EPIC 8: Redesign Stagioni & Categorie
+
+> Stagione = 01/07→30/06. Wizard creazione con migrazione. Dropdown solo stagione attiva. Carriera cross-season.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 8.1 | Fix dati DB: rimuovere stagione duplicata, normalizzare date 01/07 | ✅ | — | migrazione SQL | ~3min |
+| 8.2 | Backend: POST stagione con anno_inizio, auto-team, disattiva precedente | ✅ | 8.1 | routes/workspace.js | ~10min |
+| 8.3 | Backend: endpoint migrazione POST /stagioni/:id/migra | ✅ | 8.2 | routes/workspace.js | ~15min |
+| 8.4 | Frontend: rifare UI seasonsCategories.js con wizard + modale | ✅ | 8.2, 8.3 | modules/club/seasonsCategories.js | ~15min |
+| 8.5 | Frontend: dropdown squadre mostra SOLO stagione attiva | ✅ | 8.4 | modules/team/squadre.js | ~5min |
+| 8.6 | Guest genitore: accesso già limitato (roster, club, calendar) | ✅ | — | router.js | ~0min |
+| 8.7 | Staff migrato visibile nella nuova stagione (garantito da 8.3) | ✅ | 8.3 | — | ~0min |
+| 8.8 | Backend: endpoint /career e /last-matches cross-season | ✅ | — | routes/player.js | ~10min |
+| 8.9 | Test build completo | ✅ | 8.8 | — | ~2min |
+| 8.10 | Aggiornare docs | ✅ | 8.9 | DEVELOPMENT_PLAN.md | ~3min |
+
+---
+
 ## 4. Dipendenze tra Epic
 
 ```
@@ -201,7 +220,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | fee70e9 | fix: tasto modifica/elimina calendario non funzionava (selettore CSS errato) |
 | 3cb48a5 | fix: orario partite — risolto timezone shift e display ridondante |
 | 841531e | fix: import center + dashboard GR usano matching fuzzy abbreviazioni |
-| 6f7eda4 | fix: matching fuzzy nomi squadre GR con abbreviazioni (Pol., C., Atl., ecc.) |
+| (pending) | feat: redesign stagioni & categorie — wizard creazione con anno, auto-team, migrazione rosa/staff/config, dropdown solo stagione attiva, endpoint career/last-matches cross-season |
 | (pending) | fix: badge notifiche immediato al login + polling 60s + aggiornamento cambio squadra |
 | (pending) | fix: guest links filtrati per categoria squadra selezionata |
 | (pending) | fix: pagina Società accessibile ai guest (usa dati in memoria) |

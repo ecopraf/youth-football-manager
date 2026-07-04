@@ -39,10 +39,11 @@ function renderAbsencePage(c, trainings, myAbsences, motivi, playerId, teamId) {
     .absence-form { margin-top:12px; padding-top:12px; border-top:1px solid #eee; }
     .absence-history { margin-top:24px; }
     .absence-history-item { padding:8px 12px; border-left:3px solid #F39C12; margin-bottom:8px; background:#fafafa; border-radius:0 8px 8px 0; }
+    @keyframes pulse-btn { 0%,100% { box-shadow:0 0 0 0 rgba(231,76,60,0.4); } 50% { box-shadow:0 0 0 6px rgba(231,76,60,0); } }
   </style>`;
 
   html += `<h1 class="page-title">📋 Segnala Assenza</h1>
-    <p style="color:#666;font-size:14px;margin-bottom:20px;">Seleziona un allenamento e comunica la tua assenza al mister.</p>`;
+    <p style="color:#666;font-size:14px;margin-bottom:20px;">Tocca il pulsante <strong style="color:#E74C3C;">"Non ci sarò"</strong> per comunicare la tua assenza al mister.</p>`;
 
   // Prossimi allenamenti
   if (trainings.length === 0) {
@@ -62,7 +63,7 @@ function renderAbsencePage(c, trainings, myAbsences, motivi, playerId, teamId) {
             <div class="absence-date">🏋️ ${dateStr}</div>
             <div class="absence-time">⏰ ${timeStr}${t.luogo ? ' • 📍 ' + t.luogo : ''}</div>
           </div>
-          ${alreadyReported ? '<span class="absence-badge">✅ Segnalata</span>' : `<button class="btn btn-small btn-warning absence-btn" data-training-id="${isVirtual ? '' : t.id}" data-date="${dataOnly}">⚠️ Assente</button>`}
+          ${alreadyReported ? '<span class="absence-badge">✅ Segnalata</span>' : `<button class="btn btn-warning absence-btn" data-training-id="${isVirtual ? '' : t.id}" data-date="${dataOnly}" style="padding:8px 14px;font-size:13px;font-weight:600;border-radius:8px;animation:pulse-btn 2s infinite;">❌ Non ci sarò</button>`}
         </div>
       </div>`;
     });

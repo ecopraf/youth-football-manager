@@ -117,7 +117,7 @@ export function initRouter() {
     console.log('[ROUTER] navigateTo chiamato con:', page);
     
     const publicPages = ['login', 'guest'];
-    const guestAllowedPages = ['dashboard', 'roster', 'calendar', 'stats', 'club', 'absence'];
+    const guestAllowedPages = ['dashboard', 'calendar', 'stats', 'club', 'absence'];
     
     if (!publicPages.includes(page)) {
       const isGuest = window.YFM.isGuest();

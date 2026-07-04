@@ -52,9 +52,22 @@ function renderNotifications(c, notifications, teamId) {
   }
 
   if (read.length > 0) {
-    html += `<details style="margin-top:20px;"><summary style="cursor:pointer;font-size:12px;color:#888;">📜 Già lette (${read.length})</summary><div class="notif-grid" style="margin-top:10px;">`;
-    read.forEach(n => { html += renderNotifCard(n, true); });
-    html += '</div></details>';
+    // Raggruppa per data_allenamento
+    const byDate = {};
+    read.forEach(n => {
+      const d = n.data_allenamento || 'sconosciuta';
+      if (!byDate[d]) byDate[d] = [];
+      byDate[d].push(n);
+    });
+    const sortedDates = Object.keys(byDate).sort().reverse();
+    html += `<details style="margin-top:20px;"><summary style="cursor:pointer;font-size:12px;color:#888;">📜 Già lette (${read.length})</summary>`;
+    sortedDates.forEach(date => {
+      const dateLabel = new Date(date).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+      html += `<div style="margin-top:12px;margin-bottom:4px;font-size:12px;font-weight:600;color:#555;">🏋️ ${dateLabel}</div><div class="notif-grid">`;
+      byDate[date].forEach(n => { html += renderNotifCard(n, true); });
+      html += '</div>';
+    });
+    html += '</details>';
   }
 
   c.innerHTML = html;
