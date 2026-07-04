@@ -196,6 +196,7 @@ I workspace attivi nel DB sono:
 - Contiene: `{isGuest: true, tipo, squadre_accesso}`
 - Risposta include anche: `team_id` (stagione attiva), `player_name` (se player_id presente)
 - Frontend usa `team_id` per auto-selezionare squadra senza mostrare selettori
+- Logout guest mostra "Sessione terminata" (non redirect a login)
 - `authMiddleware` lo riconosce e imposta `req.user.ruolo = 'guest'`
 - `requirePermission` blocca tutti i guest (403)
 
@@ -288,9 +289,11 @@ style: stili (CSS)
 
 1. Implementa le modifiche
 2. Testa: `cd frontend-v2 && npm run build` + `cd backend && node -c api/index.js`
-3. Se la modifica è significativa → aggiorna documentazione (vedi sopra)
+3. Aggiorna documentazione (DEVELOPMENT_PLAN.md changelog + eventuali AGENTS.md/project-rules.md)
 4. Commit con messaggio descrittivo
 5. Push su main → deploy automatico Vercel (SOLO con conferma utente)
+
+> ⚠️ **REGOLA**: Aggiornare SEMPRE la documentazione (changelog, schema, endpoint) ad ogni commit. Non serve che l'utente lo chieda esplicitamente.
 
 ## Gestione Task Complessi
 

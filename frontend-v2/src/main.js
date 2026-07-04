@@ -38,6 +38,7 @@ window.YFM.getWorkspaceLogo = () => {
 };
 
 window.YFM.handleLogout = function() {
+  const wasGuest = !!localStorage.getItem('yfm_guest');
   localStorage.removeItem('yfm_token');
   localStorage.removeItem('yfm_user');
   localStorage.removeItem('yfm_guest');
@@ -46,7 +47,17 @@ window.YFM.handleLogout = function() {
   localStorage.removeItem('yfm_demo_user');
   localStorage.removeItem('yfm_squadra_id');
   resetWorkspaceCache();
-  window.location.href = '/';
+  if (wasGuest) {
+    document.getElementById('app').innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f7fa;">
+      <div style="text-align:center;padding:40px;background:white;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08);max-width:360px;">
+        <p style="font-size:40px;margin-bottom:12px;">👋</p>
+        <h2 style="margin:0 0 8px;color:#1a1a2e;">Sessione terminata</h2>
+        <p style="color:#666;font-size:14px;">Per accedere di nuovo, usa il link che ti è stato inviato.</p>
+      </div>
+    </div>`;
+  } else {
+    window.location.href = '/';
+  }
 };
 
 window.YFM.loadCalendar = async () => {

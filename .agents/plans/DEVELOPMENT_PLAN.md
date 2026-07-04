@@ -197,7 +197,9 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | Commit | Descrizione |
 |--------|-------------|
 | (pending) | feat: guest UX — auto-redirect squadra stagione corrente, benvenuto personalizzato, nome atleta in header |
-| (pending) | feat: notifiche assenze — campanella sempre visibile, badge nuove/totali settimana |
+| (pending) | feat: notifiche assenze — campanella sempre visibile, badge nuove/totali settimana, auto-cleanup settimanale |
+| (pending) | style: notifiche — layout griglia compatto, animazione segna-letta, spunta verde |
+| (pending) | fix: guest logout mostra "Sessione terminata" invece di redirect a login |
 | (pending) | refactor: rimosse colonne staff ridondanti da team, report usa team_staff |
 | 9be406a | feat: allenamenti-futuri virtuali da config + indicatore ⚠️ assenza segnalata in presenze |
 | 612882a | perf: cache intelligente dashboard+stats (memory 2min, sessionStorage 10min, lazy load GR) |
