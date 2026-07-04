@@ -304,6 +304,141 @@ element.innerHTML = data.map(renderItem).join('');
 <img src="thumb.jpg" width="100" height="100" alt="...">
 ```
 
+---
+
+## 🗄️ Ottimizzazione Database (Regole Obbligatorie)
+
+### Principio: UNA query per operazione batch
+
+Ogni operazione su record multipli DEVE usare una singola query SQL, MAI loop con query individuali.
+
+```javascript
+// ❌ VIETATO: N query per N record
+for (const id of ids) {
+  await supabase.from('guest_token').delete().eq('token', id);
+}
+
+// ✅ OBBLIGATORIO: 1 query per N record
+await supabase.from('guest_token').delete().in('token', tokens);
+
+// ✅ Con pg diretto (per operazioni complesse)
+await client.query('DELETE FROM guest_token WHERE token = ANY($1)', [tokens]);
+```
+
+### Pattern Batch Approvati
+
+```javascript
+// Batch DELETE
+await supabase.from('tabella').delete().in('id', arrayIds);
+// oppure: DELETE FROM tabella WHERE id = ANY($1)
+
+// Batch UPDATE (stesso valore per tutti)
+await supabase.from('tabella').update({ campo: valore }).in('id', arrayIds);
+// oppure: UPDATE tabella SET campo = $1 WHERE id = ANY($2)
+
+// Batch INSERT
+await supabase.from('tabella').insert(arrayOggetti);
+// oppure: INSERT INTO tabella (col1, col2) VALUES ... (unnest)
+
+// Batch UPDATE con valori diversi per record → usare CASE/WHEN o transazione
+await client.query(`
+  UPDATE tabella SET campo = CASE id
+    WHEN $1 THEN $2
+    WHEN $3 THEN $4
+  END WHERE id = ANY($5)
+`, [id1, val1, id2, val2, [id1, id2]]);
+```
+
+### Regole Endpoint Batch
+
+- Ogni operazione multi-record DEVE avere un endpoint batch dedicato
+- Naming: `DELETE /api/risorsa-batch`, `PUT /api/risorsa-batch`
+- Body: `{ ids: [...] }` o `{ tokens: [...] }` (array di identificatori)
+- Il frontend raccoglie gli ID selezionati e invia UNA chiamata
+- Risposta: `{ success: true, deleted: N }` o `{ success: true, updated: N }`
+
+### Quando usare Supabase JS vs pg diretto
+
+| Caso | Usa |
+|------|-----|
+| CRUD semplice (select, insert, update, delete) | `supabase.from()` |
+| Query con JOIN complessi | `pg` con query raw |
+| Transazioni (più operazioni atomiche) | `pg` con `BEGIN/COMMIT` |
+| Migrazioni schema (ALTER TABLE, CREATE) | `pg` con query raw |
+
+---
+
+## 🧠 Cache Strategy (Regole Obbligatorie)
+
+### Architettura Cache Dual-Layer
+
+Il frontend usa due livelli di cache:
+
+| Layer | Storage | TTL | Uso |
+|-------|---------|-----|-----|
+| Memory | Variabile JS (Map/Object) | 2 min | Dati che cambiano spesso (dashboard, stats) |
+| Session | sessionStorage | 10 min | Dati esterni/raramente aggiornati (classifica GR, calendario GR) |
+
+### Pattern Cache Standard
+
+```javascript
+// Cache memory con TTL
+let cache = { data: null, ts: 0 };
+const CACHE_TTL = 2 * 60 * 1000; // 2 minuti
+
+async function fetchWithCache(key, fetchFn) {
+  if (cache.data && Date.now() - cache.ts < CACHE_TTL) return cache.data;
+  const data = await fetchFn();
+  cache = { data, ts: Date.now() };
+  return data;
+}
+
+// Invalidazione esplicita (export)
+export function invalidateMyCache() {
+  cache = { data: null, ts: 0 };
+}
+```
+
+### Regole di Invalidazione
+
+**OBBLIGATORIO**: Dopo ogni operazione di scrittura (POST/PUT/DELETE) che modifica dati visualizzati in cache, DEVE essere chiamata la funzione di invalidazione corrispondente.
+
+| Operazione | Cache da invalidare |
+|------------|--------------------|
+| Salva risultato/eventi partita | `invalidateDashboardCache()` + `invalidateStatsCache()` |
+| Archivia/sblocca/elimina partita | `invalidateDashboardCache()` + `invalidateStatsCache()` |
+| Elimina tutte le partite | `invalidateDashboardCache()` + `invalidateStatsCache()` |
+| Modifica roster (aggiungi/rimuovi giocatore) | `invalidateStatsCache()` |
+| Salva presenze allenamento | `invalidateDashboardCache()` |
+
+### Lazy Loading Dati Pesanti
+
+Dati che richiedono API esterne lente (>500ms) DEVONO essere caricati in modo lazy:
+
+```javascript
+// ✅ Render immediato con dati veloci, poi carica dati lenti
+async function renderDashboard() {
+  // 1. Carica e mostra subito dati DB (~150ms)
+  const [stats, matches] = await Promise.all([fetchStats(), fetchMatches()]);
+  renderFastSection(stats, matches);
+  
+  // 2. Carica dati esterni in background (~600ms) → placeholder visibile
+  loadLazyData(); // non await!
+}
+
+async function loadLazyData() {
+  const classifica = await fetchClassifica(); // API esterna lenta
+  document.getElementById('lazyPlaceholder').innerHTML = renderClassifica(classifica);
+}
+```
+
+### Cosa NON cachare
+
+- Dati di autenticazione (token, user info)
+- Dati in fase di editing attivo (form aperti)
+- Risposte di operazioni di scrittura
+- Dati con requisiti real-time (se mai implementati)
+
 ## Sicurezza
 
 ### Never Trust Input

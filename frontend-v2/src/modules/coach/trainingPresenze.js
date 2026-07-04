@@ -18,6 +18,7 @@ const MOTIVI_ASSENZA = [
 ];
 
 let _trainingData = null;
+let _absenceNotifications = [];
 
 export default async function loadTrainingPresenze() {
   const c = document.getElementById('pageContent');
@@ -25,6 +26,11 @@ export default async function loadTrainingPresenze() {
 
   _trainingData = await loadTrainingData();
   if (!_trainingData) return;
+
+  // Carica notifiche assenza per indicatore
+  try {
+    _absenceNotifications = await apiFetch('/absence/team/' + window.YFM.squadraId);
+  } catch(e) { _absenceNotifications = []; }
 
   const { config, presenze, partite, giocatori, summary, settimana } = _trainingData;
   selectTodayIfTraining(config);
@@ -69,6 +75,10 @@ function renderPresenzeDetail(date) {
   const presentiCount = sorted.length - assentiIds.length;
   const assentiCount = assentiIds.length;
 
+  // Notifiche assenza per questa data
+  const absForDate = _absenceNotifications.filter(a => a.data_allenamento === date);
+  const absPlayerIds = new Set(absForDate.map(a => a.player_id));
+
   let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
     <div style="font-size:15px;font-weight:600;color:#1a1a2e;">👥 ${dayLabel}</div>
     <span style="font-size:11px;padding:4px 10px;border-radius:12px;font-weight:600;${hasData ? 'background:#d1fae5;color:#065f46;' : 'background:#fef3c7;color:#92400e;'}">${hasData ? '✅ Registrata' : '🆕 Da compilare'}</span>
@@ -78,6 +88,7 @@ function renderPresenzeDetail(date) {
     <span style="color:#22c55e;">✅ ${presentiCount} presenti</span>
     <span style="color:#ef4444;">❌ ${assentiCount} assenti</span>
     <span style="color:#6c757d;">👥 ${sorted.length} totali</span>
+    ${absForDate.length > 0 ? `<span style="color:#F39C12;">⚠️ ${absForDate.length} segnalate</span>` : ''}
   </div>`;
 
   html += `<p style="margin-bottom:8px;font-size:12px;color:#6c757d;">Segna <span style="color:#E74C3C;font-weight:600;">ASSENTE</span>:</p><div id="presenzeList">`;
@@ -86,12 +97,14 @@ function renderPresenzeDetail(date) {
     const isAssente = assentiIds.includes(g.id);
     const presRecord = presenzeData.find(p => (p.calciatore_id || p.calciatoreId) === g.id);
     const motivo = presRecord?.motivo_assenza || '';
+    const absNotif = absForDate.find(a => a.player_id === g.id);
 
     html += `<div class="convocation-item" style="flex-wrap:wrap;gap:8px;">
       <div style="display:flex;align-items:center;gap:8px;min-width:200px;">
         <input type="checkbox" ${isAssente ? 'checked' : ''} data-pid="${g.id}" class="pres-check" style="width:20px;height:20px;cursor:pointer;accent-color:#E74C3C;">
         <div class="player-avatar" style="width:28px;height:28px;font-size:11px;background:${getAvatarColor(g.nome)};">${g.nome[0]}${g.cognome[0]}</div>
         <span style="font-size:13px;">${g.nome} ${g.cognome}</span>
+        ${absNotif ? `<span title="${absNotif.motivo}${absNotif.messaggio ? ': ' + absNotif.messaggio : ''}" style="font-size:11px;color:#F39C12;font-weight:600;cursor:help;">⚠️ Assenza segnalata</span>` : ''}
       </div>
       <select data-pid="${g.id}" class="pres-motivo" style="padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0;font-size:11px;${isAssente ? '' : 'opacity:0.4;'}" ${isAssente ? '' : 'disabled'}>
         ${MOTIVI_ASSENZA.map(m => `<option value="${m.value}" ${m.value === motivo ? 'selected' : ''}>${m.label}</option>`).join('')}

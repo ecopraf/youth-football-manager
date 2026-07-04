@@ -54,6 +54,7 @@ function renderAbsencePage(c, trainings, myAbsences, motivi, playerId, teamId) {
       const timeStr = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
       const dataOnly = t.data_ora.substring(0, 10);
       const alreadyReported = absenceDates.has(dataOnly);
+      const isVirtual = t.virtuale || t.id?.startsWith('virtual_');
 
       html += `<div class="absence-card ${alreadyReported ? 'absence-reported' : ''}">
         <div class="absence-card-header">
@@ -61,7 +62,7 @@ function renderAbsencePage(c, trainings, myAbsences, motivi, playerId, teamId) {
             <div class="absence-date">🏋️ ${dateStr}</div>
             <div class="absence-time">⏰ ${timeStr}${t.luogo ? ' • 📍 ' + t.luogo : ''}</div>
           </div>
-          ${alreadyReported ? '<span class="absence-badge">✅ Segnalata</span>' : `<button class="btn btn-small btn-warning absence-btn" data-training-id="${t.id}" data-date="${dataOnly}">⚠️ Assente</button>`}
+          ${alreadyReported ? '<span class="absence-badge">✅ Segnalata</span>' : `<button class="btn btn-small btn-warning absence-btn" data-training-id="${isVirtual ? '' : t.id}" data-date="${dataOnly}">⚠️ Assente</button>`}
         </div>
       </div>`;
     });

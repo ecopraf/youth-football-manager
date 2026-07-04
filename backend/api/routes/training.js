@@ -290,29 +290,65 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  // GET /api/squadre/:squadraId/allenamenti-futuri — prossimi allenamenti (per guest atleta)
+  // GET /api/squadre/:squadraId/allenamenti-futuri — prossimi allenamenti (reali + virtuali da config)
   router.get('/api/squadre/:squadraId/allenamenti-futuri', authMiddleware, async (req, res) => {
     try {
-      const now = new Date().toISOString();
-      const { data, error } = await supabase.from('training')
+      const teamId = req.params.squadraId;
+      const now = new Date();
+
+      // 1. Allenamenti reali già nel DB
+      const { data: realTrainings, error } = await supabase.from('training')
         .select('id, data_ora, durata_minuti, tipo, descrizione')
-        .eq('team_id', req.params.squadraId)
-        .gte('data_ora', now)
+        .eq('team_id', teamId)
+        .gte('data_ora', now.toISOString())
         .order('data_ora', { ascending: true })
         .limit(20);
       if (error) return res.status(400).json({ error: error.message });
 
-      // Aggiungi luogo dalla config
+      // 2. Training config (settimana tipo)
       const { data: configs } = await supabase.from('training_config')
-        .select('giorno_settimana, luogo').eq('team_id', req.params.squadraId);
+        .select('giorno_settimana, ora_inizio, ora_fine, luogo').eq('team_id', teamId);
+
+      // 3. Genera sessioni virtuali per le prossime 3 settimane dalla config
+      const realDates = new Set((realTrainings || []).map(t => t.data_ora.substring(0, 10)));
+      const virtual = [];
+      if (configs && configs.length > 0) {
+        for (let dayOffset = 0; dayOffset <= 21; dayOffset++) {
+          const d = new Date(now);
+          d.setDate(d.getDate() + dayOffset);
+          const weekday = d.getDay();
+          const config = configs.find(c => c.giorno_settimana === weekday);
+          if (!config) continue;
+
+          const dateStr = d.toISOString().substring(0, 10);
+          if (realDates.has(dateStr)) continue; // già esiste nel DB
+
+          const [h, m] = (config.ora_inizio || '17:00').split(':');
+          d.setHours(parseInt(h), parseInt(m), 0, 0);
+          if (d <= now) continue; // già passato oggi
+
+          virtual.push({
+            id: `virtual_${dateStr}`,
+            data_ora: d.toISOString(),
+            durata_minuti: null,
+            tipo: null,
+            descrizione: null,
+            luogo: config.luogo || null,
+            virtuale: true
+          });
+        }
+      }
+
+      // 4. Unisci e ordina, aggiungi luogo ai reali dalla config
       const configMap = {};
       (configs || []).forEach(c => { configMap[c.giorno_settimana] = c.luogo; });
-
-      const result = (data || []).map(t => {
+      const result = (realTrainings || []).map(t => {
         const day = new Date(t.data_ora).getDay();
-        return { ...t, luogo: configMap[day] || null };
+        return { ...t, luogo: configMap[day] || null, virtuale: false };
       });
-      res.json(result);
+
+      const all = [...result, ...virtual].sort((a, b) => new Date(a.data_ora) - new Date(b.data_ora));
+      res.json(all.slice(0, 20));
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

@@ -128,7 +128,9 @@ youth-football-manager/
 | DELETE | `/auth/users/:id` | Disattiva utente (admin) |
 | POST | `/auth/guest-link` | Genera link guest |
 | GET | `/auth/guest-links` | Lista link guest |
-| DELETE | `/auth/guest-link/:token` | Revoca link |
+| DELETE | `/auth/guest-link/:token` | Revoca link singolo |
+| DELETE | `/auth/guest-links-batch` | Batch delete `{tokens:[...]}` |
+| PUT | `/auth/guest-links-renew` | Batch rinnovo scadenza `{tokens:[...]}` |
 
 #### Teams
 | Metodo | Endpoint | Descrizione |
@@ -416,8 +418,47 @@ PORT=3001
 - Lazy loading moduli
 - CSS inline critical path
 - Cache busting con hash
+- **Cache dual-layer**: Memory (2min TTL) per dati DB, sessionStorage (10min) per dati esterni
+- **Lazy loading dati pesanti**: API esterne (GR classifica/calendario ~600ms) caricate dopo render iniziale
+- **Skip chiamate non necessarie**: Non-superadmin salta `loadAvailableWorkspaces` all'init
 
 ### Backend
 - Connessioni Supabase in pool
 - Query ottimizzate con indici
 - Warmup endpoint per keep-alive
+- **Batch operations**: Ogni operazione multi-record usa singola query (`WHERE id = ANY($1)` o `.in()`)
+- **Nessun loop di query**: MAI iterare con query individuali per operazioni batch
+
+### Latenza di Riferimento (Supabase eu-west-1)
+| Tipo | Latenza tipica |
+|------|----------------|
+| Query DB semplice (SELECT/INSERT) | ~130-150ms |
+| Dashboard (7 query parallele) | ~450ms (dati DB) |
+| API esterne GR (classifica/calendario) | ~500-675ms |
+| Stats giocatori (aggregazioni) | ~460ms |
+
+### Strategia Cache Implementata
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    FRONTEND CACHE                          │
+├──────────────────────────────┬──────────────────────────────┤
+│  MEMORY CACHE (2min)         │  SESSION CACHE (10min)       │
+│  • Dashboard stats           │  • Classifica GR              │
+│  • Stats giocatori           │  • Calendario GR              │
+│  • Dati partite recenti      │  • Marcatori GR               │
+│                              │                              │
+│  Invalidazione: esplicita    │  Invalidazione: TTL scaduto  │
+│  dopo operazioni di          │  o cambio team/workspace     │
+│  scrittura (save, delete)    │                              │
+└──────────────────────────────┴──────────────────────────────┘
+```
+
+### Batch Operations Pattern
+
+```
+┌─────────────┐     1 request      ┌─────────────┐     1 query       ┌───────────┐
+│  Frontend   │ ─────────────▶ │   Backend   │ ────────────▶ │  Supabase │
+│  (N items)  │  {ids:[...]}  │  (batch EP) │  IN/ANY($1)  │  (1 exec) │
+└─────────────┘                └─────────────┘                └───────────┘
+```

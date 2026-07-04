@@ -190,6 +190,84 @@ backend/scripts/
 - **Deploy**: automatico su push a main
 - **Build ID**: `v3.15.<git-hash>` (mostrato dopo `npm run build`)
 
+---
+
+## 🗄️ Regole Ottimizzazione DB
+
+### Principio fondamentale: 1 query per N record
+
+Ogni operazione batch DEVE usare una singola query SQL. MAI iterare con query individuali.
+
+```javascript
+// ❌ VIETATO
+for (const token of tokens) {
+  await supabase.from('guest_token').delete().eq('token', token);
+}
+
+// ✅ OBBLIGATORIO
+await supabase.from('guest_token').delete().in('token', tokens);
+```
+
+### Endpoint batch
+- Naming: `DELETE /api/risorsa-batch`, `PUT /api/risorsa-batch`
+- Body: `{ ids: [...] }` o campo specifico (es. `{ tokens: [...] }`)
+- Risposta: `{ success: true, deleted/updated: N }`
+- Usare `WHERE id = ANY($1)` o `.in('campo', array)` di Supabase
+
+### Quando usare pg diretto vs Supabase JS
+| Caso | Usa |
+|------|-----|
+| CRUD semplice | `supabase.from()` |
+| JOIN complessi, subquery | `pg` raw query |
+| Transazioni atomiche | `pg` con `BEGIN/COMMIT` |
+| Migrazioni DDL | `pg` raw query |
+
+---
+
+## 🧠 Regole Cache Frontend
+
+### Architettura dual-layer
+
+| Layer | Storage | TTL | Quando usare |
+|-------|---------|-----|------|
+| Memory | Variabile JS | 2 min | Dati DB che cambiano spesso (dashboard, stats) |
+| Session | sessionStorage | 10 min | Dati esterni lenti e raramente aggiornati (classifica GR) |
+
+### Invalidazione obbligatoria
+
+Dopo ogni scrittura che modifica dati in cache, chiamare la funzione di invalidazione:
+
+| Operazione | Invalidare |
+|------------|------------|
+| Salva risultato/eventi | `invalidateDashboardCache()` + `invalidateStatsCache()` |
+| Archivia/sblocca/elimina partita | `invalidateDashboardCache()` + `invalidateStatsCache()` |
+| Elimina tutte le partite | `invalidateDashboardCache()` + `invalidateStatsCache()` |
+| Modifica roster | `invalidateStatsCache()` |
+| Salva presenze allenamento | `invalidateDashboardCache()` |
+
+### Lazy loading dati pesanti
+
+API esterne lente (>500ms, es. Gazzetta Regionale) DEVONO essere caricate in modo lazy:
+1. Render immediato con dati DB veloci (~150ms)
+2. Placeholder visibile per sezione lazy
+3. Caricamento asincrono senza bloccare la UI
+
+### Cosa NON cachare
+- Token/auth, dati in editing, risposte di scrittura
+
+### Pattern standard
+```javascript
+let cache = { data: null, ts: 0 };
+const TTL = 2 * 60 * 1000;
+
+async function fetchCached(fetchFn) {
+  if (cache.data && Date.now() - cache.ts < TTL) return cache.data;
+  cache = { data: await fetchFn(), ts: Date.now() };
+  return cache.data;
+}
+export function invalidateCache() { cache = { data: null, ts: 0 }; }
+```
+
 ### 🔐 Credenziali Supabase (persistenti)
 
 ```

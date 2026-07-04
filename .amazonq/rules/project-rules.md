@@ -207,6 +207,68 @@ I workspace attivi nel DB sono:
 - **Preferire campi JSONB** per dati strutturati che non richiedono query dirette (metadati, configurazioni, layout)
 - **NON pushare senza conferma esplicita dell'utente**
 
+---
+
+## 🗄️ Ottimizzazione DB (OBBLIGATORIO)
+
+### Regola #1: UNA query per operazione batch
+
+MAI iterare con query individuali. Usare SEMPRE `WHERE id = ANY($1)` o `.in('campo', array)`.
+
+```javascript
+// ❌ VIETATO (N query per N record)
+for (const id of ids) await supabase.from('t').delete().eq('id', id);
+
+// ✅ OBBLIGATORIO (1 query per N record)
+await supabase.from('t').delete().in('id', ids);
+```
+
+### Regola #2: Endpoint batch dedicati
+
+- Naming: `DELETE /api/risorsa-batch`, `PUT /api/risorsa-batch`
+- Body: `{ ids: [...] }` (array di identificatori)
+- Backend: singola query con `IN` / `ANY`
+- Risposta: `{ success: true, deleted/updated: N }`
+
+### Regola #3: Supabase JS vs pg diretto
+
+- CRUD semplice → `supabase.from()`
+- JOIN complessi / subquery → `pg` raw
+- Transazioni atomiche → `pg` con `BEGIN/COMMIT`
+- Migrazioni DDL → `pg` raw
+
+---
+
+## 🧠 Cache Frontend (OBBLIGATORIO)
+
+### Architettura
+
+| Layer | Storage | TTL | Uso |
+|-------|---------|-----|-----|
+| Memory | Variabile JS | 2 min | Dati DB frequenti (dashboard, stats) |
+| Session | sessionStorage | 10 min | Dati esterni lenti (classifica GR, calendario GR) |
+
+### Invalidazione dopo scrittura
+
+| Operazione | Funzioni da chiamare |
+|------------|---------------------|
+| Salva risultato/eventi partita | `invalidateDashboardCache()` + `invalidateStatsCache()` |
+| Archivia/sblocca/elimina partita | `invalidateDashboardCache()` + `invalidateStatsCache()` |
+| Elimina tutte le partite | `invalidateDashboardCache()` + `invalidateStatsCache()` |
+| Modifica roster | `invalidateStatsCache()` |
+| Salva presenze allenamento | `invalidateDashboardCache()` |
+
+### Lazy loading obbligatorio
+
+API esterne lente (>500ms) DEVONO essere caricate DOPO il render iniziale:
+1. Mostra subito dati DB veloci (~150ms)
+2. Placeholder visibile per sezione lazy
+3. Carica dati esterni senza bloccare UI
+
+### Cosa NON cachare
+
+- Token/auth, dati in editing attivo, risposte di scrittura
+
 ## Convenzioni Commit
 
 ```

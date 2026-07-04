@@ -5,6 +5,8 @@ let tokens = [];
 let categorie = [];
 let workspaces = [];
 let rosterPlayers = [];
+let sortField = 'cognome';
+let sortAsc = true;
 
 export default async function loadGuestLinks() {
   const c = document.getElementById('pageContent');
@@ -41,12 +43,12 @@ export default async function loadGuestLinks() {
         <thead>
           <tr style="border-bottom:2px solid #eee;">
             <th style="padding:12px;width:40px;"><input type="checkbox" id="selectAllLinks"></th>
-            <th style="text-align:left;padding:12px;">Stato</th>
+            <th style="text-align:left;padding:12px;cursor:pointer;user-select:none;" data-sort="stato">Stato ${sortField==='stato'?(sortAsc?'▲':'▼'):''}</th>
             <th style="text-align:left;padding:12px;">Tipo</th>
-            <th style="text-align:left;padding:12px;">Giocatore</th>
+            <th style="text-align:left;padding:12px;cursor:pointer;user-select:none;" data-sort="cognome">Giocatore ${sortField==='cognome'?(sortAsc?'▲':'▼'):''}</th>
             <th style="text-align:left;padding:12px;">Categoria</th>
             <th style="text-align:left;padding:12px;">Attivo dal</th>
-            <th style="text-align:left;padding:12px;">Scadenza</th>
+            <th style="text-align:left;padding:12px;cursor:pointer;user-select:none;" data-sort="scadenza">Scadenza ${sortField==='scadenza'?(sortAsc?'▲':'▼'):''}</th>
             <th style="text-align:left;padding:12px;">Link</th>
             <th style="text-align:right;padding:12px;">Azioni</th>
           </tr>
@@ -111,6 +113,13 @@ export default async function loadGuestLinks() {
   document.getElementById('selectAllLinks').addEventListener('change', (e) => {
     document.querySelectorAll('.link-checkbox').forEach(cb => { cb.checked = e.target.checked; });
     updateActionBtns();
+  });
+  document.querySelector('thead').addEventListener('click', (e) => {
+    const th = e.target.closest('[data-sort]');
+    if (!th) return;
+    const field = th.dataset.sort;
+    if (sortField === field) { sortAsc = !sortAsc; } else { sortField = field; sortAsc = true; }
+    renderTokens();
   });
   document.getElementById('linkForm').addEventListener('submit', handleCreate);
   document.getElementById('btnCancelLink').addEventListener('click', () => {
@@ -208,13 +217,39 @@ function renderTokens() {
   const tbody = document.getElementById('linksTableBody');
   if (!tbody) return;
 
+  // Aggiorna indicatori sort negli header
+  document.querySelectorAll('[data-sort]').forEach(th => {
+    const field = th.dataset.sort;
+    const label = field === 'cognome' ? 'Giocatore' : field === 'stato' ? 'Stato' : 'Scadenza';
+    th.textContent = label + (sortField === field ? (sortAsc ? ' ▲' : ' ▼') : '');
+  });
+
   if (tokens.length === 0) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#999;">Nessun link creato</td></tr>';
     return;
   }
 
   const now = new Date();
-  tbody.innerHTML = tokens.map(t => {
+  const sorted = [...tokens].sort((a, b) => {
+    let va = '', vb = '';
+    if (sortField === 'cognome') {
+      const pa = rosterPlayers.find(p => p.id === a.player_id);
+      const pb = rosterPlayers.find(p => p.id === b.player_id);
+      va = pa ? pa.cognome.toLowerCase() : 'zzz';
+      vb = pb ? pb.cognome.toLowerCase() : 'zzz';
+    } else if (sortField === 'stato') {
+      va = (a.scadenza && new Date(a.scadenza) < now) ? 1 : 0;
+      vb = (b.scadenza && new Date(b.scadenza) < now) ? 1 : 0;
+    } else if (sortField === 'scadenza') {
+      va = a.scadenza || '9999';
+      vb = b.scadenza || '9999';
+    }
+    if (va < vb) return sortAsc ? -1 : 1;
+    if (va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  tbody.innerHTML = sorted.map(t => {
     const isExpired = t.scadenza && new Date(t.scadenza) < now;
     const catIds = t.squadre_accesso || [];
     const catText = catIds.length > 0
@@ -380,7 +415,7 @@ async function handleCreate(e) {
 
     if (result.link) {
       await navigator.clipboard.writeText(result.link).catch(() => {});
-      alert('✅ Link creato e copiato!\n\n' + result.link);
+      alert('✅ Link creato e copiato negli appunti!');
     }
     await loadData();
   } catch (err) {
