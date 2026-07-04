@@ -1,31 +1,55 @@
 import { apiFetch } from '../../services/api';
 import { formatDate, formatDateShort, formatTime } from '../../utils/formatters';
 
+const CACHE_TTL_LAZY = 10 * 60 * 1000; // 10 min per classifica/GR
+const CACHE_TTL_FAST = 2 * 60 * 1000; // 2 min per dati principali
+const memCache = {};
+
+function cachedFetch(key, fetcher, ttl = CACHE_TTL_LAZY) {
+  const entry = memCache[key];
+  if (entry && Date.now() - entry.ts < ttl) return Promise.resolve(entry.data);
+  // Fallback sessionStorage per lazy (sopravvive a navigazione pagina)
+  if (ttl === CACHE_TTL_LAZY) {
+    const raw = sessionStorage.getItem(key);
+    if (raw) {
+      const { data, ts } = JSON.parse(raw);
+      if (Date.now() - ts < ttl) { memCache[key] = { data, ts }; return Promise.resolve(data); }
+    }
+  }
+  return fetcher().then(data => {
+    memCache[key] = { data, ts: Date.now() };
+    if (ttl === CACHE_TTL_LAZY) {
+      try { sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch(e) {}
+    }
+    return data;
+  });
+}
+
+export function invalidateDashboardCache() {
+  Object.keys(memCache).forEach(k => { if (k.startsWith('dash_')) delete memCache[k]; });
+}
+
 export default async function loadDashboard() {
   const c = document.getElementById('pageContent');
   const squadraId = window.YFM.squadraId;
   
-  let stats, top, topValutazioni, partiteFuture, classificaData, marcatoriGR, calendarioGR;
+  let stats, top, topValutazioni, partiteFuture;
+  let classificaData = { classifica: null };
+  let marcatoriGR = { marcatori: [] };
+  let calendarioGR = { matches: [] };
   
   try {
-    [stats, top, topValutazioni, partiteFuture, classificaData, marcatoriGR, calendarioGR] = await Promise.all([
-      apiFetch('/squadre/' + squadraId + '/statistiche-complete').catch(() => ({ punti:0, partiteGiocate:0, vittorie:0, pareggi:0, sconfitte:0, golFatti:0, golSubiti:0, differenzaReti:0, risultati:[] })),
-      apiFetch('/squadre/' + squadraId + '/top-players').catch(() => ({ marcatori:[], assistmen:[], presenze:[] })),
-      apiFetch('/squadre/' + squadraId + '/valutazioni-top').catch(() => ({ topGiocatori:[] })),
-      apiFetch('/squadre/' + squadraId + '/partite-future').catch(() => []),
-      apiFetch('/squadre/' + squadraId + '/classifica').catch(() => ({ classifica: null })),
-      apiFetch('/gr/marcatori/' + squadraId).catch(() => ({ marcatori: [] })),
-      apiFetch('/gr/calendario/' + squadraId).catch(() => ({ matches: [] }))
+    [stats, top, topValutazioni, partiteFuture] = await Promise.all([
+      cachedFetch('dash_stats_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/statistiche-complete').catch(() => ({ punti:0, partiteGiocate:0, vittorie:0, pareggi:0, sconfitte:0, golFatti:0, golSubiti:0, differenzaReti:0, risultati:[] })), CACHE_TTL_FAST),
+      cachedFetch('dash_top_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/top-players').catch(() => ({ marcatori:[], assistmen:[], presenze:[] })), CACHE_TTL_FAST),
+      cachedFetch('dash_val_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/valutazioni-top').catch(() => ({ topGiocatori:[] })), CACHE_TTL_FAST),
+      cachedFetch('dash_future_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/partite-future').catch(() => []), CACHE_TTL_FAST)
     ]);
   } catch (err) {
-    console.error('Dashboard load error:', err);
     stats = { punti: 0, partiteGiocate: 0, vittorie: 0, pareggi: 0, sconfitte: 0, golFatti: 0, golSubiti: 0, differenzaReti: 0, risultati: [] };
     top = { marcatori: [], assistmen: [], presenze: [] };
     topValutazioni = { topGiocatori: [] };
     partiteFuture = [];
-    classificaData = { classifica: null };
-    marcatoriGR = { marcatori: [] };
-    calendarioGR = { matches: [] };
   }
   
   const s = window.YFM.getSquadra();
@@ -381,9 +405,23 @@ export default async function loadDashboard() {
     '<div class="bottom-grid">' +
     '<div><div class="result-card" data-help="dashboard.risultati"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>' +
     '<div class="staff-card staff-desktop" data-help="dashboard.staff" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
-    '<div>' + renderClassifica() + renderCalendarioGR() + renderMarcatoriGR() + '</div>' +
+    '<div id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
     '</div>' +
     '<div class="staff-card staff-mobile" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div>';
 
-  attachCalendarioNav();
+  // Lazy load: classifica + GR (cached 10min, non bloccano il render)
+  Promise.all([
+    cachedFetch('dash_classifica_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/classifica').catch(() => ({ classifica: null }))),
+    cachedFetch('dash_marcatori_' + squadraId, () => apiFetch('/gr/marcatori/' + squadraId).catch(() => ({ marcatori: [] }))),
+    cachedFetch('dash_calendario_' + squadraId, () => apiFetch('/gr/calendario/' + squadraId).catch(() => ({ matches: [] })))
+  ]).then(([cl, mr, cal]) => {
+    classificaData = cl;
+    marcatoriGR = mr;
+    calendarioGR = cal;
+    const col = document.getElementById('dashLazyCol');
+    if (col) {
+      col.innerHTML = renderClassifica() + renderCalendarioGR() + renderMarcatoriGR();
+      attachCalendarioNav();
+    }
+  });
 }

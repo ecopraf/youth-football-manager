@@ -1,5 +1,7 @@
 import { apiFetch } from '../../services/api.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
+import { invalidateDashboardCache } from './dashboard.js';
+import { invalidateStatsCache } from '../performance/stats.js';
 
 const EVENTI = {
   'GOAL': { icon: '⚽', label: 'Gol', color: '#27AE60' },
@@ -330,6 +332,8 @@ async function saveEventi(mid, modal, eventi, giocatori) {
     
     hideLoading();
     modal.close();
+    invalidateDashboardCache();
+    invalidateStatsCache();
     alert('✅ Eventi salvati! (' + eventi.length + ' eventi)');
     if (window.YFM?.loadCalendar) window.YFM.loadCalendar();
   } catch (err) {

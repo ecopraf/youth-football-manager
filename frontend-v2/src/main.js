@@ -108,24 +108,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (isAuth) {
     try {
       const user = window.YFM.getUser();
-      const workspaces = await loadAvailableWorkspaces();
       
       let currentWs = null;
       if (isSuperAdmin(user)) {
+        const workspaces = await loadAvailableWorkspaces();
         const savedWsId = getSavedWorkspaceId();
         currentWs = (savedWsId && workspaces.find(w => w.id === savedWsId)) || workspaces[0];
+        if (currentWs) {
+          saveCurrentWorkspace(currentWs.id);
+          window.YFM.workspaceInfo = currentWs;
+          window.YFM.activeWorkspaceId = currentWs.id;
+        }
+        await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+        populateWorkspaceSelect(workspaces);
       } else {
-        currentWs = workspaces.find(w => w.id === user?.workspace_id) || workspaces[0];
+        // Non-superadmin: workspace noto dal JWT, skip chiamata workspaces
+        window.YFM.activeWorkspaceId = user.workspace_id;
+        saveCurrentWorkspace(user.workspace_id);
+        await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
       }
       
-      if (currentWs) {
-        saveCurrentWorkspace(currentWs.id);
-        window.YFM.workspaceInfo = currentWs;
-        window.YFM.activeWorkspaceId = currentWs.id;
-      }
-      
-      await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
-      if (isSuperAdmin(user)) populateWorkspaceSelect(workspaces);
       window.YFM.navigateTo('dashboard');
       // Badge notifiche assenze
       setTimeout(() => { import('./modules/coach/notifications.js').then(m => m.updateNotifBadge()).catch(() => {}); }, 1000);

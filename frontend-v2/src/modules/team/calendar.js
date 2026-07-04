@@ -1,6 +1,8 @@
 import { apiFetch, API_BASE } from '../../services/api';
 import { formatDate, formatDateShort, formatDateCompact } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
+import { invalidateDashboardCache } from './dashboard.js';
+import { invalidateStatsCache } from '../performance/stats.js';
 
 let allMatches = [];
 let matchSteps = {};
@@ -455,6 +457,7 @@ window.archiveMatch = async function(id) {
   showLoading();
   try {
     await apiFetch('/partite/' + id + '/archivia', { method: 'PUT' });
+    invalidateDashboardCache(); invalidateStatsCache();
     loadCalendar();
   } catch (e) { alert(e.message); }
   finally { hideLoading(); }
@@ -465,6 +468,7 @@ window.unarchiveMatch = async function(id) {
   showLoading();
   try {
     await apiFetch('/partite/' + id + '/sblocca', { method: 'PUT' });
+    invalidateDashboardCache(); invalidateStatsCache();
     loadCalendar();
   } catch (e) { alert(e.message); }
   finally { hideLoading(); }
@@ -502,6 +506,7 @@ export function openMatchForm(mid) {
 async function deleteMatch(id) {
   if (!await confirm('Eliminare?')) return;
   await apiFetch('/partite/' + id, { method: 'DELETE' });
+  invalidateDashboardCache(); invalidateStatsCache();
   loadCalendar();
 }
 
@@ -662,6 +667,7 @@ async function deleteAllMatches() {
     const resp = await apiFetch(`/squadre/${window.YFM.squadraId}/partite-all`, { method: 'DELETE' });
     hideLoading();
     alert(`✅ Eliminate ${resp.eliminate || count} partite`);
+    invalidateDashboardCache(); invalidateStatsCache();
     loadCalendar();
   } catch (err) {
     hideLoading();

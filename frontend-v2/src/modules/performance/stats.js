@@ -1,11 +1,23 @@
 import { apiFetch } from '../../services/api';
+import { invalidateDashboardCache } from '../team/dashboard.js';
+
+const CACHE_TTL = 2 * 60 * 1000;
+let statsCache = null;
+
+export function invalidateStatsCache() { statsCache = null; }
 
 export default async function loadStats() {
   const c = document.getElementById('pageContent');
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
 
   try {
-    const { stats, partiteGiocate } = await apiFetch('/squadre/' + window.YFM.squadraId + '/stats-giocatori');
+    const squadraId = window.YFM.squadraId;
+    if (statsCache && statsCache.id === squadraId && Date.now() - statsCache.ts < CACHE_TTL) {
+      var { stats, partiteGiocate } = statsCache.data;
+    } else {
+      var { stats, partiteGiocate } = await apiFetch('/squadre/' + squadraId + '/stats-giocatori');
+      statsCache = { id: squadraId, data: { stats, partiteGiocate }, ts: Date.now() };
+    }
 
     // Determina minutaggio per categoria
     const squadra = (window.YFM.allSquadre || []).find(s => s.id === window.YFM.squadraId);
