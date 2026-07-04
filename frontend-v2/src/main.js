@@ -140,8 +140,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       
       window.YFM.navigateTo('dashboard');
-      // Badge notifiche assenze
-      setTimeout(() => { import('./modules/coach/notifications.js').then(m => m.updateNotifBadge()).catch(() => {}); }, 1000);
+      // Badge notifiche assenze (subito + polling ogni 60s)
+      import('./modules/coach/notifications.js').then(m => {
+        m.updateNotifBadge();
+        if (!window._notifInterval) {
+          window._notifInterval = setInterval(() => m.updateNotifBadge(), 60000);
+        }
+      }).catch(() => {});
     } catch (err) {
       console.error('[MAIN] Init error:', err);
       try {

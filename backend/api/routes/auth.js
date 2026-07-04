@@ -217,10 +217,11 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   router.get('/api/auth/guest-links', authMiddleware, async (req, res) => {
     try {
       const user = req.user;
+      const { categoryId } = req.query;
       let query = supabase.from('guest_token').select('*').order('created_at', { ascending: false });
       
       if (user.is_superadmin) {
-        // superadmin vede tutto
+        // superadmin: filtra per categoria se specificata
       } else if (user.ruolo === 'admin') {
         const { data: wsUsers } = await supabase.from('users').select('id').eq('workspace_id', user.workspace_id);
         const userIds = (wsUsers || []).map(u => u.id);
@@ -232,14 +233,23 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       const { data, error } = await query;
       if (error) return res.status(400).json({ error: error.message });
       
-      const utenteIds = [...new Set((data || []).map(t => t.utente_id).filter(Boolean))];
+      // Filtra per categoria se specificata
+      let filtered = data || [];
+      if (categoryId) {
+        filtered = filtered.filter(t => {
+          const acc = t.squadre_accesso || [];
+          return acc.includes(categoryId);
+        });
+      }
+      
+      const utenteIds = [...new Set(filtered.map(t => t.utente_id).filter(Boolean))];
       let utenteMap = {};
       if (utenteIds.length > 0) {
         const { data: utenti } = await supabase.from('users').select('id, nome, cognome').in('id', utenteIds);
         (utenti || []).forEach(u => { utenteMap[u.id] = { nome: u.nome, cognome: u.cognome }; });
       }
       
-      const links = (data || []).map(t => ({ ...t, utente: utenteMap[t.utente_id] || null }));
+      const links = filtered.map(t => ({ ...t, utente: utenteMap[t.utente_id] || null }));
       res.json({ links });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });

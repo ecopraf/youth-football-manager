@@ -14,7 +14,7 @@
 | Frontend | Vite + JS ES Modules → Vercel |
 | Backend | Node.js/Express (13 router) → Vercel |
 | Database | Supabase PostgreSQL |
-| Workspace attivi | Albalonga, DF Academy |
+| Workspace attivi | Albalonga, DF Academy, Polisportiva Ciampino |
 
 ---
 
@@ -197,6 +197,14 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | Commit | Descrizione |
 |--------|-------------|
 | 6f7eda4 | fix: matching fuzzy nomi squadre GR con abbreviazioni (Pol., C., Atl., ecc.) |
+| c810571 | fix: logout accessibile da sidebar (mobile+desktop) + chiusura sidebar immediata su tap |
+| fee70e9 | fix: tasto modifica/elimina calendario non funzionava (selettore CSS errato) |
+| 3cb48a5 | fix: orario partite — risolto timezone shift e display ridondante |
+| 841531e | fix: import center + dashboard GR usano matching fuzzy abbreviazioni |
+| 6f7eda4 | fix: matching fuzzy nomi squadre GR con abbreviazioni (Pol., C., Atl., ecc.) |
+| (pending) | fix: badge notifiche immediato al login + polling 60s + aggiornamento cambio squadra |
+| (pending) | fix: guest links filtrati per categoria squadra selezionata |
+| (pending) | fix: pagina Società accessibile ai guest (usa dati in memoria) |
 | (pending) | feat: guest UX — auto-redirect squadra stagione corrente, benvenuto personalizzato, nome atleta in header |
 | (pending) | feat: notifiche assenze — campanella sempre visibile, badge nuove/totali settimana, auto-cleanup settimanale |
 | (pending) | style: notifiche — layout griglia compatto, animazione segna-letta, spunta verde |

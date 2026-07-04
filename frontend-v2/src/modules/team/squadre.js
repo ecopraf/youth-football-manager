@@ -133,6 +133,8 @@ export async function loadSquadre(stagioneId) {
           try { window.YFM.facility = await apiFetch('/workspaces/' + wsId + '/facility'); } catch(e) { window.YFM.facility = null; }
         }
         window.YFM.navigateTo(window.YFM.currentPage);
+        // Aggiorna badge notifiche per la nuova squadra
+        import('../coach/notifications.js').then(m => m.updateNotifBadge()).catch(() => {});
       };
     }
   } catch (err) {

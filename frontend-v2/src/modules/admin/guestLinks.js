@@ -181,7 +181,10 @@ async function handleRenewSelected() {
 async function loadData() {
   const user = window.YFM.getUser() || {};
   try {
-    const tokensRes = await apiFetch('/auth/guest-links');
+    // Filtra link per categoria della squadra selezionata
+    const squadra = window.YFM.getSquadra();
+    const catId = squadra.category_id || '';
+    const tokensRes = await apiFetch('/auth/guest-links' + (catId ? '?categoryId=' + catId : ''));
     tokens = tokensRes.links || [];
 
     const teamId = window.YFM.squadraId;

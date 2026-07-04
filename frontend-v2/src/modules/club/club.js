@@ -7,12 +7,21 @@ export default async function loadClub() {
   try {
     const wid = window.YFM.workspaceId || window.YFM.activeWorkspaceId;
     const teamId = window.YFM.squadraId;
+    const isGuest = !!localStorage.getItem('yfm_guest');
 
-    const [wsData, facility, staffData] = await Promise.all([
-      apiFetch('/auth/workspaces').then(ws => ws.find(w => w.id === wid) || ws[0]),
-      apiFetch('/workspaces/' + wid + '/facility').catch(() => null),
-      apiFetch('/squadre/' + teamId + '/staff-completo').catch(() => [])
-    ]);
+    let wsData, facility, staffData;
+    if (isGuest) {
+      // Guest: usa dati già in memoria, no chiamate che richiedono permessi
+      wsData = window.YFM.workspaceInfo || {};
+      facility = window.YFM.facility || null;
+      staffData = await apiFetch('/squadre/' + teamId + '/staff-completo').catch(() => []);
+    } else {
+      [wsData, facility, staffData] = await Promise.all([
+        apiFetch('/auth/workspaces').then(ws => ws.find(w => w.id === wid) || ws[0]),
+        apiFetch('/workspaces/' + wid + '/facility').catch(() => null),
+        apiFetch('/squadre/' + teamId + '/staff-completo').catch(() => [])
+      ]);
+    }
 
     renderClub(c, wsData, facility, staffData);
   } catch (e) {
