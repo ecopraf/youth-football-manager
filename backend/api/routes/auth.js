@@ -296,7 +296,27 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       if (data.player_id) payload.player_id = data.player_id;
       const guestJwt = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
       
-      res.json({ token: data.token, jwt: guestJwt, tipo: data.tipo, squadre_accesso: data.squadre_accesso, player_id: data.player_id || null });
+      // Risolvi category_id → team_id della stagione attiva
+      let team_id = null;
+      const categorie = data.squadre_accesso || [];
+      if (categorie.length > 0) {
+        const { data: teams } = await supabase.from('team')
+          .select('id, category_id, season:season_id(attiva)')
+          .in('category_id', categorie)
+          .eq('season.attiva', true);
+        const activeTeams = (teams || []).filter(t => t.season?.attiva);
+        if (activeTeams.length === 1) team_id = activeTeams[0].id;
+        else if (activeTeams.length > 1) team_id = activeTeams[0].id;
+      }
+
+      // Risolvi nome giocatore se player_id presente
+      let player_name = null;
+      if (data.player_id) {
+        const { data: pl } = await supabase.from('player').select('nome, cognome').eq('id', data.player_id).single();
+        if (pl) player_name = `${pl.nome} ${pl.cognome}`;
+      }
+      
+      res.json({ token: data.token, jwt: guestJwt, tipo: data.tipo, squadre_accesso: data.squadre_accesso, player_id: data.player_id || null, team_id, player_name });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }

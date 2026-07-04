@@ -10,8 +10,14 @@ export async function loadSquadre(stagioneId) {
     
     const guestSquadre = window.YFM.guestSquadreAccesso || [];
     if (guestSquadre.length > 0 && !window.YFM.workspaceInfo) {
-      const all = await apiFetch('/squadre');
-      allSquadre = (all || []).filter(s => guestSquadre.includes(s.category_id));
+      // Se il backend ha già risolto il team_id, usalo direttamente
+      if (window.YFM.guestTeamId) {
+        const teamData = await apiFetch(`/squadre/${window.YFM.guestTeamId}`).catch(() => null);
+        allSquadre = teamData ? [teamData] : [];
+      } else {
+        const all = await apiFetch('/squadre');
+        allSquadre = (all || []).filter(s => guestSquadre.includes(s.category_id));
+      }
     } else if (stagioneId) {
       allSquadre = await apiFetch(`/stagioni/${stagioneId}/squadre`);
     } else {
@@ -65,6 +71,12 @@ export async function loadSquadre(stagioneId) {
     
     const sel = document.getElementById('squadraSelect');
     if (sel) {
+      // Guest con 1 sola squadra: nascondi selettore
+      if (guestSquadre.length > 0 && allSquadre.length <= 1) {
+        sel.style.display = 'none';
+        if (allSquadre.length === 1) window.YFM.squadraId = allSquadre[0].id;
+        return;
+      }
       // Raggruppa per stagione
       const byStag = {};
       allSquadre.forEach(s => {

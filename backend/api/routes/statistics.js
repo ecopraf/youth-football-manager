@@ -181,22 +181,20 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
   router.get('/api/partite/:matchId/report', authMiddleware, async (req, res) => {
     try {
       const { matchId } = req.params;
-      const { data: match } = await supabase.from('match').select('*, competition:competition_id(nome), team:team_id(nome, allenatore_id, dirigente_id, season:season_id(workspace_id))').eq('id', matchId).single();
+      const { data: match } = await supabase.from('match').select('*, competition:competition_id(nome), team:team_id(nome, season:season_id(workspace_id))').eq('id', matchId).single();
       if (!match) return res.status(404).json({ error: 'Partita non trovata' });
 
       // Workspace name
       const { data: ws } = await supabase.from('workspace').select('nome').eq('id', match.team?.season?.workspace_id).single();
 
-      // Staff names
+      // Staff names from team_staff
       let allenatore = '', dirigente = '';
-      if (match.team?.allenatore_id) {
-        const { data: s } = await supabase.from('staff').select('nome, cognome').eq('id', match.team.allenatore_id).single();
-        if (s) allenatore = s.cognome + ' ' + s.nome;
-      }
-      if (match.team?.dirigente_id) {
-        const { data: s } = await supabase.from('staff').select('nome, cognome').eq('id', match.team.dirigente_id).single();
-        if (s) dirigente = s.cognome + ' ' + s.nome;
-      }
+      const { data: teamStaff } = await supabase.from('team_staff').select('ruolo_squadra, staff:staff_id(nome, cognome)').eq('team_id', match.team_id);
+      const allStaff = teamStaff || [];
+      const coach = allStaff.find(ts => /allenatore/i.test(ts.ruolo_squadra));
+      if (coach?.staff) allenatore = coach.staff.cognome + ' ' + coach.staff.nome;
+      const dir = allStaff.find(ts => /dirigente/i.test(ts.ruolo_squadra));
+      if (dir?.staff) dirigente = dir.staff.cognome + ' ' + dir.staff.nome;
 
       // Eventi
       const { data: events } = await supabase.from('match_event').select('tipo_evento, minuto, player_id').eq('match_id', matchId).order('minuto');

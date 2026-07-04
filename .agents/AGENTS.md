@@ -58,7 +58,7 @@ git status
 | **Backend** | Node.js/Express + Supabase |
 | **Deploy** | Vercel (auto su push a main) |
 | **Auth** | JWT + permessi granulari JSONB |
-| **Guest** | JWT guest (24h, solo lettura) |
+| **Guest** | JWT guest (24h, solo lettura). Login risolve team_id + player_name |
 | **Help** | Sistema help interattivo contestuale (PageHelp.js + helpData.js) |
 
 ### Backend Dependencies
@@ -95,7 +95,7 @@ api/
     ├── importTuttocampo.js     — Scraping calendario TC, eventi, loghi automatici
     ├── importConfirm.js        — Confirm TC, formations batch, matches-without-formation
     ├── gazzettaRegionale.js    — Classifica, calendario, marcatori, loghi da GR API, wizard loghi batch (superadmin)
-    └── absence.js              — Segnalazione assenze atleti (notifiche, storico, motivi)
+    └── absence.js              — Segnalazione assenze atleti (notifiche, storico, motivi, badge nuove/totali settimana)
 ```
 
 ### Script Utility

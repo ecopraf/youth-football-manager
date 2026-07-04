@@ -103,15 +103,17 @@ export async function updateNotifBadge(teamId) {
   try {
     const tid = teamId || window.YFM.squadraId;
     if (!tid) return;
-    const { unread } = await apiFetch('/absence/unread/' + tid);
+    const { unread, weekTotal } = await apiFetch('/absence/unread/' + tid);
     const badge = document.getElementById('notifBadge');
     const count = document.getElementById('notifCount');
     if (badge && count) {
-      if (unread > 0) {
-        badge.style.display = 'inline-block';
-        count.textContent = unread > 9 ? '9+' : unread;
+      badge.style.display = 'inline-block';
+      if (weekTotal > 0) {
+        count.style.display = 'flex';
+        count.textContent = `${unread}/${weekTotal}`;
+        count.style.background = unread > 0 ? '#E74C3C' : '#888';
       } else {
-        badge.style.display = 'none';
+        count.style.display = 'none';
       }
     }
   } catch (e) { /* silent */ }

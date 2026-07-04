@@ -194,6 +194,8 @@ I workspace attivi nel DB sono:
 ### Guest JWT
 - Generato da `/api/guest/:token` con validità 24h
 - Contiene: `{isGuest: true, tipo, squadre_accesso}`
+- Risposta include anche: `team_id` (stagione attiva), `player_name` (se player_id presente)
+- Frontend usa `team_id` per auto-selezionare squadra senza mostrare selettori
 - `authMiddleware` lo riconosce e imposta `req.user.ruolo = 'guest'`
 - `requirePermission` blocca tutti i guest (403)
 

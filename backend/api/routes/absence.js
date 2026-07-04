@@ -47,16 +47,31 @@ module.exports = function createAbsenceRouter({ supabase, authMiddleware }) {
     }
   });
 
-  // GET /api/absence/unread/:teamId — conteggio non lette (per badge)
+  // GET /api/absence/unread/:teamId — conteggio non lette + totali settimana (per badge)
   router.get('/api/absence/unread/:teamId', authMiddleware, async (req, res) => {
     try {
-      const { count, error } = await supabase.from('absence_notification')
+      const teamId = req.params.teamId;
+      // Non lette
+      const { count: unread, error } = await supabase.from('absence_notification')
         .select('id', { count: 'exact', head: true })
-        .eq('team_id', req.params.teamId)
+        .eq('team_id', teamId)
         .eq('letto', false);
-
       if (error) return res.status(400).json({ error: error.message });
-      res.json({ unread: count || 0 });
+
+      // Totali settimana corrente (lun-dom)
+      const now = new Date();
+      const day = now.getDay(); // 0=dom
+      const diffToMon = day === 0 ? 6 : day - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - diffToMon);
+      monday.setHours(0, 0, 0, 0);
+
+      const { count: weekTotal } = await supabase.from('absence_notification')
+        .select('id', { count: 'exact', head: true })
+        .eq('team_id', teamId)
+        .gte('created_at', monday.toISOString());
+
+      res.json({ unread: unread || 0, weekTotal: weekTotal || 0 });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

@@ -56,10 +56,10 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 1.1 | DROP colonne staff da tabella `team` | ⬜ | — | migrazione SQL | ~3min |
-| 1.2 | Rimuovere riferimenti backend (nullify on delete, query) | ⬜ | 1.1 | routes/match.js, routes/team.js | ~10min |
-| 1.3 | Verificare frontend (distinta, staff widget) usi solo `team_staff` | ⬜ | 1.2 | distinta.js, dashboard.js | ~5min |
-| 1.4 | Aggiornare DATABASE_SCHEMA.md | ⬜ | 1.1 | .agents/knowledge/ | ~3min |
+| 1.1 | DROP colonne staff da tabella `team` | ✅ | — | migrazione SQL | ~3min |
+| 1.2 | Rimuovere riferimenti backend (nullify on delete, query) | ✅ | 1.1 | routes/match.js, routes/team.js | ~10min |
+| 1.3 | Verificare frontend (distinta, staff widget) usi solo `team_staff` | ✅ | 1.2 | distinta.js, dashboard.js | ~5min |
+| 1.4 | Aggiornare DATABASE_SCHEMA.md | ✅ | 1.1 | .agents/knowledge/ | ~3min |
 
 ---
 
@@ -196,6 +196,9 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| (pending) | feat: guest UX — auto-redirect squadra stagione corrente, benvenuto personalizzato, nome atleta in header |
+| (pending) | feat: notifiche assenze — campanella sempre visibile, badge nuove/totali settimana |
+| (pending) | refactor: rimosse colonne staff ridondanti da team, report usa team_staff |
 | 9be406a | feat: allenamenti-futuri virtuali da config + indicatore ⚠️ assenza segnalata in presenze |
 | 612882a | perf: cache intelligente dashboard+stats (memory 2min, sessionStorage 10min, lazy load GR) |
 | — | perf: skip loadAvailableWorkspaces per non-superadmin (-250ms init) |

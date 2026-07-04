@@ -314,11 +314,6 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   router.delete('/api/staff/:id', authMiddleware, async (req, res) => {
     try {
       const staffId = req.params.id;
-      // Rimuovi riferimenti FK da team
-      await supabase.from('team').update({ allenatore_id: null }).eq('allenatore_id', staffId);
-      await supabase.from('team').update({ dirigente_id: null }).eq('dirigente_id', staffId);
-      await supabase.from('team').update({ preparatore_id: null }).eq('preparatore_id', staffId);
-      await supabase.from('team').update({ portieri_id: null }).eq('portieri_id', staffId);
       // Rimuovi da convocation
       await supabase.from('convocation').update({ convocato_da: null }).eq('convocato_da', staffId);
       // Rimuovi da team_staff

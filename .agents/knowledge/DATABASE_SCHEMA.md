@@ -100,10 +100,6 @@ WORKSPACE (società sportiva)
 | colori_casa | varchar(50) | SI | | |
 | colori_trasferta | varchar(50) | SI | | |
 | venue_id | uuid | SI | | FK → facility.id |
-| allenatore_id | uuid | SI | | FK → staff.id |
-| dirigente_id | uuid | SI | | FK → staff.id |
-| preparatore_id | uuid | SI | | FK → staff.id |
-| portieri_id | uuid | SI | | FK → staff.id |
 | matricola_figc | varchar(100) | SI | | |
 | iscritta_competizione | uuid | SI | | FK → competition.id |
 | note | text | SI | | |
@@ -114,7 +110,6 @@ WORKSPACE (società sportiva)
 - `season_id` → season
 - `category_id` → category
 - `venue_id` → facility (campo di casa)
-- `allenatore_id`, `dirigente_id`, `preparatore_id`, `portieri_id` → staff
 - `iscritta_competizione` → competition
 
 **Tabelle figlie:** team_player, match, training, training_config, training_template, team_staff, tournament, import_log, absence_notification
@@ -671,10 +666,6 @@ facility.id
  └── training.venue_id
 
 staff.id
- ├── team.allenatore_id
- ├── team.dirigente_id
- ├── team.preparatore_id
- ├── team.portieri_id
  ├── team_staff.staff_id
  └── convocation.convocato_da
 

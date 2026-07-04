@@ -29,17 +29,33 @@ export default async function loadGuest() {
     }
     
     // Ricostruisci layout con sidebar guest
+    const playerName = guestData.player_name || null;
     const { setupGuestLayout } = await import('../../components/layout/Sidebar');
-    setupGuestLayout(guestData.tipo);
+    setupGuestLayout(guestData.tipo, playerName);
     const { initRouter } = await import('../../router');
     initRouter();
     
     // Carica squadre filtrate per squadre_accesso del guest
     window.YFM.guestSquadreAccesso = guestData.squadre_accesso || [];
     window.YFM.guestPlayerId = guestData.player_id || null;
+    window.YFM.guestTeamId = guestData.team_id || null;
+    window.YFM.guestPlayerName = playerName;
     await loadSquadre();
     
-    window.YFM.navigateTo('dashboard');
+    // Messaggio di benvenuto
+    if (playerName) {
+      const c = document.getElementById('pageContent');
+      if (c) {
+        c.innerHTML = `<div style="text-align:center;padding:60px 20px;">
+          <p style="font-size:48px;">\u{1F44B}</p>
+          <h2 style="margin:12px 0 8px;">Ciao ${playerName.split(' ')[0]}!</h2>
+          <p style="color:#666;">Benvenuto nel tuo spazio personale</p>
+        </div>`;
+        setTimeout(() => window.YFM.navigateTo('dashboard'), 2000);
+      }
+    } else {
+      window.YFM.navigateTo('dashboard');
+    }
   } catch (err) {
     hideLoading();
     c.innerHTML = `<div style="text-align:center;padding:60px 20px;">
