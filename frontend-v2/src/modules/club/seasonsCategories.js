@@ -73,7 +73,7 @@ function render() {
               </div>
               <div style="display:flex;gap:6px;align-items:center;">
                 ${!s.attiva ? `<button class="btn btn-small" data-activate="${s.id}" style="background:#22c55e;color:white;border-color:#22c55e;">Attiva</button>` : ''}
-                ${!s.attiva ? `<button class="btn btn-small btn-danger" data-del-season="${s.id}">🗑️</button>` : ''}
+                <button class="btn btn-small btn-danger" data-del-season="${s.id}">🗑️</button>
                 <span style="font-size:14px;transition:transform .2s;${isExpanded ? 'transform:rotate(90deg);' : ''}">▶</span>
               </div>
             </div>
@@ -269,7 +269,7 @@ function showSeasonWizard() {
     try {
       const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
       const newSeason = await apiFetch(`/workspaces/${wsId}/stagioni`, {
-        method: 'POST', body: JSON.stringify({ anno_inizio: anno, skip_auto_teams: true })
+        method: 'POST', body: JSON.stringify({ anno_inizio: anno, skip_auto_teams: migrations.length > 0 })
       });
 
       if (newSeason?.id && migrations.length > 0) {

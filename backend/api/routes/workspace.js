@@ -295,7 +295,8 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
             // Crea nuova categoria
             const { data: newCat } = await supabase.from('category').insert({
               workspace_id: wsId, nome: mig.new_category_name,
-              tipo_campionato: mig.new_tipo_campionato, genere: mig.genere || 'M'
+              tipo_campionato: mig.new_tipo_campionato, genere: mig.genere || 'M',
+              anno_da: 0, anno_a: 0
             }).select().single();
             if (newCat) { targetCat = newCat; existingCats.push(newCat); result.categories_created++; }
             else continue;
