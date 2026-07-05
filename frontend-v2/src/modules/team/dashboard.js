@@ -145,28 +145,31 @@ export default async function loadDashboard() {
   };
 
   // Create player box HTML
-  const createPlayerBoxHtml = (giocatore, tipo, index) => {
-    const medalEmojis = ['🥇', '🥈', '🥉'];
-    const medal = medalEmojis[index] || (index + 1);
-    const value = tipo === 'gol' ? giocatore.gol + ' Gol' : tipo === 'assist' ? giocatore.assist + ' Assist' : giocatore.presenze + ' Pres.';
-    const subValue = tipo === 'presenze' && giocatore.minuti ? '<div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;">(' + giocatore.minuti + '\' min.)</div>' : '';
-    const bgColor = index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32';
-    const bgEnd = index === 0 ? '#FFA500' : index === 1 ? '#A0A0A0' : '#8B4513';
-    return '<div style="flex:1;background:linear-gradient(180deg,' + bgColor + ' 0%,' + bgEnd + ' 100%);padding:16px 8px;border-radius:16px;text-align:center;cursor:pointer;" onclick="if(typeof loadPlayerDetail===\'function\') loadPlayerDetail(\'' + giocatore.id + '\',\'' + giocatore.nome + '\');">' +
-      '<div style="font-size:32px;margin-bottom:8px;">' + medal + '</div>' +
-      '<div style="font-size:13px;font-weight:bold;color:#fff;margin-bottom:6px;">' + giocatore.nome + '</div>' +
-      '<div style="font-size:16px;font-weight:bold;color:#fff;">' + value + '</div>' + subValue + '</div>';
-  };
-
-  const createEmptyBoxHtml = () => '<div style="flex:1;background:#e8e8e8;padding:16px 8px;border-radius:16px;text-align:center;color:#aaa;">-</div>';
-
-  // Render top players
-  const renderTopSection = (title, players, tipo) => {
-    const boxes = [];
+  const renderTopSectionGlass = (title, players, tipo) => {
+    const medals = ['\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'];
+    const getValue = (p) => tipo === 'gol' ? p.gol : tipo === 'assist' ? p.assist : p.minuti || p.presenze;
+    const getLabel = (p) => tipo === 'gol' ? p.gol + ' gol' : tipo === 'assist' ? p.assist + ' assist' : p.minuti ? p.minuti + "'" : p.presenze + ' pres.';
+    const getBadge = (p) => tipo === 'gol' ? p.gol : tipo === 'assist' ? p.assist : p.presenze || 0;
+    const maxVal = players.length > 0 ? getValue(players[0]) : 1;
+    let rows = '';
     for (let i = 0; i < 3; i++) {
-      boxes.push(players[i] ? createPlayerBoxHtml(players[i], tipo, i) : createEmptyBoxHtml());
+      const p = players[i];
+      if (!p) {
+        rows += '<div style="padding:10px;text-align:center;color:rgba(255,255,255,0.3);">\u2014</div>';
+        continue;
+      }
+      const pct = Math.round(getValue(p) / maxVal * 100);
+      rows += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,0.08);backdrop-filter:blur(4px);margin-bottom:8px;cursor:pointer;position:relative;border:1px solid rgba(255,255,255,0.12);" onclick="if(typeof loadPlayerDetail===\'function\') loadPlayerDetail(\'' + p.id + '\',\'' + p.nome + '\');">' +
+        '<div style="position:absolute;top:-6px;left:-6px;font-size:14px;">' + medals[i] + '</div>' +
+        '<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.25);">' + getBadge(p) + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + p.nome + '</div>' +
+          '<div style="height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin-top:5px;"><div style="height:100%;width:' + pct + '%;background:rgba(255,255,255,0.7);border-radius:2px;"></div></div>' +
+        '</div>' +
+        '<div style="font-size:18px;font-weight:800;color:#fff;flex-shrink:0;">' + getLabel(p) + '</div>' +
+      '</div>';
     }
-    return '<div class="top-section"><h3 class="top-section-title">' + title + '</h3><div class="players-row">' + boxes.join('') + '</div></div>';
+    return '<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:16px;border-radius:14px;"><h3 style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);margin:0 0 12px 0;">' + title + '</h3>' + rows + '</div>';
   };
   
   // Helper per stile risultato colorato
@@ -258,19 +261,20 @@ export default async function loadDashboard() {
   
   // Render staff
   const renderStaff = () => {
-    const roleLabels = {
-      allenatore: 'Allenatore',
-      dirigente: '1° Dirigente',
-      dirigente2: '2° Dirigente',
-      preparatore_atletico: 'Prep. Atl.',
-      allenatore_portieri: 'All. Portieri'
-    };
-    const staffItems = ['allenatore','dirigente','dirigente2','preparatore_atletico','allenatore_portieri']
-      .filter(r => s[r])
-      .map(r => '<div class="staff-item"><span style="font-size:11px;font-weight:600;color:#667eea;min-width:90px;background:#f0f4ff;padding:4px 8px;border-radius:6px;">' + roleLabels[r] + '</span><span style="font-weight:500;font-size:14px;">' + s[r] + '</span></div>')
-      .join('');
-    const emptyMsg = !s.allenatore && !s.dirigente ? '<p style="color:var(--gray);text-align:center;padding:20px;">Nessuno staff registrato</p>' : '';
-    return staffItems + emptyMsg;
+    const roleLabels = { allenatore: 'Allenatore', dirigente: '1° Dirigente', dirigente2: '2° Dirigente', preparatore_atletico: 'Prep. Atl.', allenatore_portieri: 'All. Portieri' };
+    const roleIcons = { allenatore: '⚽', dirigente: '📋', dirigente2: '📋', preparatore_atletico: '🏋️', allenatore_portieri: '🧤' };
+    const items = ['allenatore','dirigente','dirigente2','preparatore_atletico','allenatore_portieri'].filter(r => s[r]);
+    if (items.length === 0) return '<p style="color:rgba(255,255,255,0.5);text-align:center;padding:20px;">Nessuno staff registrato</p>';
+    return items.map(r => {
+      const initials = s[r].split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,0.08);backdrop-filter:blur(4px);margin-bottom:8px;border:1px solid rgba(255,255,255,0.12);">' +
+        '<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.25);">' + initials + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13px;font-weight:600;color:#fff;">' + s[r] + '</div>' +
+          '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">' + roleIcons[r] + ' ' + roleLabels[r] + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
   };
   
   // Render classifica
@@ -396,20 +400,15 @@ export default async function loadDashboard() {
     '.dash-card { background:white; padding:12px 6px; text-align:center; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08); }' +
     '.top-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }' +
     '@media (max-width: 900px) { .top-grid { grid-template-columns: 1fr !important; } }' +
-    '.top-section { background:linear-gradient(180deg, #fff 0%, #f5f5f5 100%); padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
-    '.top-section-title { font-size:15px;font-weight:600;color:#333;margin:0 0 14px 0;display:flex;align-items:center;gap:8px; }' +
-    '.players-row { display:flex; gap:10px; }' +
-    '@media (max-width: 600px) { .players-row { flex-direction:column; } }' +
     '.bottom-grid { display:grid; gap:20px; grid-template-columns:1fr; }' +
     '@media (min-width: 900px) { .bottom-grid { grid-template-columns: 1.5fr 1fr !important; } }' +
     '.result-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
     '.match-item { cursor:pointer; transition: all 0.2s ease; }' +
     '.match-item:hover { opacity:0.9; transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.1); }' +
-    '.staff-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
+    '.staff-card { padding:16px; border-radius:14px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); box-shadow:none; }' +
     '.staff-desktop { display:block; }' +
     '.staff-mobile { display:none; }' +
     '@media (max-width: 900px) { .staff-desktop { display:none !important; } .staff-mobile { display:block !important; } }' +
-    '.staff-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }' +
     '.classifica-table { width:100%; border-collapse:collapse; font-size:12px; }' +
     '.classifica-table th { text-align:center; font-size:10px; color:#999; padding:4px 6px; border-bottom:1px solid #eee; white-space:nowrap; }' +
     '.classifica-table th:nth-child(2) { text-align:left; }' +
@@ -453,17 +452,17 @@ export default async function loadDashboard() {
     '</div>' +
     
     '<div class="top-grid" data-help="dashboard.topPlayers">' +
-    renderTopSection('⚽ Top 3 Marcatori', (top.marcatori || []).slice(0, 3), 'gol') +
-    renderTopSection('🅰️ Top 3 Assist', (top.assistmen || []).slice(0, 3), 'assist') +
-    renderTopSection('🏃 Top 3 Presenze (min.)', (top.presenze || []).slice(0, 3), 'presenze') +
+    renderTopSectionGlass('⚽ Top 3 Marcatori', (top.marcatori || []).slice(0, 3), 'gol') +
+    renderTopSectionGlass('🅰️ Top 3 Assist', (top.assistmen || []).slice(0, 3), 'assist') +
+    renderTopSectionGlass('🏃 Top 3 Presenze (min.)', (top.presenze || []).slice(0, 3), 'presenze') +
     '</div>' +
     
     '<div class="bottom-grid">' +
     '<div><div class="result-card" data-help="dashboard.risultati"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>' +
-    '<div class="staff-card staff-desktop" data-help="dashboard.staff" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
+    '<div class="staff-card staff-desktop" data-help="dashboard.staff" style="margin-top:20px;"><h3 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
     '<div id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
     '</div>' +
-    '<div class="staff-card staff-mobile" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div>';
+    '<div class="staff-card staff-mobile" style="margin-top:20px;"><h3 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h3><div>' + renderStaff() + '</div></div>';
 
   // Attach dropdown change handler
   const filterEl = document.getElementById('dashTipoFilter');
@@ -494,9 +493,9 @@ export default async function loadDashboard() {
       // Update top 3
       const topGrid = c.querySelector('.top-grid');
       if (topGrid) {
-        topGrid.innerHTML = renderTopSection('⚽ Top 3 Marcatori', (top.marcatori || []).slice(0, 3), 'gol') +
-          renderTopSection('🅰️ Top 3 Assist', (top.assistmen || []).slice(0, 3), 'assist') +
-          renderTopSection('🏃 Top 3 Presenze (min.)', (top.presenze || []).slice(0, 3), 'presenze');
+        topGrid.innerHTML = renderTopSectionGlass('⚽ Top 3 Marcatori', (top.marcatori || []).slice(0, 3), 'gol') +
+          renderTopSectionGlass('🅰️ Top 3 Assist', (top.assistmen || []).slice(0, 3), 'assist') +
+          renderTopSectionGlass('🏃 Top 3 Presenze (min.)', (top.presenze || []).slice(0, 3), 'presenze');
       }
       // Update risultati
       const resCard = c.querySelector('[data-help="dashboard.risultati"]');
