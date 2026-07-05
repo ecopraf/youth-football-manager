@@ -47,6 +47,7 @@ WORKSPACE (società sportiva)
 | sito_web | varchar(255) | SI | | |
 | colori_sociali | varchar(100) | SI | | |
 | sponsor_tecnico | varchar(100) | SI | | |
+| nome_breve | text | SI | | Nome compatto per UI (sidebar, dashboard) |
 | data_creazione | timestamptz | SI | now() | |
 
 **Tabelle figlie dirette:** season, category, facility, staff, users, import_log, tournament

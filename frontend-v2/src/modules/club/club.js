@@ -64,7 +64,7 @@ function renderClub(c, ws, facility, staff) {
   html += `<div class="club-header">
     ${logo ? `<img src="${logo}" class="club-logo" alt="Logo">` : '<div class="club-logo" style="display:flex;align-items:center;justify-content:center;font-size:28px;">🏢</div>'}
     <div>
-      <div class="club-name">${ws?.nome || 'Società'}</div>
+      <div class="club-name">${ws?.nome_breve || ws?.nome || 'Società'}</div>
       <div class="club-team">${teamName}</div>
     </div>
   </div>`;

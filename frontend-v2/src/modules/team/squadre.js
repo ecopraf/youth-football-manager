@@ -135,5 +135,5 @@ window.YFM.getSquadra = () => {
 };
 
 window.YFM.getSocietaName = () => {
-  return window.YFM.workspaceInfo ? window.YFM.workspaceInfo.nome : 'La tua Società';
+  return window.YFM.workspaceInfo ? (window.YFM.workspaceInfo.nome_breve || window.YFM.workspaceInfo.nome) : 'La tua Società';
 };

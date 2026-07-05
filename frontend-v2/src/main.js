@@ -31,7 +31,8 @@ window.YFM.getSquadra = () => {
   return window.YFM.allSquadre.find(x => x.id === window.YFM.squadraId) || {};
 };
 window.YFM.getSocietaName = () => {
-  return window.YFM.workspaceInfo ? window.YFM.workspaceInfo.nome : 'ASD';
+  if (!window.YFM.workspaceInfo) return 'ASD';
+  return window.YFM.workspaceInfo.nome_breve || window.YFM.workspaceInfo.nome;
 };
 window.YFM.getWorkspaceLogo = () => {
   return window.YFM.workspaceInfo ? window.YFM.workspaceInfo.logo_url : null;

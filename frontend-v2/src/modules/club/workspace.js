@@ -19,9 +19,9 @@ export async function loadWorkspaceInfo() {
     if (ws) {
       window.YFM.workspaceId = ws.id;
       const wn = document.getElementById('workspaceName');
-      if (wn) wn.textContent = ws.nome || 'Società';
+      if (wn) wn.textContent = ws.nome_breve || ws.nome || 'Società';
       const hn = document.getElementById('headerSocName');
-      if (hn) hn.textContent = ws.nome || 'Società';
+      if (hn) hn.textContent = ws.nome_breve || ws.nome || 'Società';
       const logo = document.getElementById('headerLogo');
       if (logo && ws.logo_url) {
         logo.src = ws.logo_url;

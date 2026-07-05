@@ -41,8 +41,8 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   router.put('/api/workspaces/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { nome, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico } = req.body;
-      const { data, error } = await supabase.from('workspace').update({ nome, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico }).eq('id', id).select().single();
+      const { nome, nome_breve, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico } = req.body;
+      const { data, error } = await supabase.from('workspace').update({ nome, nome_breve, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico }).eq('id', id).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.json(data);
     } catch (err) {

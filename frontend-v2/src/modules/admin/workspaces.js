@@ -139,6 +139,7 @@ function render(c) {
 
         <form id="wsForm">
           <div class="form-group"><label>Nome *</label><input id="wsNome" required></div>
+          <div class="form-group"><label>Nome Breve</label><input id="wsNomeBreve" placeholder="es. DF Academy (mostrato in sidebar/dashboard)"></div>
           <div id="logoPreview" style="margin:12px 0;text-align:center;"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div class="form-group"><label>Colori Sociali</label><input id="wsColori" placeholder="es. Nero/Azzurro"></div>
@@ -362,6 +363,7 @@ async function openModal(wsId = null) {
     document.getElementById('wsModalTitle').textContent = 'Modifica Workspace';
     document.getElementById('wsId').value = ws.id;
     document.getElementById('wsNome').value = ws.nome || '';
+    document.getElementById('wsNomeBreve').value = ws.nome_breve || '';
     document.getElementById('wsColori').value = ws.colori_sociali || '';
     document.getElementById('wsSponsor').value = ws.sponsor_tecnico || '';
     document.getElementById('wsIndirizzo').value = ws.indirizzo || '';
@@ -395,6 +397,7 @@ async function handleSave(e) {
   const id = document.getElementById('wsId').value;
   const body = {
     nome: document.getElementById('wsNome').value.trim(),
+    nome_breve: document.getElementById('wsNomeBreve').value.trim() || null,
     logo_url: document.getElementById('wsLogoUrl').value || null,
     colori_sociali: document.getElementById('wsColori').value.trim() || null,
     sponsor_tecnico: document.getElementById('wsSponsor').value.trim() || null,
