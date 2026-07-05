@@ -8,6 +8,7 @@ let match = null;
 let eventi = [];
 let giocatori = [];
 let isReadOnly = false;
+let liveInterval = null;
 
 export default async function loadMatchCenter() {
   const c = document.getElementById('pageContent');
@@ -75,8 +76,63 @@ async function loadGiocatori(mid) {
 }
 
 function render(c, mid) {
+  if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
   c.innerHTML = getStyles() + getHeader(mid) + getTabs() + getBody(mid) + getDrawer();
   bindEvents(mid);
+  startLiveInterval();
+}
+
+// ── LIVE MODE UTILITIES ──
+function getHalfDuration() {
+  // Detect from category name: U14/U15=35, U16=40, default=45
+  const cat = (window.YFM.categoryName || '').toLowerCase();
+  if (cat.includes('14') || cat.includes('15')) return 35;
+  if (cat.includes('16')) return 40;
+  return 45;
+}
+
+function calcLiveMinute() {
+  const meta = match?.live_meta;
+  if (!meta) return null;
+  const half = getHalfDuration();
+  const now = Date.now();
+  if (meta.stato === '1t' && meta.start_1t) {
+    const elapsed = Math.floor((now - new Date(meta.start_1t).getTime()) / 60000) + 1;
+    return Math.min(elapsed, half + 5); // max half+5 (recupero)
+  }
+  if (meta.stato === 'intervallo') return half; // fisso al minuto fine 1T
+  if (meta.stato === '2t' && meta.start_2t) {
+    const elapsed = Math.floor((now - new Date(meta.start_2t).getTime()) / 60000) + half + 1;
+    return Math.min(elapsed, half * 2 + 5);
+  }
+  if (meta.stato === 'fine') return half * 2; // 70/80/90
+  return null;
+}
+
+function getLiveStateLabel() {
+  const meta = match?.live_meta;
+  if (!meta?.stato) return { label: '▶️ Inizio 1°T', action: 'start_1t' };
+  if (meta.stato === '1t') return { label: '⏸️ Fine 1°T', action: 'end_1t' };
+  if (meta.stato === 'intervallo') return { label: '▶️ Inizio 2°T', action: 'start_2t' };
+  if (meta.stato === '2t') return { label: '🏁 Fine Partita', action: 'end_match' };
+  return { label: '✅ Terminata', action: null };
+}
+
+function startLiveInterval() {
+  const meta = match?.live_meta;
+  if (!meta || meta.stato === 'fine' || meta.stato === 'intervallo') return;
+  if (meta.stato === '1t' || meta.stato === '2t') {
+    updateMinuteBadge();
+    liveInterval = setInterval(updateMinuteBadge, 10000);
+  }
+}
+
+function updateMinuteBadge() {
+  const el = document.getElementById('mcLiveMin');
+  if (!el) return;
+  const min = calcLiveMinute();
+  el.textContent = min ? min + "'" : '';
+  el.style.display = min ? 'inline-block' : 'none';
 }
 
 function getTabs() {
@@ -178,6 +234,8 @@ function getStyles() {
 .mc-drawer-actions .btn{flex:1;}
 .mc-save-result{width:100%;margin-top:16px;padding:12px;border-radius:10px;border:none;background:#27AE60;color:white;font-size:14px;font-weight:600;cursor:pointer;}
 .mc-save-result:hover{background:#219a52;}
+.mc-live-btn{padding:10px 24px;border:none;border-radius:10px;color:white;font-size:13px;font-weight:700;cursor:pointer;transition:opacity 0.15s;}
+.mc-live-btn:hover{opacity:0.85;}
 .mc-tabs{display:flex;gap:4px;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:16px;overflow-x:auto;}
 .mc-tab{padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#888;cursor:pointer;border-radius:8px;white-space:nowrap;}
 .mc-tab:hover{background:#f5f5f5;color:#333;}
@@ -223,10 +281,13 @@ function getHeader(mid) {
   const leftBar = leftWinning ? '#27AE60' : (rightWinning ? '#E74C3C' : '#F39C12');
   const rightBar = rightWinning ? '#27AE60' : (leftWinning ? '#E74C3C' : '#F39C12');
 
+  const liveMin = calcLiveMinute();
   let badge = '';
   if (match.archiviata) badge = '<span class="mc-badge mc-badge-arch">📦 Archiviata</span>';
-  else if (match.stato === 'Terminata') badge = '<span class="mc-badge" style="background:#27AE60;color:white;">✅ Terminata</span>';
-  else badge = '<span class="mc-badge mc-badge-live">Live</span>';
+  else if (match.live_meta?.stato === 'fine' || match.stato === 'Terminata') badge = '<span class="mc-badge" style="background:#27AE60;color:white;">✅ Terminata</span>';
+  else if (match.live_meta?.stato === '1t' || match.live_meta?.stato === '2t') badge = `<span class="mc-badge mc-badge-live">Live</span><span class="mc-badge mc-badge-live" id="mcLiveMin" style="margin-left:4px;">${liveMin ? liveMin + "'" : ''}</span>`;
+  else if (match.live_meta?.stato === 'intervallo') badge = '<span class="mc-badge" style="background:#F39C12;color:white;">⏸️ Intervallo</span>';
+  else badge = '';
 
   const btnL = isReadOnly ? '' : `<button class="mc-score-btn" data-action="dec-left">−</button><button class="mc-score-btn" data-action="inc-left">+</button>`;
   const btnR = isReadOnly ? '' : `<button class="mc-score-btn" data-action="dec-right">−</button><button class="mc-score-btn" data-action="inc-right">+</button>`;
@@ -251,10 +312,18 @@ function getHeader(mid) {
       </div>
     </div>
     <div class="mc-meta">📅 ${formatDate(match.data_ora)}${match.competizione ? ' · 🏆 ' + match.competizione : ''}${match.giornata ? ' · G.' + match.giornata : ''} · ${match.luogo || ''}</div>
+    ${!isReadOnly ? getLiveButton() : ''}
   </div>`;
 }
 
 // ── QUICK ACTIONS ──
+function getLiveButton() {
+  const { label, action } = getLiveStateLabel();
+  if (!action) return '<div style="margin-top:12px;"><span class="mc-badge" style="background:#27AE60;color:white;">✅ Partita terminata</span></div>';
+  const colors = { start_1t: '#667eea', end_1t: '#F39C12', start_2t: '#667eea', end_match: '#E74C3C' };
+  return `<div style="margin-top:12px;"><button class="mc-live-btn" id="mcLiveBtn" data-action="${action}" style="background:${colors[action]};">${label}</button></div>`;
+}
+
 function getQuickActions(mid) {
   if (isReadOnly) return '';
   const actions = [
@@ -460,11 +529,25 @@ function bindEvents(mid) {
       if (!await confirm('Eliminare questo evento?')) return;
       eventi.splice(idx, 1);
       render(document.getElementById('pageContent'), mid);
+      showToast('Evento rimosso — salva per confermare');
     });
   });
 
   // Save result button
   document.getElementById('mcSave')?.addEventListener('click', () => saveAll(mid));
+
+  // Live button
+  document.getElementById('mcLiveBtn')?.addEventListener('click', async () => {
+    const action = document.getElementById('mcLiveBtn').dataset.action;
+    const confirmMsg = action === 'end_match' ? 'Confermi Fine Partita?' : null;
+    if (confirmMsg && !await confirm(confirmMsg)) return;
+    try {
+      const res = await apiFetch('/partite/' + mid + '/live-action', { method: 'PUT', body: JSON.stringify({ action }) });
+      match.live_meta = res.live_meta;
+      if (action === 'end_match') match.stato = 'Terminata';
+      render(document.getElementById('pageContent'), mid);
+    } catch (err) { alert('Errore: ' + err.message); }
+  });
 
   // Close dropdowns on outside click
   document.addEventListener('click', () => {
@@ -493,6 +576,12 @@ function openDrawer(tipo, editIdx = -1) {
     document.getElementById('drAssistGroup').style.display = effectiveTipo === 'GOAL' ? 'block' : 'none';
     document.getElementById('drFlagsGroup').style.display = effectiveTipo === 'GOAL' ? 'block' : 'none';
     if (tipo === 'RIGORE') document.getElementById('drRigore').checked = true;
+  }
+
+  // Pre-fill live minute
+  const liveMin = calcLiveMinute();
+  if (editIdx < 0 && liveMin) {
+    document.getElementById(isSub ? 'drMin2' : 'drMin').value = liveMin;
   }
 
   document.getElementById('mcDrawerOverlay').classList.add('open');
@@ -571,6 +660,15 @@ function saveEventFromDrawer(mid) {
   render(document.getElementById('pageContent'), mid);
 }
 
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, { position:'fixed',bottom:'24px',left:'50%',transform:'translateX(-50%)',background:'#333',color:'white',padding:'10px 20px',borderRadius:'8px',fontSize:'13px',fontWeight:'600',zIndex:'9999',opacity:'0',transition:'opacity 0.3s' });
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.style.opacity = '1');
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+}
+
 // ── SAVE ALL ──
 async function saveAll(mid) {
   showLoading();
@@ -595,9 +693,12 @@ async function saveAll(mid) {
       golOspite = isCasa ? rightScore : leftScore;
     }
 
+    const updateBody = { golCasa, golOspite };
+    // Non forzare 'Terminata' — lo stato lo gestisce il bottone Live
+    if (match.live_meta?.stato === 'fine' || match.stato === 'Terminata') updateBody.stato = 'Terminata';
     await apiFetch('/partite/' + mid, {
       method: 'PUT',
-      body: JSON.stringify({ golCasa, golOspite, stato: 'Terminata' })
+      body: JSON.stringify(updateBody)
     });
 
     hideLoading();

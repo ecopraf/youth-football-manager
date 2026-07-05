@@ -100,6 +100,27 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  // ── LIVE MATCH ──
+  router.put('/api/partite/:id/live-action', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
+    try {
+      const { action } = req.body; // start_1t, end_1t, start_2t, end_match
+      const valid = ['start_1t', 'end_1t', 'start_2t', 'end_match'];
+      if (!valid.includes(action)) return res.status(400).json({ error: 'Azione non valida' });
+      const { data: m } = await supabase.from('match').select('live_meta').eq('id', req.params.id).single();
+      const meta = m?.live_meta || {};
+      const now = new Date().toISOString();
+      meta[action] = now;
+      if (action === 'start_1t') meta.stato = '1t';
+      else if (action === 'end_1t') meta.stato = 'intervallo';
+      else if (action === 'start_2t') meta.stato = '2t';
+      else if (action === 'end_match') meta.stato = 'fine';
+      const updateData = { live_meta: meta };
+      if (action === 'end_match') updateData.stato = 'Terminata';
+      await supabase.from('match').update(updateData).eq('id', req.params.id);
+      res.json({ success: true, live_meta: meta });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   // ── CONVOCAZIONI ──
   router.get('/api/partite/:matchId/convocazioni', authMiddleware, async (req, res) => {
     try {
