@@ -239,9 +239,10 @@ Questo perché un giocatore può essere in più team (aggregato) e serve sapere 
 | giornata | integer | SI | | Numero giornata campionato |
 | gol_casa | integer | SI | 0 | |
 | gol_ospite | integer | SI | 0 | |
-| stato | varchar(30) | SI | 'Da disputare' | Da disputare/Disputata/Rinviata |
+| stato | varchar(30) | SI | 'Da disputare' | Da disputare/Terminata/Rinviata |
 | archiviata | boolean | SI | false | |
 | formazione_meta | jsonb | SI | | `{modulo: "4-3-3", positions: [...]}` |
+| live_meta | jsonb | SI | | `{stato, start_1t, end_1t, start_2t, end_match}` |
 | indirizzo_campo | text | SI | | Indirizzo trasferta (da PDF SGS) |
 | tc_match_url | text | SI | | URL Tuttocampo per import |
 | note | text | SI | | |

@@ -29,7 +29,7 @@
 | Convocazioni | ✅ | modules/team/convocazioni.js |
 | Formazione | ✅ | modules/team/formazione.js |
 | Distinta | ✅ | modules/team/distinta.js |
-| Match Detail | ✅ | modules/team/matchDetail.js |
+| Match Center | ✅ | modules/team/matchCenter.js (hub partita: eventi, live mode) |
 | Allenamenti | ✅ | modules/coach/training*.js, routes/training.js |
 | Statistiche | ✅ | modules/performance/stats.js, routes/statistics.js |
 | Report | ✅ | modules/performance/reports.js |
@@ -196,7 +196,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | Calendario | Integrazione Google Calendar | P2 |
 | Performance | Test fisici (semplificati) | P3 |
 | Performance | Piano individuale giocatore | P3 |
-| UI | Timeline partita animata | P3 |
+| UI | ~~Timeline partita animata~~ (fatto in Match Center) | ✅ |
 | Tech | TypeScript graduale | P3 |
 | Tech | Test E2E (Playwright) | P3 |
 | Mobile | App nativa | P3 |
@@ -215,6 +215,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| ba51bee | feat: Live Match Mode — bottone stato, minuto live, pre-fill drawer, durata per categoria |
+| 856acd8 | feat: Match Center hub + CORS fix + assist/rigore/autogol support |
 | (pending) | fix: WhatsApp link aggiunge +39 a numeri senza prefisso internazionale + template picker con modale card + fix salvataggio/caricamento programma seduta (upsert backend + load da DB) |
 | (pending) | feat: redesign stagioni — wizard con promozione categoria (U14→U15), tipo campionato, delete cascade, stagioni espandibili con card team |
 | (pending) | feat: workspace.nome_breve — nome compatto per sidebar/dashboard (DB + backend + frontend) |

@@ -86,7 +86,7 @@ api/
     ├── workspace.js            — Workspace, facility, staff workspace (GET/POST con categorie)
     ├── team.js                 — Squadre CRUD, PUT stagioni, POST categorie/:catId/team
     ├── training.js             — Config, presenze, templates, programma, allenamenti-futuri (virtuali da config)
-    ├── match.js                — Partite CRUD, convocazioni, formazione, eventi
+    ├── match.js                — Partite CRUD, convocazioni, formazione, eventi, live-action
     ├── staff.js                — Staff completo per distinta
     ├── admin.js                — Migrazioni schema DB
     ├── statistics.js           — Statistiche complete, top players, report partita/stagionale/giocatore
@@ -140,8 +140,8 @@ backend/scripts/
 | `team` | Squadra | season_id, category_id, classifica_url |
 | `player` | Giocatore | - |
 | `team_player` | Associazione giocatore-squadra | team_id, player_id, aggregato |
-| `match` | Partita | team_id, competition_id |
-| `match_event` | Eventi (GOAL, ASSIST, YELLOW...) | match_id, player_id |
+| `match` | Partita | team_id, competition_id, live_meta JSONB |
+| `match_event` | Eventi (GOAL, ASSIST, YELLOW...) | match_id, player_id, player_id_secondario |
 | `match_formation` | Formazione | match_id, team_player_id |
 | `match_statistics` | Statistiche dettagliate | match_id, team_player_id |
 | `convocation` | Convocazioni | match_id, team_player_id |

@@ -434,8 +434,11 @@ const EVT_CONFIG = {
 
 // ── BIND EVENTS ──
 function bindEvents(mid) {
-  // Back button
-  document.getElementById('mcBack')?.addEventListener('click', () => window.YFM.navigateTo('calendar'));
+  // Back button — auto-save before leaving
+  document.getElementById('mcBack')?.addEventListener('click', async () => {
+    if (!isReadOnly) await saveAll(mid);
+    window.YFM.navigateTo('calendar');
+  });
 
   // Score +/- buttons
   document.querySelectorAll('.mc-score-btn').forEach(btn => {
@@ -701,11 +704,14 @@ async function saveAll(mid) {
       body: JSON.stringify(updateBody)
     });
 
+    // Update local match data
+    match.gol_casa = golCasa;
+    match.gol_ospite = golOspite;
+
     hideLoading();
     invalidateDashboardCache();
     invalidateStatsCache();
-    alert('✅ Risultato e eventi salvati!');
-    window.YFM.navigateTo('calendar');
+    showToast('✅ Risultato e eventi salvati!');
   } catch (err) {
     hideLoading();
     alert('Errore: ' + err.message);

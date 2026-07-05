@@ -118,7 +118,7 @@ Le tabelle reali nel DB Supabase sono:
 **Colonne notevoli `team_player`**: `stato TEXT` (Attivo, Infortunato, Svincolato), `aggregato BOOLEAN DEFAULT false` (true se giocatore aggregato da categoria inferiore)
 - `match`, `match_event`, `match_formation`, `match_statistics`, `convocation`
 
-**Colonne notevoli `match`**: `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS), `tc_match_url TEXT` (URL pagina partita Tuttocampo per import formazioni)
+**Colonne notevoli `match`**: `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS), `tc_match_url TEXT` (URL pagina partita Tuttocampo per import formazioni), `live_meta JSONB` (`{stato: '1t'|'intervallo'|'2t'|'fine', start_1t, end_1t, start_2t, end_match}` — lifecycle Live Match Mode)
 - `training`, `training_attendance`, `training_config`, `training_template`
 - `valutazione_partita`, `document`
 - `users`, `guest_token`

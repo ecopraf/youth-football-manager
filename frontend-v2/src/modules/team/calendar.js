@@ -75,7 +75,7 @@ function updateProgressDots() {
     if (nextStep === undefined) return;
     const stepOrder = ['convocazione', 'formazione', 'risultato', 'eventi'];
     const currentIdx = nextStep ? stepOrder.indexOf(nextStep) : 4;
-    const labels = { convocazione: 'Conv', formazione: 'Form', risultato: 'Ris', eventi: 'Ev' };
+    const labels = { convocazione: 'Conv', formazione: 'Form', risultato: 'MC', eventi: 'Ev' };
     el.innerHTML = stepOrder.map((s, i) => {
       const dotClass = i < currentIdx ? 'progress-done' : i === currentIdx ? 'progress-active' : 'progress-pending';
       return `<div class="progress-step ${dotClass}"><span class="progress-dot"></span><span class="progress-label">${labels[s]}</span></div>`;
@@ -389,7 +389,7 @@ export function renderMatchCard(m, stats, isNext = false) {
     else { cls = 'result-draw'; icon = '🤝'; }
     resultHtml = `<span class="result-badge ${cls}" style="cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')"><span class="result-score">${golFatti} - ${golSubiti}</span>${icon}</span>`;
   } else if (!isPast) {
-    resultHtml = `<button class="btn btn-primary btn-small" data-help="calendar.btnRisultato" onclick="event.stopPropagation();window.YFM.openResultForm('${m.id}')">⚽ Risultato</button>`;
+    resultHtml = '';
   }
 
   // === PROGRESS DOTS (placeholder, aggiornati in background) ===
@@ -397,25 +397,13 @@ export function renderMatchCard(m, stats, isNext = false) {
 
   // === PULSANTI AZIONE ===
   let actionsHtml = '';
-  if (!isPast && !isArchiviata) {
-    actionsHtml += makeBtn('📋 Convoca', `window.YFM.openConvocation('${m.id}',false)`, false);
+  const convLabel = isPast ? '📋 Conv.' : '📋 Convoca';
+  if (!isArchiviata) {
+    actionsHtml += makeBtn(convLabel, `window.YFM.openConvocation('${m.id}',${isPast})`, false);
     actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);
     actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
     actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
-    if (hasResult) {
-      actionsHtml += makeBtn('✏️ Eventi', `window.YFM.openResultForm('${m.id}')`, false);
-    }
-  } else if (isPast && hasResult && !isArchiviata) {
-    actionsHtml += makeBtn('📋 Conv.', `window.YFM.openConvocation('${m.id}',true)`, false);
-    actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);
-    actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
-    actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
-    actionsHtml += makeBtn('✏️ Eventi', `window.YFM.openResultForm('${m.id}')`, false);
-  } else if (isPast && !hasResult) {
-    actionsHtml += makeBtn('📋 Conv.', `window.YFM.openConvocation('${m.id}',true)`, false);
-    actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);
-    actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
-    actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
+    actionsHtml += makeBtn('⚽ Match Center', `window.YFM.openMatchCenter('${m.id}')`, false);
   } else {
     actionsHtml += makeBtn('📋 Conv.', `window.YFM.openConvocation('${m.id}',true)`, false);
     actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);

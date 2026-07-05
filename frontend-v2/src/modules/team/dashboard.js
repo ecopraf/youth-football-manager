@@ -58,6 +58,9 @@ export default async function loadDashboard() {
   
   const isGuest = !!(window.YFM.guestSquadreAccesso && window.YFM.guestSquadreAccesso.length > 0);
   const hasEditAccess = !isGuest && (window.YFM.isAdmin() || window.YFM.hasRole('allenatore'));
+  const matchCenterBtn = hasEditAccess && prossimaPartita
+    ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600;margin-left:8px;" onclick="window.YFM.openMatchCenter(\'' + prossimaPartita.id + '\')">⚽ Match Center</button>'
+    : '';
   const convButton = hasEditAccess && prossimaPartita 
     ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600;" onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')">👥 Convocazioni</button>'
     : '';
@@ -82,7 +85,7 @@ export default async function loadDashboard() {
     if (prossimaPartita) {
       const luogoHtml = prossimaPartita.luogo === 'Casa' ? ' · 🏠 Casa' : ' · ✈️ Trasferta';
       const compHtml = prossimaPartita.competizione ? ' · 🏆 ' + prossimaPartita.competizione : '';
-      const btnHtml = convButton ? '<div style="margin-top:10px;">' + convButton + '</div>' : '';
+      const btnHtml = (convButton || matchCenterBtn) ? '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">' + convButton + matchCenterBtn + '</div>' : '';
       return '<div data-help="dashboard.prossimaPartita" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;margin-bottom:24px;color:white;border-radius:16px;box-shadow:0 8px 25px rgba(102,126,234,0.4);">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">' +
         '<div>' +
