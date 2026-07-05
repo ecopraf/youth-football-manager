@@ -123,8 +123,8 @@ export function drawDonutChart(canvas, data, opts = {}) {
   if (total === 0) return;
 
   const cx = w / 2;
-  const cy = h / 2 + 10;
-  const radius = Math.min(w, h) / 2 - 30;
+  const cy = (h - 20) / 2 + 10;
+  const radius = Math.min(w, h - 20) / 2 - 20;
   const innerRadius = radius * 0.55;
 
   let startAngle = -Math.PI / 2;
@@ -136,6 +136,19 @@ export function drawDonutChart(canvas, data, opts = {}) {
     ctx.closePath();
     ctx.fillStyle = d.color;
     ctx.fill();
+    // Percentage inside slice
+    if (d.value > 0) {
+      const midAngle = startAngle + sliceAngle / 2;
+      const labelRadius = (radius + innerRadius) / 2;
+      const lx = cx + Math.cos(midAngle) * labelRadius;
+      const ly = cy + Math.sin(midAngle) * labelRadius;
+      const pct = Math.round((d.value / total) * 100);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pct + '%', lx, ly);
+    }
     startAngle += sliceAngle;
   });
 
@@ -143,22 +156,26 @@ export function drawDonutChart(canvas, data, opts = {}) {
   ctx.fillStyle = '#334155';
   ctx.font = 'bold 20px system-ui';
   ctx.textAlign = 'center';
-  ctx.fillText(total, cx, cy + 6);
+  ctx.textBaseline = 'middle';
+  ctx.fillText(total, cx, cy - 6);
   ctx.font = '11px system-ui';
   ctx.fillStyle = '#64748b';
-  ctx.fillText('partite', cx, cy + 22);
+  ctx.fillText('partite', cx, cy + 12);
 
-  // Legend
-  const legendY = h - 18;
-  let legendX = cx - (data.length * 60) / 2;
+  // Legend — centered below chart
+  const legendY = h - 10;
+  const totalLegendW = data.reduce((sum, d) => sum + ctx.measureText(`${d.label} ${d.value}`).width + 24, 0);
+  let legendX = (w - totalLegendW) / 2;
+  ctx.textBaseline = 'alphabetic';
   data.forEach(d => {
     ctx.fillStyle = d.color;
     ctx.fillRect(legendX, legendY - 8, 10, 10);
     ctx.fillStyle = '#334155';
     ctx.font = '11px system-ui';
     ctx.textAlign = 'left';
-    ctx.fillText(`${d.label} ${d.value}`, legendX + 14, legendY);
-    legendX += 70;
+    const txt = `${d.label} ${d.value}`;
+    ctx.fillText(txt, legendX + 14, legendY);
+    legendX += ctx.measureText(txt).width + 24;
   });
 
   // Title
@@ -189,7 +206,7 @@ export function drawLineChart(canvas, data, opts = {}) {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, w, h);
 
-  const padding = { top: 30, bottom: 40, left: 35, right: 10 };
+  const padding = { top: 30, bottom: 50, left: 35, right: 10 };
   const chartW = w - padding.left - padding.right;
   const chartH = h - padding.top - padding.bottom;
   const maxVal = Math.max(...data.map(d => Math.max(d.value1 || 0, d.value2 || 0)), 1);
@@ -251,7 +268,7 @@ export function drawLineChart(canvas, data, opts = {}) {
   });
 
   // Legend
-  const ly = h - 8;
+  const ly = h - 12;
   ctx.fillStyle = color1;
   ctx.fillRect(w / 2 - 80, ly - 8, 10, 10);
   ctx.fillStyle = '#334155';
