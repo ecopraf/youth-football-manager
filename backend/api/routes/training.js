@@ -154,12 +154,27 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
           if (batchData) presenze.push(...batchData);
         }
       }
+      // Fetch motivi for absences
+      let motiviData = [];
+      if (trainingIds.length > 0) {
+        for (let i = 0; i < trainingIds.length; i += 20) {
+          const batch = trainingIds.slice(i, i + 20);
+          const { data: batchData } = await supabase.from('training_attendance').select('team_player_id, motivi_assenza').in('training_id', batch).eq('presente', false).range(0, 9999);
+          if (batchData) motiviData.push(...batchData);
+        }
+      }
+
       const summary = {};
+      const motiviTotali = {};
+      motiviData.forEach(m => { const k = m.motivi_assenza || 'Non comunicato'; motiviTotali[k] = (motiviTotali[k] || 0) + 1; });
       (teamPlayers || []).forEach(tp => {
         const g = tp.calciatore;
         if (!g) return;
         const playerPres = presenze.filter(p => p.team_player_id === tp.id);
-        summary[g.id] = { id: g.id, nome: g.nome, cognome: g.cognome, totali: playerPres.length, presenti: playerPres.filter(p => p.presente).length, assenti: playerPres.filter(p => !p.presente).length, assentiSett: 0 };
+        const playerMotivi = motiviData.filter(m => m.team_player_id === tp.id);
+        const motivi = {};
+        playerMotivi.forEach(m => { const k = m.motivi_assenza || 'Non comunicato'; motivi[k] = (motivi[k] || 0) + 1; });
+        summary[g.id] = { id: g.id, nome: g.nome, cognome: g.cognome, totali: playerPres.length, presenti: playerPres.filter(p => p.presente).length, assenti: playerPres.filter(p => !p.presente).length, assentiSett: 0, motivi };
       });
 
       // Determine if season is active (has trainings in last 30 days)
@@ -191,7 +206,7 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
         const a = trainings && trainings.length > 0 ? trainings[trainings.length - 1].data_ora.split('T')[0] : null;
         settimana = { da, a, attiva: false };
       }
-      res.json({ summary, settimana });
+      res.json({ summary, settimana, motiviTotali });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

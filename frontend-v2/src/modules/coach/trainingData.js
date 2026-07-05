@@ -24,7 +24,8 @@ export async function loadTrainingData() {
       presenze,
       partite,
       summary: sumData.summary || {},
-      settimana: sumData.settimana || {}
+      settimana: sumData.settimana || {},
+      motiviTotali: sumData.motiviTotali || {}
     };
   } catch (e) {
     document.getElementById('pageContent').innerHTML = '<div class="error-box">' + e.message + '</div>';

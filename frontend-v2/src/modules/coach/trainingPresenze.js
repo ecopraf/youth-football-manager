@@ -32,7 +32,7 @@ export default async function loadTrainingPresenze() {
     _absenceNotifications = await apiFetch('/absence/team/' + window.YFM.squadraId);
   } catch(e) { _absenceNotifications = []; }
 
-  const { config, presenze, partite, giocatori, summary, settimana } = _trainingData;
+  const { config, presenze, partite, giocatori, summary, settimana, motiviTotali } = _trainingData;
   selectTodayIfTraining(config, presenze);
 
   setOnDateSelect((date) => {
@@ -54,6 +54,7 @@ export default async function loadTrainingPresenze() {
     <div class="card" style="margin-bottom:16px;"><div id="trainingCalendar">${renderCalendar(config, presenze, partite)}</div></div>
     <div class="card" style="margin-bottom:16px;" id="presenzeDetail">${renderPresenzeDetail(getSelectedDate())}</div>
     ${renderSummary(giocatori, summary, settimana)}
+    ${renderMotiviBreakdown(motiviTotali, summary)}
   `;
 
   attachCalendarListeners();
@@ -142,6 +143,40 @@ function attachPresenzeListeners(date) {
       loadTrainingPresenze();
     } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
   });
+}
+
+function renderMotiviBreakdown(motiviTotali, summary) {
+  const totale = Object.values(motiviTotali).reduce((s, v) => s + v, 0);
+  if (totale === 0) return '';
+
+  const MOTIVI_ICONS = { 'Malattia': '🤒', 'Impegno scolastico': '📚', 'Motivi familiari': '👪', 'Infortunio': '🏥', 'Non comunicato': '❓' };
+  const MOTIVI_COLORS = { 'Malattia': '#fef2f2;color:#dc2626', 'Impegno scolastico': '#eff6ff;color:#2563eb', 'Motivi familiari': '#f0fdf4;color:#16a34a', 'Infortunio': '#fefce8;color:#ca8a04', 'Non comunicato': '#f5f5f5;color:#6b7280' };
+
+  const sorted = Object.entries(motiviTotali).sort((a, b) => b[1] - a[1]);
+
+  let html = `<div class="card" style="margin-bottom:20px;">
+    <h3 class="section-title">📋 Motivi Assenza <span style="font-size:12px;color:var(--gray);font-weight:normal;">(${totale} assenze totali)</span></h3>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">`;
+
+  sorted.forEach(([motivo, cnt]) => {
+    const pct = Math.round(cnt / totale * 100);
+    const icon = MOTIVI_ICONS[motivo] || '📌';
+    const bg = MOTIVI_COLORS[motivo] || '#f5f5f5;color:#374151';
+    html += `<div style="background:${bg};padding:10px 14px;border-radius:10px;min-width:140px;flex:1;">
+      <div style="font-size:13px;font-weight:600;">${icon} ${motivo}</div>
+      <div style="font-size:20px;font-weight:700;margin-top:4px;">${cnt} <span style="font-size:12px;font-weight:normal;">(${pct}%)</span></div>
+    </div>`;
+  });
+
+  html += `</div>
+    <div style="background:#f8fafc;border-radius:8px;height:24px;overflow:hidden;display:flex;">`;
+  sorted.forEach(([motivo, cnt]) => {
+    const pct = (cnt / totale * 100);
+    const colors = { 'Malattia': '#fca5a5', 'Impegno scolastico': '#93c5fd', 'Motivi familiari': '#86efac', 'Infortunio': '#fde047', 'Non comunicato': '#d1d5db' };
+    html += `<div style="width:${pct}%;background:${colors[motivo] || '#a5b4fc'};" title="${motivo}: ${cnt}"></div>`;
+  });
+  html += `</div></div>`;
+  return html;
 }
 
 function renderSummary(giocatori, summary, settimana) {
