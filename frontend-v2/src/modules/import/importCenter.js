@@ -233,15 +233,31 @@ function openImportText() {
         <div style="max-height:250px;overflow-y:auto;border:1px solid #eee;border-radius:8px;">
           <table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f5f5f5;"><th style="padding:6px 8px;font-size:11px;text-align:left;">G</th><th style="padding:6px 8px;font-size:11px;text-align:left;">Data</th><th style="padding:6px 8px;font-size:11px;text-align:left;">Partita</th></tr></thead><tbody>${rows}</tbody></table>
         </div>
-        <div class="form-group" style="margin-top:12px;"><label>Competizione (opzionale)</label><input id="txtComp" placeholder="es. Campionato Regionale"></div>
-        <button class="btn btn-primary" id="txtConfirm" style="margin-top:12px;width:100%;">✅ Conferma e Importa (${data.partite.length} partite)</button>`;
+        <div class="form-group" style="margin-top:12px;"><label style="font-weight:600;">Competizione *</label><select id="selComp" style="width:100%;padding:8px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;"><option value="">-- Seleziona competizione --</option></select></div>
+        <button class="btn btn-primary" id="txtConfirm" style="margin-top:12px;width:100%;" disabled>✅ Conferma e Importa (${data.partite.length} partite)</button>`;
+
+      // Load competitions dropdown
+      apiFetch('/squadre/' + window.YFM.squadraId + '/competitions').then(comps => {
+        const sel = document.getElementById('selComp');
+        (comps || []).forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.nome;
+          opt.textContent = c.nome + ' (' + c.tipo + ')';
+          sel.appendChild(opt);
+        });
+        sel.addEventListener('change', () => {
+          document.getElementById('txtConfirm').disabled = !sel.value;
+        });
+      });
 
       document.getElementById('txtConfirm').addEventListener('click', async () => {
+        const compValue = document.getElementById('selComp').value;
+        if (!compValue) { alert('Seleziona una competizione'); return; }
         showLoading('Importazione...');
         try {
           const partite = data.partite.map(p => ({
             ...p,
-            competizione: document.getElementById('txtComp').value.trim() || p.competizione
+            competizione: compValue
           }));
           const resp = await apiFetch('/calendario/import', {
             method: 'POST',

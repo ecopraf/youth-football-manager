@@ -63,7 +63,7 @@ export async function openConvocation(mid, readOnly) {
         <input type="checkbox" ${ids.includes(g.id) ? 'checked' : ''} data-pid="${g.id}" class="conv-check" style="width:20px;height:20px;cursor:pointer;accent-color:var(--green);">
         <div class="player-avatar" style="width:32px;height:32px;font-size:12px;background:${getAvatarColor(g.nome)};">${g.nome[0]}${g.cognome[0]}</div>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.nome} ${g.cognome}${badges.length ? ' ' + badges.join(' ') : ''}</span>
-        <span style="color:var(--gray);font-size:13px;white-space:nowrap;">${g.ruolo} · #${g.numeroMaglia}</span>
+        <span style="color:var(--gray);font-size:13px;white-space:nowrap;">${g.ruolo}${g.numeroMaglia ? ' · #' + g.numeroMaglia : ''}</span>
       </div>
     `}).join('')}`;
 

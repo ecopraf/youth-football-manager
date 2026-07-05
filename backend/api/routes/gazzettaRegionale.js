@@ -146,8 +146,11 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
     try {
       const teamId = req.params.teamId;
       const { mode } = req.body || {}; // 'all' or 'results'
-      const { data: team } = await supabase.from('team').select('classifica_url, nome, season_id').eq('id', teamId).single();
+      const { data: team } = await supabase.from('team').select('classifica_url, nome, season_id, season:season_id(workspace_id)').eq('id', teamId).single();
       if (!team || !team.classifica_url) return res.status(400).json({ error: 'Configura prima URL GR' });
+      // GR = sempre campionato ufficiale
+      const { data: campComp } = await supabase.from('competition').select('id').eq('tipo', 'Campionato').eq('workspace_id', team.season.workspace_id).limit(1).single();
+      const grCompetitionId = campComp?.id || null;
       const parsed = parseGrUrl(team.classifica_url);
       if (!parsed) return res.status(400).json({ error: 'URL non valido' });
 
@@ -211,7 +214,8 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
             giornata: m.giornata,
             gol_casa: (m.gol_casa !== null && m.stato === '5') ? golCasa : null,
             gol_ospite: (m.gol_casa !== null && m.stato === '5') ? golOspite : null,
-            stato: (m.gol_casa !== null && m.stato === '5') ? 'Terminata' : null
+            stato: (m.gol_casa !== null && m.stato === '5') ? 'Terminata' : null,
+            competition_id: grCompetitionId
           };
 
           const { error } = await supabase.from('match').insert(matchData);

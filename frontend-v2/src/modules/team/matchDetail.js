@@ -77,102 +77,74 @@ export async function openMatchDetail(mid) {
     html += '<div class="match-stat"><div class="match-stat-val" style="color:#E74C3C;">' + espulsioni + '</div><div class="match-stat-label">Esp.</div></div>';
     html += '</div>';
     
-    // Helper per nomi - il backend restituisce già "Cognome N."
-    const formatPlayerName = (fullName) => {
-      return fullName || '';
-    };
+    const formatPlayerName = (fullName) => fullName || '';
     
     html += '<div class="timeline-title" data-help="match.eventi">📋 Cronologia Eventi</div>';
     
     if (eventi.length === 0) {
       html += '<p style="text-align:center;color:#888;padding:30px;font-size:14px;">Nessun evento registrato per questa partita</p>';
     } else {
-      const primoTempo = eventi.filter(e => e.minuto && e.minuto <= 45);
-      const secondoTempo = eventi.filter(e => e.minuto && e.minuto > 45 && e.minuto <= 90);
-      const extraTime = eventi.filter(e => e.minuto && e.minuto > 90);
-      const noMinuto = eventi.filter(e => !e.minuto);
+      // Merge ASSIST events into their corresponding GOAL (same minuto)
+      const assistEvents = eventi.filter(e => e.tipo === 'ASSIST');
+      const usedAssists = new Set();
+      const displayEventi = eventi.filter(e => e.tipo !== 'ASSIST').map(e => {
+        if (e.tipo === 'GOAL' && !e.secondario) {
+          const assist = assistEvents.find((a, i) => !usedAssists.has(i) && a.minuto === e.minuto);
+          if (assist) {
+            usedAssists.add(assistEvents.indexOf(assist));
+            return { ...e, secondario: assist.principale };
+          }
+        }
+        return e;
+      });
+
+      // Durata tempo in base alla categoria: U14/U15=35, U16=40, U17+=45
+      const half = getHalfDuration();
+      const fullTime = half * 2;
+      const primoTempo = displayEventi.filter(e => e.minuto && e.minuto <= half);
+      const secondoTempo = displayEventi.filter(e => e.minuto && e.minuto > half && e.minuto <= fullTime);
+      const extraTime = displayEventi.filter(e => e.minuto && e.minuto > fullTime);
+      const noMinuto = displayEventi.filter(e => !e.minuto);
       
+      const renderEvent = (e, showMinuto = true) => {
+        const config = getEventConfig(e.tipo);
+        html += '<div class="timeline-item">';
+        html += '<div class="timeline-dot" style="background:' + config.bgColor + ';">' + config.icon + '</div>';
+        html += '<div class="timeline-content">';
+        html += '<div class="timeline-header">';
+        if (showMinuto && e.minuto) html += '<span class="timeline-minute">' + e.minuto + '\'</span>';
+        html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
+        html += '</div>';
+        if (e.secondario) {
+          const subLabel = e.tipo === 'SUB' ? '<strong>⬅️ Entra:</strong> ' : '<strong>🅰️ Assist:</strong> ';
+          html += '<div class="timeline-sub">' + subLabel + formatPlayerName(e.secondario) + '</div>';
+        }
+        html += '</div>';
+        html += '</div>';
+      };
+
       html += '<div class="timeline-container"><div class="timeline">';
       
       if (primoTempo.length > 0) {
         html += '<div class="timeline-divider"><span>1° Tempo</span></div>';
-        primoTempo.forEach(e => {
-          const config = getEventConfig(e.tipo);
-          html += '<div class="timeline-item">';
-          html += '<div class="timeline-dot" style="background:' + config.bgColor + ';">' + config.icon + '</div>';
-          html += '<div class="timeline-content">';
-          html += '<div class="timeline-header">';
-          html += '<span class="timeline-minute">' + e.minuto + '\'</span>';
-          html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
-          html += '</div>';
-          if (e.secondario) {
-            const subLabel = e.tipo === 'SUB' ? '<strong>⬅️ Entra:</strong> ' : '<strong>🅰️ Assist:</strong> ';
-            html += '<div class="timeline-sub">' + subLabel + formatPlayerName(e.secondario) + '</div>';
-          }
-          html += '</div>';
-          html += '</div>';
-        });
+        primoTempo.forEach(e => renderEvent(e));
       }
       
       if (secondoTempo.length > 0) {
         html += '<div class="timeline-divider"><span>2° Tempo</span></div>';
-        secondoTempo.forEach(e => {
-          const config = getEventConfig(e.tipo);
-          html += '<div class="timeline-item">';
-          html += '<div class="timeline-dot" style="background:' + config.bgColor + ';">' + config.icon + '</div>';
-          html += '<div class="timeline-content">';
-          html += '<div class="timeline-header">';
-          html += '<span class="timeline-minute">' + e.minuto + '\'</span>';
-          html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
-          html += '</div>';
-          if (e.secondario) {
-            const subLabel = e.tipo === 'SUB' ? '<strong>⬅️ Entra:</strong> ' : '<strong>🅰️ Assist:</strong> ';
-            html += '<div class="timeline-sub">' + subLabel + formatPlayerName(e.secondario) + '</div>';
-          }
-          html += '</div>';
-          html += '</div>';
-        });
+        secondoTempo.forEach(e => renderEvent(e));
       }
       
       if (extraTime.length > 0) {
         html += '<div class="timeline-divider"><span>Extratime</span></div>';
-        extraTime.forEach(e => {
-          const config = getEventConfig(e.tipo);
-          html += '<div class="timeline-item">';
-          html += '<div class="timeline-dot" style="background:' + config.bgColor + ';">' + config.icon + '</div>';
-          html += '<div class="timeline-content">';
-          html += '<div class="timeline-header">';
-          html += '<span class="timeline-minute">' + e.minuto + '\'</span>';
-          html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
-          html += '</div>';
-          if (e.secondario) {
-            const subLabel = e.tipo === 'SUB' ? '<strong>⬅️ Entra:</strong> ' : '<strong>🅰️ Assist:</strong> ';
-            html += '<div class="timeline-sub">' + subLabel + formatPlayerName(e.secondario) + '</div>';
-          }
-          html += '</div>';
-          html += '</div>';
-        });
+        extraTime.forEach(e => renderEvent(e));
       }
       
       if (noMinuto.length > 0) {
         if (primoTempo.length > 0 || secondoTempo.length > 0 || extraTime.length > 0) {
           html += '<div class="timeline-divider"><span>Minuto n.d.</span></div>';
         }
-        noMinuto.forEach(e => {
-          const config = getEventConfig(e.tipo);
-          html += '<div class="timeline-item">';
-          html += '<div class="timeline-dot" style="background:' + config.bgColor + ';">' + config.icon + '</div>';
-          html += '<div class="timeline-content">';
-          html += '<div class="timeline-header">';
-          html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
-          html += '</div>';
-          if (e.secondario) {
-            const subLabel = e.tipo === 'SUB' ? '<strong>⬅️ Entra:</strong> ' : '<strong>🅰️ Assist:</strong> ';
-            html += '<div class="timeline-sub">' + subLabel + formatPlayerName(e.secondario) + '</div>';
-          }
-          html += '</div>';
-          html += '</div>';
-        });
+        noMinuto.forEach(e => renderEvent(e, false));
       }
       
       html += '</div></div>';
@@ -186,6 +158,13 @@ export async function openMatchDetail(mid) {
   } catch (err) {
     document.getElementById('detailInner').innerHTML = '<div class="error-box">Errore nel caricamento: ' + err.message + '</div>';
   }
+}
+
+function getHalfDuration() {
+  const cat = (window.YFM.getSquadra()?.category?.nome || '').toLowerCase();
+  if (cat.includes('14') || cat.includes('15')) return 35;
+  if (cat.includes('16')) return 40;
+  return 45;
 }
 
 function getEventConfig(tipo) {

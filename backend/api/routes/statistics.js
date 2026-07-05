@@ -6,15 +6,34 @@ const { coreTeamName } = require('../helpers/importUtils');
 function createStatisticsRouter({ supabase, authMiddleware }) {
   const router = express.Router();
 
+  // GET /api/squadre/:id/competitions — lista competizioni disponibili per il team
+  router.get('/api/squadre/:id/competitions', authMiddleware, async (req, res) => {
+    try {
+      const { data: team } = await supabase.from('team').select('season:season_id(workspace_id)').eq('id', req.params.id).single();
+      if (!team) return res.status(404).json({ error: 'Team non trovato' });
+      const wsId = team.season.workspace_id;
+      const { data } = await supabase.from('competition').select('id, nome, tipo').or(`workspace_id.eq.${wsId},workspace_id.is.null`).order('tipo').order('nome');
+      res.json(data || []);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // GET /api/squadre/:id/statistiche-complete
   router.get('/api/squadre/:id/statistiche-complete', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, competition:competition_id(nome, tipo), giornata').eq('team_id', id).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora', { ascending: false });
+      const tipo = req.query.tipo || 'campionato'; // campionato|ufficiali|tutte|coppa|amichevoli
+      const { data: partiteRaw } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, competition:competition_id(nome, tipo), giornata').eq('team_id', id).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora', { ascending: false });
+
+      // Filter by tipo
+      let partite = partiteRaw || [];
+      if (tipo === 'campionato') partite = partite.filter(p => p.competition?.tipo === 'Campionato');
+      else if (tipo === 'ufficiali') partite = partite.filter(p => p.competition?.tipo === 'Campionato' || p.competition?.tipo === 'Coppa');
+      else if (tipo === 'coppa') partite = partite.filter(p => p.competition?.tipo === 'Coppa');
+      else if (tipo === 'amichevoli') partite = partite.filter(p => p.competition?.tipo === 'Amichevole' || p.competition?.tipo === 'Torneo' || !p.competition);
 
       let vinte = 0, pareggiate = 0, perse = 0, golFatti = 0, golSubiti = 0;
-      // Stats ufficiali (solo Campionato e Coppa)
-      let vinteUff = 0, pareggUff = 0, perseUff = 0, gfUff = 0, gsUff = 0;
       const risultati = [];
 
       // Fetch logos for matching
@@ -59,23 +78,15 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         return null;
       }
 
-      (partite || []).forEach(p => {
+      partite.forEach(p => {
         const gc = p.gol_casa || 0, go = p.gol_ospite || 0;
         golFatti += gc; golSubiti += go;
         if (gc > go) vinte++; else if (gc === go) pareggiate++; else perse++;
-        // Ufficiali: solo Campionato e Coppa (no Amichevole, no Torneo)
-        const tipo = (p.competition?.tipo || '').toLowerCase();
-        const isUfficiale = tipo === 'campionato' || tipo === 'coppa';
-        if (isUfficiale) {
-          gfUff += gc; gsUff += go;
-          if (gc > go) vinteUff++; else if (gc === go) pareggUff++; else perseUff++;
-        }
         risultati.push({ id: p.id, dataOra: p.data_ora, avversario: p.avversario, luogo: p.luogo, competizione: p.competition?.nome || null, tipoCompetizione: p.competition?.tipo || null, giornata: p.giornata || null, golFatti: gc, golSubiti: go, logo: findLogo(p.avversario) });
       });
 
-      const partiteGiocate = (partite || []).length;
-      const partiteUfficiali = vinteUff + pareggUff + perseUff;
-      res.json({ punti: vinteUff * 3 + pareggUff, partiteGiocate, partiteUfficiali, vittorie: vinteUff, pareggi: pareggUff, sconfitte: perseUff, golFatti: gfUff, golSubiti: gsUff, differenzaReti: gfUff - gsUff, totale: { vittorie: vinte, pareggi: pareggiate, sconfitte: perse, golFatti, golSubiti }, risultati });
+      const partiteGiocate = partite.length;
+      res.json({ punti: vinte * 3 + pareggiate, partiteGiocate, vittorie: vinte, pareggi: pareggiate, sconfitte: perse, golFatti, golSubiti, differenzaReti: golFatti - golSubiti, risultati });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -85,11 +96,17 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
   router.get('/api/squadre/:id/top-players', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
+      const tipo = req.query.tipo || 'campionato';
       const { data: players } = await supabase.from('team_player').select('id, player:player_id(id, nome, cognome), numero_maglia').eq('team_id', id);
       if (!players || players.length === 0) return res.json({ marcatori: [], assistmen: [], presenze: [] });
 
-      const { data: matches } = await supabase.from('match').select('id').eq('team_id', id).eq('stato', 'Terminata');
-      const matchIds = (matches || []).map(m => m.id);
+      const { data: matchesRaw } = await supabase.from('match').select('id, competition:competition_id(tipo)').eq('team_id', id).eq('stato', 'Terminata');
+      let matches = matchesRaw || [];
+      if (tipo === 'campionato') matches = matches.filter(m => m.competition?.tipo === 'Campionato');
+      else if (tipo === 'ufficiali') matches = matches.filter(m => m.competition?.tipo === 'Campionato' || m.competition?.tipo === 'Coppa');
+      else if (tipo === 'coppa') matches = matches.filter(m => m.competition?.tipo === 'Coppa');
+      else if (tipo === 'amichevoli') matches = matches.filter(m => m.competition?.tipo === 'Amichevole' || m.competition?.tipo === 'Torneo' || !m.competition);
+      const matchIds = matches.map(m => m.id);
       if (matchIds.length === 0) return res.json({ marcatori: [], assistmen: [], presenze: [] });
 
       const { data: events } = await supabase.from('match_event').select('tipo_evento, player_id').in('match_id', matchIds);
@@ -153,19 +170,29 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
   router.get('/api/squadre/:squadraId/stats-giocatori', authMiddleware, async (req, res) => {
     try {
       const teamId = req.params.squadraId;
+      const tipo = req.query.tipo || 'tutte'; // tutte|ufficiali|campionato|coppa|amichevoli
       const { data: tps } = await supabase.from('team_player').select('id, player_id, ruolo_preferito, player:player_id(id, nome, cognome)').eq('team_id', teamId).neq('stato', 'Svincolato');
-      const { data: matches } = await supabase.from('match').select('id').eq('team_id', teamId).eq('stato', 'Terminata');
-      const matchIds = (matches || []).map(m => m.id);
+
+      // Fetch matches with competition info for filtering
+      let matchQuery = supabase.from('match').select('id, competition:competition_id(tipo)').eq('team_id', teamId).eq('stato', 'Terminata');
+      const { data: matchesRaw } = await matchQuery;
+      // Filter by tipo
+      let matches = matchesRaw || [];
+      if (tipo === 'ufficiali') matches = matches.filter(m => m.competition?.tipo === 'Campionato' || m.competition?.tipo === 'Coppa');
+      else if (tipo === 'campionato') matches = matches.filter(m => m.competition?.tipo === 'Campionato');
+      else if (tipo === 'coppa') matches = matches.filter(m => m.competition?.tipo === 'Coppa');
+      else if (tipo === 'amichevoli') matches = matches.filter(m => m.competition?.tipo === 'Amichevole' || m.competition?.tipo === 'Torneo' || !m.competition);
+      const matchIds = matches.map(m => m.id);
 
       let formazioni = [], eventi = [], statsRows = [];
       if (matchIds.length > 0) {
-        const { data: f } = await supabase.from('match_formation').select('match_id, team_player_id').in('match_id', matchIds);
+        const { data: f } = await supabase.from('match_formation').select('match_id, team_player_id, is_starter').in('match_id', matchIds);
         formazioni = f || [];
         const { data: e } = await supabase.from('match_event').select('tipo_evento, player_id').in('match_id', matchIds);
         eventi = e || [];
         const tpIds = (tps || []).map(tp => tp.id);
         if (tpIds.length > 0) {
-          const { data: ms } = await supabase.from('match_statistics').select('team_player_id, minuti_giocati').in('team_player_id', tpIds);
+          const { data: ms } = await supabase.from('match_statistics').select('team_player_id, minuti_giocati, match_id').in('team_player_id', tpIds).in('match_id', matchIds);
           statsRows = ms || [];
         }
       }
@@ -174,13 +201,16 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       (tps || []).forEach(tp => {
         tpToPlayer[tp.id] = tp.player_id;
         const p = tp.player;
-        if (p) playerStats[p.id] = { id: p.id, nome: p.nome, cognome: p.cognome, ruolo: tp.ruolo_preferito || '', presenze: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
+        if (p) playerStats[p.id] = { id: p.id, nome: p.nome, cognome: p.cognome, ruolo: tp.ruolo_preferito || '', presenze: 0, titolare: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
       });
 
-      // Presenze: tutti in formazione (titolari + subentrati)
+      // Presenze + titolare count
       formazioni.forEach(f => {
         const pid = tpToPlayer[f.team_player_id];
-        if (pid && playerStats[pid]) playerStats[pid].presenze++;
+        if (pid && playerStats[pid]) {
+          playerStats[pid].presenze++;
+          if (f.is_starter) playerStats[pid].titolare++;
+        }
       });
 
       // Minutaggio reale da match_statistics
@@ -209,6 +239,33 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       });
 
       res.json({ stats: Object.values(playerStats), partiteGiocate: matchIds.length });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/squadre/:id/stats-charts — dati per grafici (gol/giornata, risultati)
+  router.get('/api/squadre/:id/stats-charts', authMiddleware, async (req, res) => {
+    try {
+      const teamId = req.params.id;
+      const tipo = req.query.tipo || 'tutte';
+      const { data: matchesRaw } = await supabase.from('match')
+        .select('id, giornata, gol_casa, gol_ospite, data_ora, competition:competition_id(tipo)')
+        .eq('team_id', teamId).eq('stato', 'Terminata').order('data_ora');
+      let matches = matchesRaw || [];
+      if (tipo === 'ufficiali') matches = matches.filter(m => m.competition?.tipo === 'Campionato' || m.competition?.tipo === 'Coppa');
+      else if (tipo === 'campionato') matches = matches.filter(m => m.competition?.tipo === 'Campionato');
+      else if (tipo === 'coppa') matches = matches.filter(m => m.competition?.tipo === 'Coppa');
+      else if (tipo === 'amichevoli') matches = matches.filter(m => m.competition?.tipo === 'Amichevole' || m.competition?.tipo === 'Torneo' || !m.competition);
+
+      let vittorie = 0, pareggi = 0, sconfitte = 0;
+      const perGiornata = matches.map(m => {
+        const gc = m.gol_casa || 0, go = m.gol_ospite || 0;
+        if (gc > go) vittorie++; else if (gc === go) pareggi++; else sconfitte++;
+        return { giornata: m.giornata, golFatti: gc, golSubiti: go };
+      });
+
+      res.json({ risultati: { vittorie, pareggi, sconfitte }, perGiornata });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -415,11 +472,13 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         : { data: [] };
       const matchIds = (matches || []).map(m => m.id);
 
-      // Events for this player
+      // Events for this player (gol, cartellini, assist)
       let eventi = [];
+      let assistCount = 0;
       if (matchIds.length > 0) {
         const { data: evts } = await supabase.from('match_event').select('tipo_evento, minuto, match_id').eq('player_id', playerId).in('match_id', matchIds);
         eventi = evts || [];
+        assistCount = eventi.filter(e => e.tipo_evento === 'ASSIST').length;
       }
 
       // Presenze (convocazioni o formazioni)
@@ -446,7 +505,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       });
 
       const gol = eventi.filter(e => e.tipo_evento === 'GOAL').length;
-      const assist = eventi.filter(e => e.tipo_evento === 'ASSIST').length;
+      const assist = assistCount;
       const ammonizioni = eventi.filter(e => e.tipo_evento === 'YELLOW').length;
       const espulsioni = eventi.filter(e => e.tipo_evento === 'RED').length;
 

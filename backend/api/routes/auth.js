@@ -29,6 +29,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
           ruolo: users.ruolo, workspace_id: users.workspace_id,
           is_superadmin: users.is_superadmin || false,
           categorie_accesso: users.squadre_accesso || [],
+          stagioni_accesso: users.stagioni_accesso || [],
           ruoli: users.ruoli || [], permessi: users.permessi || {}
         } 
       });
@@ -73,6 +74,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         ruolo: user.ruolo, workspace_id: user.workspace_id,
         is_superadmin: user.is_superadmin || false,
         categorie_accesso: user.squadre_accesso || [],
+        stagioni_accesso: user.stagioni_accesso || [],
         permessi: user.permessi || {}
       });
     } catch (err) {
@@ -98,11 +100,11 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   router.get('/api/auth/users', authMiddleware, async (req, res) => {
     try {
       const workspaceId = req.query.workspace_id;
-      let query = supabase.from('users').select('id, nome, cognome, email, ruolo, workspace_id, ruoli, squadre_accesso, permessi, is_superadmin, is_active').eq('is_active', true).order('cognome');
+      let query = supabase.from('users').select('id, nome, cognome, email, ruolo, workspace_id, ruoli, squadre_accesso, stagioni_accesso, permessi, is_superadmin, is_active').eq('is_active', true).order('cognome');
       if (workspaceId) query = query.eq('workspace_id', workspaceId);
       const { data, error } = await query;
       if (error) return res.status(400).json({ error: error.message });
-      const users = (data || []).map(u => ({ ...u, categorie_accesso: u.squadre_accesso || [] }));
+      const users = (data || []).map(u => ({ ...u, categorie_accesso: u.squadre_accesso || [], stagioni_accesso: u.stagioni_accesso || [] }));
       res.json({ users });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
@@ -111,16 +113,17 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
 
   router.post('/api/auth/users', authMiddleware, async (req, res) => {
     try {
-      const { email, password, nome, cognome, ruolo, workspace_id, ruoli, categorie_accesso, permessi } = req.body;
+      const { email, password, nome, cognome, ruolo, workspace_id, ruoli, categorie_accesso, stagioni_accesso, permessi } = req.body;
       const password_hash = await bcrypt.hash(password || 'ChangeMe123!', 10);
       const { data, error } = await supabase.from('users').insert({
         email: email.toLowerCase(), password_hash, nome, cognome,
         ruolo: ruolo || 'admin', workspace_id: workspace_id || req.user.workspace_id,
         ruoli: ruoli || [ruolo || 'admin'], squadre_accesso: categorie_accesso || [],
+        stagioni_accesso: stagioni_accesso || null,
         permessi: permessi || {}, is_active: true
       }).select().single();
       if (error) return res.status(400).json({ error: error.message });
-      res.status(201).json({ ...data, categorie_accesso: data.squadre_accesso || [] });
+      res.status(201).json({ ...data, categorie_accesso: data.squadre_accesso || [], stagioni_accesso: data.stagioni_accesso || [] });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }
@@ -129,13 +132,14 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   router.put('/api/auth/users/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { nome, cognome, ruolo, workspace_id, ruoli, categorie_accesso, is_active, permessi } = req.body;
+      const { nome, cognome, ruolo, workspace_id, ruoli, categorie_accesso, stagioni_accesso, is_active, permessi } = req.body;
       const updateData = { nome, cognome, ruolo, workspace_id, ruoli, permessi: permessi || {} };
       if (is_active !== undefined) updateData.is_active = is_active;
       if (categorie_accesso !== undefined) updateData.squadre_accesso = categorie_accesso;
+      if (stagioni_accesso !== undefined) updateData.stagioni_accesso = stagioni_accesso.length > 0 ? stagioni_accesso : null;
       const { data, error } = await supabase.from('users').update(updateData).eq('id', id).select().single();
       if (error) return res.status(400).json({ error: error.message });
-      res.json({ success: true, user: { ...data, categorie_accesso: data.squadre_accesso || [] } });
+      res.json({ success: true, user: { ...data, categorie_accesso: data.squadre_accesso || [], stagioni_accesso: data.stagioni_accesso || [] } });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }

@@ -1,22 +1,25 @@
 import { apiFetch } from '../../services/api';
 import { invalidateDashboardCache } from '../team/dashboard.js';
+import { drawBarChart, drawDonutChart, drawLineChart } from '../../utils/charts.js';
 
 const CACHE_TTL = 2 * 60 * 1000;
 let statsCache = null;
 
 export function invalidateStatsCache() { statsCache = null; }
 
-export default async function loadStats() {
+export default async function loadStats(filterTipo) {
   const c = document.getElementById('pageContent');
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
 
   try {
     const squadraId = window.YFM.squadraId;
-    if (statsCache && statsCache.id === squadraId && Date.now() - statsCache.ts < CACHE_TTL) {
+    const tipo = filterTipo || 'ufficiali';
+    const cacheKey = squadraId + '_' + tipo;
+    if (statsCache && statsCache.id === cacheKey && Date.now() - statsCache.ts < CACHE_TTL) {
       var { stats, partiteGiocate } = statsCache.data;
     } else {
-      var { stats, partiteGiocate } = await apiFetch('/squadre/' + squadraId + '/stats-giocatori');
-      statsCache = { id: squadraId, data: { stats, partiteGiocate }, ts: Date.now() };
+      var { stats, partiteGiocate } = await apiFetch('/squadre/' + squadraId + '/stats-giocatori?tipo=' + tipo);
+      statsCache = { id: cacheKey, data: { stats, partiteGiocate }, ts: Date.now() };
     }
 
     const statsArr = (stats || []).sort((a, b) => a.cognome.localeCompare(b.cognome));
@@ -33,7 +36,6 @@ export default async function loadStats() {
       .stats-table th:hover { background:#eef2ff; }
       .stats-table th.sorted-asc::after { content:' ▲'; font-size:9px; }
       .stats-table th.sorted-desc::after { content:' ▼'; font-size:9px; }
-      .stats-table tfoot td { font-weight:700; background:#f0f4ff; border-top:2px solid #667eea40; }
       .stats-table td { padding:7px 6px; text-align:center; border-bottom:1px solid #f1f5f9; }
       .stats-table td:first-child, .stats-table td:nth-child(2) { text-align:left; }
       .stats-table tr:hover { background:#f8faff; }
@@ -44,7 +46,16 @@ export default async function loadStats() {
       .stats-ruolo.attaccante { background:#ef444420; color:#dc2626; }
     </style>
     <h1 class="page-title">Dati & Statistiche</h1>
-    <p class="page-subtitle">Riepilogo stagionale</p>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+      <p class="page-subtitle" style="margin:0;">Riepilogo stagionale</p>
+      <select id="statsFilterTipo" style="padding:6px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;background:white;">
+        <option value="tutte">Tutte le partite</option>
+        <option value="ufficiali" selected>Solo ufficiali</option>
+        <option value="campionato">Campionato</option>
+        <option value="coppa">Coppa</option>
+        <option value="amichevoli">Amichevoli/Tornei</option>
+      </select>
+    </div>
     <div class="widgets" style="margin-bottom:20px;">
       <div class="card widget"><div class="widget-value" style="color:#667eea;">${partiteGiocate || 0}</div><div class="widget-label">Partite</div></div>
       <div class="card widget"><div class="widget-value" style="color:#27AE60;">${totGol}</div><div class="widget-label">⚽ Gol</div></div>
@@ -55,6 +66,18 @@ export default async function loadStats() {
       <h3 style="margin:0 0 8px 0;font-size:14px;color:#F39C12;">⚠️ Diffidati (4 ammonizioni)</h3>
       ${diffidati.map(p => `<div style="font-size:13px;margin-bottom:4px;">• <strong>${p.cognome} ${p.nome}</strong> — ${p.ammonizioni} 🟨 (prossimo giallo = squalifica)</div>`).join('')}
     </div>` : ''}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px;">
+      <div class="card" style="padding:12px;"><canvas id="chartDonut" style="width:100%;height:200px;"></canvas></div>
+      <div class="card" style="padding:12px;"><canvas id="chartLine" style="width:100%;height:200px;"></canvas></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px;">
+      <div class="card" style="padding:12px;"><canvas id="chartTitolare" style="width:100%;height:220px;"></canvas></div>
+      <div class="card" style="padding:12px;"><canvas id="chartMinuti" style="width:100%;height:220px;"></canvas></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px;">
+      <div class="card" style="padding:12px;"><canvas id="chartGol" style="width:100%;height:220px;"></canvas></div>
+      <div class="card" style="padding:12px;"><canvas id="chartAssist" style="width:100%;height:220px;"></canvas></div>
+    </div>
     <div class="card">
       <h3 class="section-title">📊 Statistiche Giocatori</h3>
       <div style="overflow-x:auto;">
@@ -70,15 +93,6 @@ export default async function loadStats() {
             <th data-col="espulsioni">🟥</th>
           </tr></thead>
           <tbody id="statsBody">${renderRows(statsArr)}</tbody>
-          <tfoot><tr>
-            <td style="text-align:left;">TOTALE (${statsArr.length})</td><td></td>
-            <td></td>
-            <td>${statsArr.reduce((s,p) => s + (p.minuti || 0), 0)}</td>
-            <td style="color:#27AE60;">${totGol}</td>
-            <td style="color:#3498DB;">${statsArr.reduce((s,p) => s + (p.assist || 0), 0)}</td>
-            <td style="color:#F39C12;">${totAmm}</td>
-            <td style="color:#E74C3C;">${totEsp}</td>
-          </tr></tfoot>
         </table>
       </div>
     </div>`;
@@ -103,6 +117,17 @@ export default async function loadStats() {
         document.getElementById('statsBody').innerHTML = renderRows(sorted);
       });
     });
+
+    // Filter dropdown
+    document.getElementById('statsFilterTipo')?.addEventListener('change', (e) => {
+      loadStats(e.target.value);
+    });
+    // Restore selected value
+    const sel = document.getElementById('statsFilterTipo');
+    if (sel) sel.value = tipo;
+
+    // Draw charts
+    renderCharts(statsArr, squadraId, tipo);
   } catch (err) {
     c.innerHTML = '<div class="error-box">Errore: ' + err.message + '</div>';
   }
@@ -122,4 +147,33 @@ function renderRows(arr) {
       <td style="color:${p.espulsioni ? '#E74C3C' : '#ccc'};">${p.espulsioni || '-'}</td>
     </tr>`;
   }).join('');
+}
+
+async function renderCharts(statsArr, squadraId, tipo) {
+  // Bar charts from statsArr
+  const sorted = [...statsArr].sort((a, b) => a.cognome.localeCompare(b.cognome));
+  const labels = sorted.map(p => p.cognome);
+  const ruoli = sorted.map(p => p.ruolo);
+
+  drawBarChart(document.getElementById('chartTitolare'), sorted.map(p => ({ label: p.cognome, value: p.titolare || 0 })), { title: 'Presenze Titolare', colorByRuolo: true, ruoli });
+  drawBarChart(document.getElementById('chartMinuti'), sorted.map(p => ({ label: p.cognome, value: p.minuti || 0 })), { title: 'Minuti Giocati', colorByRuolo: true, ruoli });
+  drawBarChart(document.getElementById('chartGol'), sorted.map(p => ({ label: p.cognome, value: p.gol || 0, color: '#27AE60' })), { title: 'Goal Fatti' });
+  drawBarChart(document.getElementById('chartAssist'), sorted.map(p => ({ label: p.cognome, value: p.assist || 0, color: '#3498DB' })), { title: 'Assist' });
+
+  // Donut + Line from stats-charts endpoint
+  try {
+    const charts = await apiFetch('/squadre/' + squadraId + '/stats-charts?tipo=' + tipo);
+    if (charts.risultati) {
+      drawDonutChart(document.getElementById('chartDonut'), [
+        { label: 'V', value: charts.risultati.vittorie, color: '#27AE60' },
+        { label: 'P', value: charts.risultati.pareggi, color: '#F39C12' },
+        { label: 'S', value: charts.risultati.sconfitte, color: '#E74C3C' }
+      ], { title: 'Risultati' });
+    }
+    if (charts.perGiornata && charts.perGiornata.length) {
+      drawLineChart(document.getElementById('chartLine'), charts.perGiornata.map(g => ({
+        label: 'G' + g.giornata, value1: g.golFatti, value2: g.golSubiti
+      })), { title: 'Gol per Giornata', legend1: 'Fatti', legend2: 'Subiti' });
+    }
+  } catch (e) { /* charts non bloccanti */ }
 }

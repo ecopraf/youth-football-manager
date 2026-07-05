@@ -6,6 +6,7 @@ let users = [];
 let categorie = [];
 let workspaces = [];
 let staffList = [];
+let stagioni = [];
 
 export default async function loadUsers() {
   const c = document.getElementById('pageContent');
@@ -117,6 +118,13 @@ export default async function loadUsers() {
               <div class="form-group" id="workspaceGroup" style="display:none;margin-bottom:16px;">
                 <label>🏢 Workspace *</label>
                 <select id="userWorkspace"></select>
+              </div>
+              
+              <!-- Stagioni accessibili -->
+              <div class="form-group" id="stagioniGroup" style="margin-bottom:16px;">
+                <label>📅 Stagioni accessibili</label>
+                <div id="stagioniCheckboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;"></div>
+                <small style="color:#666;margin-top:6px;display:block;">Nessuna selezione = solo stagione attiva</small>
               </div>
               
               <!-- Categorie (checkbox) -->
@@ -355,6 +363,21 @@ function renderCategorieCheckboxes(selectedIds = []) {
   `).join('');
 }
 
+function renderStagioniCheckboxes(selectedIds = []) {
+  const container = document.getElementById('stagioniCheckboxes');
+  if (!container) return;
+  if (stagioni.length === 0) {
+    container.innerHTML = '<small style="color:#999;">Nessuna stagione disponibile</small>';
+    return;
+  }
+  container.innerHTML = stagioni.map(s => `
+    <label class="cat-checkbox">
+      <input type="checkbox" value="${s.id}" ${selectedIds.includes(s.id) ? 'checked' : ''}>
+      ${s.nome}${s.attiva ? ' <span style="color:#27AE60;font-size:11px;">● attiva</span>' : ''}
+    </label>
+  `).join('');
+}
+
 async function loadData() {
   try {
     showLoading('Caricamento...');
@@ -371,6 +394,11 @@ async function loadData() {
     const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
     if (wsId) {
       try { categorie = await apiFetch(`/workspaces/${wsId}/categorie`); } catch(e) { categorie = []; }
+    }
+    
+    // Carica stagioni del workspace
+    if (wsId) {
+      try { stagioni = await apiFetch(`/workspaces/${wsId}/stagioni`); } catch(e) { stagioni = []; }
     }
     
     // Carica staff del workspace (per dropdown collegamento)
@@ -510,6 +538,9 @@ async function openModal(userId = null) {
     const selectedCats = user.categorie_accesso || [];
     renderCategorieCheckboxes(selectedCats);
     
+    // Stagioni selezionate
+    renderStagioniCheckboxes(user.stagioni_accesso || []);
+    
     // Capabilities verranno caricate quando si va allo step 2
     window._pendingCaps = getUserCapabilities(permessi);
   } else {
@@ -523,6 +554,7 @@ async function openModal(userId = null) {
     document.getElementById('userProfilo').value = 'allenatore';
     window._pendingCaps = null;
     renderCategorieCheckboxes([]);
+    renderStagioniCheckboxes([]);
   }
   
   modal.style.display = 'flex';
@@ -543,6 +575,10 @@ async function handleSubmit(e) {
   const ruolo = document.getElementById('userRuolo').value;
   const is_active = document.getElementById('userIsActive').checked;
   
+  // Stagioni selezionate
+  const stagCheckboxes = document.querySelectorAll('#stagioniCheckboxes input[type="checkbox"]:checked');
+  const stagioni_accesso = Array.from(stagCheckboxes).map(cb => cb.value);
+  
   // Categorie selezionate
   const catCheckboxes = document.querySelectorAll('#categorieCheckboxes input[type="checkbox"]:checked');
   const categorie_accesso = Array.from(catCheckboxes).map(cb => cb.value);
@@ -556,7 +592,7 @@ async function handleSubmit(e) {
   showLoading('Salvataggio...');
   
   try {
-    const body = { nome, cognome, email, ruolo, categorie_accesso, workspace_id };
+    const body = { nome, cognome, email, ruolo, categorie_accesso, stagioni_accesso, workspace_id };
     if (passwordFieldsVisible && password) body.password = password;
     if (isEdit) body.is_active = is_active;
     

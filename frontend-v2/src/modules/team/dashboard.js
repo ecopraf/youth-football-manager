@@ -33,16 +33,26 @@ export function invalidateDashboardCache() {
 export default async function loadDashboard() {
   const c = document.getElementById('pageContent');
   const squadraId = window.YFM.squadraId;
+  let currentTipo = 'campionato';
   
   let stats, top, topValutazioni, partiteFuture;
   let classificaData = { classifica: null };
   let marcatoriGR = { marcatori: [] };
   let calendarioGR = { matches: [] };
+
+  async function fetchFiltered(tipo) {
+    const [s, t] = await Promise.all([
+      cachedFetch('dash_stats_' + squadraId + '_' + tipo, () => apiFetch('/squadre/' + squadraId + '/statistiche-complete?tipo=' + tipo).catch(() => ({ punti:0, partiteGiocate:0, vittorie:0, pareggi:0, sconfitte:0, golFatti:0, golSubiti:0, differenzaReti:0, risultati:[] })), CACHE_TTL_FAST),
+      cachedFetch('dash_top_' + squadraId + '_' + tipo, () => apiFetch('/squadre/' + squadraId + '/top-players?tipo=' + tipo).catch(() => ({ marcatori:[], assistmen:[], presenze:[] })), CACHE_TTL_FAST)
+    ]);
+    return { stats: s, top: t };
+  }
   
   try {
-    [stats, top, topValutazioni, partiteFuture] = await Promise.all([
-      cachedFetch('dash_stats_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/statistiche-complete').catch(() => ({ punti:0, partiteGiocate:0, vittorie:0, pareggi:0, sconfitte:0, golFatti:0, golSubiti:0, differenzaReti:0, risultati:[] })), CACHE_TTL_FAST),
-      cachedFetch('dash_top_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/top-players').catch(() => ({ marcatori:[], assistmen:[], presenze:[] })), CACHE_TTL_FAST),
+    const filtered = await fetchFiltered(currentTipo);
+    stats = filtered.stats;
+    top = filtered.top;
+    [topValutazioni, partiteFuture] = await Promise.all([
       cachedFetch('dash_val_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/valutazioni-top').catch(() => ({ topGiocatori:[] })), CACHE_TTL_FAST),
       cachedFetch('dash_future_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/partite-future').catch(() => []), CACHE_TTL_FAST)
     ]);
@@ -425,10 +435,16 @@ export default async function loadDashboard() {
     return;
   }
     
+  // Dropdown filter HTML
+  const tipoOptions = [{v:'campionato',l:'Campionato'},{v:'ufficiali',l:'Ufficiali (Camp.+Coppa)'},{v:'tutte',l:'Tutte'},{v:'amichevoli',l:'Amichevoli'}];
+  const dropdownHtml = '<select id="dashTipoFilter" style="padding:6px 12px;border-radius:8px;border:1px solid #ddd;font-size:12px;font-weight:600;color:#333;background:#f8f9fa;cursor:pointer;">' +
+    tipoOptions.map(o => '<option value="' + o.v + '"' + (o.v === currentTipo ? ' selected' : '') + '>' + o.l + '</option>').join('') + '</select>';
+
   c.innerHTML = styles +
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">' +
     '<div><h1 class="page-title">Dashboard</h1>' +
-    '<p class="page-subtitle">Stagione 2025/26 · ' + stats.partiteGiocate + ' partite</p></div></div>' +
+    '<p class="page-subtitle">Stagione 2025/26 · ' + stats.partiteGiocate + ' partite</p></div>' +
+    '<div>' + dropdownHtml + '</div></div>' +
     
     renderProssimaPartitaSection() +
     
@@ -448,6 +464,47 @@ export default async function loadDashboard() {
     '<div id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
     '</div>' +
     '<div class="staff-card staff-mobile" style="margin-top:20px;"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">👥 Staff</h3><div>' + renderStaff() + '</div></div>';
+
+  // Attach dropdown change handler
+  const filterEl = document.getElementById('dashTipoFilter');
+  if (filterEl) {
+    filterEl.onchange = async () => {
+      currentTipo = filterEl.value;
+      const filtered = await fetchFiltered(currentTipo);
+      stats = filtered.stats;
+      top = filtered.top;
+      // Update subtitle
+      const sub = c.querySelector('.page-subtitle');
+      if (sub) sub.textContent = 'Stagione 2025/26 · ' + stats.partiteGiocate + ' partite';
+      // Update widgets
+      const wContainer = c.querySelector('.dash-widgets');
+      if (wContainer) {
+        const w = [
+          { v:stats.punti, l:'Punti', c:'#27AE60' },
+          { v:stats.partiteGiocate, l:'Giocate' },
+          { v:stats.vittorie, l:'V', c:'#27AE60' },
+          { v:stats.pareggi, l:'P', c:'#F39C12' },
+          { v:stats.sconfitte, l:'S', c:'#E74C3C' },
+          { v:stats.golFatti, l:'GF', c:'#27AE60' },
+          { v:stats.golSubiti, l:'GS' },
+          { v:(stats.differenzaReti >= 0 ? '+' : '') + stats.differenzaReti, l:'DR', c:stats.differenzaReti >= 0 ? '#27AE60' : '#E74C3C' }
+        ];
+        wContainer.innerHTML = w.map(wi => '<div class="dash-card"><div style="font-size:20px;font-weight:bold;color:' + (wi.c || 'var(--text)') + ';">' + wi.v + '</div><div style="font-size:10px;color:var(--gray);margin-top:4px;">' + wi.l + '</div></div>').join('');
+      }
+      // Update top 3
+      const topGrid = c.querySelector('.top-grid');
+      if (topGrid) {
+        topGrid.innerHTML = renderTopSection('⚽ Top 3 Marcatori', (top.marcatori || []).slice(0, 3), 'gol') +
+          renderTopSection('🅰️ Top 3 Assist', (top.assistmen || []).slice(0, 3), 'assist') +
+          renderTopSection('🏃 Top 3 Presenze (min.)', (top.presenze || []).slice(0, 3), 'presenze');
+      }
+      // Update risultati
+      const resCard = c.querySelector('[data-help="dashboard.risultati"]');
+      if (resCard) {
+        resCard.innerHTML = '<h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults();
+      }
+    };
+  }
 
   // Lazy load: classifica + GR (cached 10min, non bloccano il render)
   Promise.all([

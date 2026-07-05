@@ -71,6 +71,12 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       if (p.golOspite !== undefined) updateData.gol_ospite = p.golOspite;
       if (p.stato !== undefined) updateData.stato = p.stato;
       await supabase.from('match').update(updateData).eq('id', req.params.id);
+
+      // Auto-calculate minutes when match is set to Terminata
+      if (p.stato === 'Terminata') {
+        try { await calcAndSaveMinutes(req.params.id, supabase); } catch(e) { /* non-blocking */ }
+      }
+
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -324,14 +330,29 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       if (!eventi || !Array.isArray(eventi)) return res.status(400).json({ error: 'Dati mancanti' });
       await supabase.from('match_event').delete().eq('match_id', req.params.matchId);
       if (eventi.length > 0) {
-        const inserts = eventi.map(e => ({
-          match_id: req.params.matchId, tipo_evento: e.tipo, minuto: parseInt(e.minuto) || null,
-          player_id: e.principale_id || null,
-          player_id_secondario: e.assist_id || null,
-          note: e.autogol ? 'autogol' : (e.rigore ? 'rigore' : null)
-        }));
+        const inserts = [];
+        eventi.forEach(e => {
+          inserts.push({
+            match_id: req.params.matchId, tipo_evento: e.tipo, minuto: parseInt(e.minuto) || null,
+            player_id: e.principale_id || null,
+            player_id_secondario: e.tipo === 'SUB' ? (e.assist_id || null) : null,
+            note: e.autogol ? 'autogol' : (e.rigore ? 'rigore' : null)
+          });
+          // Se GOAL con assist, crea evento ASSIST separato
+          if (e.tipo === 'GOAL' && e.assist_id) {
+            inserts.push({
+              match_id: req.params.matchId, tipo_evento: 'ASSIST', minuto: parseInt(e.minuto) || null,
+              player_id: e.assist_id, player_id_secondario: null, note: null
+            });
+          }
+        });
         const { error } = await supabase.from('match_event').insert(inserts);
         if (error) return res.status(400).json({ error: error.message });
+      }
+      // Recalculate minutes if match is already Terminata
+      const { data: mCheck } = await supabase.from('match').select('stato').eq('id', req.params.matchId).single();
+      if (mCheck?.stato === 'Terminata') {
+        try { await calcAndSaveMinutes(req.params.matchId, supabase); } catch(e) { /* non-blocking */ }
       }
       res.json({ success: true, saved: eventi.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -404,3 +425,63 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
 
   return router;
 };
+
+// Helper: calculate and save minutes played for each player in formation
+async function calcAndSaveMinutes(matchId, supabase) {
+  const { data: matchData } = await supabase.from('match').select('team_id, live_meta').eq('id', matchId).single();
+  if (!matchData) return;
+
+  // Determine match duration from category
+  const { data: team } = await supabase.from('team').select('category_id, category:category_id(nome)').eq('id', matchData.team_id).single();
+  const cat = (team?.category?.nome || '').toLowerCase();
+  let halfDuration = 45;
+  if (cat.includes('14') || cat.includes('15')) halfDuration = 35;
+  else if (cat.includes('16')) halfDuration = 40;
+  const totalMinutes = halfDuration * 2;
+
+  // Get formation
+  const { data: formation } = await supabase.from('match_formation').select('team_player_id, is_starter').eq('match_id', matchId);
+  if (!formation || formation.length === 0) return;
+
+  // Get SUB events
+  const { data: events } = await supabase.from('match_event').select('tipo_evento, minuto, player_id, player_id_secondario').eq('match_id', matchId).eq('tipo_evento', 'SUB');
+  const subs = (events || []).filter(e => e.minuto);
+
+  // Build player_id -> team_player_id map from formation
+  const tpIds = formation.map(f => f.team_player_id);
+  const { data: tpData } = await supabase.from('team_player').select('id, player_id').in('id', tpIds);
+  const tpToPlayer = {};
+  const playerToTp = {};
+  (tpData || []).forEach(tp => { tpToPlayer[tp.id] = tp.player_id; playerToTp[tp.player_id] = tp.id; });
+
+  // Calculate minutes for each player
+  const minutes = {};
+  formation.forEach(f => {
+    minutes[f.team_player_id] = f.is_starter ? totalMinutes : 0;
+  });
+
+  // Process substitutions
+  subs.forEach(s => {
+    const min = parseInt(s.minuto) || 0;
+    // player_id = player going OUT, player_id_secondario = player coming IN
+    const outTp = playerToTp[s.player_id];
+    const inTp = playerToTp[s.player_id_secondario];
+    if (outTp && minutes[outTp] !== undefined) {
+      minutes[outTp] = min; // played from 0 to min
+    }
+    if (inTp && minutes[inTp] !== undefined) {
+      minutes[inTp] = totalMinutes - min; // played from min to end
+    } else if (inTp) {
+      minutes[inTp] = totalMinutes - min;
+    }
+  });
+
+  // Upsert match_statistics
+  await supabase.from('match_statistics').delete().eq('match_id', matchId);
+  const rows = Object.entries(minutes).filter(([, m]) => m > 0).map(([tpId, m]) => ({
+    match_id: matchId, team_player_id: tpId, minuti_giocati: m
+  }));
+  if (rows.length > 0) {
+    await supabase.from('match_statistics').insert(rows);
+  }
+}

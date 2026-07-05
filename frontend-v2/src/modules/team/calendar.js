@@ -117,19 +117,20 @@ function renderCalendarPage(c, matches, stats) {
   const now = new Date();
   const isGuest = !!(window.YFM.guestSquadreAccesso && window.YFM.guestSquadreAccesso.length > 0);
   
-  // Separa future e passate (le partite live vanno sempre nelle future)
+  // Separa future e passate
+  // Terminata → sempre nelle giocate. Live → sempre nelle future.
   const isMatchLive = (m) => !!(m.live_meta && ['1t','2t','intervallo'].includes(m.live_meta.stato));
+  const isPlayed = (m) => m.stato === 'Terminata' || m.gol_casa !== null;
   const futureMatches = matches
-    .filter(m => new Date(m.data_ora) >= now || isMatchLive(m))
+    .filter(m => !isPlayed(m) && (new Date(m.data_ora) >= now || isMatchLive(m)))
     .sort((a, b) => {
-      // Live matches first, then by date
       if (isMatchLive(a) && !isMatchLive(b)) return -1;
       if (!isMatchLive(a) && isMatchLive(b)) return 1;
       return new Date(a.data_ora) - new Date(b.data_ora);
     });
   
   const pastMatches = matches
-    .filter(m => new Date(m.data_ora) < now && !isMatchLive(m))
+    .filter(m => isPlayed(m) || (new Date(m.data_ora) < now && !isMatchLive(m)))
     .sort((a, b) => new Date(b.data_ora) - new Date(a.data_ora));
 
   // Prossima partita (la prima delle future)
@@ -243,6 +244,7 @@ function renderCalendarPage(c, matches, stats) {
         ${window.YFM.currentUser?.is_superadmin ? '<button class="btn btn-secondary" id="btnImportTc" style="font-size:13px;">⚽ Tuttocampo</button>' : ''}
         <button class="btn btn-secondary" id="btnImportPdf" data-help="calendar.btnImporta" style="font-size:13px;">📄 PDF</button>
         <button class="btn btn-secondary" id="btnImport" data-help="calendar.btnImportCSV" style="font-size:13px;">📥 CSV</button>
+        <button class="btn btn-secondary" id="btnArchiveAll" style="font-size:13px;color:#856404;">📦 Archivia giocate</button>
         <button class="btn btn-secondary" id="btnDeleteAll" data-help="calendar.eliminaTutte" style="font-size:13px;color:#E74C3C;">🗑️ Cancella tutto</button>` : ''}
       </div>
     </div>`;
@@ -286,6 +288,7 @@ function renderCalendarPage(c, matches, stats) {
   document.getElementById('btnImportTc')?.addEventListener('click', openImportTuttocampo);
   document.getElementById('btnImport')?.addEventListener('click', openImportCSV);
   document.getElementById('btnImportPdf')?.addEventListener('click', openImportPdf);
+  document.getElementById('btnArchiveAll')?.addEventListener('click', archiveAllPlayed);
   document.getElementById('btnDeleteAll')?.addEventListener('click', deleteAllMatches);
   attachCardListeners();
 }
@@ -305,7 +308,7 @@ function renderGuestCalendar(c, nextMatch, pastMatches, stats) {
   // Prossima partita
   if (nextMatch) {
     const luogo = nextMatch.luogo === 'Casa' ? '🏠 Casa' : '✈️ Trasferta';
-    const comp = nextMatch.competizione ? ' · 🏆 ' + nextMatch.competizione : '';
+    const comp = nextMatch.competizione ? ' · 🏆 ' + nextMatch.competizione : ' · ⚽ Amichevole';
     html += `<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;margin-bottom:24px;color:white;border-radius:16px;">
       <div style="font-size:11px;font-weight:600;opacity:0.9;text-transform:uppercase;margin-bottom:4px;">⏱ Prossima Partita</div>
       <div style="font-size:18px;font-weight:bold;margin-bottom:4px;">${nextMatch.avversario}</div>
@@ -332,7 +335,7 @@ function renderGuestCalendar(c, nextMatch, pastMatches, stats) {
         resultHtml = `<span class="result-badge ${cls}"><span style="font-size:16px;font-weight:700;">${gf} - ${gs}</span>${icon}</span>`;
       }
       const luogoBadge = m.luogo === 'Casa' ? '🏠' : '✈️';
-      const comp = m.competizione ? `<span style="font-size:11px;color:#888;background:#f5f5f5;padding:2px 6px;border-radius:4px;">${m.competizione}</span>` : '';
+      const comp = m.competizione ? `<span style="font-size:11px;color:#888;background:#f5f5f5;padding:2px 6px;border-radius:4px;">${m.competizione}</span>` : '<span style="font-size:11px;color:#888;background:#f5f5f5;padding:2px 6px;border-radius:4px;">Amichevole</span>';
       html += `<div class="guest-match" onclick="window.YFM.openMatchDetail('${m.id}')">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <div style="flex:1;min-width:0;">
@@ -367,7 +370,7 @@ function attachCardListeners() {
 export function renderMatchCard(m, stats, isNext = false) {
   const r = (stats?.risultati || []).find(x => x.id === m.id);
   const isLive = !!(m.live_meta && ['1t','2t','intervallo'].includes(m.live_meta.stato));
-  const hasResult = !!(r || (m.gol_casa !== undefined && m.gol_trasferta !== undefined && m.stato === 'Terminata') || isLive);
+  const hasResult = !!(r || (m.gol_casa != null && m.gol_ospite != null) || m.stato === 'Terminata' || isLive);
   const isPast = new Date(m.data_ora) < new Date();
   const isArchiviata = m.archiviata === true || m.archiviata === 'true';
 
@@ -396,7 +399,7 @@ export function renderMatchCard(m, stats, isNext = false) {
   const luogoBadge = m.luogo === 'Casa'
     ? '<span class="match-badge badge-casa">🏠 Casa</span>'
     : '<span class="match-badge badge-trasferta">✈️ Trasferta</span>';
-  const compBadge = m.competizione ? `<span class="match-badge badge-section">${m.competizione}</span>` : '';
+  const compBadge = m.competizione ? `<span class="match-badge badge-section">${m.competizione}</span>` : '<span class="match-badge badge-section">Amichevole</span>';
   const giornBadge = m.giornata ? `<span class="match-badge badge-section">⚽ G.${m.giornata}</span>` : '';
   const archivedBadge = isArchiviata ? '<span class="match-badge" style="background:#8B7355;color:white;">📦 Archiviata</span>' : '';
 
@@ -490,24 +493,42 @@ window.unarchiveMatch = async function(id) {
   finally { hideLoading(); }
 };
 
-export function openMatchForm(mid) {
+export async function openMatchForm(mid) {
   const m = mid ? allMatches.find(x => x.id === mid) : null;
   const editDate = m && m.data_ora ? m.data_ora.slice(0, 16) : '';
+  
+  // Carica competitions del workspace
+  let competitions = [];
+  try { competitions = await apiFetch(`/squadre/${window.YFM.squadraId}/competitions`); } catch(e) {}
+  const compOptions = '<option value="">Amichevole</option>' + competitions.map(c => 
+    `<option value="${c.nome}" ${m && m.competizione === c.nome ? 'selected' : ''}>${c.nome}</option>`
+  ).join('');
+  
   const content = `
   <div class="form-group" style="margin-bottom:12px;"><label>Data e Ora</label><input id="mfD" type="datetime-local" value="${editDate}"></div>
   <div class="form-group" style="margin-bottom:12px;"><label>Avversario</label><input id="mfA" value="${m ? m.avversario || '' : ''}"></div>
   <div class="form-group" style="margin-bottom:12px;"><label>Luogo</label><select id="mfL"><option ${m && m.luogo === 'Casa' ? 'selected' : ''}>Casa</option><option ${m && m.luogo === 'Trasferta' ? 'selected' : ''}>Trasferta</option></select></div>
-  <div class="form-group" style="margin-bottom:12px;"><label>Competizione</label><input id="mfC" value="${m ? m.competizione || '' : ''}"></div>
+  <div class="form-group" style="margin-bottom:12px;"><label>Competizione</label><select id="mfC">${compOptions}</select></div>
+  <div class="form-group" id="mfTorneoGroup" style="margin-bottom:12px;display:none;"><label>Nome torneo</label><input id="mfTorneo" placeholder="es. Torneo Città di Roma" value="${m && !m.competition_id && m.competizione ? m.competizione : ''}"></div>
   <div class="form-group"><label>Giornata</label><input id="mfG" type="number" value="${m ? m.giornata || '' : ''}" style="width:80px;"></div>`;
   const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="saveBtn">Salva</button>';
   const modal = createModal(m ? 'Modifica' : 'Nuova Partita', content, footer, '500px');
+  
+  // Mostra campo torneo se amichevole
+  const compSel = document.getElementById('mfC');
+  const torneoGroup = document.getElementById('mfTorneoGroup');
+  const toggleTorneo = () => { torneoGroup.style.display = compSel.value === '' ? 'block' : 'none'; };
+  compSel.addEventListener('change', toggleTorneo);
+  toggleTorneo();
   document.getElementById('saveBtn').addEventListener('click', async () => {
-  const rawDate = document.getElementById('mfD').value; // "2026-07-05T10:30" (local)
+  const rawDate = document.getElementById('mfD').value;
+  const compValue = document.getElementById('mfC').value;
+  const torneoValue = document.getElementById('mfTorneo')?.value?.trim() || '';
   const d = {
     dataOra: rawDate ? rawDate + ':00' : null,
     avversario: document.getElementById('mfA').value,
     luogo: document.getElementById('mfL').value,
-    competizione: document.getElementById('mfC').value,
+    competizione: compValue || torneoValue || '',
     giornata: parseInt(document.getElementById('mfG').value) || null
   };
   showLoading();
@@ -672,6 +693,20 @@ function openImportCSV() {
     loadCalendar();
   } catch (e) { hideLoading(); alert('Errore: ' + e.message); }
   });
+}
+
+async function archiveAllPlayed() {
+  const played = allMatches.filter(m => (m.stato === 'Terminata' || m.gol_casa != null) && !m.archiviata);
+  if (played.length === 0) { alert('Nessuna partita giocata da archiviare'); return; }
+  if (!await confirm(`Archiviare ${played.length} partite giocate? Non sarà più possibile modificare eventi, formazione e convocazioni.`)) return;
+  showLoading('Archiviazione...');
+  try {
+    await Promise.all(played.map(m => apiFetch('/partite/' + m.id + '/archivia', { method: 'PUT' })));
+    hideLoading();
+    alert(`✅ ${played.length} partite archiviate`);
+    invalidateDashboardCache(); invalidateStatsCache();
+    loadCalendar();
+  } catch (err) { hideLoading(); alert('Errore: ' + err.message); }
 }
 
 async function deleteAllMatches() {
