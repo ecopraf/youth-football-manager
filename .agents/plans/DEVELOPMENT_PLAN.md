@@ -219,6 +219,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: training calendar — holidays italiane (Pasqua dinamica), mini counters presenti/assenti, auto-navigate ultimo mese con dati per stagioni passate |
 | (pending) | fix: Supabase 1000-row limit — batch fetch (20 IDs + .range(0,9999)) su /presenze e /summary |
 | (pending) | feat: summary season-aware — rileva stagione passata (>30gg da ultimo allenamento), nasconde Ass.Sett., mostra range stagione completo |
+| (pending) | feat: indicatori motivi assenza nel riepilogo presenze (cards + barra distribuzione) |
+| (pending) | perf: ottimizzazione endpoint — Promise.all su top-players/stats-giocatori (-79%/-50%), rimozione JOIN su presenze (-75%), unificazione batch su summary (-47%) |
 | ba51bee | feat: Live Match Mode — bottone stato, minuto live, pre-fill drawer, durata per categoria |
 | 856acd8 | feat: Match Center hub + CORS fix + assist/rigore/autogol support |
 | 7c5b3a6 | feat: unified Match Center button in calendar + dashboard |

@@ -334,6 +334,80 @@ await supabase.from('t').delete().in('id', ids);
 
 ---
 
+## ⚡ Performance Backend (OBBLIGATORIO)
+
+### Regola #1: Parallelizzare query indipendenti
+
+Se un endpoint esegue 2+ query che NON dipendono l'una dall'altra, usare SEMPRE `Promise.all`.
+
+```javascript
+// ❌ VIETATO (sequenziale — 3x latenza)
+const { data: events } = await supabase.from('match_event').select(...);
+const { data: convs } = await supabase.from('convocation').select(...);
+const { data: stats } = await supabase.from('match_statistics').select(...);
+
+// ✅ OBBLIGATORIO (parallelo — 1x latenza)
+const [{ data: events }, { data: convs }, { data: stats }] = await Promise.all([
+  supabase.from('match_event').select(...),
+  supabase.from('convocation').select(...),
+  supabase.from('match_statistics').select(...)
+]);
+```
+
+### Regola #2: Evitare JOIN Supabase su tabelle grandi
+
+I JOIN con `select('*, relazione:fk(colonne)')` sono costosi. Preferire:
+- Fetch separato + map in memoria (più veloce per >100 righe)
+- Selezionare SOLO le colonne necessarie (mai `select('*')` su tabelle grandi)
+
+```javascript
+// ❌ LENTO (JOIN su 3000+ righe)
+const { data } = await supabase.from('training_attendance')
+  .select('*, training:training_id(id, data_ora, team_id)').in('training_id', ids);
+
+// ✅ VELOCE (fetch separato + map)
+const { data: trainings } = await supabase.from('training').select('id, data_ora').in('id', ids);
+const dateMap = {};
+trainings.forEach(t => { dateMap[t.id] = t.data_ora; });
+const { data } = await supabase.from('training_attendance')
+  .select('id, training_id, team_player_id, presente, motivi_assenza').in('training_id', ids);
+```
+
+### Regola #3: Riutilizzare dati già fetchati
+
+Se un endpoint ha già fetchato dei dati, NON fare una seconda query per un sottoinsieme degli stessi dati. Filtrare in memoria.
+
+```javascript
+// ❌ VIETATO (doppia query sugli stessi dati)
+const { data: presenze } = await supabase.from('training_attendance').select('team_player_id, presente')...;
+const { data: motivi } = await supabase.from('training_attendance').select('team_player_id, motivi_assenza').eq('presente', false)...;
+
+// ✅ OBBLIGATORIO (una query, filtra in memoria)
+const { data: presenze } = await supabase.from('training_attendance').select('team_player_id, presente, motivi_assenza')...;
+const motivi = presenze.filter(p => !p.presente);
+```
+
+### Regola #4: Selezionare solo colonne necessarie
+
+Mai usare `select('*')` su tabelle con molte colonne o molte righe. Specificare sempre le colonne.
+
+### Regola #5: Batch fetch con limite Supabase
+
+Supabase ha un hard limit di 1000 righe. Per tabelle grandi:
+- Batch per 20 IDs con `.in('campo', batch).range(0, 9999)`
+- Mai `.limit(N)` da solo (non supera il limite)
+
+### Benchmark di riferimento (Luglio 2025)
+
+| Endpoint | Target | Accettabile |
+|----------|--------|-------------|
+| GET semplice (config, calciatori) | <300ms | <500ms |
+| GET con aggregazione (stats, summary) | <500ms | <1000ms |
+| GET con batch fetch (presenze, formazioni) | <800ms | <1500ms |
+| POST/PUT/DELETE | <300ms | <500ms |
+
+---
+
 ## 🧠 Cache Frontend (OBBLIGATORIO)
 
 ### Architettura
