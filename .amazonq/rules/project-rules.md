@@ -171,26 +171,50 @@ I workspace attivi nel DB sono:
 
 ## Sistema Autorizzazioni
 
-### Accesso basato su Categorie (NON squadre)
-- `users.squadre_accesso` contiene **category_id** (non team_id)
-- La categoria è persistente tra stagioni, il team cambia ogni stagione
-- Admin/Superadmin con array vuoto = accesso a tutte le categorie
-- Allenatore con array = accesso solo alle categorie elencate
+### Capabilities & Profili (v2)
 
-### Helper Backend (api/index.js)
-- `hasPermission(user, modulo, livello)` — verifica se l'utente ha accesso al modulo
-- `hasCategoryAccess(user, categoryId)` — verifica accesso alla categoria
-- `requirePermission(modulo, livello)` — middleware Express per proteggere endpoint
+`users.permessi` JSONB supporta due formati (retrocompatibile):
 
-### Moduli disponibili per permessi
-- `rosa` — CRUD calciatori
-- `partite` — CRUD partite, risultati, eventi
-- `formazione` — convocazioni, formazione, distinta
-- `allenamenti` — presenze, sedute, config, template
-- `statistiche` — visualizzazione stats
-- `guest_links` — generazione link guest
+**Nuovo formato** (preferito):
+```json
+{
+  "profilo": "allenatore",
+  "capabilities": { "rosa": "write", "partite": "write", "allenamenti": "write", ... }
+}
+```
 
-### Livelli: `""` (nessuno), `"read"`, `"write"`
+**Vecchio formato** (ancora supportato):
+```json
+{ "rosa": "write", "partite": "read" }
+```
+
+### Profili predefiniti
+
+| Profilo | rosa | partite | formazione | allenamenti | statistiche | guest_links | import | report |
+|---------|------|---------|------------|-------------|-------------|-------------|--------|--------|
+| allenatore | write | write | write | write | read | write | write | read |
+| vice_allenatore | read | read | write | write | read | — | — | read |
+| dirigente | read | read | read | — | read | write | — | read |
+| preparatore | read | — | — | write | read | — | — | — |
+| osservatore | read | read | — | — | read | — | — | read |
+| custom | (personalizzato dall'admin) |
+
+### File di riferimento
+- `frontend-v2/src/utils/capabilities.js` — PROFILI, CAPABILITIES, getUserCapabilities()
+- `backend/api/helpers/capabilities.js` — mirror CommonJS
+- `frontend-v2/src/components/layout/sidebarNav.js` — nav filtrato per capabilities
+
+### Livelli capability: `""` (nessuno), `"read"`, `"write"`
+
+### Logica hasPermission (backend)
+- superadmin/admin/allenatore → sempre `true`
+- staff → controlla `getUserCapabilities(permessi)[modulo]`
+- guest → sempre bloccato (403)
+
+### Sidebar filtrata
+- Ogni voce sidebar richiede una capability specifica (vedi `sidebarNav.js`)
+- Admin/Allenatore/Superadmin vedono tutto
+- Staff vede solo le voci per cui ha almeno `read`
 
 ### Guest JWT
 - Generato da `/api/guest/:token` con validità 24h
@@ -290,11 +314,86 @@ style: stili (CSS)
 
 1. Implementa le modifiche
 2. Testa: `cd frontend-v2 && npm run build` + `cd backend && node -c api/index.js`
-3. Aggiorna documentazione (DEVELOPMENT_PLAN.md changelog + eventuali AGENTS.md/project-rules.md)
-4. Commit con messaggio descrittivo
-5. Push su main → deploy automatico Vercel (SOLO con conferma utente)
+3. **Test funzionale** (vedi sezione sotto)
+4. Aggiorna documentazione (DEVELOPMENT_PLAN.md changelog + eventuali AGENTS.md/project-rules.md)
+5. Commit con messaggio descrittivo
+6. Push su main → deploy automatico Vercel (SOLO con conferma utente)
 
 > ⚠️ **REGOLA**: Aggiornare SEMPRE la documentazione (changelog, schema, endpoint) ad ogni commit. Non serve che l'utente lo chieda esplicitamente.
+
+---
+
+## 🧪 Test Funzionale Post-Sviluppo (OBBLIGATORIO)
+
+Dopo aver completato una feature o un fix, **prima di proporre commit/push**, l'agente DEVE:
+
+### 1. Chiedere conferma all'utente
+
+```
+"Implementazione completata. Vuoi che esegua i test funzionali prima del commit?"
+```
+
+Se l'utente conferma (o non si oppone), procedere con il test.
+
+### 2. Eseguire test automatico
+
+Creare un file temporaneo `backend/tmp_test.js` che verifica:
+
+- **CRUD**: Create → Read → Update → Delete su dati di test
+- **Logica business**: Simulare i flussi principali toccati dalla modifica
+- **Retrocompatibilità**: Verificare che i dati esistenti continuino a funzionare
+- **Permessi**: Se la modifica tocca auth/permessi, testare i vari ruoli
+
+### 3. Template test
+
+```javascript
+// File: backend/tmp_test.js (eliminare dopo l'uso)
+const { Pool } = require('pg');
+const pool = new Pool({
+  connectionString: 'postgresql://postgres.csxdlxbhcnyfppojwwzy:Yfm2026Secure!@aws-0-eu-west-1.pooler.supabase.com:6543/postgres',
+  ssl: { rejectUnauthorized: false }
+});
+
+async function run() {
+  const client = await pool.connect();
+  try {
+    // --- TEST CASES ---
+    // 1. Crea dati di test (prefisso 'test.' o email @yfm-test.it)
+    // 2. Verifica operazioni
+    // 3. Pulisci dati di test (DELETE)
+    // 4. Log risultati con ✅/❌
+    console.log('\n🎉 Tutti i test passati!');
+  } catch(e) {
+    console.error('❌ TEST FALLITO:', e.message);
+    // Pulisci comunque i dati di test
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+run();
+```
+
+Eseguire con: `cd backend && /Users/Raffaele/.nvm/versions/node/v24.18.0/bin/node tmp_test.js`
+
+### 4. Regole test
+
+- **Mai toccare dati reali**: usare email `@yfm-test.it` o prefisso `test_` per i dati
+- **Sempre pulire**: DELETE dei dati di test alla fine (anche in caso di errore)
+- **Eliminare il file**: `rm tmp_test.js` dopo l'esecuzione
+- **Riportare risultati**: mostrare all'utente la tabella dei test con esito
+- **Se un test fallisce**: correggere il bug PRIMA di proporre il commit
+
+### 5. Cosa testare per tipo di modifica
+
+| Tipo modifica | Test richiesti |
+|---|---|
+| Nuovo endpoint API | CRUD completo + validazione input + permessi |
+| Modifica logica permessi | Tutti i ruoli (superadmin, admin, allenatore, staff, guest) |
+| Modifica schema DB | Migrazione + lettura/scrittura nuove colonne + retrocompatibilità |
+| Fix bug | Riprodurre il caso che causava il bug + verificare la fix |
+| Refactoring | Verificare che output sia identico pre/post refactoring |
+| Solo frontend (UI/CSS) | Solo build test (`npm run build`) — no test DB |
 
 ## Gestione Task Complessi
 

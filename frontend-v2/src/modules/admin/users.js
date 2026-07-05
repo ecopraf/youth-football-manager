@@ -1,5 +1,6 @@
 import { apiFetch } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
+import { CAPABILITIES, PROFILI, getUserCapabilities } from '../../utils/capabilities';
 
 let users = [];
 let categorie = [];
@@ -77,14 +78,16 @@ export default async function loadUsers() {
           
           <!-- STEP 2: Ruolo e Accessi -->
           <div id="wizardStep2" style="display:none;">
-            <p style="font-size:13px;color:#666;margin-bottom:16px;">Ruolo e accessi</p>
+            <p style="font-size:13px;color:#666;margin-bottom:16px;">Profilo e accessi</p>
             
+            <!-- Ruolo sistema (nascosto, derivato dal profilo) -->
+            <input type="hidden" id="userRuolo" value="staff">
+            
+            <!-- Profilo -->
             <div class="form-group">
-              <label>Ruolo *</label>
-              <select id="userRuolo" required>
-                <option value="allenatore">Allenatore</option>
-                <option value="staff">Staff</option>
-                <option value="admin">Amministratore</option>
+              <label>Profilo *</label>
+              <select id="userProfilo">
+                ${Object.entries(PROFILI).map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('')}
               </select>
             </div>
             
@@ -101,17 +104,10 @@ export default async function loadUsers() {
               <small style="color:#666;">Nessuna selezione = accesso a tutte</small>
             </div>
             
-            <!-- Permessi granulari (solo staff) -->
-            <div id="permessiSection" style="display:none;margin-top:16px;padding:14px;background:#f8f9ff;border-radius:10px;border:1px solid #e0e4f0;">
-              <label style="font-weight:600;font-size:13px;color:#333;margin-bottom:10px;display:block;">🔐 Permessi Moduli</label>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="permessiGrid">
-                <div class="perm-row"><span>📋 Rosa</span><select data-modulo="rosa" class="perm-select"><option value="">—</option><option value="read">👁️</option><option value="write">✏️</option></select></div>
-                <div class="perm-row"><span>📅 Partite</span><select data-modulo="partite" class="perm-select"><option value="">—</option><option value="read">👁️</option><option value="write">✏️</option></select></div>
-                <div class="perm-row"><span>🏟️ Formazione</span><select data-modulo="formazione" class="perm-select"><option value="">—</option><option value="read">👁️</option><option value="write">✏️</option></select></div>
-                <div class="perm-row"><span>🏋️ Allenamenti</span><select data-modulo="allenamenti" class="perm-select"><option value="">—</option><option value="read">👁️</option><option value="write">✏️</option></select></div>
-                <div class="perm-row"><span>📊 Statistiche</span><select data-modulo="statistiche" class="perm-select"><option value="">—</option><option value="read">👁️</option><option value="write">✏️</option></select></div>
-                <div class="perm-row"><span>🔗 Guest Links</span><select data-modulo="guest_links" class="perm-select"><option value="">—</option><option value="read">👁️</option><option value="write">✏️</option></select></div>
-              </div>
+            <!-- Capabilities toggle -->
+            <div id="capabilitiesSection" style="margin-top:16px;padding:14px;background:#f8f9ff;border-radius:10px;border:1px solid #e0e4f0;">
+              <label style="font-weight:600;font-size:13px;color:#333;margin-bottom:10px;display:block;">🔐 Capabilities</label>
+              <div id="capabilitiesGrid" style="display:grid;gap:8px;"></div>
             </div>
             
             <!-- Stato (solo in edit) -->
@@ -131,9 +127,15 @@ export default async function loadUsers() {
     </div>
     
     <style>
-      .perm-row { display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:white;border-radius:8px;border:1px solid #eee; }
-      .perm-row span { font-size:12px; }
-      .perm-select { padding:3px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px;width:50px; }
+      .cap-row { display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:white;border-radius:8px;border:1px solid #eee; }
+      .cap-row .cap-info { display:flex;align-items:center;gap:8px;font-size:12px; }
+      .cap-row .cap-icon { font-size:14px; }
+      .cap-row .cap-label { font-weight:500;color:#333; }
+      .cap-toggle { display:flex;align-items:center;gap:4px; }
+      .cap-toggle button { padding:3px 8px;border:1px solid #ddd;border-radius:6px;font-size:11px;cursor:pointer;background:white;transition:all 0.15s; }
+      .cap-toggle button.active-off { background:#f1f5f9;color:#999;border-color:#e2e8f0; }
+      .cap-toggle button.active-read { background:#3b82f6;color:white;border-color:#3b82f6; }
+      .cap-toggle button.active-write { background:#22c55e;color:white;border-color:#22c55e; }
       .cat-checkbox { display:flex;align-items:center;gap:6px;padding:6px 10px;background:#f8f9fa;border-radius:8px;font-size:13px;cursor:pointer; }
       .cat-checkbox input { margin:0; }
     </style>
@@ -147,7 +149,7 @@ export default async function loadUsers() {
   document.getElementById('btnNextStep')?.addEventListener('click', goToStep2);
   document.getElementById('btnPrevStep')?.addEventListener('click', goToStep1);
   
-  document.getElementById('userRuolo')?.addEventListener('change', onRuoloChange);
+  document.getElementById('userProfilo')?.addEventListener('change', onProfiloChange);
   document.getElementById('userWorkspace')?.addEventListener('change', onWorkspaceChange);
   document.getElementById('staffLink')?.addEventListener('change', onStaffSelect);
 }
@@ -183,14 +185,82 @@ function goToStep2() {
   document.getElementById('step2Dot').style.color = 'white';
   document.getElementById('progressBar').style.width = '100%';
   
-  onRuoloChange();
+  renderCapabilitiesGrid();
+  onProfiloChange();
 }
 
-function onRuoloChange() {
-  const ruolo = document.getElementById('userRuolo').value;
-  document.getElementById('permessiSection').style.display = ruolo === 'staff' ? 'block' : 'none';
-  // Categorie visibili per allenatore e staff
-  document.getElementById('categorieGroup').style.display = (ruolo === 'admin') ? 'none' : 'block';
+function onProfiloChange() {
+  const profilo = document.getElementById('userProfilo').value;
+  const profiloData = PROFILI[profilo];
+  if (!profiloData || profilo === 'custom') return;
+  // Precompila capabilities dal profilo
+  CAPABILITIES.forEach(cap => {
+    const val = profiloData.capabilities[cap.id] || '';
+    setCapabilityValue(cap.id, val);
+  });
+  // Deriva ruolo sistema dal profilo
+  const ruoloMap = { allenatore: 'allenatore', vice_allenatore: 'allenatore', dirigente: 'staff', preparatore: 'staff', osservatore: 'staff', custom: 'staff' };
+  document.getElementById('userRuolo').value = ruoloMap[profilo] || 'staff';
+}
+
+function renderCapabilitiesGrid() {
+  const grid = document.getElementById('capabilitiesGrid');
+  if (!grid) return;
+  grid.innerHTML = CAPABILITIES.map(cap => `
+    <div class="cap-row" data-cap="${cap.id}">
+      <div class="cap-info"><span class="cap-icon">${cap.icon}</span><span class="cap-label">${cap.label}</span></div>
+      <div class="cap-toggle">
+        <button type="button" data-cap="${cap.id}" data-val="" class="active-off">—</button>
+        <button type="button" data-cap="${cap.id}" data-val="read">👁️</button>
+        <button type="button" data-cap="${cap.id}" data-val="write">✏️</button>
+      </div>
+    </div>
+  `).join('');
+  // Attach toggle listeners
+  grid.querySelectorAll('.cap-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setCapabilityValue(btn.dataset.cap, btn.dataset.val);
+      document.getElementById('userProfilo').value = 'custom';
+    });
+  });
+  // Se in edit, carica capabilities pendenti
+  if (window._pendingCaps) {
+    CAPABILITIES.forEach(cap => {
+      setCapabilityValue(cap.id, window._pendingCaps[cap.id] || '');
+    });
+    window._pendingCaps = null;
+  }
+}
+
+function setCapabilityValue(capId, val) {
+  const grid = document.getElementById('capabilitiesGrid');
+  if (!grid) return;
+  const btns = grid.querySelectorAll(`button[data-cap="${capId}"]`);
+  btns.forEach(b => {
+    b.className = b.dataset.val === val
+      ? (val === '' ? 'active-off' : val === 'read' ? 'active-read' : 'active-write')
+      : '';
+  });
+}
+
+function getCapabilitiesFromUI() {
+  const caps = {};
+  const grid = document.getElementById('capabilitiesGrid');
+  if (!grid) return caps;
+  CAPABILITIES.forEach(cap => {
+    const activeBtn = grid.querySelector(`button[data-cap="${cap.id}"].active-read, button[data-cap="${cap.id}"].active-write`);
+    if (activeBtn) caps[cap.id] = activeBtn.dataset.val;
+  });
+  return caps;
+}
+
+function detectProfilo(caps) {
+  for (const [key, prof] of Object.entries(PROFILI)) {
+    if (key === 'custom') continue;
+    const match = CAPABILITIES.every(c => (prof.capabilities[c.id] || '') === (caps[c.id] || ''));
+    if (match) return key;
+  }
+  return 'custom';
 }
 
 async function onWorkspaceChange() {
@@ -299,7 +369,7 @@ function renderUsers() {
         </td>
         <td style="padding:12px;color:#666;font-size:13px;">${user.email}</td>
         <td style="padding:12px;">
-          <span class="badge badge-${getRoleBadge(user.ruolo)}">${getRoleLabel(user.ruolo)}</span>
+          <span class="badge badge-${getProfiloBadge(user)}">${getProfiloLabel(user)}</span>
           ${user.is_superadmin ? '<span class="badge" style="background:#9b59b6;color:white;margin-left:4px;">SA</span>' : ''}
         </td>
         <td style="padding:12px;font-size:13px;">${categorieText}</td>
@@ -326,11 +396,16 @@ function renderUsers() {
   };
 }
 
-function getRoleBadge(ruolo) {
-  return { admin: 'purple', allenatore: 'blue', staff: 'gray' }[ruolo] || 'gray';
+function getProfiloBadge(user) {
+  if (user.ruolo === 'admin') return 'purple';
+  const profilo = user.permessi?.profilo;
+  return { allenatore: 'blue', vice_allenatore: 'blue', dirigente: 'gray', preparatore: 'orange', osservatore: 'gray' }[profilo] || 'gray';
 }
-function getRoleLabel(ruolo) {
-  return { admin: 'Admin', allenatore: 'Allenatore', staff: 'Staff' }[ruolo] || ruolo;
+function getProfiloLabel(user) {
+  if (user.ruolo === 'admin') return 'Admin';
+  const profilo = user.permessi?.profilo;
+  if (profilo && PROFILI[profilo]) return PROFILI[profilo].icon + ' ' + PROFILI[profilo].label;
+  return { admin: 'Admin', allenatore: 'Allenatore', staff: 'Staff' }[user.ruolo] || user.ruolo;
 }
 
 async function openModal(userId = null) {
@@ -367,30 +442,32 @@ async function openModal(userId = null) {
     document.getElementById('userNome').value = user.nome || '';
     document.getElementById('userCognome').value = user.cognome || '';
     document.getElementById('userEmail').value = user.email || '';
-    document.getElementById('userRuolo').value = user.ruolo || 'allenatore';
     document.getElementById('userIsActive').checked = user.is_active !== false;
     document.getElementById('userId').value = user.id;
+    
+    // Carica profilo e capabilities
+    const permessi = user.permessi || {};
+    const profilo = permessi.profilo || detectProfilo(getUserCapabilities(permessi));
+    document.getElementById('userProfilo').value = profilo;
+    document.getElementById('userRuolo').value = user.ruolo || 'staff';
     
     if (isSuperadmin && user.workspace_id) {
       document.getElementById('userWorkspace').value = user.workspace_id;
       await onWorkspaceChange();
     }
     
-    // Carica permessi
-    if (user.permessi) {
-      document.querySelectorAll('.perm-select').forEach(sel => {
-        sel.value = user.permessi[sel.dataset.modulo] || '';
-      });
-    }
-    
     // Categorie selezionate
     const selectedCats = user.categorie_accesso || [];
     renderCategorieCheckboxes(selectedCats);
+    
+    // Capabilities verranno caricate quando si va allo step 2
+    window._pendingCaps = getUserCapabilities(permessi);
   } else {
     document.getElementById('modalTitle').textContent = 'Nuovo Utente';
     document.getElementById('isActiveGroup').style.display = 'none';
     document.getElementById('passwordHint').textContent = '(obbligatoria)';
-    document.querySelectorAll('.perm-select').forEach(sel => { sel.value = ''; });
+    document.getElementById('userProfilo').value = 'allenatore';
+    window._pendingCaps = null;
     renderCategorieCheckboxes([]);
   }
   
@@ -428,16 +505,9 @@ async function handleSubmit(e) {
     if (password) body.password = password;
     if (isEdit) body.is_active = is_active;
     
-    // Permessi staff
-    if (ruolo === 'staff') {
-      const permessi = {};
-      document.querySelectorAll('.perm-select').forEach(sel => {
-        if (sel.value) permessi[sel.dataset.modulo] = sel.value;
-      });
-      body.permessi = permessi;
-    } else {
-      body.permessi = {};
-    }
+    // Permessi nel nuovo formato {profilo, capabilities}
+    const profilo = document.getElementById('userProfilo').value;
+    body.permessi = { profilo, capabilities: getCapabilitiesFromUI() };
     
     if (isEdit) {
       await apiFetch(`/auth/users/${userId}`, { method: 'PUT', body: JSON.stringify(body) });

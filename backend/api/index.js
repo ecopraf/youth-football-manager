@@ -85,12 +85,14 @@ const authMiddleware = async (req, res, next) => {
 };
 
 // ── PERMISSION HELPERS ──
+const { getUserCapabilities } = require('./api/helpers/capabilities');
+
 function hasPermission(user, modulo, livello = 'read') {
   if (user.is_superadmin) return true;
   if (user.ruolo === 'admin') return true;
   if (user.ruolo === 'allenatore') return true;
-  const permessi = user.permessi || {};
-  const perm = permessi[modulo];
+  const caps = getUserCapabilities(user.permessi);
+  const perm = caps[modulo];
   if (!perm) return false;
   if (livello === 'read') return perm === 'read' || perm === 'write';
   return perm === 'write';
