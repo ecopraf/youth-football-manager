@@ -29,7 +29,7 @@
 | Convocazioni | ✅ | modules/team/convocazioni.js |
 | Formazione | ✅ | modules/team/formazione.js |
 | Distinta | ✅ | modules/team/distinta.js |
-| Match Center | ✅ | modules/team/matchCenter.js (hub partita: eventi, live mode) |
+| Match Center | ✅ | modules/team/matchCenter.js (hub partita: eventi live, formazione interattiva, sostituzioni drag/tap, modulo_finale tracking) |
 | Allenamenti | ✅ | modules/coach/training*.js, routes/training.js |
 | Statistiche | ✅ | modules/performance/stats.js, routes/statistics.js |
 | Report | ✅ | modules/performance/reports.js |
@@ -197,6 +197,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | Performance | Test fisici (semplificati) | P3 |
 | Performance | Piano individuale giocatore | P3 |
 | UI | ~~Timeline partita animata~~ (fatto in Match Center) | ✅ |
+| UI | ~~Formazione live con sostituzioni~~ (fatto in Match Center) | ✅ |
 | Tech | TypeScript graduale | P3 |
 | Tech | Test E2E (Playwright) | P3 |
 | Mobile | App nativa | P3 |
@@ -220,6 +221,9 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | 7c5b3a6 | feat: unified Match Center button in calendar + dashboard |
 | (pending) | feat: Match Center UX — autogol logic fix, SUB persistence, gol subito text field, live button blink, dashboard partita odierna, matchDetail SUB display fix |
 | (pending) | fix: statistiche filtrate per tipo competizione (solo campionato+coppa per stats ufficiali) |
+| fa94529 | feat: multi-session improvements — stats, calendar fix, dashboard, match events, assist fix, convocazioni fix |
+| d7119aa | feat: formazione live interattiva in Match Center con sostituzioni drag/tap |
+| 96609e7 | feat: Match Center formazione live + modulo_finale tracking + mobile fix + timeline 2 colonne + modal custom sostituzione |
 | (pending) | fix: WhatsApp link aggiunge +39 a numeri senza prefisso internazionale + template picker con modale card + fix salvataggio/caricamento programma seduta (upsert backend + load da DB) |
 | (pending) | feat: redesign stagioni — wizard con promozione categoria (U14→U15), tipo campionato, delete cascade, stagioni espandibili con card team |
 | (pending) | feat: workspace.nome_breve — nome compatto per sidebar/dashboard (DB + backend + frontend) |
