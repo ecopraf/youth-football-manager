@@ -95,7 +95,14 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const { data: convs } = await supabase.from('convocation').select('team_player_id').in('match_id', matchIds).eq('presente', true);
       const presCount = {};
       (convs || []).forEach(c => { presCount[c.team_player_id] = (presCount[c.team_player_id] || 0) + 1; });
-      const presenze = players.filter(p => presCount[p.id]).map(p => ({ id: p.player?.id, nome: p.player?.cognome + ' ' + p.player?.nome, presenze: presCount[p.id] })).sort((a, b) => b.presenze - a.presenze).slice(0, 5);
+
+      // Minutaggio da match_statistics
+      const tpIds = players.map(p => p.id);
+      const { data: statsData } = await supabase.from('match_statistics').select('team_player_id, minuti_giocati').in('team_player_id', tpIds).in('match_id', matchIds);
+      const minCount = {};
+      (statsData || []).forEach(s => { minCount[s.team_player_id] = (minCount[s.team_player_id] || 0) + (s.minuti_giocati || 0); });
+
+      const presenze = players.filter(p => presCount[p.id]).map(p => ({ id: p.player?.id, nome: p.player?.cognome + ' ' + p.player?.nome, presenze: presCount[p.id], minuti: minCount[p.id] || 0 })).sort((a, b) => b.minuti - a.minuti || b.presenze - a.presenze).slice(0, 5);
 
       res.json({ marcatori, assistmen, presenze });
     } catch (err) {

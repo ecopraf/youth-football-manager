@@ -262,8 +262,8 @@ async function loadData() {
       try { staffList = await apiFetch(`/workspaces/${wsId}/staff`); } catch(e) { staffList = []; }
     }
     
-    // Carica utenti: superadmin vede tutti, admin solo il suo workspace
-    const usersUrl = isSuperadmin ? '/auth/users' : '/auth/users' + (wsId ? `?workspace_id=${wsId}` : '');
+    // Carica utenti: filtrati per workspace attivo
+    const usersUrl = '/auth/users' + (wsId ? `?workspace_id=${wsId}` : '');
     const usersRes = await apiFetch(usersUrl);
     users = usersRes.users || [];
     

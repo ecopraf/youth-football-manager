@@ -102,12 +102,13 @@ export default async function loadDashboard() {
     const medalEmojis = ['🥇', '🥈', '🥉'];
     const medal = medalEmojis[index] || (index + 1);
     const value = tipo === 'gol' ? giocatore.gol + ' Gol' : tipo === 'assist' ? giocatore.assist + ' Assist' : giocatore.presenze + ' Pres.';
+    const subValue = tipo === 'presenze' && giocatore.minuti ? '<div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;">(' + giocatore.minuti + '\' min.)</div>' : '';
     const bgColor = index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32';
     const bgEnd = index === 0 ? '#FFA500' : index === 1 ? '#A0A0A0' : '#8B4513';
     return '<div style="flex:1;background:linear-gradient(180deg,' + bgColor + ' 0%,' + bgEnd + ' 100%);padding:16px 8px;border-radius:16px;text-align:center;cursor:pointer;" onclick="if(typeof loadPlayerDetail===\'function\') loadPlayerDetail(\'' + giocatore.id + '\',\'' + giocatore.nome + '\');">' +
       '<div style="font-size:32px;margin-bottom:8px;">' + medal + '</div>' +
       '<div style="font-size:13px;font-weight:bold;color:#fff;margin-bottom:6px;">' + giocatore.nome + '</div>' +
-      '<div style="font-size:16px;font-weight:bold;color:#fff;">' + value + '</div></div>';
+      '<div style="font-size:16px;font-weight:bold;color:#fff;">' + value + '</div>' + subValue + '</div>';
   };
 
   const createEmptyBoxHtml = () => '<div style="flex:1;background:#e8e8e8;padding:16px 8px;border-radius:16px;text-align:center;color:#aaa;">-</div>';
@@ -400,7 +401,7 @@ export default async function loadDashboard() {
     '<div class="top-grid" data-help="dashboard.topPlayers">' +
     renderTopSection('⚽ Top 3 Marcatori', (top.marcatori || []).slice(0, 3), 'gol') +
     renderTopSection('🅰️ Top 3 Assist', (top.assistmen || []).slice(0, 3), 'assist') +
-    renderTopSection('🏃 Top 3 Presenze', (top.presenze || []).slice(0, 3), 'presenze') +
+    renderTopSection('🏃 Top 3 Presenze (min.)', (top.presenze || []).slice(0, 3), 'presenze') +
     '</div>' +
     
     '<div class="bottom-grid">' +
