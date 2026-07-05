@@ -33,7 +33,7 @@ export default async function loadTrainingPresenze() {
   } catch(e) { _absenceNotifications = []; }
 
   const { config, presenze, partite, giocatori, summary, settimana } = _trainingData;
-  selectTodayIfTraining(config);
+  selectTodayIfTraining(config, presenze);
 
   setOnDateSelect((date) => {
     const container = document.getElementById('presenzeDetail');
@@ -146,14 +146,18 @@ function attachPresenzeListeners(date) {
 
 function renderSummary(giocatori, summary, settimana) {
   const sorted = [...giocatori].sort((a, b) => a.cognome.localeCompare(b.cognome));
+  const isActive = settimana.attiva !== false;
+  const rangeLabel = isActive
+    ? `${settimana.da ? formatDateShort(settimana.da) : ''} - ${settimana.a ? formatDateShort(settimana.a) : ''}`
+    : `Stagione: ${settimana.da ? formatDateShort(settimana.da) : ''} - ${settimana.a ? formatDateShort(settimana.a) : ''}`;
   let html = `<div class="card" data-help="presenze.riepilogo" style="margin-bottom:20px;">
-    <h3 class="section-title">📊 Riepilogo Presenze <span style="font-size:12px;color:var(--gray);font-weight:normal;">(${settimana.da ? formatDateShort(settimana.da) : ''} - ${settimana.a ? formatDateShort(settimana.a) : ''})</span></h3>
+    <h3 class="section-title">📊 Riepilogo Presenze <span style="font-size:12px;color:var(--gray);font-weight:normal;">(${rangeLabel})</span></h3>
     <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
       <thead><tr style="background:#F8F9FA;">
         <th style="padding:8px;text-align:center;">#</th><th style="padding:8px;text-align:left;">Calciatore</th>
         <th style="padding:8px;text-align:center;">Tot.</th><th style="padding:8px;text-align:center;color:#27AE60;">Pres.</th>
         <th style="padding:8px;text-align:center;color:#E74C3C;">Ass.</th><th style="padding:8px;text-align:right;">%</th>
-        <th style="padding:8px;text-align:center;color:#E74C3C;">Ass.Sett.</th>
+        ${isActive ? '<th style="padding:8px;text-align:center;color:#E74C3C;">Ass.Sett.</th>' : ''}
       </tr></thead><tbody>${sorted.map((g, i) => {
         const s = summary[g.id] || { totali:0, presenti:0, assenti:0, assentiSett:0 };
         const perc = s.totali > 0 ? Math.round((s.presenti / s.totali) * 100) : 0;
@@ -165,7 +169,7 @@ function renderSummary(giocatori, summary, settimana) {
           <td style="padding:8px;text-align:center;color:#27AE60;font-weight:600;">${s.presenti}</td>
           <td style="padding:8px;text-align:center;color:#E74C3C;font-weight:600;">${s.assenti}</td>
           <td style="padding:8px;text-align:right;"><span style="color:${percColor};font-weight:600;">${perc}%</span></td>
-          <td style="padding:8px;text-align:center;color:#E74C3C;">${s.assentiSett||0}</td>
+          ${isActive ? `<td style="padding:8px;text-align:center;color:#E74C3C;">${s.assentiSett||0}</td>` : ''}
         </tr>`;
       }).join('')}</tbody></table></div></div>`;
   return html;

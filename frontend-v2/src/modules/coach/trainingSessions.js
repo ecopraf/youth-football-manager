@@ -35,7 +35,7 @@ export default async function loadTrainingSessions() {
   if (!trainingData) return;
 
   const { config, presenze, partite } = trainingData;
-  selectTodayIfTraining(config);
+  selectTodayIfTraining(config, presenze);
 
   setOnDateSelect(async (date) => {
     const container = document.getElementById('sessionContainer');

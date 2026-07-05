@@ -51,8 +51,13 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
       const { data: trainings } = await supabase.from('training').select('id, data_ora').eq('team_id', req.params.squadraId);
       const trainingIds = (trainings || []).map(t => t.id);
       if (trainingIds.length === 0) return res.json([]);
-      const { data, error } = await supabase.from('training_attendance').select('*, training:training_id(id, data_ora, team_id)').in('training_id', trainingIds);
-      if (error) return res.status(400).json({ error: error.message });
+      let data = [];
+      for (let i = 0; i < trainingIds.length; i += 20) {
+        const batch = trainingIds.slice(i, i + 20);
+        const { data: batchData, error } = await supabase.from('training_attendance').select('*, training:training_id(id, data_ora, team_id)').in('training_id', batch).range(0, 9999);
+        if (error) return res.status(400).json({ error: error.message });
+        if (batchData) data.push(...batchData);
+      }
       const tpIds = [...new Set((data || []).map(d => d.team_player_id))];
       let tpMap = {};
       if (tpIds.length > 0) {
@@ -138,14 +143,17 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
   // ── SUMMARY ──
   router.get('/api/squadre/:squadraId/allenamenti/summary', authMiddleware, async (req, res) => {
     try {
-      const { data: trainings } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId);
+      const { data: teamPlayers } = await supabase.from('team_player').select('id, player_id, calciatore:player_id(id, nome, cognome)').eq('team_id', req.params.squadraId);
+      const { data: trainings } = await supabase.from('training').select('id, data_ora').eq('team_id', req.params.squadraId).order('data_ora');
       const trainingIds = (trainings || []).map(t => t.id);
       let presenze = [];
       if (trainingIds.length > 0) {
-        const { data } = await supabase.from('training_attendance').select('*').in('training_id', trainingIds);
-        presenze = data || [];
+        for (let i = 0; i < trainingIds.length; i += 20) {
+          const batch = trainingIds.slice(i, i + 20);
+          const { data: batchData } = await supabase.from('training_attendance').select('team_player_id, presente, training_id').in('training_id', batch).range(0, 9999);
+          if (batchData) presenze.push(...batchData);
+        }
       }
-      const { data: teamPlayers } = await supabase.from('team_player').select('id, player_id, calciatore:player_id(id, nome, cognome)').eq('team_id', req.params.squadraId);
       const summary = {};
       (teamPlayers || []).forEach(tp => {
         const g = tp.calciatore;
@@ -153,24 +161,37 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
         const playerPres = presenze.filter(p => p.team_player_id === tp.id);
         summary[g.id] = { id: g.id, nome: g.nome, cognome: g.cognome, totali: playerPres.length, presenti: playerPres.filter(p => p.presente).length, assenti: playerPres.filter(p => !p.presente).length, assentiSett: 0 };
       });
+
+      // Determine if season is active (has trainings in last 30 days)
       const now = new Date();
-      const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
-      const inizioSett = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + 1);
-      const fineSett = new Date(inizioSett.getFullYear(), inizioSett.getMonth(), inizioSett.getDate() + 6, 23, 59, 59);
-      if (trainingIds.length > 0) {
+      const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30);
+      const lastTraining = trainings && trainings.length > 0 ? new Date(trainings[trainings.length - 1].data_ora) : null;
+      const isActive = lastTraining && lastTraining >= thirtyDaysAgo;
+
+      let settimana;
+      if (isActive) {
+        const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+        const inizioSett = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + 1);
+        const fineSett = new Date(inizioSett.getFullYear(), inizioSett.getMonth(), inizioSett.getDate() + 6, 23, 59, 59);
         const { data: weekT } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId).gte('data_ora', inizioSett.toISOString()).lte('data_ora', fineSett.toISOString());
         const weekIds = (weekT || []).map(t => t.id);
         if (weekIds.length > 0) {
-          const weekPresenze = presenze.filter(p => weekIds.includes(p.training_id) && !p.presente);
+          const { data: weekAtt } = await supabase.from('training_attendance').select('team_player_id').in('training_id', weekIds).eq('presente', false);
           const tpToPlayer = {};
           (teamPlayers || []).forEach(tp => { tpToPlayer[tp.id] = tp.calciatore?.id; });
-          weekPresenze.forEach(p => {
+          (weekAtt || []).forEach(p => {
             const playerId = tpToPlayer[p.team_player_id];
             if (playerId && summary[playerId]) summary[playerId].assentiSett++;
           });
         }
+        settimana = { da: inizioSett.toISOString().split('T')[0], a: fineSett.toISOString().split('T')[0], attiva: true };
+      } else {
+        // Stagione passata: mostra range totale
+        const da = trainings && trainings.length > 0 ? trainings[0].data_ora.split('T')[0] : null;
+        const a = trainings && trainings.length > 0 ? trainings[trainings.length - 1].data_ora.split('T')[0] : null;
+        settimana = { da, a, attiva: false };
       }
-      res.json({ summary, settimana: { da: inizioSett.toISOString().split('T')[0], a: fineSett.toISOString().split('T')[0] } });
+      res.json({ summary, settimana });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

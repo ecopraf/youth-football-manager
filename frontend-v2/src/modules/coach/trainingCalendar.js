@@ -7,16 +7,38 @@ let currentYear = new Date().getFullYear();
 let selectedDate = null;
 let onDateSelect = null;
 
+// Italian holidays (fixed + Easter-based)
+function getHolidays(year) {
+  const fixed = [`${year}-01-01`,`${year}-01-06`,`${year}-04-25`,`${year}-05-01`,`${year}-06-02`,`${year}-08-15`,`${year}-11-01`,`${year}-12-08`,`${year}-12-25`,`${year}-12-26`];
+  // Easter (anonymous Gregorian algorithm)
+  const a=year%19, b=Math.floor(year/100), c=year%100, d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30, i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7, m=Math.floor((a+11*h+22*l)/451), month=Math.floor((h+l-7*m+114)/31), day=((h+l-7*m+114)%31)+1;
+  const easter = new Date(year, month-1, day);
+  const easterMon = new Date(easter); easterMon.setDate(easter.getDate()+1);
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return new Set([...fixed, fmt(easter), fmt(easterMon)]);
+}
+
 export function getSelectedDate() { return selectedDate; }
 export function setOnDateSelect(callback) { onDateSelect = callback; }
 
-export function selectTodayIfTraining(config) {
+export function selectTodayIfTraining(config, presenze) {
   const oggi = new Date();
   const oggiStr = oggi.getFullYear() + '-' + String(oggi.getMonth()+1).padStart(2,'0') + '-' + String(oggi.getDate()).padStart(2,'0');
   const giorniConfigurati = (config || []).map(c => c.giorno_settimana);
   if (giorniConfigurati.includes(oggi.getDay())) selectedDate = oggiStr;
-  currentMonth = oggi.getMonth();
-  currentYear = oggi.getFullYear();
+  // If no presenze exist for current month, jump to last month with data
+  const dates = (presenze || []).map(p => p.data).filter(Boolean).sort();
+  const hasCurrentMonth = dates.some(d => d.startsWith(oggi.getFullYear() + '-' + String(oggi.getMonth()+1).padStart(2,'0')));
+  if (!hasCurrentMonth && dates.length > 0) {
+    const lastDate = dates[dates.length - 1];
+    const [y, m] = lastDate.split('-');
+    currentMonth = parseInt(m) - 1;
+    currentYear = parseInt(y);
+    selectedDate = null;
+  } else {
+    currentMonth = oggi.getMonth();
+    currentYear = oggi.getFullYear();
+  }
   return selectedDate;
 }
 
@@ -52,6 +74,8 @@ export function renderCalendar(config, presenze, matches) {
     .cal-day.has-presenze:hover{background:#a7f3d0}
     .cal-day.has-match{background:#fff7ed;cursor:default;border:1px solid #fed7aa;min-height:52px;padding:4px 3px}
     .cal-match-info{font-size:9px;color:#c2410c;line-height:1.2;margin-top:1px;max-width:100%;overflow:hidden;display:block;text-overflow:ellipsis;white-space:nowrap}
+    .cal-day.is-holiday{background:#f3f4f6;color:#9ca3af;cursor:default}
+    .cal-day.is-holiday .cal-holiday-icon{font-size:9px;line-height:1;margin-top:1px}
     .cal-day.is-today{border:2px solid #667eea;font-weight:700;color:#667eea}
     .cal-day.is-selected{background:#667eea !important;color:white !important;border-radius:8px}
     .cal-day.is-selected .cal-dot{background:white !important}
@@ -68,12 +92,15 @@ export function renderCalendar(config, presenze, matches) {
   giorniLabel.forEach(g => { html += `<div class="cal-day-label">${g}</div>`; });
   for (let i = 0; i < startDay; i++) html += '<div class="cal-day empty"></div>';
 
+  const holidays = getHolidays(currentYear);
+
   for (let day = 1; day <= giorniMese; day++) {
     const date = new Date(currentYear, currentMonth, day);
     const dateStr = currentYear + '-' + String(currentMonth+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
     const dayOfWeek = date.getDay();
     const isToday = dateStr === oggiStr;
     const isSelected = dateStr === selectedDate;
+    const isHoliday = holidays.has(dateStr);
     const isProgrammed = giorniConfigurati.includes(dayOfWeek);
     const hasPresenze = dateConPresenze.has(dateStr);
     const hasMatch = !!datePartite[dateStr];
@@ -82,6 +109,7 @@ export function renderCalendar(config, presenze, matches) {
     if (isToday) classes += ' is-today';
     if (isSelected) classes += ' is-selected';
     if (hasMatch) classes += ' has-match';
+    else if (isHoliday && !hasPresenze) classes += ' is-holiday';
     else if (hasPresenze) classes += ' has-presenze';
     else if (isProgrammed) classes += ' has-training';
 
@@ -90,13 +118,18 @@ export function renderCalendar(config, presenze, matches) {
       const m = datePartite[dateStr];
       const luogoIcon = m.luogo === 'Casa' ? '🏠' : '✈️';
       dotHtml = `<span class="cal-match-info">${luogoIcon} ${m.avversario || 'Partita'}</span>`;
+    } else if (isHoliday && !hasPresenze) {
+      dotHtml = '<span class="cal-holiday-icon">🚫</span>';
     } else if (hasPresenze) {
-      dotHtml = '<span class="cal-dot registered"></span>';
+      const dayPres = (presenze || []).filter(p => p.data === dateStr);
+      const pCount = dayPres.filter(p => p.presente).length;
+      const aCount = dayPres.filter(p => !p.presente).length;
+      dotHtml = `<span style="font-size:9px;line-height:1;margin-top:1px;"><span style="color:#22c55e;font-weight:700;">${pCount}</span><span style="color:#ccc;">/</span><span style="color:#ef4444;font-weight:600;">${aCount}</span></span>`;
     } else if (isProgrammed) {
       dotHtml = '<span class="cal-dot programmed"></span>';
     }
 
-    const clickable = !hasMatch && (isProgrammed || hasPresenze);
+    const clickable = !hasMatch && !isHoliday && (isProgrammed || hasPresenze);
     const dataAttr = clickable ? `data-date="${dateStr}"` : '';
     html += `<div class="${classes}" ${dataAttr}>${day}${dotHtml}</div>`;
   }
