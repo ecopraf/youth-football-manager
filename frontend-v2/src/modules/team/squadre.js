@@ -40,20 +40,24 @@ export async function loadSquadre(stagioneId) {
       window.YFM.allStagioni = stagioni;
       
       // Determina stagioni accessibili per l'utente
-      // Logica: stagione attiva (sempre visibile) + eventuali stagioni extra da stagioni_accesso
       const user = window.YFM.getUser ? window.YFM.getUser() : null;
       const stagioniAccesso = user?.stagioni_accesso || [];
       
-      const activeSeason = stagioni.find(s => s.attiva);
-      let accessibleSeasons = activeSeason ? [activeSeason] : [];
-      
-      // Aggiungi stagioni extra se configurate
-      if (stagioniAccesso.length > 0) {
-        stagioni.forEach(s => {
-          if (stagioniAccesso.includes(s.id) && !accessibleSeasons.find(a => a.id === s.id)) {
-            accessibleSeasons.push(s);
-          }
-        });
+      let accessibleSeasons;
+      if (user?.is_superadmin || user?.ruolo === 'admin') {
+        // Superadmin e admin vedono TUTTE le stagioni del workspace
+        accessibleSeasons = [...stagioni];
+      } else {
+        // Staff: stagione attiva + eventuali extra da stagioni_accesso
+        const activeSeason = stagioni.find(s => s.attiva);
+        accessibleSeasons = activeSeason ? [activeSeason] : [];
+        if (stagioniAccesso.length > 0) {
+          stagioni.forEach(s => {
+            if (stagioniAccesso.includes(s.id) && !accessibleSeasons.find(a => a.id === s.id)) {
+              accessibleSeasons.push(s);
+            }
+          });
+        }
       }
       
       // Ordina: attiva prima, poi per data decrescente
