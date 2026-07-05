@@ -425,10 +425,10 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
       const { data: roster } = await supabase.from('team_player')
         .select('id, player:player_id(id, nome, cognome)').eq('team_id', teamId);
 
-      // Fetch nome squadra
+      // Fetch nome squadra (priorità: team.nome che corrisponde al nome GR)
       const { data: ws } = await supabase.from('team')
         .select('nome, season:season_id(workspace:workspace_id(nome))').eq('id', teamId).single();
-      const teamName = ws?.season?.workspace?.nome || ws?.nome || '';
+      const teamName = ws?.nome || ws?.season?.workspace?.nome || '';
 
       // Filtra partite nostre
       const ourMatches = grMatches.filter(m => {
@@ -489,7 +489,7 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
 
       const { data: ws } = await supabase.from('team')
         .select('nome, season:season_id(workspace:workspace_id(nome))').eq('id', teamId).single();
-      const teamName = ws?.season?.workspace?.nome || ws?.nome || '';
+      const teamName = ws?.nome || ws?.season?.workspace?.nome || '';
 
       let imported = 0, skipped = 0;
 

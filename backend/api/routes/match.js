@@ -61,6 +61,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     try {
       await supabase.from('match_event').delete().eq('match_id', req.params.id);
       await supabase.from('match_formation').delete().eq('match_id', req.params.id);
+      await supabase.from('match_statistics').delete().eq('match_id', req.params.id);
       await supabase.from('convocation').delete().eq('match_id', req.params.id);
       await supabase.from('match').delete().eq('id', req.params.id);
       res.json({ success: true });
@@ -74,6 +75,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       if (ids.length > 0) {
         await supabase.from('match_event').delete().in('match_id', ids);
         await supabase.from('match_formation').delete().in('match_id', ids);
+        await supabase.from('match_statistics').delete().in('match_id', ids);
         await supabase.from('convocation').delete().in('match_id', ids);
         await supabase.from('match').delete().in('id', ids);
       }

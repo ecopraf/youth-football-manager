@@ -349,11 +349,14 @@ async function openImportFormations() {
 
 // === GAZZETTA REGIONALE: CONFIGURA URL ===
 function openGrConfig() {
-  const teamName = window.YFM.getSquadraName();
+  const squadra = window.YFM.getSquadra();
+  const teamName = squadra.nome || window.YFM.getSquadraName();
+  const categoryName = squadra.category?.nome || '';
   const modal = createModal('⚙️ Configura Girone — ' + teamName, `
     <div style="background:#f0f4ff;padding:10px 12px;border-radius:8px;margin-bottom:16px;font-size:13px;">
-      🏃 Squadra: <strong>${teamName}</strong>
+      🏃 Squadra: <strong>${teamName}</strong>${categoryName ? ' <span style="color:#667eea;">('+categoryName+')</span>' : ''}
     </div>
+    <div id="grCategoryWarning" style="display:none;background:#fff3cd;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#856404;">⚠️ Stai configurando un campionato di categoria diversa da <strong>${categoryName}</strong></div>
     <div id="grWizard">
       <div class="form-group" style="margin-bottom:12px;">
         <label>1. Campionato</label>
@@ -383,14 +386,31 @@ function openGrConfig() {
   let selectedChamp = '';
   let selectedGroup = '';
 
+  // Derive category number for matching (e.g. "U14" → "14", "Under 15" → "15")
+  const catNum = categoryName.replace(/\D/g, '');
+
+  function champMatchesCategory(champText) {
+    if (!catNum) return false;
+    return champText.toLowerCase().includes('under ' + catNum) || champText.toLowerCase().includes('u' + catNum);
+  }
+
   // Load championships (level 1 = Giovanili)
   async function loadChampionships() {
     const sel = document.getElementById('grChamp');
     sel.innerHTML = '<option value="">Caricamento...</option>';
     try {
       const data = await apiFetch('/gr/championships/1');
+      // Sort: matching category first
+      const sorted = [...data].sort((a, b) => {
+        const aMatch = champMatchesCategory(a.text) ? 0 : 1;
+        const bMatch = champMatchesCategory(b.text) ? 0 : 1;
+        return aMatch - bMatch;
+      });
       sel.innerHTML = '<option value="">-- Seleziona campionato --</option>' +
-        data.map(d => '<option value="' + d.id + '">' + d.text + '</option>').join('');
+        sorted.map(d => {
+          const match = champMatchesCategory(d.text);
+          return '<option value="' + d.id + '"' + (match ? ' style="font-weight:700;"' : '') + '>' + (match ? '⭐ ' : '') + d.text + '</option>';
+        }).join('');
     } catch (e) {
       sel.innerHTML = '<option value="">Errore caricamento</option>';
     }
@@ -446,12 +466,19 @@ function openGrConfig() {
   loadChampionships();
 
   document.getElementById('grChamp').addEventListener('change', (e) => {
-    if (e.target.value) loadGroups(e.target.value);
-    else {
+    if (e.target.value) {
+      loadGroups(e.target.value);
+      // Show warning if category mismatch
+      const selectedText = e.target.options[e.target.selectedIndex]?.text || '';
+      const warn = document.getElementById('grCategoryWarning');
+      if (warn && catNum) warn.style.display = champMatchesCategory(selectedText) ? 'none' : 'block';
+    } else {
       document.getElementById('grGroup').innerHTML = '<option value="">Seleziona prima il campionato</option>';
       document.getElementById('grGroup').disabled = true;
       document.getElementById('grPreview').innerHTML = '';
       document.getElementById('grSave').disabled = true;
+      const warn = document.getElementById('grCategoryWarning');
+      if (warn) warn.style.display = 'none';
     }
   });
 
