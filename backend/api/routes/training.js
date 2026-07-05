@@ -354,7 +354,7 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
 
       // 1. Allenamenti reali già nel DB
       const { data: realTrainings, error } = await supabase.from('training')
-        .select('id, data_ora, durata_minuti, tipo, descrizione')
+        .select('id, data_ora, durata_minuti, tipo, descrizione, note')
         .eq('team_id', teamId)
         .gte('data_ora', now.toISOString())
         .order('data_ora', { ascending: true })
@@ -376,7 +376,7 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
           const config = configs.find(c => c.giorno_settimana === weekday);
           if (!config) continue;
 
-          const dateStr = d.toISOString().substring(0, 10);
+          const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
           if (realDates.has(dateStr)) continue; // già esiste nel DB
 
           const [h, m] = (config.ora_inizio || '17:00').split(':');

@@ -296,6 +296,13 @@ overlay.innerHTML = `<div class="modal-card-class">
 - Mai grigio chiaro (`#f5f5f5`) per elementi interattivi — usare colori che si distinguano
 - Hover: leggero `transform` o `box-shadow`, mai solo cambio colore
 
+### Match Center — Tab e Panel
+
+- Ogni tab panel usa la classe `mc-qa-card` per contenuto (max-width:600px, centrato)
+- Tab switching: `panelMap = { events: 'mcBodyEvents', formation: 'mcBodyFormation', notes: 'mcBodyNotes' }`
+- Nuovi panel: aggiungere in `getBody()`, registrare in `panelMap`, bind nel handler tab click
+- Textarea/input nei panel: sempre `box-sizing:border-box` + `width:100%`
+
 ### Interazioni touch/mobile
 
 - **Drag & drop**: funziona solo su desktop. Su mobile usare **two-tap flow** (tap per selezionare → tap per posizionare)

@@ -131,6 +131,15 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  router.put('/api/partite/:id/note', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
+    try {
+      const { note } = req.body;
+      const { error } = await supabase.from('match').update({ note }).eq('id', req.params.id);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   // ── LIVE MATCH ──
   router.put('/api/partite/:id/live-action', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
     try {

@@ -197,14 +197,27 @@ function getTabs() {
   return `<div class="mc-tabs">
     <button class="mc-tab active" data-tab="events">📋 Eventi${count ? ' <span class="mc-tab-badge">' + count + '</span>' : ''}</button>
     <button class="mc-tab" data-tab="formation">🏟️ Formazione</button>
+    <button class="mc-tab" data-tab="notes">📝 Note</button>
   </div>`;
 }
 
 function getBody(mid) {
   return `<div class="mc-tab-panel mc-tab-active" id="mcBodyEvents">${getTimeline(mid)}</div>
   <div class="mc-tab-panel" id="mcBodyFormation">${getLiveFormation(mid)}</div>
+  <div class="mc-tab-panel" id="mcBodyNotes">${getNotesPanel(mid)}</div>
   ${getQuickActions(mid)}
   ${getSaveButton()}
+  </div>`;
+}
+
+function getNotesPanel(mid) {
+  const currentNote = match?.note || '';
+  return `<div class="mc-qa-card">
+    <textarea id="mcNotesArea" style="width:100%;min-height:120px;border:1px solid #e2e8f0;border-radius:10px;padding:12px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.6;box-sizing:border-box;" placeholder="Appunti partita... (es. difesa alta funziona, #7 avversario pericoloso, provare cambio modulo)">${currentNote}</textarea>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+      <button class="btn btn-secondary btn-small" id="mcNotesTimestamp">⏱ Timestamp</button>
+      <span id="mcNotesSaved" style="font-size:11px;color:#22c55e;opacity:0;">✓ Salvato</span>
+    </div>
   </div>`;
 }
 
@@ -571,8 +584,10 @@ function bindEvents(mid) {
       tab.classList.add('active');
       const t = tab.dataset.tab;
       document.querySelectorAll('.mc-tab-panel').forEach(p => p.classList.remove('mc-tab-active'));
-      document.getElementById(t === 'events' ? 'mcBodyEvents' : 'mcBodyFormation').classList.add('mc-tab-active');
+      const panelMap = { events: 'mcBodyEvents', formation: 'mcBodyFormation', notes: 'mcBodyNotes' };
+      document.getElementById(panelMap[t])?.classList.add('mc-tab-active');
       if (t === 'formation') bindLiveFormation(mid);
+      if (t === 'notes') bindNotesPanel(mid);
     });
   });
 
@@ -842,6 +857,33 @@ function showToast(msg) {
 
 // ── LIVE FORMATION INTERACTIONS ──
 let selectedBenchPid = null;
+
+let _notesTimer = null;
+function bindNotesPanel(mid) {
+  const area = document.getElementById('mcNotesArea');
+  if (!area) return;
+  area.addEventListener('input', () => {
+    clearTimeout(_notesTimer);
+    _notesTimer = setTimeout(async () => {
+      match.note = area.value;
+      await apiFetch('/partite/' + mid + '/note', { method: 'PUT', body: JSON.stringify({ note: area.value }) });
+      const saved = document.getElementById('mcNotesSaved');
+      if (saved) { saved.style.opacity = '1'; setTimeout(() => { saved.style.opacity = '0'; }, 2000); }
+    }, 1500);
+  });
+  document.getElementById('mcNotesTimestamp')?.addEventListener('click', () => {
+    const min = calcLiveMinute();
+    const prefix = min ? `[${min}'] ` : `[${new Date().toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}] `;
+    const pos = area.selectionStart;
+    const before = area.value.substring(0, pos);
+    const after = area.value.substring(pos);
+    const newLine = (before && !before.endsWith('\n')) ? '\n' : '';
+    area.value = before + newLine + prefix + after;
+    area.selectionStart = area.selectionEnd = pos + newLine.length + prefix.length;
+    area.focus();
+    area.dispatchEvent(new Event('input'));
+  });
+}
 
 function bindLiveFormation(mid) {
   if (isReadOnly || !formazioneData) return;

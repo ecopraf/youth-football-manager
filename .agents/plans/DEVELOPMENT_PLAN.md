@@ -221,6 +221,10 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: summary season-aware — rileva stagione passata (>30gg da ultimo allenamento), nasconde Ass.Sett., mostra range stagione completo |
 | (pending) | feat: indicatori motivi assenza nel riepilogo presenze (cards + barra distribuzione) |
 | (pending) | perf: ottimizzazione endpoint — Promise.all su top-players/stats-giocatori (-79%/-50%), rimozione JOIN su presenze (-75%), unificazione batch su summary (-47%) |
+| (pending) | style: redesign top players + staff cards — glassmorphism con medaglie, progress bar, avatar iniziali |
+| (pending) | feat: card prossimo allenamento in dashboard (sopra partita) con shortcut Programma/Presenze |
+| (pending) | feat: tab Note in Match Center con auto-save debounce + timestamp live |
+| (pending) | fix: timezone allenamenti-futuri — usare data locale invece di toISOString() per evitare duplicati virtuali |
 | ba51bee | feat: Live Match Mode — bottone stato, minuto live, pre-fill drawer, durata per categoria |
 | 856acd8 | feat: Match Center hub + CORS fix + assist/rigore/autogol support |
 | 7c5b3a6 | feat: unified Match Center button in calendar + dashboard |

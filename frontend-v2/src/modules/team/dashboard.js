@@ -35,7 +35,7 @@ export default async function loadDashboard() {
   const squadraId = window.YFM.squadraId;
   let currentTipo = 'campionato';
   
-  let stats, top, topValutazioni, partiteFuture;
+  let stats, top, topValutazioni, partiteFuture, nextTrainings;
   let classificaData = { classifica: null };
   let marcatoriGR = { marcatori: [] };
   let calendarioGR = { matches: [] };
@@ -52,15 +52,17 @@ export default async function loadDashboard() {
     const filtered = await fetchFiltered(currentTipo);
     stats = filtered.stats;
     top = filtered.top;
-    [topValutazioni, partiteFuture] = await Promise.all([
+    [topValutazioni, partiteFuture, nextTrainings] = await Promise.all([
       cachedFetch('dash_val_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/valutazioni-top').catch(() => ({ topGiocatori:[] })), CACHE_TTL_FAST),
-      cachedFetch('dash_future_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/partite-future').catch(() => []), CACHE_TTL_FAST)
+      cachedFetch('dash_future_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/partite-future').catch(() => []), CACHE_TTL_FAST),
+      cachedFetch('dash_training_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/allenamenti-futuri').catch(() => []), CACHE_TTL_FAST)
     ]);
   } catch (err) {
     stats = { punti: 0, partiteGiocate: 0, vittorie: 0, pareggi: 0, sconfitte: 0, golFatti: 0, golSubiti: 0, differenzaReti: 0, risultati: [] };
     top = { marcatori: [], assistmen: [], presenze: [] };
     topValutazioni = { topGiocatori: [] };
     partiteFuture = [];
+    nextTrainings = [];
   }
   
   const s = window.YFM.getSquadra();
@@ -142,6 +144,38 @@ export default async function loadDashboard() {
     const btnHtml = nuovaPartitaButton ? '<div style="margin-top:12px;">' + nuovaPartitaButton + '</div>' : '';
     return '<div style="padding:16px;margin-bottom:24px;text-align:center;border:2px dashed #ddd;border-radius:12px;">' +
       '<p style="color:var(--gray);margin:0;">📅 Nessuna partita in programma</p>' + btnHtml + '</div>';
+  };
+
+  const renderProssimoAllenamento = () => {
+    const next = (nextTrainings || []).find(t => new Date(t.data_ora) > new Date());
+    if (!next) return '';
+    const d = new Date(next.data_ora);
+    const giorni = ['Domenica','Luned\u00ec','Marted\u00ec','Mercoled\u00ec','Gioved\u00ec','Venerd\u00ec','Sabato'];
+    const dayLabel = giorni[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth()+1);
+    const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const luogo = next.luogo || '';
+    let programma = null;
+    if (next.note && next.note.startsWith && next.note.startsWith('JSON::')) {
+      try { programma = JSON.parse(next.note.substring(6)); } catch(e) {}
+    }
+    let fasiHtml = '';
+    if (programma && programma.fasi && programma.fasi.length > 0) {
+      fasiHtml = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">' + programma.fasi.map(f => '<span style="background:#f0f4ff;color:#4338ca;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:500;">' + (f.nome || f.tipo || 'Fase') + ' ' + (f.durata || '') + "'" + '</span>').join('') + '</div>';
+    } else {
+      fasiHtml = '<div style="font-size:12px;color:#94a3b8;margin-top:6px;font-style:italic;">Programma non ancora definito</div>';
+    }
+    return '<div style="background:white;border:1px solid #f1f5f9;border-radius:14px;padding:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+      '<div style="font-size:12px;font-weight:600;color:#667eea;text-transform:uppercase;">\uD83C\uDFCB\uFE0F Prossimo Allenamento</div>' +
+      '<div style="display:flex;gap:6px;align-items:center;">' +
+      (next.virtuale ? '<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:6px;">Da config</span>' : '') +
+      '<button style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;color:#475569;cursor:pointer;font-weight:500;" onclick="window.YFM.navigateTo(\'trainingSessions\')">\u270F\uFE0F Programma</button>' +
+      '<button style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc;color:#475569;cursor:pointer;font-weight:500;" onclick="window.YFM.navigateTo(\'trainingPresenze\')">\uD83D\uDCCB Presenze</button>' +
+      '</div></div>' +
+      '<div style="font-size:15px;font-weight:700;color:#1e293b;">' + dayLabel + ' \u2014 ' + ora + '</div>' +
+      (luogo ? '<div style="font-size:12px;color:#64748b;margin-top:2px;">\uD83D\uDCCD ' + luogo + '</div>' : '') +
+      fasiHtml +
+      '</div>';
   };
 
   // Create player box HTML
@@ -445,6 +479,7 @@ export default async function loadDashboard() {
     '<p class="page-subtitle">Stagione 2025/26 · ' + stats.partiteGiocate + ' partite</p></div>' +
     '<div>' + dropdownHtml + '</div></div>' +
     
+    renderProssimoAllenamento() +
     renderProssimaPartitaSection() +
     
     '<div class="dash-widgets" data-help="dashboard.widgets">' +
