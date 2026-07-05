@@ -37,10 +37,12 @@ export default async function loadTrainingSessions() {
   const { config, presenze, partite } = trainingData;
   selectTodayIfTraining(config);
 
-  setOnDateSelect((date) => {
+  setOnDateSelect(async (date) => {
     const container = document.getElementById('sessionContainer');
     if (!container) return;
-    container.innerHTML = renderSessionDetail(date);
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:#6c757d;"><div class="spinner"></div></div>';
+    const programma = await loadProgrammaFromDB(date);
+    container.innerHTML = renderSessionDetail(date, programma);
     attachSessionListeners(date);
   });
 
@@ -49,27 +51,29 @@ export default async function loadTrainingSessions() {
     if (calEl) { calEl.innerHTML = renderCalendar(config, presenze, partite); attachCalendarListeners(); }
   };
 
+  const initialDate = getSelectedDate();
+  const initialProgramma = initialDate ? await loadProgrammaFromDB(initialDate) : null;
+
   c.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <h1 class="page-title">📋 Sedute - ${window.YFM.getSquadraName()}</h1>
     </div>
     <div class="card" style="margin-bottom:16px;"><div id="trainingCalendar">${renderCalendar(config, presenze, partite)}</div></div>
-    <div class="card" style="margin-bottom:16px;" id="sessionContainer">${renderSessionDetail(getSelectedDate())}</div>
+    <div class="card" style="margin-bottom:16px;" id="sessionContainer">${renderSessionDetail(initialDate, initialProgramma)}</div>
   `;
 
   attachCalendarListeners();
-  attachSessionListeners(getSelectedDate());
+  attachSessionListeners(initialDate);
 }
 
-function renderSessionDetail(date) {
+function renderSessionDetail(date, programma) {
   if (!date) return `<div style="text-align:center;padding:40px;color:#6c757d;"><p style="font-size:16px;">📅 Seleziona un giorno dal calendario</p></div>`;
 
   const giorni = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
   const d = new Date(date);
   const dayLabel = giorni[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
 
-  // Carica programma dal DB (asincrono, placeholder)
-  const programma = getProgrammaLocal(date);
+  programma = programma || {};
   const tipo = programma.tipo || '';
   const obiettivo = programma.obiettivo || '';
   const materialeUsato = programma.materiale || [];
@@ -215,24 +219,64 @@ async function saveProgramma(date) {
   } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
 }
 
-function getProgrammaLocal(date) {
-  // Placeholder: il programma verrà caricato dall'API in background
-  // Per ora restituisce vuoto (il salvataggio va nel DB)
-  return {};
+async function loadProgrammaFromDB(date) {
+  if (!date || !window.YFM.squadraId) return null;
+  try {
+    const res = await apiFetch('/squadre/' + window.YFM.squadraId + '/training-by-date/' + date);
+    return res.programma || null;
+  } catch(e) { return null; }
 }
 
 async function applyTemplateUI(date) {
   const templates = await apiFetch('/squadre/' + window.YFM.squadraId + '/training-templates').catch(() => []);
   if (templates.length === 0) { alert('Nessun template salvato.'); return; }
-  const choice = prompt('Template:\n' + templates.map((t,i) => `${i+1}. ${t.nome}`).join('\n') + '\n\nNumero:');
-  if (!choice) return;
-  const idx = parseInt(choice) - 1;
-  if (idx < 0 || idx >= templates.length) { alert('Non valido'); return; }
-  const prog = templates[idx].programma;
-  if (prog.tipo) { const sel = document.getElementById('sessionTipo'); if (sel) sel.value = prog.tipo; }
-  if (prog.obiettivo) { const inp = document.getElementById('sessionObiettivo'); if (inp) inp.value = prog.obiettivo; }
-  if (prog.note) { const ta = document.getElementById('sessionNote'); if (ta) ta.value = prog.note; }
-  if (prog.fasi?.length > 0) currentFasi = JSON.parse(JSON.stringify(prog.fasi));
-  refreshFasiUI();
-  document.querySelectorAll('#materialeGrid .mat-chip').forEach(chip => { chip.classList.toggle('active', (prog.materiale||[]).includes(chip.dataset.mat)); });
+
+  const TIPO_COLORS = { 'Tattico': '#8b5cf6', 'Tecnico': '#3b82f6', 'Atletico': '#ef4444', 'Partita a tema': '#22c55e', 'Possesso palla': '#06b6d4', 'Difensivo': '#f59e0b', 'Misto': '#6b7280' };
+
+  const existing = document.getElementById('templatePickerModal');
+  if (existing) existing.remove();
+
+  const cardsHtml = templates.map((t, idx) => {
+    const prog = t.programma || {};
+    const fasi = prog.fasi || [];
+    const durata = fasi.reduce((s, f) => s + (f.durata || 0), 0);
+    const tipoColor = TIPO_COLORS[prog.tipo] || '#6b7280';
+    const fasiIcons = fasi.map(f => {
+      const info = TIPI_FASE.find(tf => tf.id === f.tipo) || TIPI_FASE[0];
+      return `<span style="background:${info.color}20;color:${info.color};padding:1px 5px;border-radius:8px;font-size:9px;font-weight:600;">${info.icon}${f.durata||0}'</span>`;
+    }).join('');
+    return `<div class="tpl-pick-card" data-idx="${idx}" style="background:#f8f9fa;border:1px solid #eee;border-radius:10px;padding:12px;cursor:pointer;transition:all 0.2s;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.nome}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+        ${prog.tipo ? `<span style="background:${tipoColor};color:white;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;">${prog.tipo}</span>` : ''}
+        <span style="font-size:10px;color:#6c757d;">\u23f1\ufe0f${durata}' \u2022 ${fasi.length} fasi</span>
+      </div>
+      ${fasiIcons ? `<div style="display:flex;flex-wrap:wrap;gap:3px;">${fasiIcons}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'templatePickerModal';
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `<div class="modal-content" style="max-width:500px;"><div class="modal-header"><h2>\ud83d\udccb Scegli Template</h2><button class="modal-close-btn" id="tplPickClose">\u00d7</button></div><div class="modal-body" style="max-height:60vh;overflow-y:auto;"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">${cardsHtml}</div></div></div>`;
+  document.body.appendChild(modal);
+
+  const close = () => modal.remove();
+  document.getElementById('tplPickClose').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+
+  modal.querySelectorAll('.tpl-pick-card').forEach(card => {
+    card.addEventListener('mouseenter', () => { card.style.borderColor = '#667eea'; card.style.transform = 'translateY(-2px)'; });
+    card.addEventListener('mouseleave', () => { card.style.borderColor = '#eee'; card.style.transform = 'none'; });
+    card.addEventListener('click', () => {
+      const prog = templates[parseInt(card.dataset.idx)].programma || {};
+      if (prog.tipo) { const sel = document.getElementById('sessionTipo'); if (sel) sel.value = prog.tipo; }
+      if (prog.obiettivo) { const inp = document.getElementById('sessionObiettivo'); if (inp) inp.value = prog.obiettivo; }
+      if (prog.note) { const ta = document.getElementById('sessionNote'); if (ta) ta.value = prog.note; }
+      if (prog.fasi?.length > 0) currentFasi = JSON.parse(JSON.stringify(prog.fasi));
+      refreshFasiUI();
+      document.querySelectorAll('#materialeGrid .mat-chip').forEach(chip => { chip.classList.toggle('active', (prog.materiale||[]).includes(chip.dataset.mat)); });
+      close();
+    });
+  });
 }

@@ -264,7 +264,9 @@ function renderTokens() {
     const playerInfo = t.player_id ? rosterPlayers.find(p => p.id === t.player_id) : null;
     const playerName = playerInfo ? `${playerInfo.cognome} ${playerInfo.nome}` : (t.player_id ? '(giocatore)' : '-');
     const telefono = t.telefono || playerInfo?.telefono || '';
-    const waLink = telefono ? `https://wa.me/${telefono.replace(/[^0-9+]/g, '')}?text=${encodeURIComponent('Ciao! Ecco il tuo accesso a Youth Football Manager: ' + link)}` : '';
+    const waNum = telefono ? telefono.replace(/[^0-9+]/g, '') : '';
+    const waNumFull = waNum ? (waNum.startsWith('+') ? waNum : '+39' + waNum) : '';
+    const waLink = waNumFull ? `https://wa.me/${waNumFull}?text=${encodeURIComponent('Ciao! Ecco il tuo accesso a Youth Football Manager: ' + link)}` : '';
 
     return `
       <tr style="border-bottom:1px solid #eee;">
