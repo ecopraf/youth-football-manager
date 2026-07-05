@@ -183,7 +183,7 @@ export default async function loadDashboard() {
     const medals = ['\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'];
     const getValue = (p) => tipo === 'gol' ? p.gol : tipo === 'assist' ? p.assist : p.minuti || p.presenze;
     const getLabel = (p) => tipo === 'gol' ? p.gol + ' gol' : tipo === 'assist' ? p.assist + ' assist' : p.minuti ? p.minuti + "'" : p.presenze + ' pres.';
-    const getBadge = (p) => tipo === 'gol' ? p.gol : tipo === 'assist' ? p.assist : p.presenze || 0;
+    const getBadge = (p) => p.presenze || 0;
     const maxVal = players.length > 0 ? getValue(players[0]) : 1;
     let rows = '';
     for (let i = 0; i < 3; i++) {

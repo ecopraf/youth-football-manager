@@ -124,14 +124,13 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         if (e.tipo_evento === 'ASSIST') assistCount[e.player_id] = (assistCount[e.player_id] || 0) + 1;
       });
 
-      const marcatori = players.filter(p => golCount[p.player?.id]).map(p => ({ id: p.player.id, nome: p.player.cognome + ' ' + p.player.nome, gol: golCount[p.player.id] })).sort((a, b) => b.gol - a.gol).slice(0, 5);
-      const assistmen = players.filter(p => assistCount[p.player?.id]).map(p => ({ id: p.player.id, nome: p.player.cognome + ' ' + p.player.nome, assist: assistCount[p.player.id] })).sort((a, b) => b.assist - a.assist).slice(0, 5);
-
       const presCount = {};
       (convs || []).forEach(c => { presCount[c.team_player_id] = (presCount[c.team_player_id] || 0) + 1; });
       const minCount = {};
       (statsData || []).forEach(s => { minCount[s.team_player_id] = (minCount[s.team_player_id] || 0) + (s.minuti_giocati || 0); });
 
+      const marcatori = players.filter(p => golCount[p.player?.id]).map(p => ({ id: p.player.id, nome: p.player.cognome + ' ' + p.player.nome, gol: golCount[p.player.id], presenze: presCount[p.id] || 0 })).sort((a, b) => b.gol - a.gol).slice(0, 5);
+      const assistmen = players.filter(p => assistCount[p.player?.id]).map(p => ({ id: p.player.id, nome: p.player.cognome + ' ' + p.player.nome, assist: assistCount[p.player.id], presenze: presCount[p.id] || 0 })).sort((a, b) => b.assist - a.assist).slice(0, 5);
       const presenze = players.filter(p => presCount[p.id]).map(p => ({ id: p.player?.id, nome: p.player?.cognome + ' ' + p.player?.nome, presenze: presCount[p.id], minuti: minCount[p.id] || 0 })).sort((a, b) => b.minuti - a.minuti || b.presenze - a.presenze).slice(0, 5);
 
       res.json({ marcatori, assistmen, presenze });
