@@ -99,13 +99,33 @@ module.exports = function createTeamRouter({ supabase, authMiddleware }) {
   router.delete('/api/stagioni/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
+      // Cascade: elimina tutti i dati associati ai team della stagione
       const { data: teams } = await supabase.from('team').select('id').eq('season_id', id);
-      if (teams && teams.length > 0) return res.status(400).json({ error: 'Elimina prima le squadre associate' });
+      if (teams && teams.length > 0) {
+        const teamIds = teams.map(t => t.id);
+        // Elimina dati figli dei team
+        await supabase.from('match_event').delete().in('match_id',
+          (await supabase.from('match').select('id').in('team_id', teamIds)).data?.map(m => m.id) || []);
+        await supabase.from('match_formation').delete().in('match_id',
+          (await supabase.from('match').select('id').in('team_id', teamIds)).data?.map(m => m.id) || []);
+        await supabase.from('match_statistics').delete().in('match_id',
+          (await supabase.from('match').select('id').in('team_id', teamIds)).data?.map(m => m.id) || []);
+        await supabase.from('convocation').delete().in('match_id',
+          (await supabase.from('match').select('id').in('team_id', teamIds)).data?.map(m => m.id) || []);
+        await supabase.from('match').delete().in('team_id', teamIds);
+        await supabase.from('training_attendance').delete().in('training_id',
+          (await supabase.from('training').select('id').in('team_id', teamIds)).data?.map(t => t.id) || []);
+        await supabase.from('training').delete().in('team_id', teamIds);
+        await supabase.from('training_config').delete().in('team_id', teamIds);
+        await supabase.from('team_player').delete().in('team_id', teamIds);
+        await supabase.from('team_staff').delete().in('team_id', teamIds);
+        await supabase.from('team').delete().in('id', teamIds);
+      }
       const { error } = await supabase.from('season').delete().eq('id', id);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: 'Errore server' });
+      res.status(500).json({ error: err.message || 'Errore server' });
     }
   });
 

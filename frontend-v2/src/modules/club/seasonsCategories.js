@@ -3,7 +3,7 @@ import { showLoading, hideLoading } from '../../utils/ui';
 
 let seasons = [];
 let categories = [];
-let teams = [];
+let teamsBySeason = {}; // { seasonId: [teams] }
 
 export default async function loadSeasonsCategories() {
   const c = document.getElementById('pageContent');
@@ -25,18 +25,14 @@ async function loadData() {
       apiFetch(`/workspaces/${wsId}/stagioni`),
       apiFetch(`/workspaces/${wsId}/categorie`)
     ]);
-    const activeSeason = seasons.find(s => s.attiva);
-    if (activeSeason) {
-      teams = await apiFetch(`/stagioni/${activeSeason.id}/squadre`);
-      await Promise.all(teams.map(async t => {
-        try { t._playerCount = ((await apiFetch(`/squadre/${t.id}/calciatori`)) || []).length; } catch { t._playerCount = 0; }
-        try { t._staffCount = ((await apiFetch(`/squadre/${t.id}/staff-completo`)) || []).length; } catch { t._staffCount = 0; }
-      }));
-    } else {
-      teams = [];
-    }
+    // Carica team per ogni stagione
+    teamsBySeason = {};
+    await Promise.all(seasons.map(async s => {
+      const t = await apiFetch(`/stagioni/${s.id}/squadre`);
+      teamsBySeason[s.id] = t || [];
+    }));
   } catch (e) {
-    seasons = []; categories = []; teams = [];
+    seasons = []; categories = []; teamsBySeason = {};
   }
 }
 
@@ -44,6 +40,8 @@ function render() {
   const container = document.getElementById('scContent');
   if (!container) return;
   const activeSeason = seasons.find(s => s.attiva);
+
+  let expandedSeason = seasons.find(s => s.attiva)?.id || seasons[0]?.id || null;
 
   container.innerHTML = `
     <!-- STAGIONI -->
@@ -54,105 +52,163 @@ function render() {
       </div>
       ${seasons.length === 0 ? '<p style="color:#999;text-align:center;padding:20px;">Nessuna stagione creata</p>' : `
       <div style="display:flex;flex-direction:column;gap:8px;">
-        ${seasons.map(s => `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:${s.attiva ? '#f0fdf4' : '#f8f9fa'};border-radius:10px;border:1px solid ${s.attiva ? '#86efac' : '#e5e7eb'};">
-            <div>
-              <span style="font-weight:600;">${s.nome}</span>
-              ${s.attiva ? '<span style="margin-left:8px;font-size:11px;background:#22c55e;color:white;padding:2px 8px;border-radius:10px;">ATTIVA</span>' : ''}
-              <div style="font-size:12px;color:#666;margin-top:2px;">01/07/${s.nome.split('/')[0]} → 30/06/${parseInt(s.nome.split('/')[0]) + 1}</div>
+        ${seasons.map(s => {
+          const sTeams = teamsBySeason[s.id] || [];
+          const isExpanded = s.id === expandedSeason;
+          return `
+          <div style="border-radius:10px;border:1px solid ${s.attiva ? '#86efac' : '#e5e7eb'};overflow:hidden;">
+            <div data-toggle-season="${s.id}" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:${s.attiva ? '#f0fdf4' : '#f8f9fa'};cursor:pointer;">
+              <div>
+                <span style="font-weight:600;">${s.nome}</span>
+                ${s.attiva ? '<span style="margin-left:8px;font-size:11px;background:#22c55e;color:white;padding:2px 8px;border-radius:10px;">ATTIVA</span>' : ''}
+                <span style="margin-left:8px;font-size:11px;color:#999;">${sTeams.length} team</span>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                ${!s.attiva ? `<button class="btn btn-small" data-activate="${s.id}" style="background:#22c55e;color:white;border-color:#22c55e;">Attiva</button>` : ''}
+                ${!s.attiva ? `<button class="btn btn-small btn-danger" data-del-season="${s.id}">🗑️</button>` : ''}
+                <span style="font-size:14px;transition:transform .2s;${isExpanded ? 'transform:rotate(90deg);' : ''}">▶</span>
+              </div>
             </div>
-            <div style="display:flex;gap:6px;">
-              ${!s.attiva ? `<button class="btn btn-small" data-activate="${s.id}" style="background:#22c55e;color:white;border-color:#22c55e;">✅ Attiva</button>` : '<span style="font-size:12px;color:#22c55e;font-weight:600;">● Corrente</span>'}
-              ${!s.attiva ? `<button class="btn btn-small btn-danger" data-del-season="${s.id}">🗑️</button>` : ''}
-            </div>
-          </div>
-        `).join('')}
-      </div>`}
-    </div>
-
-    <!-- CATEGORIE -->
-    <div class="card" style="margin-bottom:24px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h3 style="margin:0;font-size:16px;color:#334155;">📋 Categorie</h3>
-        <button class="btn btn-primary btn-small" id="btnAddCategory">+ Nuova Categoria</button>
-      </div>
-      ${categories.length === 0 ? '<p style="color:#999;text-align:center;padding:20px;">Nessuna categoria creata</p>' : `
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        ${categories.map(cat => {
-          const hasTeam = teams.find(t => t.category_id === cat.id);
-          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#f8f9fa;border-radius:10px;border:1px solid #e5e7eb;">
-            <div>
-              <span style="font-weight:600;">${cat.nome}</span>
-              <span style="margin-left:8px;font-size:12px;color:#666;">${cat.tipo_campionato || ''}</span>
-              <span style="margin-left:6px;font-size:12px;">${cat.genere === 'F' ? '👧' : '👦'}</span>
-              ${hasTeam ? `<div style="font-size:11px;color:#22c55e;margin-top:2px;">✓ Team: ${hasTeam.nome}</div>` : (activeSeason ? '<div style="font-size:11px;color:#f59e0b;margin-top:2px;">⚠️ Nessun team nella stagione attiva</div>' : '')}
-            </div>
-            <div style="display:flex;gap:6px;">
-              <button class="btn btn-small" data-edit-cat="${cat.id}">✏️</button>
-              <button class="btn btn-small btn-danger" data-del-cat="${cat.id}">🗑️</button>
+            <div data-season-body="${s.id}" style="${isExpanded ? '' : 'display:none;'}padding:12px 16px;background:white;border-top:1px solid #eee;">
+              ${sTeams.length === 0 ? '<p style="color:#999;font-size:13px;margin:0;">Nessun team in questa stagione</p>' : `
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+                ${sTeams.map(t => `
+                  <div style="padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #e5e7eb;position:relative;">
+                    <div style="font-weight:600;font-size:13px;">${t.category?.nome || t.nome}</div>
+                    <div style="font-size:11px;color:#666;margin-top:2px;">${t.category?.tipo_campionato || ''}</div>
+                    <button class="btn btn-small btn-danger" data-del-team="${t.id}" data-season-id="${s.id}" style="position:absolute;top:8px;right:8px;padding:2px 6px;font-size:10px;">✖</button>
+                  </div>
+                `).join('')}
+              </div>`}
+              <button class="btn btn-small" data-add-team-season="${s.id}" style="margin-top:10px;font-size:12px;">+ Aggiungi categoria</button>
             </div>
           </div>`;
         }).join('')}
       </div>`}
     </div>
 
-    <!-- RIEPILOGO TEAM STAGIONE ATTIVA -->
-    ${activeSeason && teams.length > 0 ? `
-    <div class="card">
-      <h3 style="margin:0 0 16px;font-size:16px;color:#334155;">⚽ Team — ${activeSeason.nome}</h3>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
-        ${teams.map(t => `
-          <div style="padding:14px;background:#f8f9fa;border-radius:10px;border:1px solid #e5e7eb;">
-            <div style="font-weight:600;font-size:14px;">${t.category?.nome || t.nome}</div>
-            <div style="font-size:12px;color:#666;margin-top:4px;">${t.nome}</div>
-            <div style="display:flex;gap:12px;margin-top:8px;">
-              <span style="font-size:11px;color:#667eea;background:#f0f4ff;padding:3px 8px;border-radius:6px;">👥 ${t._playerCount || 0} giocatori</span>
-              <span style="font-size:11px;color:#059669;background:#ecfdf5;padding:3px 8px;border-radius:6px;">👔 ${t._staffCount || 0} staff</span>
-            </div>
+    <!-- CATEGORIE (registro globale workspace) -->
+    <div class="card" style="margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="margin:0;font-size:16px;color:#334155;">📋 Categorie Workspace</h3>
+        <button class="btn btn-primary btn-small" id="btnAddCategory">+ Nuova Categoria</button>
+      </div>
+      ${categories.length === 0 ? '<p style="color:#999;text-align:center;padding:20px;">Nessuna categoria creata</p>' : `
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${categories.map(cat => `
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:#f8f9fa;border-radius:8px;border:1px solid #e5e7eb;">
+            <span style="font-weight:600;font-size:13px;">${cat.nome}</span>
+            <span style="font-size:11px;color:#666;">${cat.tipo_campionato || ''}</span>
+            <span style="font-size:11px;">${cat.genere === 'F' ? '👧' : '👦'}</span>
+            <button class="btn btn-small" data-edit-cat="${cat.id}" style="padding:2px 6px;font-size:10px;">✏️</button>
+            <button class="btn btn-small btn-danger" data-del-cat="${cat.id}" style="padding:2px 6px;font-size:10px;">✖</button>
           </div>
         `).join('')}
-      </div>
-    </div>` : ''}
+      </div>`}
+    </div>
   `;
 
   // Bind events
   document.getElementById('btnAddSeason')?.addEventListener('click', showSeasonWizard);
   document.getElementById('btnAddCategory')?.addEventListener('click', addCategory);
-  container.querySelectorAll('[data-activate]').forEach(btn => btn.addEventListener('click', () => activateSeason(btn.dataset.activate)));
-  container.querySelectorAll('[data-del-season]').forEach(btn => btn.addEventListener('click', () => deleteSeason(btn.dataset.delSeason)));
+  container.querySelectorAll('[data-activate]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); activateSeason(btn.dataset.activate); }));
+  container.querySelectorAll('[data-del-season]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); deleteSeason(btn.dataset.delSeason); }));
   container.querySelectorAll('[data-edit-cat]').forEach(btn => btn.addEventListener('click', () => editCategory(btn.dataset.editCat)));
   container.querySelectorAll('[data-del-cat]').forEach(btn => btn.addEventListener('click', () => deleteCategory(btn.dataset.delCat)));
+  // Toggle season expand/collapse
+  container.querySelectorAll('[data-toggle-season]').forEach(btn => btn.addEventListener('click', () => {
+    const sid = btn.dataset.toggleSeason;
+    const body = container.querySelector(`[data-season-body="${sid}"]`);
+    const arrow = btn.querySelector('span:last-child');
+    if (body.style.display === 'none') { body.style.display = ''; arrow.style.transform = 'rotate(90deg)'; }
+    else { body.style.display = 'none'; arrow.style.transform = ''; }
+  }));
+  // Delete team
+  container.querySelectorAll('[data-del-team]').forEach(btn => btn.addEventListener('click', async () => {
+    const teamId = btn.dataset.delTeam;
+    if (!confirm('⚠️ Eliminare questo team e tutti i dati associati (rosa, partite, allenamenti)?')) return;
+    showLoading();
+    try {
+      await apiFetch(`/squadre/${teamId}`, { method: 'DELETE' });
+      await loadData(); render();
+    } catch (e) { alert('Errore: ' + e.message); }
+    finally { hideLoading(); }
+  }));
+  // Add team to season
+  container.querySelectorAll('[data-add-team-season]').forEach(btn => btn.addEventListener('click', () => addTeamToSeason(btn.dataset.addTeamSeason)));
 }
 
 // ── WIZARD NUOVA STAGIONE ──
 function showSeasonWizard() {
-  const currentYear = new Date().getFullYear();
-  const nextYear = currentYear + 1;
   const activeSeason = seasons.find(s => s.attiva);
+  let suggestedYear;
+  if (activeSeason?.nome) {
+    suggestedYear = parseInt(activeSeason.nome.split('/')[0]) + 1;
+  } else {
+    const now = new Date();
+    suggestedYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  }
+  if (isNaN(suggestedYear) || suggestedYear < 2020) suggestedYear = new Date().getFullYear();
+
+  // Calcola promozioni categoria
+  const CATS_ORDER = ['U14', 'U15', 'U16', 'U17', 'U18', 'U19'];
+  const TIPI = ['Provinciale', 'Regionale', 'Elite', 'Nazionale'];
+  const activeTeams = activeSeason ? (teamsBySeason[activeSeason.id] || []) : [];
+
+  function nextCategory(catName) {
+    const idx = CATS_ORDER.indexOf(catName);
+    if (idx >= 0 && idx < CATS_ORDER.length - 1) return CATS_ORDER[idx + 1];
+    return catName;
+  }
 
   const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
   modal.innerHTML = `
-    <div style="background:white;border-radius:16px;padding:28px;width:90%;max-width:420px;">
+    <div style="background:white;border-radius:16px;padding:28px;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;">
       <h3 style="margin:0 0 20px;font-size:18px;">📅 Nuova Stagione</h3>
       <div style="margin-bottom:16px;">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Anno di inizio</label>
-        <input id="wizAnno" type="number" value="${nextYear}" min="2020" max="2050" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:16px;box-sizing:border-box;">
-        <div id="wizPreview" style="font-size:12px;color:#666;margin-top:4px;">Stagione: ${nextYear}/${(nextYear + 1).toString().slice(2)} — dal 01/07/${nextYear} al 30/06/${nextYear + 1}</div>
+        <input id="wizAnno" type="number" value="${suggestedYear}" min="2020" max="2050" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:16px;box-sizing:border-box;">
+        <div id="wizPreview" style="font-size:12px;color:#666;margin-top:4px;">Stagione: ${suggestedYear}/${(suggestedYear + 1).toString().slice(2)} — dal 01/07/${suggestedYear} al 30/06/${suggestedYear + 1}</div>
       </div>
-      ${activeSeason ? `
+      ${activeSeason && activeTeams.length > 0 ? `
       <div style="margin-bottom:16px;padding:14px;background:#f0f4ff;border-radius:10px;border:1px solid #c7d2fe;">
-        <div style="font-size:13px;font-weight:600;color:#4338ca;margin-bottom:8px;">🔄 Migrazione da "${activeSeason.nome}"</div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;cursor:pointer;">
+        <div style="font-size:13px;font-weight:600;color:#4338ca;margin-bottom:10px;">🔄 Migrazione da "${activeSeason.nome}"</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px;">
+          <thead><tr style="text-align:left;border-bottom:1px solid #c7d2fe;">
+            <th style="padding:4px 6px;">Attuale</th>
+            <th style="padding:4px 6px;">→ Nuova Categoria</th>
+            <th style="padding:4px 6px;">Tipo Campionato</th>
+            <th style="padding:4px 6px;">Migra</th>
+          </tr></thead>
+          <tbody>
+            ${activeTeams.map((t, i) => {
+              const catName = t.category?.nome || 'Squadra';
+              const catTipo = t.category?.tipo_campionato || 'Provinciale';
+              const suggested = nextCategory(catName);
+              return `<tr style="border-bottom:1px solid #eee;">
+                <td style="padding:6px;"><strong>${catName}</strong><br><span style="color:#666;">${catTipo}</span></td>
+                <td style="padding:6px;"><select class="wizNewCat" data-idx="${i}" style="padding:4px;border-radius:6px;border:1px solid #ddd;font-size:12px;">
+                  ${CATS_ORDER.map(c => `<option value="${c}" ${c === suggested ? 'selected' : ''}>${c}</option>`).join('')}
+                </select></td>
+                <td style="padding:6px;"><select class="wizNewTipo" data-idx="${i}" style="padding:4px;border-radius:6px;border:1px solid #ddd;font-size:12px;">
+                  ${TIPI.map(tp => `<option value="${tp}" ${tp === catTipo ? 'selected' : ''}>${tp}</option>`).join('')}
+                </select></td>
+                <td style="padding:6px;text-align:center;"><input type="checkbox" class="wizMigraTeam" data-idx="${i}" checked></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:4px;cursor:pointer;">
           <input type="checkbox" id="wizMigraRosa" checked> Rosa giocatori (attivi)
         </label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;cursor:pointer;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:4px;cursor:pointer;">
           <input type="checkbox" id="wizMigraStaff" checked> Staff tecnico e ruoli
         </label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
-          <input type="checkbox" id="wizMigraConfig" checked> Config allenamenti (giorni/orari)
+          <input type="checkbox" id="wizMigraConfig" checked> Config allenamenti
         </label>
-      </div>` : '<p style="font-size:12px;color:#999;">Nessuna stagione precedente da cui migrare dati.</p>'}
+      </div>` : (activeSeason ? '<p style="font-size:12px;color:#999;">Nessun team nella stagione attiva da migrare.</p>' : '<p style="font-size:12px;color:#999;">Nessuna stagione precedente da cui migrare.</p>')}
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button id="wizCancel" class="btn btn-secondary btn-small">Annulla</button>
         <button id="wizConfirm" class="btn btn-primary btn-small">Crea Stagione</button>
@@ -165,46 +221,59 @@ function showSeasonWizard() {
   const preview = modal.querySelector('#wizPreview');
   annoInput.addEventListener('input', () => {
     const a = parseInt(annoInput.value);
-    if (a >= 2020 && a <= 2050) {
-      preview.textContent = `Stagione: ${a}/${(a + 1).toString().slice(2)} — dal 01/07/${a} al 30/06/${a + 1}`;
-    }
+    if (a >= 2020 && a <= 2050) preview.textContent = `Stagione: ${a}/${(a + 1).toString().slice(2)} — dal 01/07/${a} al 30/06/${a + 1}`;
   });
 
   modal.querySelector('#wizCancel').addEventListener('click', () => modal.remove());
   modal.querySelector('#wizConfirm').addEventListener('click', async () => {
     const anno = parseInt(annoInput.value);
     if (isNaN(anno) || anno < 2020 || anno > 2050) { alert('Anno non valido'); return; }
+
+    // Raccogli mapping promozioni
+    const migrations = [];
+    modal.querySelectorAll('.wizMigraTeam').forEach(cb => {
+      if (!cb.checked) return;
+      const idx = parseInt(cb.dataset.idx);
+      const t = activeTeams[idx];
+      if (!t) return;
+      migrations.push({
+        from_team_id: t.id,
+        from_category_id: t.category_id,
+        new_category_name: modal.querySelector(`.wizNewCat[data-idx="${idx}"]`).value,
+        new_tipo_campionato: modal.querySelector(`.wizNewTipo[data-idx="${idx}"]`).value,
+        genere: t.category?.genere || 'M'
+      });
+    });
+
+    const migra_rosa = modal.querySelector('#wizMigraRosa')?.checked || false;
+    const migra_staff = modal.querySelector('#wizMigraStaff')?.checked || false;
+    const migra_config = modal.querySelector('#wizMigraConfig')?.checked || false;
+
     modal.remove();
     showLoading();
     try {
       const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
       const newSeason = await apiFetch(`/workspaces/${wsId}/stagioni`, {
-        method: 'POST', body: JSON.stringify({ anno_inizio: anno })
+        method: 'POST', body: JSON.stringify({ anno_inizio: anno, skip_auto_teams: true })
       });
 
-      // Migrazione se richiesta
-      if (activeSeason && newSeason?.id) {
-        const migra_rosa = modal.querySelector('#wizMigraRosa')?.checked || false;
-        const migra_staff = modal.querySelector('#wizMigraStaff')?.checked || false;
-        const migra_config = modal.querySelector('#wizMigraConfig')?.checked || false;
-        if (migra_rosa || migra_staff || migra_config) {
-          const migResult = await apiFetch(`/stagioni/${newSeason.id}/migra`, {
-            method: 'POST', body: JSON.stringify({ from_season_id: activeSeason.id, migra_rosa, migra_staff, migra_config })
-          });
-          const parts = [];
-          if (migResult.migrated?.rosa) parts.push(`${migResult.migrated.rosa} giocatori`);
-          if (migResult.migrated?.staff) parts.push(`${migResult.migrated.staff} staff`);
-          if (migResult.migrated?.config) parts.push(`${migResult.migrated.config} config`);
-          if (parts.length) alert(`✅ Stagione creata!\nMigrati: ${parts.join(', ')}`);
-          else alert('✅ Stagione creata!');
-        } else {
-          alert('✅ Stagione creata!');
-        }
+      if (newSeason?.id && migrations.length > 0) {
+        const migResult = await apiFetch(`/stagioni/${newSeason.id}/migra`, {
+          method: 'POST', body: JSON.stringify({
+            from_season_id: activeSeason.id,
+            migrations, migra_rosa, migra_staff, migra_config
+          })
+        });
+        const parts = [];
+        if (migResult.migrated?.rosa) parts.push(`${migResult.migrated.rosa} giocatori`);
+        if (migResult.migrated?.staff) parts.push(`${migResult.migrated.staff} staff`);
+        if (migResult.migrated?.config) parts.push(`${migResult.migrated.config} config`);
+        if (migResult.migrated?.categories_created) parts.push(`${migResult.migrated.categories_created} nuove categorie`);
+        alert(`✅ Stagione creata!${parts.length ? '\nMigrati: ' + parts.join(', ') : ''}`);
       } else {
         alert('✅ Stagione creata!');
       }
 
-      // Reload squadre dropdown
       const { loadSquadre } = await import('../team/squadre.js');
       await loadSquadre();
       await loadData();
@@ -230,14 +299,63 @@ async function activateSeason(id) {
 
 async function deleteSeason(id) {
   const s = seasons.find(x => x.id === id);
-  if (!confirm(`Eliminare la stagione "${s?.nome}"? Questa azione è irreversibile.`)) return;
+  if (!confirm(`⚠️ Eliminare la stagione "${s?.nome}"?\n\nVerranno eliminati TUTTI i dati associati:\n- Squadre, rosa, staff\n- Partite, formazioni, eventi\n- Allenamenti e presenze\n\nQuesta azione è IRREVERSIBILE.`)) return;
   showLoading();
   try {
     await apiFetch(`/stagioni/${id}`, { method: 'DELETE' });
+    const { loadSquadre } = await import('../team/squadre.js');
+    await loadSquadre();
     await loadData();
     render();
   } catch (e) { alert('Errore: ' + e.message); }
   finally { hideLoading(); }
+}
+
+// ── AGGIUNGI TEAM A STAGIONE ──
+async function addTeamToSeason(seasonId) {
+  const existingTeams = teamsBySeason[seasonId] || [];
+  const existingCatIds = existingTeams.map(t => t.category_id).filter(Boolean);
+  const available = categories.filter(c => !existingCatIds.includes(c.id));
+
+  if (available.length === 0) {
+    alert('Tutte le categorie hanno già un team in questa stagione.');
+    return;
+  }
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:28px;width:90%;max-width:360px;">
+      <h3 style="margin:0 0 16px;font-size:16px;">Aggiungi Team</h3>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Categoria</label>
+        <select id="addTeamCat" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;">
+          ${available.map(c => `<option value="${c.id}">${c.nome} ${c.tipo_campionato || ''}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="addTeamCancel" class="btn btn-secondary btn-small">Annulla</button>
+        <button id="addTeamConfirm" class="btn btn-primary btn-small">Crea Team</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('#addTeamCancel').addEventListener('click', () => modal.remove());
+  modal.querySelector('#addTeamConfirm').addEventListener('click', async () => {
+    const catId = modal.querySelector('#addTeamCat').value;
+    modal.remove();
+    showLoading();
+    try {
+      const teamName = window.YFM.workspaceInfo?.nome_breve || window.YFM.workspaceInfo?.nome || 'Squadra';
+      await apiFetch(`/categorie/${catId}/team`, {
+        method: 'POST', body: JSON.stringify({ season_id: seasonId, nome: teamName })
+      });
+      const { loadSquadre } = await import('../team/squadre.js');
+      await loadSquadre();
+      await loadData(); render();
+    } catch (e) { alert('Errore: ' + e.message); }
+    finally { hideLoading(); }
+  });
 }
 
 // ── CATEGORIE ──

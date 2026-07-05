@@ -220,7 +220,7 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   router.post('/api/workspaces/:id/stagioni', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { anno_inizio, nome, data_inizio, data_fine } = req.body;
+      const { anno_inizio, nome, data_inizio, data_fine, skip_auto_teams } = req.body;
 
       let seasonName, startDate, endDate;
       if (anno_inizio) {
@@ -248,16 +248,18 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
       }).select().single();
       if (error) return res.status(400).json({ error: error.message });
 
-      // Auto-crea team per ogni categoria
-      const { data: categories } = await supabase.from('category').select('id, nome').eq('workspace_id', id);
-      const { data: ws } = await supabase.from('workspace').select('nome').eq('id', id).single();
-      const teamName = ws?.nome || 'Squadra';
+      // Auto-crea team per ogni categoria (skip se migrazione gestirà i team)
       const createdTeams = [];
-      for (const cat of (categories || [])) {
-        const { data: team } = await supabase.from('team').insert({
-          season_id: season.id, category_id: cat.id, nome: teamName
-        }).select().single();
-        if (team) createdTeams.push(team);
+      if (!skip_auto_teams) {
+        const { data: categories } = await supabase.from('category').select('id, nome').eq('workspace_id', id);
+        const { data: ws } = await supabase.from('workspace').select('nome, nome_breve').eq('id', id).single();
+        const teamName = ws?.nome_breve || ws?.nome || 'Squadra';
+        for (const cat of (categories || [])) {
+          const { data: team } = await supabase.from('team').insert({
+            season_id: season.id, category_id: cat.id, nome: teamName
+          }).select().single();
+          if (team) createdTeams.push(team);
+        }
       }
 
       res.status(201).json({ ...season, teams_created: createdTeams.length });
@@ -267,57 +269,117 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   });
 
   // POST migrazione dati dalla stagione precedente alla nuova
-  // body: { from_season_id, migra_rosa: bool, migra_staff: bool, migra_config: bool }
+  // body: { from_season_id, migrations: [{from_team_id, from_category_id, new_category_name, new_tipo_campionato, genere}], migra_rosa, migra_staff, migra_config }
   router.post('/api/stagioni/:id/migra', authMiddleware, async (req, res) => {
     try {
       const newSeasonId = req.params.id;
-      const { from_season_id, migra_rosa, migra_staff, migra_config } = req.body;
+      const { from_season_id, migrations, migra_rosa, migra_staff, migra_config } = req.body;
       if (!from_season_id) return res.status(400).json({ error: 'from_season_id richiesto' });
 
-      const { data: oldTeams } = await supabase.from('team').select('id, category_id').eq('season_id', from_season_id);
-      const { data: newTeams } = await supabase.from('team').select('id, category_id').eq('season_id', newSeasonId);
-      if (!oldTeams?.length || !newTeams?.length) return res.status(400).json({ error: 'Nessun team trovato' });
+      // Recupera workspace_id dalla nuova stagione
+      const { data: newSeason } = await supabase.from('season').select('workspace_id').eq('id', newSeasonId).single();
+      const wsId = newSeason?.workspace_id;
+      const { data: ws } = await supabase.from('workspace').select('nome, nome_breve').eq('id', wsId).single();
+      const teamName = ws?.nome_breve || ws?.nome || 'Squadra';
 
-      const result = { rosa: 0, staff: 0, config: 0 };
+      const result = { rosa: 0, staff: 0, config: 0, categories_created: 0 };
 
-      for (const newTeam of newTeams) {
-        const oldTeam = oldTeams.find(t => t.category_id === newTeam.category_id);
-        if (!oldTeam) continue;
+      // Nuovo formato con promozione categoria
+      if (Array.isArray(migrations) && migrations.length > 0) {
+        const { data: existingCats } = await supabase.from('category').select('id, nome, tipo_campionato').eq('workspace_id', wsId);
 
-        if (migra_rosa) {
-          const { data: oldPlayers } = await supabase.from('team_player')
-            .select('player_id, numero_maglia, ruolo_preferito')
-            .eq('team_id', oldTeam.id).eq('stato', 'Attivo');
-          if (oldPlayers?.length) {
-            const inserts = oldPlayers.map(p => ({
-              team_id: newTeam.id, player_id: p.player_id,
-              numero_maglia: p.numero_maglia, ruolo_preferito: p.ruolo_preferito,
-              stato: 'Attivo', aggregato: false
-            }));
-            const { data: inserted } = await supabase.from('team_player').insert(inserts).select();
-            result.rosa += (inserted || []).length;
+        for (const mig of migrations) {
+          // Trova o crea la categoria di destinazione
+          let targetCat = (existingCats || []).find(c => c.nome === mig.new_category_name && c.tipo_campionato === mig.new_tipo_campionato);
+          if (!targetCat) {
+            // Crea nuova categoria
+            const { data: newCat } = await supabase.from('category').insert({
+              workspace_id: wsId, nome: mig.new_category_name,
+              tipo_campionato: mig.new_tipo_campionato, genere: mig.genere || 'M'
+            }).select().single();
+            if (newCat) { targetCat = newCat; existingCats.push(newCat); result.categories_created++; }
+            else continue;
+          }
+
+          // Crea team nella nuova stagione per questa categoria
+          const { data: newTeam } = await supabase.from('team').insert({
+            season_id: newSeasonId, category_id: targetCat.id, nome: teamName
+          }).select().single();
+          if (!newTeam) continue;
+
+          const oldTeamId = mig.from_team_id;
+
+          if (migra_rosa) {
+            const { data: oldPlayers } = await supabase.from('team_player')
+              .select('player_id, numero_maglia, ruolo_preferito')
+              .eq('team_id', oldTeamId).eq('stato', 'Attivo');
+            if (oldPlayers?.length) {
+              const inserts = oldPlayers.map(p => ({
+                team_id: newTeam.id, player_id: p.player_id,
+                numero_maglia: p.numero_maglia, ruolo_preferito: p.ruolo_preferito,
+                stato: 'Attivo', aggregato: false
+              }));
+              const { data: inserted } = await supabase.from('team_player').insert(inserts).select();
+              result.rosa += (inserted || []).length;
+            }
+          }
+
+          if (migra_staff) {
+            const { data: oldStaff } = await supabase.from('team_staff')
+              .select('staff_id, ruolo_squadra').eq('team_id', oldTeamId);
+            if (oldStaff?.length) {
+              const inserts = oldStaff.map(s => ({
+                team_id: newTeam.id, staff_id: s.staff_id, ruolo_squadra: s.ruolo_squadra
+              }));
+              const { data: inserted } = await supabase.from('team_staff').insert(inserts).select();
+              result.staff += (inserted || []).length;
+            }
+          }
+
+          if (migra_config) {
+            const { data: oldConfig } = await supabase.from('training_config')
+              .select('giorno_settimana, ora_inizio, ora_fine, luogo').eq('team_id', oldTeamId);
+            if (oldConfig?.length) {
+              const inserts = oldConfig.map(c => ({ ...c, team_id: newTeam.id }));
+              const { data: inserted } = await supabase.from('training_config').insert(inserts).select();
+              result.config += (inserted || []).length;
+            }
           }
         }
-
-        if (migra_staff) {
-          const { data: oldStaff } = await supabase.from('team_staff')
-            .select('staff_id, ruolo_squadra').eq('team_id', oldTeam.id);
-          if (oldStaff?.length) {
-            const inserts = oldStaff.map(s => ({
-              team_id: newTeam.id, staff_id: s.staff_id, ruolo_squadra: s.ruolo_squadra
-            }));
-            const { data: inserted } = await supabase.from('team_staff').insert(inserts).select();
-            result.staff += (inserted || []).length;
-          }
-        }
-
-        if (migra_config) {
-          const { data: oldConfig } = await supabase.from('training_config')
-            .select('giorno_settimana, ora_inizio, ora_fine, luogo').eq('team_id', oldTeam.id);
-          if (oldConfig?.length) {
-            const inserts = oldConfig.map(c => ({ ...c, team_id: newTeam.id }));
-            const { data: inserted } = await supabase.from('training_config').insert(inserts).select();
-            result.config += (inserted || []).length;
+      } else {
+        // Fallback: vecchio formato (match per category_id)
+        const { data: oldTeams } = await supabase.from('team').select('id, category_id').eq('season_id', from_season_id);
+        const { data: newTeams } = await supabase.from('team').select('id, category_id').eq('season_id', newSeasonId);
+        if (oldTeams?.length && newTeams?.length) {
+          for (const newTeam of newTeams) {
+            const oldTeam = oldTeams.find(t => t.category_id === newTeam.category_id);
+            if (!oldTeam) continue;
+            if (migra_rosa) {
+              const { data: oldPlayers } = await supabase.from('team_player')
+                .select('player_id, numero_maglia, ruolo_preferito')
+                .eq('team_id', oldTeam.id).eq('stato', 'Attivo');
+              if (oldPlayers?.length) {
+                const inserts = oldPlayers.map(p => ({ team_id: newTeam.id, player_id: p.player_id, numero_maglia: p.numero_maglia, ruolo_preferito: p.ruolo_preferito, stato: 'Attivo', aggregato: false }));
+                const { data: inserted } = await supabase.from('team_player').insert(inserts).select();
+                result.rosa += (inserted || []).length;
+              }
+            }
+            if (migra_staff) {
+              const { data: oldStaff } = await supabase.from('team_staff').select('staff_id, ruolo_squadra').eq('team_id', oldTeam.id);
+              if (oldStaff?.length) {
+                const inserts = oldStaff.map(s => ({ team_id: newTeam.id, staff_id: s.staff_id, ruolo_squadra: s.ruolo_squadra }));
+                const { data: inserted } = await supabase.from('team_staff').insert(inserts).select();
+                result.staff += (inserted || []).length;
+              }
+            }
+            if (migra_config) {
+              const { data: oldConfig } = await supabase.from('training_config').select('giorno_settimana, ora_inizio, ora_fine, luogo').eq('team_id', oldTeam.id);
+              if (oldConfig?.length) {
+                const inserts = oldConfig.map(c => ({ ...c, team_id: newTeam.id }));
+                const { data: inserted } = await supabase.from('training_config').insert(inserts).select();
+                result.config += (inserted || []).length;
+              }
+            }
           }
         }
       }
