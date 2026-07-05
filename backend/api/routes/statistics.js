@@ -36,16 +36,17 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       let vinte = 0, pareggiate = 0, perse = 0, golFatti = 0, golSubiti = 0;
       const risultati = [];
 
-      // Fetch logos for matching
-      const avversari = [...new Set((partite || []).map(p => p.avversario))];
+      // Fetch only logos matching actual opponents (not all 777+)
+      const avversari = [...new Set((partite || []).map(p => p.avversario).filter(Boolean))];
       let logoMap = {};
       if (avversari.length > 0) {
+        // Build normalized search terms
+        const searchTerms = avversari.map(a => a.toLowerCase().trim());
         const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
         if (logos) {
-          logoMap = {};
           for (const logo of logos) {
             logoMap[logo.nome.toLowerCase()] = logo.logo_path;
-            logoMap[logo.nome_normalizzato] = logo.logo_path;
+            if (logo.nome_normalizzato) logoMap[logo.nome_normalizzato] = logo.logo_path;
           }
         }
       }
@@ -109,7 +110,14 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const matchIds = matches.map(m => m.id);
       if (matchIds.length === 0) return res.json({ marcatori: [], assistmen: [], presenze: [] });
 
-      const { data: events } = await supabase.from('match_event').select('tipo_evento, player_id').in('match_id', matchIds);
+      // Parallel fetch: events, convocations, match_statistics
+      const tpIds = players.map(p => p.id);
+      const [{ data: events }, { data: convs }, { data: statsData }] = await Promise.all([
+        supabase.from('match_event').select('tipo_evento, player_id').in('match_id', matchIds),
+        supabase.from('convocation').select('team_player_id').in('match_id', matchIds).eq('presente', true),
+        supabase.from('match_statistics').select('team_player_id, minuti_giocati').in('team_player_id', tpIds).in('match_id', matchIds)
+      ]);
+
       const golCount = {}, assistCount = {};
       (events || []).forEach(e => {
         if (e.tipo_evento === 'GOAL') golCount[e.player_id] = (golCount[e.player_id] || 0) + 1;
@@ -119,13 +127,8 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const marcatori = players.filter(p => golCount[p.player?.id]).map(p => ({ id: p.player.id, nome: p.player.cognome + ' ' + p.player.nome, gol: golCount[p.player.id] })).sort((a, b) => b.gol - a.gol).slice(0, 5);
       const assistmen = players.filter(p => assistCount[p.player?.id]).map(p => ({ id: p.player.id, nome: p.player.cognome + ' ' + p.player.nome, assist: assistCount[p.player.id] })).sort((a, b) => b.assist - a.assist).slice(0, 5);
 
-      const { data: convs } = await supabase.from('convocation').select('team_player_id').in('match_id', matchIds).eq('presente', true);
       const presCount = {};
       (convs || []).forEach(c => { presCount[c.team_player_id] = (presCount[c.team_player_id] || 0) + 1; });
-
-      // Minutaggio da match_statistics
-      const tpIds = players.map(p => p.id);
-      const { data: statsData } = await supabase.from('match_statistics').select('team_player_id, minuti_giocati').in('team_player_id', tpIds).in('match_id', matchIds);
       const minCount = {};
       (statsData || []).forEach(s => { minCount[s.team_player_id] = (minCount[s.team_player_id] || 0) + (s.minuti_giocati || 0); });
 
@@ -186,15 +189,15 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
 
       let formazioni = [], eventi = [], statsRows = [];
       if (matchIds.length > 0) {
-        const { data: f } = await supabase.from('match_formation').select('match_id, team_player_id, is_starter').in('match_id', matchIds);
-        formazioni = f || [];
-        const { data: e } = await supabase.from('match_event').select('tipo_evento, player_id').in('match_id', matchIds);
-        eventi = e || [];
         const tpIds = (tps || []).map(tp => tp.id);
-        if (tpIds.length > 0) {
-          const { data: ms } = await supabase.from('match_statistics').select('team_player_id, minuti_giocati, match_id').in('team_player_id', tpIds).in('match_id', matchIds);
-          statsRows = ms || [];
-        }
+        const [{ data: f }, { data: e }, ...statsResult] = await Promise.all([
+          supabase.from('match_formation').select('match_id, team_player_id, is_starter').in('match_id', matchIds),
+          supabase.from('match_event').select('tipo_evento, player_id').in('match_id', matchIds),
+          ...(tpIds.length > 0 ? [supabase.from('match_statistics').select('team_player_id, minuti_giocati, match_id').in('team_player_id', tpIds).in('match_id', matchIds)] : [])
+        ]);
+        formazioni = f || [];
+        eventi = e || [];
+        if (statsResult[0]) statsRows = statsResult[0].data || [];
       }
 
       const tpToPlayer = {}, playerStats = {};

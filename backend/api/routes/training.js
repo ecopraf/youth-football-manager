@@ -48,16 +48,24 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
   // ── PRESENZE ──
   router.get('/api/squadre/:squadraId/allenamenti/presenze', authMiddleware, async (req, res) => {
     try {
-      const { data: trainings } = await supabase.from('training').select('id, data_ora').eq('team_id', req.params.squadraId);
+      const { mese } = req.query; // optional: YYYY-MM filter
+      let trainingsQuery = supabase.from('training').select('id, data_ora').eq('team_id', req.params.squadraId);
+      if (mese) {
+        trainingsQuery = trainingsQuery.gte('data_ora', mese + '-01T00:00:00').lte('data_ora', mese + '-31T23:59:59');
+      }
+      const { data: trainings } = await trainingsQuery;
       const trainingIds = (trainings || []).map(t => t.id);
       if (trainingIds.length === 0) return res.json([]);
       let data = [];
       for (let i = 0; i < trainingIds.length; i += 20) {
         const batch = trainingIds.slice(i, i + 20);
-        const { data: batchData, error } = await supabase.from('training_attendance').select('*, training:training_id(id, data_ora, team_id)').in('training_id', batch).range(0, 9999);
+        const { data: batchData, error } = await supabase.from('training_attendance').select('id, training_id, team_player_id, presente, motivi_assenza, note').in('training_id', batch).range(0, 9999);
         if (error) return res.status(400).json({ error: error.message });
         if (batchData) data.push(...batchData);
       }
+      // Build training date map to avoid joining
+      const trainingDateMap = {};
+      (trainings || []).forEach(t => { trainingDateMap[t.id] = new Date(t.data_ora).toLocaleDateString('sv-SE'); });
       const tpIds = [...new Set((data || []).map(d => d.team_player_id))];
       let tpMap = {};
       if (tpIds.length > 0) {
@@ -67,11 +75,11 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
       const result = (data || []).map(d => ({
         id: d.id,
         calciatore_id: tpMap[d.team_player_id] || d.team_player_id,
-        data: d.training?.data_ora ? new Date(d.training.data_ora).toLocaleDateString('sv-SE') : null,
+        data: trainingDateMap[d.training_id] || null,
         presente: d.presente,
         motivo_assenza: d.motivi_assenza,
         note: d.note,
-        team_id: d.training?.team_id
+        team_id: req.params.squadraId
       }));
       res.json(result);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -150,31 +158,34 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
       if (trainingIds.length > 0) {
         for (let i = 0; i < trainingIds.length; i += 20) {
           const batch = trainingIds.slice(i, i + 20);
-          const { data: batchData } = await supabase.from('training_attendance').select('team_player_id, presente, training_id').in('training_id', batch).range(0, 9999);
+          const { data: batchData } = await supabase.from('training_attendance').select('team_player_id, presente, training_id, motivi_assenza').in('training_id', batch).range(0, 9999);
           if (batchData) presenze.push(...batchData);
-        }
-      }
-      // Fetch motivi for absences
-      let motiviData = [];
-      if (trainingIds.length > 0) {
-        for (let i = 0; i < trainingIds.length; i += 20) {
-          const batch = trainingIds.slice(i, i + 20);
-          const { data: batchData } = await supabase.from('training_attendance').select('team_player_id, motivi_assenza').in('training_id', batch).eq('presente', false).range(0, 9999);
-          if (batchData) motiviData.push(...batchData);
         }
       }
 
       const summary = {};
       const motiviTotali = {};
-      motiviData.forEach(m => { const k = m.motivi_assenza || 'Non comunicato'; motiviTotali[k] = (motiviTotali[k] || 0) + 1; });
+      // Single pass: build per-player stats from presenze (already has presente flag)
+      const playerPresMap = {}; // tp_id -> {totali, presenti, assenti}
+      presenze.forEach(p => {
+        if (!playerPresMap[p.team_player_id]) playerPresMap[p.team_player_id] = { totali: 0, presenti: 0, assenti: 0 };
+        playerPresMap[p.team_player_id].totali++;
+        if (p.presente) playerPresMap[p.team_player_id].presenti++;
+        else playerPresMap[p.team_player_id].assenti++;
+      });
+      // Motivi from same presenze data (absences only)
+      presenze.filter(p => !p.presente).forEach(p => {
+        const k = p.motivi_assenza || 'Non comunicato';
+        motiviTotali[k] = (motiviTotali[k] || 0) + 1;
+      });
       (teamPlayers || []).forEach(tp => {
         const g = tp.calciatore;
         if (!g) return;
-        const playerPres = presenze.filter(p => p.team_player_id === tp.id);
-        const playerMotivi = motiviData.filter(m => m.team_player_id === tp.id);
+        const ps = playerPresMap[tp.id] || { totali: 0, presenti: 0, assenti: 0 };
+        const playerAbs = presenze.filter(p => p.team_player_id === tp.id && !p.presente);
         const motivi = {};
-        playerMotivi.forEach(m => { const k = m.motivi_assenza || 'Non comunicato'; motivi[k] = (motivi[k] || 0) + 1; });
-        summary[g.id] = { id: g.id, nome: g.nome, cognome: g.cognome, totali: playerPres.length, presenti: playerPres.filter(p => p.presente).length, assenti: playerPres.filter(p => !p.presente).length, assentiSett: 0, motivi };
+        playerAbs.forEach(p => { const k = p.motivi_assenza || 'Non comunicato'; motivi[k] = (motivi[k] || 0) + 1; });
+        summary[g.id] = { id: g.id, nome: g.nome, cognome: g.cognome, totali: ps.totali, presenti: ps.presenti, assenti: ps.assenti, assentiSett: 0, motivi };
       });
 
       // Determine if season is active (has trainings in last 30 days)
