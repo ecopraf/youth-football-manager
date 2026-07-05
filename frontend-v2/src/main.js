@@ -7,6 +7,7 @@ import { loadSquadre } from './modules/team/squadre'
 import { loadPlayerDetail } from './modules/team/playerDetail.js'
 import { getSavedWorkspaceId, resetWorkspaceCache, loadAvailableWorkspaces, isSuperAdmin, saveCurrentWorkspace, populateWorkspaceSelect } from './modules/club/workspaceSwitcher'
 import { BUILD_INFO } from './build-info'
+import { apiFetch } from './services/api'
 
 window.YFM_BUILD_ID = BUILD_INFO.id
 
@@ -119,6 +120,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (isAuth) {
     try {
+      // Refresh profilo dal server (ruolo/permessi potrebbero essere cambiati)
+      try {
+        const freshUser = await apiFetch('/auth/me');
+        if (freshUser?.id) window.YFM.setUser(freshUser);
+      } catch (e) { /* token scaduto → gestito da 401 handler */ }
+
       const user = window.YFM.getUser();
       
       let currentWs = null;

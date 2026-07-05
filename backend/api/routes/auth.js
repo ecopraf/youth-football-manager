@@ -63,7 +63,21 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   });
 
   router.get('/api/auth/me', authMiddleware, async (req, res) => {
-    res.json(req.user);
+    try {
+      const { data: user } = await supabase.from('users')
+        .select('id, nome, cognome, email, ruolo, workspace_id, is_superadmin, permessi, squadre_accesso')
+        .eq('id', req.user.id).single();
+      if (!user) return res.status(404).json({ error: 'Utente non trovato' });
+      res.json({
+        id: user.id, nome: user.nome, cognome: user.cognome, email: user.email,
+        ruolo: user.ruolo, workspace_id: user.workspace_id,
+        is_superadmin: user.is_superadmin || false,
+        categorie_accesso: user.squadre_accesso || [],
+        permessi: user.permessi || {}
+      });
+    } catch (err) {
+      res.json(req.user);
+    }
   });
 
   router.post('/api/auth/logout', authMiddleware, async (req, res) => {
