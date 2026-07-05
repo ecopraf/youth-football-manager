@@ -270,10 +270,10 @@ async function applyTemplateUI(date) {
     card.addEventListener('mouseleave', () => { card.style.borderColor = '#eee'; card.style.transform = 'none'; });
     card.addEventListener('click', () => {
       const prog = templates[parseInt(card.dataset.idx)].programma || {};
-      if (prog.tipo) { const sel = document.getElementById('sessionTipo'); if (sel) sel.value = prog.tipo; }
-      if (prog.obiettivo) { const inp = document.getElementById('sessionObiettivo'); if (inp) inp.value = prog.obiettivo; }
-      if (prog.note) { const ta = document.getElementById('sessionNote'); if (ta) ta.value = prog.note; }
-      if (prog.fasi?.length > 0) currentFasi = JSON.parse(JSON.stringify(prog.fasi));
+      const sel = document.getElementById('sessionTipo'); if (sel) sel.value = prog.tipo || '';
+      const inp = document.getElementById('sessionObiettivo'); if (inp) inp.value = prog.obiettivo || '';
+      const ta = document.getElementById('sessionNote'); if (ta) ta.value = prog.note || '';
+      currentFasi = prog.fasi?.length > 0 ? JSON.parse(JSON.stringify(prog.fasi)) : [];
       refreshFasiUI();
       document.querySelectorAll('#materialeGrid .mat-chip').forEach(chip => { chip.classList.toggle('active', (prog.materiale||[]).includes(chip.dataset.mat)); });
       close();
