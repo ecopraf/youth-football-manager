@@ -101,6 +101,12 @@ function renderMain(c, logs, teamName) {
         <div class="import-card-desc">Importa tutte le partite con risultati aggiornati dal girone</div>
         <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">Import</span>
       </div>
+      <div class="import-card" id="icGrEventi">
+        <div class="import-card-icon">⚽</div>
+        <div class="import-card-title">Import Marcatori Partite</div>
+        <div class="import-card-desc">Estrai gol (cognome + minuto) dalle partite GR e associali ai giocatori in rosa</div>
+        <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">Import</span>
+      </div>
       ${window.YFM.getUser()?.is_superadmin ? `<div class="import-card" id="icGrLoghi">
         <div class="import-card-icon">🏷️</div>
         <div class="import-card-title">Loghi Squadre (Girone)</div>
@@ -150,6 +156,7 @@ function renderMain(c, logs, teamName) {
   document.getElementById('icFormations')?.addEventListener('click', openImportFormations);
   document.getElementById('icGrConfig').addEventListener('click', openGrConfig);
   document.getElementById('icGrCalendario').addEventListener('click', openGrCalendario);
+  document.getElementById('icGrEventi')?.addEventListener('click', openGrEventi);
   document.getElementById('icGrLoghi')?.addEventListener('click', openGrLoghi);
   document.getElementById('icGrLoghiWizard')?.addEventListener('click', openGrLoghiWizard);
   document.getElementById('icGrPreview').addEventListener('click', openGrPreview);
@@ -536,6 +543,70 @@ async function openGrCalendario() {
   } catch (err) {
     const body = document.querySelector('#importModal .modal-body');
     if (body) body.innerHTML = `<div style="color:#c00;padding:12px;">❌ ${err.message}</div>`;
+  }
+}
+
+// === GAZZETTA REGIONALE: IMPORT EVENTI (MARCATORI) ===
+async function openGrEventi() {
+  const teamId = window.YFM.squadraId;
+  const sq = window.YFM.getSquadra();
+  if (!sq?.classifica_url) {
+    alert('Configura prima l\'URL del girone GR nella sezione "Configura URL Girone"');
+    return;
+  }
+
+  const modal = createModal('⚽ Import Marcatori da GR', '<div class="loading"><div class="spinner"></div>Caricamento partite...</div>', '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grEventiConfirm" disabled>Importa Marcatori</button>', '700px');
+
+  try {
+    const data = await apiFetch('/gr/match-events/preview?teamId=' + teamId);
+    if (!data.matches || data.matches.length === 0) {
+      document.querySelector('#importModal .modal-body').innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Nessuna partita con marcatori disponibili su GR.</p>';
+      return;
+    }
+
+    let html = `<p style="font-size:13px;color:#666;margin-bottom:12px;">Trovate <strong>${data.matches.length}</strong> partite con marcatori. Seleziona quelle da importare:</p>`;
+    html += '<div style="max-height:400px;overflow-y:auto;">';
+    html += '<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:12px;cursor:pointer;"><input type="checkbox" id="grEvSelAll" checked> Seleziona tutte</label>';
+    data.matches.forEach((m, i) => {
+      const goalsStr = m.goals.map(g => `${g.player} ${g.minute}'`).join(', ');
+      html += `<label style="display:flex;align-items:flex-start;gap:8px;padding:8px;border-bottom:1px solid #f0f0f0;cursor:pointer;font-size:13px;">
+        <input type="checkbox" class="gr-ev-check" data-idx="${i}" checked style="margin-top:2px;">
+        <div>
+          <div><strong>G${m.giornata}</strong> ${m.avversario} (${m.luogo}) — ${m.risultato}</div>
+          <div style="color:#27AE60;font-size:11px;">⚽ ${goalsStr || 'Nessun gol nostro'}</div>
+          ${m.already_imported ? '<div style="color:#F39C12;font-size:10px;">\u26a0\ufe0f Eventi gi\u00e0 presenti (verranno saltati)</div>' : ''}
+        </div>
+      </label>`;
+    });
+    html += '</div>';
+    document.querySelector('#importModal .modal-body').innerHTML = html;
+    document.getElementById('grEventiConfirm').disabled = false;
+
+    document.getElementById('grEvSelAll')?.addEventListener('change', (e) => {
+      document.querySelectorAll('.gr-ev-check').forEach(cb => cb.checked = e.target.checked);
+    });
+
+    document.getElementById('grEventiConfirm').addEventListener('click', async () => {
+      const selected = [];
+      document.querySelectorAll('.gr-ev-check:checked').forEach(cb => selected.push(data.matches[+cb.dataset.idx]));
+      if (!selected.length) { alert('Seleziona almeno una partita'); return; }
+      document.getElementById('grEventiConfirm').disabled = true;
+      document.getElementById('grEventiConfirm').textContent = 'Importazione...';
+      try {
+        const result = await apiFetch('/gr/match-events/import', {
+          method: 'POST',
+          body: JSON.stringify({ teamId, matches: selected.map(m => m.gr_match_id) })
+        });
+        modal.close();
+        alert(`\u2705 Import completato!\n${result.imported} gol importati, ${result.skipped} saltati (gi\u00e0 presenti o giocatore non trovato)`);
+      } catch (e) {
+        alert('Errore: ' + e.message);
+        document.getElementById('grEventiConfirm').disabled = false;
+        document.getElementById('grEventiConfirm').textContent = 'Importa Marcatori';
+      }
+    });
+  } catch (e) {
+    document.querySelector('#importModal .modal-body').innerHTML = '<div class="error-box">Errore: ' + e.message + '</div>';
   }
 }
 

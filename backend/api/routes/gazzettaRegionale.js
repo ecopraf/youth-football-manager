@@ -388,5 +388,160 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
     res.json({ updates });
   });
 
+  // === IMPORT MARCATORI DA GR ===
+
+  // Helper: parse goals from GR match HTML
+  function parseGoalsFromHtml(html, extractHome) {
+    const parts = html.split('vc_container_goal');
+    const targetHtml = extractHome ? (parts[1] || '') : (parts[2] || '');
+    const goalRe = /vc_goal_player">([^<]+)<\/span>\s*<span class="vc_goal_minute">(\d+)'/g;
+    const goals = [];
+    let m;
+    while ((m = goalRe.exec(targetHtml)) !== null) {
+      goals.push({ player: m[1].trim(), minute: parseInt(m[2]) });
+    }
+    return goals;
+  }
+
+  // GET /api/gr/match-events/preview — anteprima marcatori per le partite del team
+  router.get('/api/gr/match-events/preview', authMiddleware, async (req, res) => {
+    try {
+      const teamId = req.query.teamId;
+      if (!teamId) return res.status(400).json({ error: 'teamId richiesto' });
+
+      const { data: team } = await supabase.from('team').select('classifica_url').eq('id', teamId).single();
+      if (!team?.classifica_url) return res.status(400).json({ error: 'URL girone GR non configurato' });
+
+      const parsed = parseGrUrl(team.classifica_url);
+      if (!parsed) return res.status(400).json({ error: 'URL girone non valido' });
+
+      // Fetch calendario GR
+      const { matches: grMatches } = await fetchCalendario(parsed.level, parsed.championship, parsed.group);
+
+      // Fetch partite del team nel DB
+      const { data: dbMatches } = await supabase.from('match').select('id, avversario, giornata, luogo, gol_casa, gol_ospite').eq('team_id', teamId);
+
+      // Fetch rosa per matching cognomi
+      const { data: roster } = await supabase.from('team_player')
+        .select('id, player:player_id(id, nome, cognome)').eq('team_id', teamId);
+
+      // Fetch nome squadra
+      const { data: ws } = await supabase.from('team')
+        .select('nome, season:season_id(workspace:workspace_id(nome))').eq('id', teamId).single();
+      const teamName = ws?.season?.workspace?.nome || ws?.nome || '';
+
+      // Filtra partite nostre
+      const ourMatches = grMatches.filter(m => {
+        if (m.gol_casa === null && m.gol_ospite === null) return false;
+        return matchTeamNameGR(teamName, m.casa) || matchTeamNameGR(teamName, m.ospite);
+      });
+
+      // Parallelizza scraping: 5 alla volta
+      const results = [];
+      for (let i = 0; i < ourMatches.length; i += 5) {
+        const batch = ourMatches.slice(i, i + 5);
+        const batchResults = await Promise.all(batch.map(async (grMatch) => {
+          const isHome = matchTeamNameGR(teamName, grMatch.casa);
+          const avversario = isHome ? grMatch.ospite : grMatch.casa;
+          const luogo = isHome ? 'Casa' : 'Trasferta';
+          const risultato = isHome ? `${grMatch.gol_casa}-${grMatch.gol_ospite}` : `${grMatch.gol_ospite}-${grMatch.gol_casa}`;
+
+          let goals = [];
+          try {
+            const htmlResp = await fetch(`https://v2.apiweb.gazzettaregionale.it/live/home/${grMatch.id}`);
+            if (htmlResp.ok) goals = parseGoalsFromHtml(await htmlResp.text(), isHome);
+          } catch (e) { /* skip */ }
+          if (goals.length === 0) return null;
+
+          const dbMatch = (dbMatches || []).find(m =>
+            m.giornata === grMatch.giornata || m.avversario?.toLowerCase().includes(avversario.toLowerCase().slice(0, 6))
+          );
+          let already_imported = false;
+          if (dbMatch) {
+            const { count } = await supabase.from('match_event').select('id', { count: 'exact', head: true })
+              .eq('match_id', dbMatch.id).eq('tipo_evento', 'GOAL');
+            already_imported = (count || 0) > 0;
+          }
+          return { gr_match_id: grMatch.id, giornata: grMatch.giornata, avversario, luogo, risultato, goals, already_imported, db_match_id: dbMatch?.id || null };
+        }));
+        results.push(...batchResults.filter(Boolean));
+      }
+
+      res.json({ matches: results });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/gr/match-events/import — importa marcatori nelle partite
+  router.post('/api/gr/match-events/import', authMiddleware, async (req, res) => {
+    try {
+      const { teamId, matches: grMatchIds } = req.body;
+      if (!teamId || !grMatchIds?.length) return res.status(400).json({ error: 'teamId e matches richiesti' });
+
+      const { data: team } = await supabase.from('team').select('classifica_url').eq('id', teamId).single();
+      const parsed = parseGrUrl(team.classifica_url);
+      const { matches: grMatches } = await fetchCalendario(parsed.level, parsed.championship, parsed.group);
+
+      const { data: dbMatches } = await supabase.from('match').select('id, avversario, giornata, gol_casa, gol_ospite, luogo').eq('team_id', teamId);
+      const { data: roster } = await supabase.from('team_player')
+        .select('id, player:player_id(id, nome, cognome)').eq('team_id', teamId);
+
+      const { data: ws } = await supabase.from('team')
+        .select('nome, season:season_id(workspace:workspace_id(nome))').eq('id', teamId).single();
+      const teamName = ws?.season?.workspace?.nome || ws?.nome || '';
+
+      let imported = 0, skipped = 0;
+
+      for (const grId of grMatchIds) {
+        const grMatch = grMatches.find(m => m.id === grId || m.id === String(grId));
+        if (!grMatch) { skipped++; continue; }
+
+        const isHome = matchTeamNameGR(teamName, grMatch.casa);
+        const avversario = isHome ? grMatch.ospite : grMatch.casa;
+
+        // Trova la partita nel DB
+        const dbMatch = (dbMatches || []).find(m =>
+          m.giornata === grMatch.giornata || m.avversario?.toLowerCase().includes(avversario.toLowerCase().slice(0, 6))
+        );
+        if (!dbMatch) { skipped++; continue; }
+
+        // Check se già importati
+        const { count } = await supabase.from('match_event').select('id', { count: 'exact', head: true })
+          .eq('match_id', dbMatch.id).eq('tipo_evento', 'GOAL');
+        if ((count || 0) > 0) { skipped++; continue; }
+
+        // Scrape gol
+        let goals = [];
+        try {
+          const htmlResp = await fetch(`https://v2.apiweb.gazzettaregionale.it/live/home/${grId}`);
+          if (htmlResp.ok) goals = parseGoalsFromHtml(await htmlResp.text(), isHome);
+        } catch (e) { /* skip */ }
+
+        for (const goal of goals) {
+          // Match cognome con rosa
+          const player = (roster || []).find(r =>
+            r.player.cognome.toLowerCase() === goal.player.toLowerCase() ||
+            r.player.cognome.toLowerCase().startsWith(goal.player.toLowerCase()) ||
+            goal.player.toLowerCase().startsWith(r.player.cognome.toLowerCase())
+          );
+          if (!player) { skipped++; continue; }
+
+          await supabase.from('match_event').insert({
+            match_id: dbMatch.id,
+            tipo_evento: 'GOAL',
+            minuto: goal.minute || null,
+            player_id: player.player.id
+          });
+          imported++;
+        }
+      }
+
+      res.json({ success: true, imported, skipped });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 };
