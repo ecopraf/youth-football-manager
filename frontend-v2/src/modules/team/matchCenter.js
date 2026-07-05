@@ -10,6 +10,7 @@ let eventi = [];
 let giocatori = [];
 let allPlayers = [];
 let formazioneData = null;
+let moduloIniziale = null;
 let isReadOnly = false;
 let liveInterval = null;
 
@@ -57,6 +58,7 @@ export default async function loadMatchCenter() {
     const apiFormazione = formRes?.formazione || [];
     const apiMeta = formRes?.meta || {};
     formazioneData = convertApiFormation(apiFormazione, allPlayers, apiMeta);
+    moduloIniziale = formazioneData?.modulo || null;
 
     // Apply existing SUB events to formation (show current state)
     if (formazioneData) {
@@ -69,6 +71,21 @@ export default async function loadMatchCenter() {
     isReadOnly = isGuest || match.archiviata === true;
 
     render(c, mid);
+
+    // Hook: reload formation after modal save
+    window.YFM.onFormazioneSaved = async () => {
+      const formRes = await apiFetch('/partite/' + mid + '/formazione').catch(() => ({ formazione: [], meta: {} }));
+      const apiFormazione = formRes?.formazione || [];
+      const apiMeta = formRes?.meta || {};
+      formazioneData = convertApiFormation(apiFormazione, allPlayers, apiMeta);
+      if (!moduloIniziale) moduloIniziale = formazioneData?.modulo || null;
+      if (formazioneData) {
+        eventi.filter(e => e.tipo === 'SUB' && e.principale_id && e.sub_in_id)
+          .forEach(e => applySubToFormation(e.principale_id, e.sub_in_id));
+      }
+      render(c, mid);
+      document.querySelector('.mc-tab[data-tab="formation"]')?.click();
+    };
   } catch (err) {
     c.innerHTML = '<div class="error-box">Errore: ' + err.message + '</div>';
   }
@@ -187,7 +204,8 @@ function getBody(mid) {
   return `<div class="mc-tab-panel mc-tab-active" id="mcBodyEvents">${getTimeline(mid)}</div>
   <div class="mc-tab-panel" id="mcBodyFormation">${getLiveFormation(mid)}</div>
   ${getQuickActions(mid)}
-  ${getSaveButton()}`;
+  ${getSaveButton()}
+  </div>`;
 }
 
 function getLiveFormation(mid) {
@@ -263,7 +281,9 @@ function getStyles() {
 .mc-qa-btn .qa-icon{font-size:26px;}
 .mc-qa-btn .qa-label{font-size:11px;font-weight:600;color:#333;text-align:center;}
 .mc-tl-title{font-size:13px;font-weight:700;color:#333;margin-bottom:12px;}
-.mc-tl-empty{text-align:center;padding:40px 20px;color:#aaa;font-size:14px;}
+.mc-tl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+@media(max-width:639px){.mc-tl-grid{grid-template-columns:1fr;}}
+.mc-tl-empty{text-align:center;padding:40px 20px;color:#aaa;font-size:14px;grid-column:1/-1;}
 .mc-tl-item{display:flex;align-items:flex-start;gap:12px;padding:12px;background:white;border-radius:10px;margin-bottom:8px;border:1px solid #f0f0f0;position:relative;transition:all 0.2s;}
 .mc-tl-item:hover{box-shadow:0 2px 8px rgba(0,0,0,0.06);}
 .mc-tl-min{min-width:36px;font-size:13px;font-weight:700;color:#667eea;text-align:center;padding-top:2px;}
@@ -326,8 +346,8 @@ function getStyles() {
 .mc-live-btn-blink{animation:live-btn-pulse 1s ease-in-out infinite;}
 @keyframes live-btn-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,0.6);}50%{transform:scale(1.05);box-shadow:0 0 0 8px rgba(255,255,255,0);}}
 .mc-tabs{display:flex;gap:4px;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:16px;overflow-x:auto;}
-.mc-tab{padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#888;cursor:pointer;border-radius:8px;white-space:nowrap;}
-.mc-tab:hover{background:#f5f5f5;color:#333;}
+.mc-tab{padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#555;cursor:pointer;border-radius:8px;white-space:nowrap;border:1px solid #ddd;}
+.mc-tab:hover{background:#f0f4ff;color:#333;border-color:#667eea;}
 .mc-tab.active{background:#667eea;color:white;}
 .mc-tab-badge{background:white;color:#667eea;padding:1px 6px;border-radius:8px;font-size:10px;margin-left:4px;}
 .mc-tab-panel{display:none;}
@@ -345,9 +365,10 @@ function getStyles() {
 .mc-bench-item:hover{background:#dbeafe;border-color:#667eea;transform:translateX(-2px);}
 .mc-bench-item.mc-bench-selected{background:#667eea;color:white;border-color:#667eea;}
 @media(max-width:639px){
-  .mc-form-layout{flex-direction:column;align-items:center;}
-  .mc-form-pitch .pitch{max-width:240px;}
-  .mc-form-bench{flex:none;width:100%;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;}
+  .mc-form-layout{flex-direction:column;align-items:stretch;}
+  .mc-form-pitch{width:100%;}
+  .mc-form-pitch .pitch{max-width:100%;width:240px;margin:0 auto;}
+  .mc-form-bench{flex:none;width:100%;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;}
   .mc-bench-item{margin-bottom:0;}
 }
 .mc-body{display:grid;grid-template-columns:1fr 280px;gap:20px;}
@@ -450,7 +471,7 @@ function getQuickActions(mid) {
 // ── TIMELINE ──
 function getTimeline(mid) {
   const sorted = [...eventi].sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0));
-  let html = '<div class="mc-tl-title">📋 Timeline Eventi</div>';
+  let html = '<div class="mc-tl-title">📋 Timeline Eventi</div><div class="mc-tl-grid">';
   if (sorted.length === 0) {
     html += '<div class="mc-tl-empty">Nessun evento registrato.<br>Usa le azioni rapide per aggiungere.</div>';
   } else {
@@ -481,7 +502,7 @@ function getTimeline(mid) {
   }
 
   const saveBtn = '';
-  html += saveBtn + '</div>';
+  html += saveBtn + '</div></div>';
   return html;
 }
 
@@ -982,6 +1003,10 @@ async function saveAll(mid) {
     const updateBody = { golCasa, golOspite };
     // Non forzare 'Terminata' — lo stato lo gestisce il bottone Live
     if (match.live_meta?.stato === 'fine' || match.stato === 'Terminata') updateBody.stato = 'Terminata';
+    // Save modulo_finale if changed
+    if (formazioneData && formazioneData.modulo !== moduloIniziale) {
+      updateBody.modulo_finale = formazioneData.modulo;
+    }
     await apiFetch('/partite/' + mid, {
       method: 'PUT',
       body: JSON.stringify(updateBody)

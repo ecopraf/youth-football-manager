@@ -70,6 +70,13 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       if (p.golCasa !== undefined) updateData.gol_casa = p.golCasa;
       if (p.golOspite !== undefined) updateData.gol_ospite = p.golOspite;
       if (p.stato !== undefined) updateData.stato = p.stato;
+      // Save modulo_finale in formazione_meta if provided
+      if (p.modulo_finale) {
+        const { data: curr } = await supabase.from('match').select('formazione_meta').eq('id', req.params.id).single();
+        const meta = curr?.formazione_meta || {};
+        meta.modulo_finale = p.modulo_finale;
+        updateData.formazione_meta = meta;
+      }
       await supabase.from('match').update(updateData).eq('id', req.params.id);
 
       // Auto-calculate minutes when match is set to Terminata

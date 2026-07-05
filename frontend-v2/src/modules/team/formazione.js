@@ -195,7 +195,8 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
       await apiFetch('/partite/' + mid + '/formazione', { method: 'PUT', body: JSON.stringify({ formazione, modulo: currentModulo, positions: customPositions }) });
       hideLoading(); modal.close();
       alert('✅ Formazione salvata!');
-      if (window.YFM?.loadCalendar) window.YFM.loadCalendar();
+      if (window.YFM?.onFormazioneSaved) window.YFM.onFormazioneSaved(mid);
+      else if (window.YFM?.loadCalendar) window.YFM.loadCalendar();
     } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
   });
 
