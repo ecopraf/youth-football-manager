@@ -40,10 +40,10 @@ window.YFM.getWorkspaceLogo = () => {
 };
 
 window.YFM.handleLogout = function() {
-  const wasGuest = !!localStorage.getItem('yfm_guest');
+  const wasGuest = !!sessionStorage.getItem('yfm_guest');
   localStorage.removeItem('yfm_token');
   localStorage.removeItem('yfm_user');
-  localStorage.removeItem('yfm_guest');
+  sessionStorage.removeItem('yfm_guest');
   localStorage.removeItem('yfm_active_workspace');
   localStorage.removeItem('yfm_demo_session');
   localStorage.removeItem('yfm_demo_user');

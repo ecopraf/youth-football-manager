@@ -7,7 +7,7 @@ export default async function loadClub() {
   try {
     const wid = window.YFM.workspaceId || window.YFM.activeWorkspaceId;
     const teamId = window.YFM.squadraId;
-    const isGuest = !!localStorage.getItem('yfm_guest');
+    const isGuest = !!sessionStorage.getItem('yfm_guest');
 
     let wsData, facility, staffData;
     if (isGuest) {

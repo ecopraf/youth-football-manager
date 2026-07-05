@@ -73,6 +73,7 @@ function render() {
               </div>
               <div style="display:flex;gap:6px;align-items:center;">
                 ${!s.attiva ? `<button class="btn btn-small" data-activate="${s.id}" style="background:#22c55e;color:white;border-color:#22c55e;">Attiva</button>` : ''}
+                <button class="btn btn-small" data-edit-season="${s.id}" style="padding:4px 8px;font-size:11px;">✏️</button>
                 <button class="btn btn-small btn-danger" data-del-season="${s.id}">🗑️</button>
                 <span style="font-size:14px;transition:transform .2s;${isExpanded ? 'transform:rotate(90deg);' : ''}">▶</span>
               </div>
@@ -127,6 +128,7 @@ function render() {
   document.getElementById('btnAddSeason')?.addEventListener('click', showSeasonWizard);
   document.getElementById('btnAddCategory')?.addEventListener('click', addCategory);
   container.querySelectorAll('[data-activate]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); activateSeason(btn.dataset.activate); }));
+  container.querySelectorAll('[data-edit-season]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); editSeason(btn.dataset.editSeason); }));
   container.querySelectorAll('[data-del-season]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); deleteSeason(btn.dataset.delSeason); }));
   container.querySelectorAll('[data-edit-cat]').forEach(btn => btn.addEventListener('click', () => editCategory(btn.dataset.editCat)));
   container.querySelectorAll('[data-del-cat]').forEach(btn => btn.addEventListener('click', () => deleteCategory(btn.dataset.delCat)));
@@ -141,7 +143,7 @@ function render() {
   // Delete team
   container.querySelectorAll('[data-del-team]').forEach(btn => btn.addEventListener('click', async () => {
     const teamId = btn.dataset.delTeam;
-    if (!confirm('⚠️ Eliminare questo team e tutti i dati associati (rosa, partite, allenamenti)?')) return;
+    if (!await confirm('⚠️ Eliminare questo team e tutti i dati associati (rosa, partite, allenamenti)?')) return;
     showLoading();
     try {
       await apiFetch(`/squadre/${teamId}`, { method: 'DELETE' });
@@ -300,7 +302,7 @@ function showSeasonWizard() {
 
 async function activateSeason(id) {
   const s = seasons.find(x => x.id === id);
-  if (!confirm(`Attivare la stagione "${s?.nome}"?\nTutti gli utenti vedranno i dati di questa stagione.`)) return;
+  if (!await confirm(`Attivare la stagione "${s?.nome}"?\nTutti gli utenti vedranno i dati di questa stagione.`)) return;
   showLoading();
   try {
     await apiFetch(`/stagioni/${id}`, { method: 'PUT', body: JSON.stringify({ attiva: true }) });
@@ -312,9 +314,57 @@ async function activateSeason(id) {
   finally { hideLoading(); }
 }
 
+async function editSeason(id) {
+  const s = seasons.find(x => x.id === id);
+  if (!s) return;
+  const anno = parseInt(s.nome.split('/')[0]);
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:28px;width:90%;max-width:380px;">
+      <h3 style="margin:0 0 16px;font-size:16px;">✏️ Modifica Stagione</h3>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Anno di inizio</label>
+        <input id="editSeasonAnno" type="number" value="${anno}" min="2020" max="2050" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:16px;box-sizing:border-box;">
+        <div id="editSeasonPreview" style="font-size:12px;color:#666;margin-top:4px;">Stagione: ${s.nome} — dal 01/07/${anno} al 30/06/${anno + 1}</div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="editSeasonCancel" class="btn btn-secondary btn-small">Annulla</button>
+        <button id="editSeasonSave" class="btn btn-primary btn-small">Salva</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const input = modal.querySelector('#editSeasonAnno');
+  const preview = modal.querySelector('#editSeasonPreview');
+  input.addEventListener('input', () => {
+    const a = parseInt(input.value);
+    if (a >= 2020 && a <= 2050) preview.textContent = `Stagione: ${a}/${(a + 1).toString().slice(2)} — dal 01/07/${a} al 30/06/${a + 1}`;
+  });
+
+  modal.querySelector('#editSeasonCancel').addEventListener('click', () => modal.remove());
+  modal.querySelector('#editSeasonSave').addEventListener('click', async () => {
+    const newAnno = parseInt(input.value);
+    if (isNaN(newAnno) || newAnno < 2020 || newAnno > 2050) { alert('Anno non valido'); return; }
+    const newNome = `${newAnno}/${(newAnno + 1).toString().slice(2)}`;
+    modal.remove();
+    showLoading();
+    try {
+      await apiFetch(`/stagioni/${id}`, {
+        method: 'PUT', body: JSON.stringify({ nome: newNome, data_inizio: `${newAnno}-07-01`, data_fine: `${newAnno + 1}-06-30` })
+      });
+      await loadData(); render();
+    } catch (e) { alert('Errore: ' + e.message); }
+    finally { hideLoading(); }
+  });
+}
+
 async function deleteSeason(id) {
   const s = seasons.find(x => x.id === id);
-  if (!confirm(`⚠️ Eliminare la stagione "${s?.nome}"?\n\nVerranno eliminati TUTTI i dati associati:\n- Squadre, rosa, staff\n- Partite, formazioni, eventi\n- Allenamenti e presenze\n\nQuesta azione è IRREVERSIBILE.`)) return;
+  const confirmed = await confirm(`⚠️ Eliminare la stagione "${s?.nome}"?\n\nVerranno eliminati TUTTI i dati associati:\n- Squadre, rosa, staff\n- Partite, formazioni, eventi\n- Allenamenti e presenze\n\nQuesta azione è IRREVERSIBILE.`);
+  if (!confirmed) return;
   showLoading();
   try {
     await apiFetch(`/stagioni/${id}`, { method: 'DELETE' });
@@ -510,7 +560,7 @@ async function editCategory(id) {
 
 async function deleteCategory(id) {
   const cat = categories.find(c => c.id === id);
-  if (!confirm(`Eliminare la categoria "${cat?.nome}"?`)) return;
+  if (!await confirm(`Eliminare la categoria "${cat?.nome}"?`)) return;
   showLoading();
   try {
     await apiFetch(`/categorie/${id}`, { method: 'DELETE' });

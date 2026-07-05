@@ -108,7 +108,7 @@ function attachConfigListeners(config) {
   });
   document.querySelectorAll('.btn-del-config').forEach(b => {
     b.addEventListener('click', async () => {
-      if (!b.dataset.tid || !confirm('Eliminare?')) return;
+      if (!b.dataset.tid || !await confirm('Eliminare?')) return;
       await apiFetch('/allenamenti/config/' + b.dataset.tid, { method: 'DELETE' });
       loadTrainingSettings();
     });

@@ -1,7 +1,7 @@
 export function setupLayout() {
   const userStr = localStorage.getItem('yfm_user');
   const user = userStr ? JSON.parse(userStr) : null;
-  const guestStr = localStorage.getItem('yfm_guest');
+  const guestStr = sessionStorage.getItem('yfm_guest');
   const guest = guestStr ? JSON.parse(guestStr) : null;
   
   const isGuest = !!guest;

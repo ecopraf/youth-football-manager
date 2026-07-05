@@ -45,7 +45,7 @@ export function initRouter() {
   };
 
   window.YFM.isGuest = function() {
-    return !!localStorage.getItem('yfm_guest') && !localStorage.getItem('yfm_token');
+    return !!sessionStorage.getItem('yfm_guest');
   };
 
   window.YFM.isAdmin = function() {
@@ -76,7 +76,7 @@ export function initRouter() {
   };
 
   window.YFM.getGuestData = function() {
-    const guestStr = localStorage.getItem('yfm_guest');
+    const guestStr = sessionStorage.getItem('yfm_guest');
     return guestStr ? JSON.parse(guestStr) : null;
   };
 

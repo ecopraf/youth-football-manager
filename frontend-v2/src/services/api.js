@@ -74,8 +74,14 @@ export async function apiFetch(endpoint, options = {}) {
   const timeoutMs = options.timeout || 30000;
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   
-  // Recupera token se presente
-  const token = localStorage.getItem('yfm_token');
+  // Recupera token: guest (sessionStorage) ha priorità, poi login normale (localStorage)
+  const guestData = sessionStorage.getItem('yfm_guest');
+  let token;
+  if (guestData) {
+    try { token = JSON.parse(guestData).jwt; } catch { token = null; }
+  } else {
+    token = localStorage.getItem('yfm_token');
+  }
   const authHeaders = token ? { 'Authorization': 'Bearer ' + token } : {};
   
   try {
@@ -111,16 +117,14 @@ export async function verifyGuestToken(token) {
   return apiFetch(`/guest/${token}`);
 }
 
-// Salva sessione guest
+// Salva sessione guest (usa sessionStorage per non interferire con altre tab)
 export function setGuestSession(guestData) {
-  localStorage.setItem('yfm_guest', JSON.stringify(guestData));
-  localStorage.removeItem('yfm_token');
-  localStorage.removeItem('yfm_user');
+  sessionStorage.setItem('yfm_guest', JSON.stringify(guestData));
 }
 
 // Ottieni sessione guest
 export function getGuestSession() {
-  const guestStr = localStorage.getItem('yfm_guest');
+  const guestStr = sessionStorage.getItem('yfm_guest');
   if (!guestStr) return null;
   try {
     return JSON.parse(guestStr);
@@ -131,5 +135,5 @@ export function getGuestSession() {
 
 // Verifica se è sessione guest
 export function isGuest() {
-  return !!localStorage.getItem('yfm_guest') && !localStorage.getItem('yfm_token');
+  return !!sessionStorage.getItem('yfm_guest');
 }

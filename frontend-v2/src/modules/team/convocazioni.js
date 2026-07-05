@@ -116,7 +116,7 @@ export async function openConvocation(mid, readOnly) {
     const checks = document.querySelectorAll('#currentModal .conv-check:checked');
     if (checks.length > 20) { alert('⚠️ Max 20 convocabili!'); return; }
     if (checks.length < 11) { alert('⚠️ Minimo 11 calciatori!'); return; }
-    if (checks.length < 16 && !confirm('Solo ' + checks.length + ' convocati. Procedere?')) return;
+    if (checks.length < 16 && !await confirm('Solo ' + checks.length + ' convocati. Procedere?')) return;
     
     // Raccogli tutte le convocazioni in un array
     const convocazioni = [];

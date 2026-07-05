@@ -22,11 +22,8 @@ export default async function loadGuest() {
     const guestData = await verifyGuestToken(token);
     hideLoading();
     
-    // Salva sessione guest con JWT per accesso API
+    // Salva sessione guest con JWT per accesso API (sessionStorage, isolato per tab)
     setGuestSession(guestData);
-    if (guestData.jwt) {
-      localStorage.setItem('yfm_token', guestData.jwt);
-    }
     
     // Ricostruisci layout con sidebar guest
     const playerName = guestData.player_name || null;
