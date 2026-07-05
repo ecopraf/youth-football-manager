@@ -686,7 +686,7 @@ function renderPlayerReport(report) {
       
       <!-- Storico Eventi Raggruppato per partita -->
       <div>
-        <h3 style="margin:0 0 8px 0;font-size:14px;border-bottom:1px solid #ddd;padding-bottom:6px;">📋 Storico Eventi</h3>
+        <h3 style="margin:0 0 8px 0;font-size:14px;border-bottom:1px solid #ddd;padding-bottom:6px;">📋 Storico Gol & Assist</h3>
         ${gruppiOrdinati.length > 0 ? gruppiOrdinati.map(gruppo => `
           <div style="margin-bottom:14px;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
@@ -701,7 +701,7 @@ function renderPlayerReport(report) {
             <div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:#f8f9fa;border-radius:6px;">
               ${gruppo.eventi.map(e => `
                 <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:${e.tipo === 'GOAL' ? '#d4edda' : e.tipo === 'ASSIST' ? '#cce5ff' : e.tipo === 'YELLOW' ? '#fff3cd' : '#f8d7da'};border-radius:4px;font-size:11px;">
-                  <span style="font-weight:bold;color:#667eea;">${e.minuto}'</span>
+                  ${e.minuto != null ? `<span style="font-weight:bold;color:#667eea;">${e.minuto}'</span>` : ''}
                   <span>${getEventIcon(e.tipo)}</span>
                 </span>
               `).join('')}

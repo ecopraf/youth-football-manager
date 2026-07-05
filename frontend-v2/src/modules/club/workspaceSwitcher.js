@@ -74,6 +74,8 @@ export function populateWorkspaceSelect(workspaces) {
 
     // Ricarica squadre e naviga
     if (window.YFM.loadSquadre) await window.YFM.loadSquadre();
+    // Aggiorna badge notifiche per il nuovo workspace/squadra
+    import('../coach/notifications.js').then(m => m.updateNotifBadge()).catch(() => {});
     window.YFM.navigateTo(window.YFM.currentPage);
   };
 }

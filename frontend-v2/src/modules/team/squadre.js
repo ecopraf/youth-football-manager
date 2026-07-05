@@ -171,7 +171,7 @@ function renderSeasonSelector(seasons, selected) {
   sel.className = 'header-select';
   sel.style.cssText = 'font-size:13px;padding:6px 10px;min-width:100px;';
   sel.innerHTML = seasons.map(s => 
-    `<option value="${s.id}" ${s.id === selected?.id ? 'selected' : ''}>${s.nome}${s.attiva ? ' ✓' : ''}</option>`
+    `<option value="${s.id}" ${s.id === selected?.id ? 'selected' : ''}>${s.nome}${s.attiva ? ' ★' : ''}</option>`
   ).join('');
   
   sel.onchange = async () => {
@@ -182,6 +182,7 @@ function renderSeasonSelector(seasons, selected) {
     window.YFM.squadraId = null;
     await loadSquadre(sel.value);
     window.YFM.navigateTo(window.YFM.currentPage);
+    import('../coach/notifications.js').then(m => m.updateNotifBadge()).catch(() => {});
   };
   
   // Inserisci prima del selettore squadra

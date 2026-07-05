@@ -492,17 +492,19 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const matchMap = {};
       (matches || []).forEach(m => { matchMap[m.id] = m; });
 
-      const storico = eventi.map(e => {
-        const m = matchMap[e.match_id];
-        return {
-          tipo: e.tipo_evento,
-          minuto: e.minuto,
-          competizione: m?.competition?.nome || '',
-          giornata: m?.giornata || '',
-          partita: m?.avversario || '',
-          data: m?.data_ora || ''
-        };
-      });
+      const storico = eventi
+        .filter(e => e.tipo_evento === 'GOAL' || e.tipo_evento === 'ASSIST')
+        .map(e => {
+          const m = matchMap[e.match_id];
+          return {
+            tipo: e.tipo_evento,
+            minuto: e.minuto,
+            competizione: m?.competition?.nome || '',
+            giornata: m?.giornata || '',
+            partita: m?.avversario || '',
+            data: m?.data_ora || ''
+          };
+        });
 
       const gol = eventi.filter(e => e.tipo_evento === 'GOAL').length;
       const assist = assistCount;
