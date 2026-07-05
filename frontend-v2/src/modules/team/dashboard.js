@@ -54,7 +54,17 @@ export default async function loadDashboard() {
   }
   
   const s = window.YFM.getSquadra();
-  const prossimaPartita = partiteFuture && partiteFuture.length > 0 ? partiteFuture[0] : null;
+  const isToday = (d) => new Date(d).toDateString() === new Date().toDateString();
+  const isMatchDone = (m) => m.live_meta?.stato === 'fine' || m.stato === 'Terminata';
+  // Pick first match: today's finished match takes priority, otherwise first non-finished future match
+  let prossimaPartita = null;
+  if (partiteFuture && partiteFuture.length > 0) {
+    const todayFinished = partiteFuture.find(m => isToday(m.data_ora) && isMatchDone(m));
+    if (todayFinished) prossimaPartita = todayFinished;
+    else prossimaPartita = partiteFuture.find(m => !isMatchDone(m)) || null;
+  }
+  const isMatchToday = prossimaPartita && isToday(prossimaPartita.data_ora);
+  const isMatchFinished = prossimaPartita && isMatchDone(prossimaPartita);
   
   const isGuest = !!(window.YFM.guestSquadreAccesso && window.YFM.guestSquadreAccesso.length > 0);
   const hasEditAccess = !isGuest && (window.YFM.isAdmin() || window.YFM.hasRole('allenatore'));
@@ -83,17 +93,41 @@ export default async function loadDashboard() {
   // Helper function for conditional sections
   const renderProssimaPartitaSection = () => {
     if (prossimaPartita) {
-      const luogoHtml = prossimaPartita.luogo === 'Casa' ? ' · 🏠 Casa' : ' · ✈️ Trasferta';
-      const compHtml = prossimaPartita.competizione ? ' · 🏆 ' + prossimaPartita.competizione : '';
-      const btnHtml = (convButton || matchCenterBtn) ? '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">' + convButton + matchCenterBtn + '</div>' : '';
-      return '<div data-help="dashboard.prossimaPartita" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;margin-bottom:24px;color:white;border-radius:16px;box-shadow:0 8px 25px rgba(102,126,234,0.4);">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">' +
-        '<div>' +
-        '<div style="font-size:11px;font-weight:600;opacity:0.9;text-transform:uppercase;margin-bottom:4px;">⏱ Prossima Partita</div>' +
-        '<div style="font-size:18px;font-weight:bold;margin-bottom:4px;">' + (window.YFM.getWorkspaceLogo() ? '<img src="' + window.YFM.getWorkspaceLogo() + '" style="width:22px;height:22px;border-radius:50%;object-fit:contain;vertical-align:middle;margin-right:6px;" onerror="this.style.display=\'none\'">' : '') + prossimaPartita.avversario + '</div>' +
-        '<div style="font-size:12px;opacity:0.9;">📅 ' + formatDate(prossimaPartita.data_ora) + ' · 🕐 ' + formatTime(prossimaPartita.data_ora) + luogoHtml + compHtml + '</div>' +
-        '</div>' + btnHtml +
-        '</div></div>';
+      const luogoHtml = prossimaPartita.luogo === 'Casa' ? '🏠 Casa' : '✈️ Trasferta';
+      const comp = prossimaPartita.competizione || 'Amichevole';
+      const btnHtml = (convButton || matchCenterBtn) ? '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">' + convButton + matchCenterBtn + '</div>' : '';
+      const isLive = !!(prossimaPartita.live_meta && ['1t','2t','intervallo'].includes(prossimaPartita.live_meta.stato));
+      const isFinished = isMatchFinished && isMatchToday;
+      const wsLogo = window.YFM.getWorkspaceLogo();
+      const wsName = window.YFM.getSocietaName() || 'Noi';
+      const advName = prossimaPartita.avversario;
+      const advLogo = prossimaPartita.logo || null;
+      const isCasa = prossimaPartita.luogo === 'Casa';
+      const leftName = isCasa ? wsName : advName;
+      const rightName = isCasa ? advName : wsName;
+      const leftLogoSrc = isCasa ? wsLogo : advLogo;
+      const rightLogoSrc = isCasa ? advLogo : wsLogo;
+      const logoImg = (src) => src ? '<img src="' + src + '" style="width:52px;height:52px;border-radius:50%;object-fit:contain;background:rgba(255,255,255,0.1);" class="dash-match-logo" onerror="this.style.display=\'none\'">' : '<div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:24px;" class="dash-match-logo">⚽</div>';
+      const liveLabel = isLive ? '<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#ff4444;animation:pulse-live 1s infinite;"></span><span style="font-size:11px;font-weight:700;color:#ff4444;animation:blink-text 1s infinite;">LIVE</span></div>' : '';
+      const scoreLeft = isCasa ? (prossimaPartita.gol_casa ?? 0) : (prossimaPartita.gol_ospite ?? 0);
+      const scoreRight = isCasa ? (prossimaPartita.gol_ospite ?? 0) : (prossimaPartita.gol_casa ?? 0);
+      const scoreHtml = (isLive || isFinished)
+        ? '<div style="font-size:36px;font-weight:800;color:white;letter-spacing:2px;">' + scoreLeft + ' - ' + scoreRight + '</div>'
+        : '<div style="font-size:20px;color:rgba(255,255,255,0.5);font-weight:700;">VS</div>';
+      const bgGrad = isLive ? 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);' : isFinished ? 'background:linear-gradient(135deg,#1a1a2e 0%,#2d3748 100%);' : 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);';
+      const headerLabel = isLive ? '⚽ IN CORSO' : isFinished ? '✅ PARTITA ODIERNA' : '⏱ PROSSIMA PARTITA';
+      return '<style>@keyframes pulse-live{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}@keyframes blink-text{0%,100%{opacity:1}50%{opacity:.3}}</style>' +
+        '<div data-help="dashboard.prossimaPartita" style="' + bgGrad + 'padding:20px;margin-bottom:24px;color:white;border-radius:16px;box-shadow:0 8px 25px rgba(102,126,234,0.4);text-align:center;">' +
+        '<div style="font-size:11px;font-weight:600;opacity:0.8;text-transform:uppercase;margin-bottom:2px;">' + headerLabel + '</div>' +
+        '<div style="font-size:11px;opacity:0.6;margin-bottom:16px;">🏆 ' + comp + ' · ' + luogoHtml + '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:center;">' +
+        '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">' + logoImg(leftLogoSrc) + '<div style="font-size:14px;font-weight:700;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" class="dash-match-name">' + leftName + '</div></div>' +
+        '<div style="flex:0 0 auto;min-width:100px;display:flex;flex-direction:column;align-items:center;">' + liveLabel + scoreHtml + '</div>' +
+        '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">' + logoImg(rightLogoSrc) + '<div style="font-size:14px;font-weight:700;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" class="dash-match-name">' + rightName + '</div></div>' +
+        '</div>' +
+        '<div style="font-size:11px;opacity:0.6;margin-top:12px;">📅 ' + formatDate(prossimaPartita.data_ora) + ' · 🕐 ' + formatTime(prossimaPartita.data_ora) + '</div>' +
+        btnHtml +
+        '</div>';
     }
     const btnHtml = nuovaPartitaButton ? '<div style="margin-top:12px;">' + nuovaPartitaButton + '</div>' : '';
     return '<div style="padding:16px;margin-bottom:24px;text-align:center;border:2px dashed #ddd;border-radius:12px;">' +
@@ -375,6 +409,7 @@ export default async function loadDashboard() {
     '.classifica-table .cl-team img { width:20px; height:20px; border-radius:50%; object-fit:contain; flex-shrink:0; }' +
     '.classifica-row-highlight { background:#f0f4ff !important; font-weight:700; }' +
     '.classifica-row-highlight td { color:#667eea; }' +
+    '@media (min-width: 640px) { .dash-match-logo { width:68px !important; height:68px !important; font-size:30px !important; } .dash-match-name { font-size:16px !important; max-width:150px !important; } }' +
     '</style>';
 
   if (isGuest) {

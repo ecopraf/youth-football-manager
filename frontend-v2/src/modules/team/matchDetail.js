@@ -106,7 +106,8 @@ export async function openMatchDetail(mid) {
           html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
           html += '</div>';
           if (e.secondario) {
-            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + formatPlayerName(e.secondario) + '</div>';
+            const subLabel = e.tipo === 'SUB' ? '<strong>⬅️ Entra:</strong> ' : '<strong>🅰️ Assist:</strong> ';
+            html += '<div class="timeline-sub">' + subLabel + formatPlayerName(e.secondario) + '</div>';
           }
           html += '</div>';
           html += '</div>';
@@ -125,7 +126,8 @@ export async function openMatchDetail(mid) {
           html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
           html += '</div>';
           if (e.secondario) {
-            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + formatPlayerName(e.secondario) + '</div>';
+            const subLabel = e.tipo === 'SUB' ? '<strong>⬅️ Entra:</strong> ' : '<strong>🅰️ Assist:</strong> ';
+            html += '<div class="timeline-sub">' + subLabel + formatPlayerName(e.secondario) + '</div>';
           }
           html += '</div>';
           html += '</div>';
@@ -144,7 +146,8 @@ export async function openMatchDetail(mid) {
           html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
           html += '</div>';
           if (e.secondario) {
-            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + formatPlayerName(e.secondario) + '</div>';
+            const subLabel = e.tipo === 'SUB' ? '<strong>⬅️ Entra:</strong> ' : '<strong>🅰️ Assist:</strong> ';
+            html += '<div class="timeline-sub">' + subLabel + formatPlayerName(e.secondario) + '</div>';
           }
           html += '</div>';
           html += '</div>';
@@ -164,7 +167,8 @@ export async function openMatchDetail(mid) {
           html += '<span class="timeline-player">' + formatPlayerName(e.principale) + '</span>';
           html += '</div>';
           if (e.secondario) {
-            html += '<div class="timeline-sub"><strong>🅰️ Assist:</strong> ' + formatPlayerName(e.secondario) + '</div>';
+            const subLabel = e.tipo === 'SUB' ? '<strong>⬅️ Entra:</strong> ' : '<strong>🅰️ Assist:</strong> ';
+            html += '<div class="timeline-sub">' + subLabel + formatPlayerName(e.secondario) + '</div>';
           }
           html += '</div>';
           html += '</div>';
@@ -187,9 +191,11 @@ export async function openMatchDetail(mid) {
 function getEventConfig(tipo) {
   const configs = {
     'GOAL': { icon: '⚽', bgColor: '#27AE60' },
+    'SUBITO': { icon: '🥅', bgColor: '#E74C3C' },
     'ASSIST': { icon: '🅰️', bgColor: '#3498db' },
     'YELLOW': { icon: '🟨', bgColor: '#F39C12' },
-    'RED': { icon: '🟥', bgColor: '#E74C3C' }
+    'RED': { icon: '🟥', bgColor: '#E74C3C' },
+    'SUB': { icon: '🔄', bgColor: '#9B59B6' }
   };
   return configs[tipo] || { icon: '●', bgColor: '#999' };
 }

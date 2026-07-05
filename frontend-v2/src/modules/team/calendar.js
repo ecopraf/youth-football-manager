@@ -117,13 +117,19 @@ function renderCalendarPage(c, matches, stats) {
   const now = new Date();
   const isGuest = !!(window.YFM.guestSquadreAccesso && window.YFM.guestSquadreAccesso.length > 0);
   
-  // Separa future e passate
+  // Separa future e passate (le partite live vanno sempre nelle future)
+  const isMatchLive = (m) => !!(m.live_meta && ['1t','2t','intervallo'].includes(m.live_meta.stato));
   const futureMatches = matches
-    .filter(m => new Date(m.data_ora) >= now)
-    .sort((a, b) => new Date(a.data_ora) - new Date(b.data_ora));
+    .filter(m => new Date(m.data_ora) >= now || isMatchLive(m))
+    .sort((a, b) => {
+      // Live matches first, then by date
+      if (isMatchLive(a) && !isMatchLive(b)) return -1;
+      if (!isMatchLive(a) && isMatchLive(b)) return 1;
+      return new Date(a.data_ora) - new Date(b.data_ora);
+    });
   
   const pastMatches = matches
-    .filter(m => new Date(m.data_ora) < now)
+    .filter(m => new Date(m.data_ora) < now && !isMatchLive(m))
     .sort((a, b) => new Date(b.data_ora) - new Date(a.data_ora));
 
   // Prossima partita (la prima delle future)
@@ -149,6 +155,18 @@ function renderCalendarPage(c, matches, stats) {
     @keyframes blink-pallino {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.3; transform: scale(0.8); }
+    }
+    @keyframes live-border {
+      0%, 100% { border-left-color: #E74C3C; }
+      50% { border-left-color: #ff8a80; }
+    }
+    @keyframes live-btn-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(102,126,234,0.6); }
+      50% { box-shadow: 0 0 0 4px rgba(102,126,234,0.3); }
+    }
+    .btn-live-glow {
+      animation: live-btn-glow 1.5s ease-in-out infinite;
+      border: 2px solid #667eea !important;
     }
     .live-dot {
       width: 8px;
@@ -231,10 +249,16 @@ function renderCalendarPage(c, matches, stats) {
 
   // PROSSIMA PARTITA in evidenza
   if (nextMatch) {
+    const nextIsLive = !!(nextMatch.live_meta && ['1t','2t','intervallo'].includes(nextMatch.live_meta.stato));
+    const sectionBg = nextIsLive ? 'background:linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);' : 'background:linear-gradient(135deg, #E8F8F0 0%, #D4F1E0 100%);';
+    const sectionBorder = nextIsLive ? 'border-left:4px solid #E74C3C;' : 'border-left:4px solid #28a745;';
+    const sectionBadge = nextIsLive
+      ? '<span style="background:#E74C3C;color:white;padding:2px 10px;border-radius:10px;font-size:12px;animation:blink-text 1.5s infinite;">🟢 IN CORSO</span>'
+      : '<span style="background:#28a745;color:white;padding:2px 10px;border-radius:10px;font-size:12px;">🟢 PROSSIMA</span>';
     html += `
-      <div class="card" style="margin-bottom:20px;border-left:4px solid #28a745;background:linear-gradient(135deg, #E8F8F0 0%, #D4F1E0 100%);">
+      <div class="card" style="margin-bottom:20px;${sectionBorder}${sectionBg}">
         <div style="display:flex;align-items:center;margin-bottom:8px;">
-          <span style="background:#28a745;color:white;padding:2px 10px;border-radius:10px;font-size:12px;">🟢 PROSSIMA</span>
+          ${sectionBadge}
         </div>
         ${renderMatchCard(nextMatch, stats, true)}
       </div>`;
@@ -342,16 +366,19 @@ function attachCardListeners() {
 
 export function renderMatchCard(m, stats, isNext = false) {
   const r = (stats?.risultati || []).find(x => x.id === m.id);
-  const hasResult = !!(r || (m.gol_casa !== undefined && m.gol_trasferta !== undefined && m.stato === 'Terminata'));
+  const isLive = !!(m.live_meta && ['1t','2t','intervallo'].includes(m.live_meta.stato));
+  const hasResult = !!(r || (m.gol_casa !== undefined && m.gol_trasferta !== undefined && m.stato === 'Terminata') || isLive);
   const isPast = new Date(m.data_ora) < new Date();
   const isArchiviata = m.archiviata === true || m.archiviata === 'true';
 
-  const golFatti = r?.golFatti ?? (m.stato === 'Terminata' ? m.gol_casa : null) ?? null;
-  const golSubiti = r?.golSubiti ?? (m.stato === 'Terminata' ? m.gol_ospite : null) ?? null;
+  const golFatti = r?.golFatti ?? ((m.stato === 'Terminata' || isLive) ? (m.gol_casa ?? 0) : null);
+  const golSubiti = r?.golSubiti ?? ((m.stato === 'Terminata' || isLive) ? (m.gol_ospite ?? 0) : null);
 
   // === BORDO SINISTRO COLORATO PER ESITO ===
   let borderColor = '#dee2e6';
-  if (isArchiviata) {
+  if (isLive) {
+    borderColor = '#E74C3C'; // rosso pulsante per live
+  } else if (isArchiviata) {
     borderColor = '#8B7355';
   } else if (isPast && hasResult && golFatti !== null && golSubiti !== null) {
     if (golFatti > golSubiti) borderColor = '#28a745';
@@ -363,7 +390,7 @@ export function renderMatchCard(m, stats, isNext = false) {
     borderColor = '#667eea';
   }
 
-  const cardStyle = `border-left:4px solid ${borderColor};${isArchiviata ? 'opacity:0.7;background:#F9F8F6;' : ''}`;
+  const cardStyle = `border-left:4px solid ${borderColor};${isArchiviata ? 'opacity:0.7;background:#F9F8F6;' : ''}${isLive ? 'animation:live-border 1.5s ease-in-out infinite;' : ''}`;
 
   // === BADGE ===
   const luogoBadge = m.luogo === 'Casa'
@@ -375,9 +402,9 @@ export function renderMatchCard(m, stats, isNext = false) {
 
   // === RISULTATO ===
   let resultHtml = '';
-  if (!isPast && hasResult && golFatti !== null && golSubiti !== null) {
+  if (isLive && golFatti !== null && golSubiti !== null) {
     const color = golFatti > golSubiti ? '#27AE60' : golFatti === golSubiti ? '#F39C12' : '#E74C3C';
-    resultHtml = `<span style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchDetail('${m.id}')">`
+    resultHtml = `<span style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;" onclick="event.stopPropagation();window.YFM.openMatchCenter('${m.id}')">`
       + `<span class="live-dot" style="background:#E74C3C;"></span>`
       + `<span class="live-text" style="color:#E74C3C;font-size:10px;font-weight:bold;">LIVE</span>`
       + `<span style="font-size:20px;font-weight:bold;color:${color};">${golFatti} - ${golSubiti}</span>`
@@ -403,7 +430,8 @@ export function renderMatchCard(m, stats, isNext = false) {
     actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);
     actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
     actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
-    actionsHtml += makeBtn('⚽ Match Center', `window.YFM.openMatchCenter('${m.id}')`, false);
+    const mcGlow = isLive ? ' btn-live-glow' : '';
+    actionsHtml += `<button class="btn btn-secondary btn-small${mcGlow}" onclick="event.stopPropagation();window.YFM.openMatchCenter('${m.id}')">${isLive ? '<span class="pallino-blink"></span>' : ''}⚽ Match Center</button>`;
   } else {
     actionsHtml += makeBtn('📋 Conv.', `window.YFM.openConvocation('${m.id}',true)`, false);
     actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);

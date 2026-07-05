@@ -18,9 +18,27 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
 
   router.get('/api/squadre/:squadraId/partite-future', authMiddleware, async (req, res) => {
     try {
-      const now = new Date().toISOString();
-      const { data } = await supabase.from('match').select('*, competition:competition_id(id, nome)').eq('team_id', req.params.squadraId).gte('data_ora', now).order('data_ora', { ascending: true }).limit(5);
-      const result = (data || []).map(m => ({ ...m, competizione: m.competition?.nome || null }));
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const { data } = await supabase.from('match').select('*, competition:competition_id(id, nome, tipo)').eq('team_id', req.params.squadraId).gte('data_ora', todayStart).order('data_ora', { ascending: true }).limit(5);
+      // Logo lookup for opponents
+      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
+      const findLogo = (avv) => {
+        if (!avv || !logos) return null;
+        const lower = avv.toLowerCase().trim();
+        const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
+        for (const l of logos) {
+          const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
+          if (l.nome.toLowerCase() === lower || compact === lCompact) return l.logo_path;
+        }
+        for (const l of logos) {
+          const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
+          if (compact.includes(lCompact) || lCompact.includes(compact)) return l.logo_path;
+        }
+        return null;
+      };
+      const result = (data || []).map(m => ({ ...m, competizione: m.competition?.nome || null, tipoCompetizione: m.competition?.tipo || null, logo: findLogo(m.avversario) }));
       res.json(result);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });

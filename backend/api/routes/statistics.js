@@ -10,9 +10,11 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
   router.get('/api/squadre/:id/statistiche-complete', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, competition:competition_id(nome), giornata').eq('team_id', id).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora', { ascending: false });
+      const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, competition:competition_id(nome, tipo), giornata').eq('team_id', id).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora', { ascending: false });
 
       let vinte = 0, pareggiate = 0, perse = 0, golFatti = 0, golSubiti = 0;
+      // Stats ufficiali (solo Campionato e Coppa)
+      let vinteUff = 0, pareggUff = 0, perseUff = 0, gfUff = 0, gsUff = 0;
       const risultati = [];
 
       // Fetch logos for matching
@@ -61,11 +63,19 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         const gc = p.gol_casa || 0, go = p.gol_ospite || 0;
         golFatti += gc; golSubiti += go;
         if (gc > go) vinte++; else if (gc === go) pareggiate++; else perse++;
-        risultati.push({ id: p.id, dataOra: p.data_ora, avversario: p.avversario, luogo: p.luogo, competizione: p.competition?.nome || null, giornata: p.giornata || null, golFatti: gc, golSubiti: go, logo: findLogo(p.avversario) });
+        // Ufficiali: solo Campionato e Coppa (no Amichevole, no Torneo)
+        const tipo = (p.competition?.tipo || '').toLowerCase();
+        const isUfficiale = tipo === 'campionato' || tipo === 'coppa';
+        if (isUfficiale) {
+          gfUff += gc; gsUff += go;
+          if (gc > go) vinteUff++; else if (gc === go) pareggUff++; else perseUff++;
+        }
+        risultati.push({ id: p.id, dataOra: p.data_ora, avversario: p.avversario, luogo: p.luogo, competizione: p.competition?.nome || null, tipoCompetizione: p.competition?.tipo || null, giornata: p.giornata || null, golFatti: gc, golSubiti: go, logo: findLogo(p.avversario) });
       });
 
       const partiteGiocate = (partite || []).length;
-      res.json({ punti: vinte * 3 + pareggiate, partiteGiocate, vittorie: vinte, pareggi: pareggiate, sconfitte: perse, golFatti, golSubiti, differenzaReti: golFatti - golSubiti, risultati });
+      const partiteUfficiali = vinteUff + pareggUff + perseUff;
+      res.json({ punti: vinteUff * 3 + pareggUff, partiteGiocate, partiteUfficiali, vittorie: vinteUff, pareggi: pareggUff, sconfitte: perseUff, golFatti: gfUff, golSubiti: gsUff, differenzaReti: gfUff - gsUff, totale: { vittorie: vinte, pareggi: pareggiate, sconfitte: perse, golFatti, golSubiti }, risultati });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

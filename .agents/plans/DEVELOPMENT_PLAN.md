@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 15 Luglio 2026 | Versione: v3.15 | Commit: 9be406a
+> Ultimo aggiornamento: 15 Luglio 2026 | Versione: v3.15 | Commit: (pending push)
 
 ---
 
@@ -217,6 +217,9 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 |--------|-------------|
 | ba51bee | feat: Live Match Mode — bottone stato, minuto live, pre-fill drawer, durata per categoria |
 | 856acd8 | feat: Match Center hub + CORS fix + assist/rigore/autogol support |
+| 7c5b3a6 | feat: unified Match Center button in calendar + dashboard |
+| (pending) | feat: Match Center UX — autogol logic fix, SUB persistence, gol subito text field, live button blink, dashboard partita odierna, matchDetail SUB display fix |
+| (pending) | fix: statistiche filtrate per tipo competizione (solo campionato+coppa per stats ufficiali) |
 | (pending) | fix: WhatsApp link aggiunge +39 a numeri senza prefisso internazionale + template picker con modale card + fix salvataggio/caricamento programma seduta (upsert backend + load da DB) |
 | (pending) | feat: redesign stagioni — wizard con promozione categoria (U14→U15), tipo campionato, delete cascade, stagioni espandibili con card team |
 | (pending) | feat: workspace.nome_breve — nome compatto per sidebar/dashboard (DB + backend + frontend) |

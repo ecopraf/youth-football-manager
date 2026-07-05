@@ -22,13 +22,19 @@ export default async function loadMatchCenter() {
     const det = await apiFetch('/partite/' + mid + '/dettaglio');
     match = det.match;
     if (!match) throw new Error('Partita non trovata');
-    eventi = (det.eventi || []).map(e => ({
-      ...e, tipo: e.tipo_evento || e.tipo,
-      principale: e.player_name || '', principale_id: e.player_id || null,
-      assist_name: e.player_name_secondary || '', assist_id: e.player_id_secondario || null,
-      autogol: e.autogol || false, rigore: e.rigore || false,
-      minuto: e.minuto || ''
-    }));
+    eventi = (det.eventi || []).map(e => {
+      const tipo = e.tipo_evento || e.tipo;
+      return {
+        ...e, tipo,
+        principale: e.player_name || '', principale_id: e.player_id || null,
+        assist_name: tipo !== 'SUB' ? (e.player_name_secondary || '') : '',
+        assist_id: e.player_id_secondario || null,
+        sub_in: tipo === 'SUB' ? (e.player_name_secondary || '') : '',
+        sub_in_id: tipo === 'SUB' ? (e.player_id_secondario || null) : null,
+        autogol: e.autogol || false, rigore: e.rigore || false,
+        minuto: e.minuto || ''
+      };
+    });
 
     // Load players: formazione → convocati → rosa
     giocatori = await loadGiocatori(mid);
@@ -133,6 +139,13 @@ function updateMinuteBadge() {
   const min = calcLiveMinute();
   el.textContent = min ? min + "'" : '';
   el.style.display = min ? 'inline-block' : 'none';
+  // Blink live button when time exceeded
+  const btn = document.getElementById('mcLiveBtn');
+  if (!btn) return;
+  const half = getHalfDuration();
+  const meta = match?.live_meta;
+  const shouldBlink = (meta?.stato === '1t' && min >= half) || (meta?.stato === '2t' && min >= half * 2);
+  btn.classList.toggle('mc-live-btn-blink', shouldBlink);
 }
 
 function getTabs() {
@@ -200,8 +213,8 @@ function getStyles() {
 .mc-tl-badge{display:inline-block;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;margin-left:6px;vertical-align:middle;}
 .mc-tl-badge-rig{background:#3498DB20;color:#3498DB;border:1px solid #3498DB;}
 .mc-tl-badge-aut{background:#E74C3C20;color:#E74C3C;border:1px solid #E74C3C;}
-.mc-tl-menu{position:absolute;top:8px;right:8px;cursor:pointer;font-size:16px;color:#ccc;padding:4px;}
-.mc-tl-menu:hover{color:#333;}
+.mc-tl-menu{position:absolute;top:8px;right:8px;cursor:pointer;font-size:18px;color:#999;padding:6px;border-radius:4px;}
+.mc-tl-menu:hover{color:#333;background:#f0f0f0;}
 .mc-tl-dropdown{position:absolute;top:28px;right:8px;background:white;border:1px solid #eee;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:10;display:none;}
 .mc-tl-dropdown.open{display:block;}
 .mc-tl-dropdown button{display:block;width:100%;padding:8px 16px;border:none;background:none;text-align:left;font-size:12px;cursor:pointer;}
@@ -236,6 +249,8 @@ function getStyles() {
 .mc-save-result:hover{background:#219a52;}
 .mc-live-btn{padding:10px 24px;border:none;border-radius:10px;color:white;font-size:13px;font-weight:700;cursor:pointer;transition:opacity 0.15s;}
 .mc-live-btn:hover{opacity:0.85;}
+.mc-live-btn-blink{animation:live-btn-pulse 1s ease-in-out infinite;}
+@keyframes live-btn-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,0.6);}50%{transform:scale(1.05);box-shadow:0 0 0 8px rgba(255,255,255,0);}}
 .mc-tabs{display:flex;gap:4px;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:16px;overflow-x:auto;}
 .mc-tab{padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#888;cursor:pointer;border-radius:8px;white-space:nowrap;}
 .mc-tab:hover{background:#f5f5f5;color:#333;}
@@ -264,9 +279,9 @@ function getHeader(mid) {
   const teamLogo = window.YFM.getWorkspaceLogo();
   // Score SEMPRE calcolato dagli eventi (fonte di verità)
   // Se nessun evento ma risultato salvato in DB, usa quello
-  const hasEventiGol = eventi.some(e => e.tipo === 'GOAL' || e.tipo === 'SUBITO' || e.tipo === 'AUTOGOL');
-  const golCasa = hasEventiGol ? eventi.filter(e => e.tipo === 'GOAL' || e.tipo === 'AUTOGOL').length : (match.gol_casa ?? 0);
-  const golOspite = hasEventiGol ? eventi.filter(e => e.tipo === 'SUBITO').length : (match.gol_ospite ?? 0);
+  const hasEventiGol = eventi.some(e => e.tipo === 'GOAL' || e.tipo === 'SUBITO');
+  const golCasa = hasEventiGol ? eventi.filter(e => (e.tipo === 'GOAL' && !e.autogol)).length : (match.gol_casa ?? 0);
+  const golOspite = hasEventiGol ? eventi.filter(e => e.tipo === 'SUBITO' || (e.tipo === 'GOAL' && e.autogol)).length : (match.gol_ospite ?? 0);
   const isCasa = (match.luogo || '').toLowerCase() === 'casa';
   const leftName = isCasa ? teamName : match.avversario;
   const rightName = isCasa ? match.avversario : teamName;
@@ -331,7 +346,7 @@ function getQuickActions(mid) {
     { icon: '🟨', label: 'Ammonizione', tipo: 'YELLOW' },
     { icon: '🟥', label: 'Espulsione', tipo: 'RED' },
     { icon: '🔄', label: 'Sostituzione', tipo: 'SUB' },
-    { icon: '🥅', label: 'Rigore', tipo: 'RIGORE' },
+    { icon: '🥅', label: 'Gol Subito', tipo: 'SUBITO' },
     { icon: '🧤', label: 'Autogol', tipo: 'AUTOGOL' }
   ];
   const btns = actions.map(a => `<div class="mc-qa-btn" data-tipo="${a.tipo}"><span class="qa-icon">${a.icon}</span><span class="qa-label">${a.label}</span></div>`).join('');
@@ -348,8 +363,8 @@ function getTimeline(mid) {
     // Calcola score progressivo
     let runCasa = 0, runOspite = 0;
     sorted.forEach((e, i) => {
-      if (e.tipo === 'GOAL') runCasa++;
-      if (e.tipo === 'SUBITO') runOspite++;
+      if (e.tipo === 'GOAL' && !e.autogol) runCasa++;
+      if (e.tipo === 'SUBITO' || (e.tipo === 'GOAL' && e.autogol)) runOspite++;
       const cfg = EVT_CONFIG[e.tipo] || { icon: '●', label: e.tipo };
       const menuHtml = isReadOnly ? '' : `<span class="mc-tl-menu" data-idx="${i}">⋮</span><div class="mc-tl-dropdown" id="tldd${i}"><button data-edit="${i}">✏️ Modifica</button><button data-del="${i}">🗑️ Elimina</button></div>`;
       let subLine = '';
@@ -357,7 +372,7 @@ function getTimeline(mid) {
       if (e.tipo === 'SUB' && e.sub_in) subLine = `<div class="mc-tl-sub">⬅️ Entra: ${e.sub_in}</div>`;
       let badges = '';
       if (e.rigore) badges += '<span class="mc-tl-badge mc-tl-badge-rig">RIG</span>';
-      if (e.autogol || e.tipo === 'AUTOGOL') badges += '<span class="mc-tl-badge mc-tl-badge-aut">AUT</span>';
+      if (e.autogol) badges += '<span class="mc-tl-badge mc-tl-badge-aut">AUT</span>';
       html += `<div class="mc-tl-item">
         <div class="mc-tl-min">${e.minuto ? e.minuto + "'" : '—'}</div>
         <div class="mc-tl-icon">${cfg.icon}</div>
@@ -393,15 +408,15 @@ function getDrawer() {
           <div class="mc-tipo-card" data-t="YELLOW">🟨<span>Amm.</span></div>
           <div class="mc-tipo-card" data-t="RED">🟥<span>Esp.</span></div>
           <div class="mc-tipo-card" data-t="SUBITO">🥅<span>Subito</span></div>
-          <div class="mc-tipo-card" data-t="AUTOGOL">🧤<span>Autogol</span></div>
         </div>
       </div>
       <div class="form-group"><label>Minuto</label>
         <div class="mc-min-row"><button class="mc-min-btn" id="drMinDec">−</button><input type="number" id="drMin" min="1" max="120" placeholder="0"><button class="mc-min-btn" id="drMinInc">+</button><label class="mc-recup"><input type="checkbox" id="drRecup"> Rec.</label></div>
       </div>
-      <div class="form-group"><label>Giocatore</label><select id="drPlayer"><option value="">-- Seleziona --</option>${options}</select></div>
+      <div class="form-group" id="drPlayerGroup"><label>Giocatore</label><select id="drPlayer"><option value="">-- Seleziona --</option>${options}</select></div>
+      <div class="form-group" id="drSubitoGroup" style="display:none;"><label>Giocatore avversario (opzionale)</label><input type="text" id="drSubitoText" placeholder="es. N.9 Rossi" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:13px;"></div>
       <div class="form-group" id="drAssistGroup" style="display:none;"><label>Assist</label><select id="drAssist"><option value="">-- Nessuno --</option>${options}</select></div>
-      <div class="form-group" id="drFlagsGroup" style="display:none;"><label class="mc-recup"><input type="checkbox" id="drRigore"> Rigore</label></div>
+      <div class="form-group" id="drFlagsGroup" style="display:none;"><label class="mc-recup"><input type="checkbox" id="drRigore"> Rigore</label><label class="mc-recup" style="margin-left:12px;"><input type="checkbox" id="drAutogol"> Autogol</label></div>
     </div>
     <div id="drPanelSostituzione" style="display:none;">
       <div class="form-group"><label>Minuto</label>
@@ -477,6 +492,12 @@ function bindEvents(mid) {
       const panel = tab.dataset.dtab;
       document.getElementById('drPanelEvento').style.display = panel === 'evento' ? 'block' : 'none';
       document.getElementById('drPanelSostituzione').style.display = panel === 'sostituzione' ? 'block' : 'none';
+      // Pre-fill minute when switching tab
+      const liveMin = calcLiveMinute();
+      if (liveMin) {
+        const target = panel === 'sostituzione' ? 'drMin2' : 'drMin';
+        if (!document.getElementById(target).value) document.getElementById(target).value = liveMin;
+      }
     });
   });
 
@@ -487,8 +508,11 @@ function bindEvents(mid) {
       card.classList.add('selected');
       document.getElementById('drTipo').value = card.dataset.t;
       const isGoal = card.dataset.t === 'GOAL';
+      const isSubito = card.dataset.t === 'SUBITO';
       document.getElementById('drAssistGroup').style.display = isGoal ? 'block' : 'none';
       document.getElementById('drFlagsGroup').style.display = isGoal ? 'block' : 'none';
+      document.getElementById('drPlayerGroup').style.display = isSubito ? 'none' : 'block';
+      document.getElementById('drSubitoGroup').style.display = isSubito ? 'block' : 'none';
     });
   });
 
@@ -573,12 +597,17 @@ function openDrawer(tipo, editIdx = -1) {
 
   // Select tipo card
   if (!isSub) {
-    const effectiveTipo = tipo === 'RIGORE' ? 'GOAL' : tipo;
+    const effectiveTipo = (tipo === 'RIGORE' || tipo === 'AUTOGOL') ? 'GOAL' : tipo;
     document.querySelectorAll('.mc-tipo-card').forEach(c => c.classList.toggle('selected', c.dataset.t === effectiveTipo));
     document.getElementById('drTipo').value = effectiveTipo;
-    document.getElementById('drAssistGroup').style.display = effectiveTipo === 'GOAL' ? 'block' : 'none';
-    document.getElementById('drFlagsGroup').style.display = effectiveTipo === 'GOAL' ? 'block' : 'none';
+    const isGoal = effectiveTipo === 'GOAL';
+    const isSubito = effectiveTipo === 'SUBITO';
+    document.getElementById('drAssistGroup').style.display = isGoal ? 'block' : 'none';
+    document.getElementById('drFlagsGroup').style.display = isGoal ? 'block' : 'none';
+    document.getElementById('drPlayerGroup').style.display = isSubito ? 'none' : 'block';
+    document.getElementById('drSubitoGroup').style.display = isSubito ? 'block' : 'none';
     if (tipo === 'RIGORE') document.getElementById('drRigore').checked = true;
+    if (tipo === 'AUTOGOL') document.getElementById('drAutogol').checked = true;
   }
 
   // Pre-fill live minute
@@ -608,6 +637,10 @@ function closeDrawer() {
   document.getElementById('drSubOut').value = '';
   document.getElementById('drSubIn').value = '';
   document.getElementById('drRigore').checked = false;
+  document.getElementById('drAutogol').checked = false;
+  document.getElementById('drSubitoText').value = '';
+  document.getElementById('drPlayerGroup').style.display = 'block';
+  document.getElementById('drSubitoGroup').style.display = 'none';
   document.getElementById('drEditIdx').value = '-1';
 }
 
@@ -629,7 +662,7 @@ function saveEventFromDrawer(mid) {
       tipo: 'SUB', minuto,
       principale: gOut ? gOut.cognome + ' ' + gOut.nome : '', principale_id: outId,
       sub_in: gIn ? gIn.cognome + ' ' + gIn.nome : '', sub_in_id: inId,
-      assist_name: '', assist_id: null, autogol: false
+      assist_name: '', assist_id: inId || null, autogol: false
     };
   } else {
     const tipo = document.getElementById('drTipo').value;
@@ -642,7 +675,8 @@ function saveEventFromDrawer(mid) {
     let assist_name = '', assist_id = null;
 
     if (tipo === 'SUBITO') {
-      principale = 'Avversario';
+      const subitoText = document.getElementById('drSubitoText')?.value?.trim();
+      principale = subitoText || 'N.9 Avversario';
     } else if (playerId) {
       const g = giocatori.find(x => x.calciatoreId === playerId);
       principale = g ? g.cognome + ' ' + g.nome : '';
@@ -653,7 +687,7 @@ function saveEventFromDrawer(mid) {
       assist_name = a ? a.cognome + ' ' + a.nome : '';
       assist_id = assistId;
     }
-    evento = { tipo: tipo === 'AUTOGOL' ? 'GOAL' : tipo, minuto, principale, principale_id: principale_id || null, assist_name, assist_id: assist_id || null, autogol: tipo === 'AUTOGOL', rigore: (tipo === 'GOAL' && document.getElementById('drRigore')?.checked) || false };
+    evento = { tipo, minuto, principale, principale_id: principale_id || null, assist_name, assist_id: assist_id || null, autogol: (tipo === 'GOAL' && document.getElementById('drAutogol')?.checked) || false, rigore: (tipo === 'GOAL' && document.getElementById('drRigore')?.checked) || false };
   }
 
   if (editIdx >= 0) eventi[editIdx] = evento;
@@ -683,12 +717,12 @@ async function saveAll(mid) {
     });
 
     // Save result from events count (or manual score if no goal events)
-    const hasEventiGol = eventi.some(e => e.tipo === 'GOAL' || e.tipo === 'SUBITO' || e.tipo === 'AUTOGOL');
+    const hasEventiGol = eventi.some(e => e.tipo === 'GOAL' || e.tipo === 'SUBITO');
     const isCasa = (match.luogo || '').toLowerCase() === 'casa';
     let golCasa, golOspite;
     if (hasEventiGol) {
-      golCasa = eventi.filter(e => e.tipo === 'GOAL' || e.tipo === 'AUTOGOL').length;
-      golOspite = eventi.filter(e => e.tipo === 'SUBITO').length;
+      golCasa = eventi.filter(e => e.tipo === 'GOAL' && !e.autogol).length;
+      golOspite = eventi.filter(e => e.tipo === 'SUBITO' || (e.tipo === 'GOAL' && e.autogol)).length;
     } else {
       const leftScore = parseInt(document.getElementById('scoreLeft')?.textContent) || 0;
       const rightScore = parseInt(document.getElementById('scoreRight')?.textContent) || 0;
