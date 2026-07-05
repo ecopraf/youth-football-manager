@@ -85,7 +85,7 @@ const authMiddleware = async (req, res, next) => {
 };
 
 // ── PERMISSION HELPERS ──
-const { getUserCapabilities } = require('./api/helpers/capabilities');
+const { getUserCapabilities } = require('./helpers/capabilities');
 
 function hasPermission(user, modulo, livello = 'read') {
   if (user.is_superadmin) return true;
