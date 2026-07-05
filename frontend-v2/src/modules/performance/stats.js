@@ -19,18 +19,11 @@ export default async function loadStats() {
       statsCache = { id: squadraId, data: { stats, partiteGiocate }, ts: Date.now() };
     }
 
-    // Determina minutaggio per categoria
-    const squadra = (window.YFM.allSquadre || []).find(s => s.id === window.YFM.squadraId);
-    const categoria = (squadra?.category?.nome || squadra?.categoria || '').toLowerCase();
-    let minPerMatch = 70;
-    if (categoria.includes('17') || categoria.includes('18') || categoria.includes('19') || categoria.includes('20')) minPerMatch = 90;
-    else if (categoria.includes('16')) minPerMatch = 80;
-
     const statsArr = (stats || []).sort((a, b) => a.cognome.localeCompare(b.cognome));
 
-    const totGol = statsArr.reduce((s, p) => s + p.gol, 0);
-    const totAmm = statsArr.reduce((s, p) => s + p.ammonizioni, 0);
-    const totEsp = statsArr.reduce((s, p) => s + p.espulsioni, 0);
+    const totGol = statsArr.reduce((s, p) => s + (p.gol || 0), 0);
+    const totAmm = statsArr.reduce((s, p) => s + (p.ammonizioni || 0), 0);
+    const totEsp = statsArr.reduce((s, p) => s + (p.espulsioni || 0), 0);
     const diffidati = statsArr.filter(p => p.ammonizioni >= 4);
 
     let html = `<style>
@@ -40,6 +33,7 @@ export default async function loadStats() {
       .stats-table th:hover { background:#eef2ff; }
       .stats-table th.sorted-asc::after { content:' ▲'; font-size:9px; }
       .stats-table th.sorted-desc::after { content:' ▼'; font-size:9px; }
+      .stats-table tfoot td { font-weight:700; background:#f0f4ff; border-top:2px solid #667eea40; }
       .stats-table td { padding:7px 6px; text-align:center; border-bottom:1px solid #f1f5f9; }
       .stats-table td:first-child, .stats-table td:nth-child(2) { text-align:left; }
       .stats-table tr:hover { background:#f8faff; }
@@ -50,7 +44,7 @@ export default async function loadStats() {
       .stats-ruolo.attaccante { background:#ef444420; color:#dc2626; }
     </style>
     <h1 class="page-title">Dati & Statistiche</h1>
-    <p class="page-subtitle">Riepilogo stagionale • ${minPerMatch}' a partita</p>
+    <p class="page-subtitle">Riepilogo stagionale</p>
     <div class="widgets" style="margin-bottom:20px;">
       <div class="card widget"><div class="widget-value" style="color:#667eea;">${partiteGiocate || 0}</div><div class="widget-label">Partite</div></div>
       <div class="card widget"><div class="widget-value" style="color:#27AE60;">${totGol}</div><div class="widget-label">⚽ Gol</div></div>
@@ -75,7 +69,16 @@ export default async function loadStats() {
             <th data-col="ammonizioni">🟨</th>
             <th data-col="espulsioni">🟥</th>
           </tr></thead>
-          <tbody id="statsBody">${renderRows(statsArr, minPerMatch)}</tbody>
+          <tbody id="statsBody">${renderRows(statsArr)}</tbody>
+          <tfoot><tr>
+            <td style="text-align:left;">TOTALE (${statsArr.length})</td><td></td>
+            <td></td>
+            <td>${statsArr.reduce((s,p) => s + (p.minuti || 0), 0)}</td>
+            <td style="color:#27AE60;">${totGol}</td>
+            <td style="color:#3498DB;">${statsArr.reduce((s,p) => s + (p.assist || 0), 0)}</td>
+            <td style="color:#F39C12;">${totAmm}</td>
+            <td style="color:#E74C3C;">${totEsp}</td>
+          </tr></tfoot>
         </table>
       </div>
     </div>`;
@@ -93,12 +96,11 @@ export default async function loadStats() {
         document.querySelectorAll('#statsTable th').forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
         th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
         const sorted = [...statsArr].sort((a, b) => {
-          let va = col === 'minuti' ? a.presenze * minPerMatch : a[col];
-          let vb = col === 'minuti' ? b.presenze * minPerMatch : b[col];
+          let va = a[col], vb = b[col];
           if (typeof va === 'string') return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
           return sortDir === 'asc' ? va - vb : vb - va;
         });
-        document.getElementById('statsBody').innerHTML = renderRows(sorted, minPerMatch);
+        document.getElementById('statsBody').innerHTML = renderRows(sorted);
       });
     });
   } catch (err) {
@@ -106,15 +108,14 @@ export default async function loadStats() {
   }
 }
 
-function renderRows(arr, minPerMatch) {
+function renderRows(arr) {
   return arr.map(p => {
     const ruoloClass = (p.ruolo || '').toLowerCase().replace(/\s/g, '');
-    const min = p.presenze * minPerMatch;
     return `<tr>
       <td style="font-weight:500;">${p.cognome} ${p.nome}</td>
       <td><span class="stats-ruolo ${ruoloClass}">${p.ruolo || '-'}</span></td>
       <td>${p.presenze || '-'}</td>
-      <td>${min || '-'}</td>
+      <td>${p.minuti || '-'}</td>
       <td style="font-weight:${p.gol ? '700' : '400'};color:${p.gol ? '#27AE60' : '#ccc'};">${p.gol || '-'}</td>
       <td style="font-weight:${p.assist ? '700' : '400'};color:${p.assist ? '#3498DB' : '#ccc'};">${p.assist || '-'}</td>
       <td style="color:${p.ammonizioni ? '#F39C12' : '#ccc'};">${p.ammonizioni || '-'}</td>

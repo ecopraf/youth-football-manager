@@ -34,7 +34,7 @@ export async function loadPlayerDetail(container, playerId) {
     }
 
     try {
-      lastMatches = await apiFetch('/calciatori/' + playerId + '/last-matches?limit=10');
+      lastMatches = await apiFetch('/calciatori/' + playerId + '/last-matches?limit=10&squadraId=' + window.YFM.squadraId);
     } catch (e) {
       lastMatches = [];
     }
@@ -125,7 +125,16 @@ function renderPlayerDetail(container, data) {
       <td style="padding:8px;text-align:center;">${s.minuti || 0}</td>
       <td style="padding:8px;text-align:center;color:#27AE60;font-weight:600;">${s.gol || 0}</td>
       <td style="padding:8px;text-align:center;color:#2980B9;font-weight:600;">${s.assist || 0}</td>
+      <td style="padding:8px;text-align:center;color:#F39C12;">${s.ammonizioni || 0}</td>
+      <td style="padding:8px;text-align:center;color:#E74C3C;">${s.espulsioni || 0}</td>
     </tr>`).join('');
+
+  const careerTotals = (career || []).reduce((t, s) => {
+    t.partite += s.partite || 0; t.minuti += s.minuti || 0;
+    t.gol += s.gol || 0; t.assist += s.assist || 0;
+    t.ammonizioni += s.ammonizioni || 0; t.espulsioni += s.espulsioni || 0;
+    return t;
+  }, { partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 });
 
   const careerSection = career && career.length ? `
     <div class="card" data-help="player.carriera">
@@ -139,8 +148,19 @@ function renderPlayerDetail(container, data) {
             <th style="padding:8px;">Minuti</th>
             <th style="padding:8px;">Gol</th>
             <th style="padding:8px;">Assist</th>
+            <th style="padding:8px;">🟨</th>
+            <th style="padding:8px;">🟥</th>
           </tr></thead>
           <tbody>${careerRows}</tbody>
+          <tfoot><tr style="background:#f0f4ff;font-weight:700;">
+            <td style="padding:8px;">TOTALE</td><td></td>
+            <td style="padding:8px;text-align:center;">${careerTotals.partite}</td>
+            <td style="padding:8px;text-align:center;">${careerTotals.minuti}</td>
+            <td style="padding:8px;text-align:center;color:#27AE60;">${careerTotals.gol}</td>
+            <td style="padding:8px;text-align:center;color:#2980B9;">${careerTotals.assist}</td>
+            <td style="padding:8px;text-align:center;color:#F39C12;">${careerTotals.ammonizioni}</td>
+            <td style="padding:8px;text-align:center;color:#E74C3C;">${careerTotals.espulsioni}</td>
+          </tr></tfoot>
         </table>
       </div>
     </div>` : '<div class="card"><h3 class="section-title">Carriera</h3><p style="color:var(--gray);">Nessun dato carriera disponibile.</p></div>';
@@ -148,13 +168,13 @@ function renderPlayerDetail(container, data) {
   // Sezione ultime partite
   const matchRows = (lastMatches || []).map(m => `
     <tr>
-      <td style="padding:8px;">${safeFormatDate(m.data_ora)}</td>
+      <td style="padding:8px;">${safeFormatDate(m.data)}</td>
       <td style="padding:8px;">${m.avversario || '-'}</td>
       <td style="padding:8px;text-align:center;">${m.competizione || '-'}</td>
       <td style="padding:8px;text-align:center;">${m.minuti || 0}</td>
       <td style="padding:8px;text-align:center;color:#27AE60;">${m.gol || 0}</td>
       <td style="padding:8px;text-align:center;color:#2980B9;">${m.assist || 0}</td>
-      <td style="padding:8px;text-align:center;color:#E74C3C;">${m.cartellini_gialli || 0}/${m.cartellini_rossi || 0}</td>
+      <td style="padding:8px;text-align:center;">${m.cartellini_gialli ? '<span style="color:#F39C12;">' + m.cartellini_gialli + '</span>' : '0'}/${m.cartellini_rossi ? '<span style="color:#E74C3C;">' + m.cartellini_rossi + '</span>' : '0'}</td>
     </tr>`).join('');
 
   const lastMatchesSection = lastMatches && lastMatches.length ? `

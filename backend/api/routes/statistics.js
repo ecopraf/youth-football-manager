@@ -140,24 +140,36 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const { data: matches } = await supabase.from('match').select('id').eq('team_id', teamId).eq('stato', 'Terminata');
       const matchIds = (matches || []).map(m => m.id);
 
-      let formazioni = [], eventi = [];
+      let formazioni = [], eventi = [], statsRows = [];
       if (matchIds.length > 0) {
-        const { data: f } = await supabase.from('match_formation').select('match_id, team_player_id, is_starter').in('match_id', matchIds);
+        const { data: f } = await supabase.from('match_formation').select('match_id, team_player_id').in('match_id', matchIds);
         formazioni = f || [];
         const { data: e } = await supabase.from('match_event').select('tipo_evento, player_id').in('match_id', matchIds);
         eventi = e || [];
+        const tpIds = (tps || []).map(tp => tp.id);
+        if (tpIds.length > 0) {
+          const { data: ms } = await supabase.from('match_statistics').select('team_player_id, minuti_giocati').in('team_player_id', tpIds);
+          statsRows = ms || [];
+        }
       }
 
       const tpToPlayer = {}, playerStats = {};
       (tps || []).forEach(tp => {
         tpToPlayer[tp.id] = tp.player_id;
         const p = tp.player;
-        if (p) playerStats[p.id] = { id: p.id, nome: p.nome, cognome: p.cognome, ruolo: tp.ruolo_preferito || '', presenze: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
+        if (p) playerStats[p.id] = { id: p.id, nome: p.nome, cognome: p.cognome, ruolo: tp.ruolo_preferito || '', presenze: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
       });
 
-      formazioni.filter(f => f.is_starter).forEach(f => {
+      // Presenze: tutti in formazione (titolari + subentrati)
+      formazioni.forEach(f => {
         const pid = tpToPlayer[f.team_player_id];
         if (pid && playerStats[pid]) playerStats[pid].presenze++;
+      });
+
+      // Minutaggio reale da match_statistics
+      statsRows.forEach(ms => {
+        const pid = tpToPlayer[ms.team_player_id];
+        if (pid && playerStats[pid]) playerStats[pid].minuti += (ms.minuti_giocati || 0);
       });
 
       // Fallback: partite senza formazione → usa convocazioni
@@ -175,8 +187,8 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         if (!e.player_id || !playerStats[e.player_id]) return;
         if (e.tipo_evento === 'GOAL') playerStats[e.player_id].gol++;
         if (e.tipo_evento === 'ASSIST') playerStats[e.player_id].assist++;
-        if (e.tipo_evento === 'YELLOW') playerStats[e.player_id].ammonizioni++;
-        if (e.tipo_evento === 'RED') playerStats[e.player_id].espulsioni++;
+        if (e.tipo_evento === 'AMMONIZIONE' || e.tipo_evento === 'YELLOW') playerStats[e.player_id].ammonizioni++;
+        if (e.tipo_evento === 'ESPULSIONE' || e.tipo_evento === 'RED') playerStats[e.player_id].espulsioni++;
       });
 
       res.json({ stats: Object.values(playerStats), partiteGiocate: matchIds.length });

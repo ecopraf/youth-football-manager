@@ -41,6 +41,14 @@ function render() {
   if (!container) return;
   const activeSeason = seasons.find(s => s.attiva);
 
+  // Count rosa/staff per team
+  const teamCounts = {};
+  for (const sid of Object.keys(teamsBySeason)) {
+    for (const t of teamsBySeason[sid]) {
+      teamCounts[t.id] = { rosa: t._rosa_count ?? null, staff: t._staff_count ?? null };
+    }
+  }
+
   let expandedSeason = seasons.find(s => s.attiva)?.id || seasons[0]?.id || null;
 
   container.innerHTML = `
@@ -72,13 +80,20 @@ function render() {
             <div data-season-body="${s.id}" style="${isExpanded ? '' : 'display:none;'}padding:12px 16px;background:white;border-top:1px solid #eee;">
               ${sTeams.length === 0 ? '<p style="color:#999;font-size:13px;margin:0;">Nessun team in questa stagione</p>' : `
               <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
-                ${sTeams.map(t => `
+                ${sTeams.map(t => {
+                  const rc = teamCounts[t.id];
+                  return `
                   <div style="padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #e5e7eb;position:relative;">
                     <div style="font-weight:600;font-size:13px;">${t.category?.nome || t.nome}</div>
                     <div style="font-size:11px;color:#666;margin-top:2px;">${t.category?.tipo_campionato || ''}</div>
+                    <div style="font-size:11px;color:#888;margin-top:4px;display:flex;gap:10px;">
+                      ${rc?.rosa != null ? '<span>👥 ' + rc.rosa + '</span>' : ''}
+                      ${rc?.staff != null ? '<span>💼 ' + rc.staff + '</span>' : ''}
+                    </div>
                     <button class="btn btn-small btn-danger" data-del-team="${t.id}" data-season-id="${s.id}" style="position:absolute;top:8px;right:8px;padding:2px 6px;font-size:10px;">✖</button>
                   </div>
-                `).join('')}
+                `;
+                }).join('')}
               </div>`}
               <button class="btn btn-small" data-add-team-season="${s.id}" style="margin-top:10px;font-size:12px;">+ Aggiungi categoria</button>
             </div>
