@@ -26,7 +26,8 @@ export function initRouter() {
     staff: () => import('./modules/club/staff.js'),
     importCenter: () => import('./modules/import/importCenter.js'),
     workspaces: () => import('./modules/admin/workspaces.js'),
-    tournaments: () => import('./modules/coach/tournaments.js')
+    tournaments: () => import('./modules/coach/tournaments.js'),
+    matchCenter: () => import('./modules/team/matchCenter.js')
   };
 
   window.YFM.isAuthenticated = function() {
@@ -117,7 +118,7 @@ export function initRouter() {
     console.log('[ROUTER] navigateTo chiamato con:', page);
     
     const publicPages = ['login', 'guest'];
-    const guestAllowedPages = ['dashboard', 'calendar', 'stats', 'club', 'absence'];
+    const guestAllowedPages = ['dashboard', 'calendar', 'stats', 'club', 'absence', 'matchCenter'];
     
     if (!publicPages.includes(page)) {
       const isGuest = window.YFM.isGuest();

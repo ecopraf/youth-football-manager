@@ -92,8 +92,12 @@ window.YFM.openValutazioni = async (mid) => {
   m.openValutazioni(mid)
 }
 window.YFM.openResultForm = async (mid) => {
-  const m = await import('./modules/team/resultForm.js')
-  m.openResultForm(mid)
+  window.YFM.pageParams = { matchId: mid };
+  window.YFM.navigateTo('matchCenter');
+}
+window.YFM.openMatchCenter = async (mid) => {
+  window.YFM.pageParams = { matchId: mid };
+  window.YFM.navigateTo('matchCenter');
 }
 window.YFM.openPlayerDetail = function(playerId) {
   if (window.YFM.isGuest && window.YFM.isGuest()) return;

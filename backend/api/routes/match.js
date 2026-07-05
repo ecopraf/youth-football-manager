@@ -230,23 +230,42 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
           const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
           const coreAvv = coreTeamName(match.avversario);
           match.logo = null;
+          // Pass 1: exact/compact match (high confidence)
           for (const l of logos) {
             const lLower = l.nome.toLowerCase();
             const lCompact = stripAccents(l.nome_normalizzato).replace(/[^a-z0-9]/g, '');
-            if (lLower === lower || l.nome_normalizzato === norm || compact === lCompact || compact.includes(lCompact) || lCompact.includes(compact) || lower.includes(lLower) || lLower.includes(lower)) {
+            if (lLower === lower || l.nome_normalizzato === norm || compact === lCompact) {
               match.logo = l.logo_path; break;
             }
-            // Fallback: core name matching (handles abbreviations like Pol., C., Atl.)
-            const coreLogo = coreTeamName(l.nome);
-            if (coreAvv && coreLogo && (coreAvv === coreLogo || coreAvv.includes(coreLogo) || coreLogo.includes(coreAvv))) {
-              match.logo = l.logo_path; break;
+          }
+          // Pass 2: partial includes (medium confidence)
+          if (!match.logo) {
+            for (const l of logos) {
+              const lLower = l.nome.toLowerCase();
+              const lCompact = stripAccents(l.nome_normalizzato).replace(/[^a-z0-9]/g, '');
+              if (compact.includes(lCompact) || lCompact.includes(compact) || lower.includes(lLower) || lLower.includes(lower)) {
+                match.logo = l.logo_path; break;
+              }
+            }
+          }
+          // Pass 3: core name fallback (low confidence, only if no ambiguity)
+          if (!match.logo) {
+            for (const l of logos) {
+              const coreLogo = coreTeamName(l.nome);
+              if (coreAvv && coreLogo && coreAvv === coreLogo) {
+                match.logo = l.logo_path; break;
+              }
             }
           }
         }
       }
-      const { data: eventi } = await supabase.from('match_event').select('*, player:player_id(nome, cognome)').eq('match_id', req.params.matchId).order('minuto');
+      const { data: eventi } = await supabase.from('match_event').select('*, player:player_id(nome, cognome), player_secondary:player_id_secondario(nome, cognome)').eq('match_id', req.params.matchId).order('minuto');
       const eventiMapped = (eventi || []).map(e => ({
-        ...e, player_name: e.player ? e.player.cognome + ' ' + (e.player.nome ? e.player.nome.charAt(0) + '.' : '') : ''
+        ...e,
+        player_name: e.player ? e.player.cognome + ' ' + (e.player.nome ? e.player.nome.charAt(0) + '.' : '') : '',
+        player_name_secondary: e.player_secondary ? e.player_secondary.cognome + ' ' + (e.player_secondary.nome ? e.player_secondary.nome.charAt(0) + '.' : '') : '',
+        autogol: e.note === 'autogol',
+        rigore: e.note === 'rigore'
       }));
       res.json({ match, eventi: eventiMapped });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -267,7 +286,10 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       await supabase.from('match_event').delete().eq('match_id', req.params.matchId);
       if (eventi.length > 0) {
         const inserts = eventi.map(e => ({
-          match_id: req.params.matchId, tipo_evento: e.tipo, minuto: parseInt(e.minuto), player_id: e.principale_id || null
+          match_id: req.params.matchId, tipo_evento: e.tipo, minuto: parseInt(e.minuto) || null,
+          player_id: e.principale_id || null,
+          player_id_secondario: e.assist_id || null,
+          note: e.autogol ? 'autogol' : (e.rigore ? 'rigore' : null)
         }));
         const { error } = await supabase.from('match_event').insert(inserts);
         if (error) return res.status(400).json({ error: error.message });

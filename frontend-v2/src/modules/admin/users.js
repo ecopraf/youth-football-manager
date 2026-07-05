@@ -45,84 +45,107 @@ export default async function loadUsers() {
           <button class="modal-close-btn" id="closeModalBtn">&times;</button>
         </div>
         
-        <!-- Progress bar -->
-        <div style="display:flex;align-items:center;gap:8px;margin:16px 0 20px;padding:0 4px;">
-          <div id="step1Dot" style="width:32px;height:32px;border-radius:50%;background:#667eea;color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">1</div>
-          <div style="flex:1;height:3px;background:#e0e4f0;border-radius:2px;"><div id="progressBar" style="width:0%;height:100%;background:#667eea;border-radius:2px;transition:width .3s;"></div></div>
-          <div id="step2Dot" style="width:32px;height:32px;border-radius:50%;background:#e0e4f0;color:#999;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">2</div>
-        </div>
-        
-        <form id="userForm">
-          <!-- STEP 1: Dati Account -->
-          <div id="wizardStep1">
-            <p style="font-size:13px;color:#666;margin-bottom:16px;">Dati account</p>
-            
-            <!-- Collega a staff esistente -->
-            <div class="form-group" id="staffLinkGroup">
-              <label>👤 Collega a membro staff <span style="color:#999;font-size:11px;">(opzionale)</span></label>
-              <select id="staffLink" style="width:100%;">
-                <option value="">— Inserisci manualmente —</option>
-              </select>
-            </div>
-            
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <div class="form-group"><label>Nome *</label><input type="text" id="userNome" required></div>
-              <div class="form-group"><label>Cognome</label><input type="text" id="userCognome"></div>
-            </div>
-            <div class="form-group"><label>Email *</label><input type="email" id="userEmail" required></div>
-            <div class="form-group"><label>Password <span id="passwordHint" style="color:#999;font-size:11px;"></span></label><input type="password" id="userPassword" placeholder="Min. 6 caratteri"></div>
-            <div style="display:flex;justify-content:flex-end;margin-top:20px;">
-              <button type="button" class="btn btn-primary" id="btnNextStep">Avanti →</button>
-            </div>
+        <div class="modal-body">
+          <!-- Progress bar -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;">
+            <div id="step1Dot" style="width:32px;height:32px;border-radius:50%;background:#667eea;color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">1</div>
+            <div style="flex:1;height:3px;background:#e0e4f0;border-radius:2px;"><div id="progressBar" style="width:0%;height:100%;background:#667eea;border-radius:2px;transition:width .3s;"></div></div>
+            <div id="step2Dot" style="width:32px;height:32px;border-radius:50%;background:#e0e4f0;color:#999;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">2</div>
           </div>
           
-          <!-- STEP 2: Ruolo e Accessi -->
-          <div id="wizardStep2" style="display:none;">
-            <p style="font-size:13px;color:#666;margin-bottom:16px;">Profilo e accessi</p>
-            
-            <!-- Ruolo sistema (nascosto, derivato dal profilo) -->
-            <input type="hidden" id="userRuolo" value="staff">
-            
-            <!-- Profilo -->
-            <div class="form-group">
-              <label>Profilo *</label>
-              <select id="userProfilo">
-                ${Object.entries(PROFILI).map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('')}
-              </select>
+          <form id="userForm">
+            <!-- STEP 1: Dati Account -->
+            <div id="wizardStep1">
+              <p style="font-size:13px;color:#666;margin-bottom:16px;">Dati account</p>
+              
+              <!-- Collega a staff esistente -->
+              <div class="form-group" id="staffLinkGroup" style="margin-bottom:16px;">
+                <label>👤 Collega a membro staff <span style="color:#999;font-size:11px;">(opzionale)</span></label>
+                <select id="staffLink" style="width:100%;">
+                  <option value="">— Inserisci manualmente —</option>
+                </select>
+              </div>
+              
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div class="form-group"><label>Nome *</label><input type="text" id="userNome" required></div>
+                <div class="form-group"><label>Cognome</label><input type="text" id="userCognome"></div>
+              </div>
+              <div class="form-group" style="margin-bottom:16px;"><label>Email *</label><input type="email" id="userEmail" required></div>
+              
+              <!-- Password section -->
+              <div id="passwordSection">
+                <!-- In edit: badge + toggle cambio -->
+                <div id="passwordStatusBar" style="display:none;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;margin-bottom:12px;display:none;align-items:center;justify-content:space-between;">
+                  <span style="font-size:13px;color:#16a34a;font-weight:500;">🔒 Password impostata</span>
+                  <button type="button" id="btnTogglePassword" class="btn btn-small btn-secondary" style="font-size:12px;padding:4px 10px;">Cambia</button>
+                </div>
+                
+                <!-- Campi password (visibili in creazione, nascosti in edit finché non si clicca Cambia) -->
+                <div id="passwordFields">
+                  <div class="form-group" style="margin-bottom:8px;">
+                    <label>Password *</label>
+                    <input type="password" id="userPassword" placeholder="Min. 6 caratteri" autocomplete="new-password">
+                  </div>
+                  <div class="form-group">
+                    <label>Conferma password *</label>
+                    <input type="password" id="userPasswordConfirm" placeholder="Ripeti la password" autocomplete="new-password">
+                  </div>
+                </div>
+              </div>
+              
+              <div style="display:flex;justify-content:flex-end;margin-top:24px;">
+                <button type="button" class="btn btn-primary" id="btnNextStep">Avanti →</button>
+              </div>
             </div>
             
-            <!-- Workspace (solo superadmin) -->
-            <div class="form-group" id="workspaceGroup" style="display:none;">
-              <label>🏢 Workspace *</label>
-              <select id="userWorkspace"></select>
+            <!-- STEP 2: Ruolo e Accessi -->
+            <div id="wizardStep2" style="display:none;">
+              <p style="font-size:13px;color:#666;margin-bottom:16px;">Profilo e accessi</p>
+              
+              <!-- Ruolo sistema (nascosto, derivato dal profilo) -->
+              <input type="hidden" id="userRuolo" value="staff">
+              
+              <!-- Profilo -->
+              <div class="form-group" style="margin-bottom:16px;">
+                <label>Profilo *</label>
+                <select id="userProfilo">
+                  ${Object.entries(PROFILI).map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('')}
+                </select>
+              </div>
+              
+              <!-- Workspace (solo superadmin) -->
+              <div class="form-group" id="workspaceGroup" style="display:none;margin-bottom:16px;">
+                <label>🏢 Workspace *</label>
+                <select id="userWorkspace"></select>
+              </div>
+              
+              <!-- Categorie (checkbox) -->
+              <div class="form-group" id="categorieGroup" style="margin-bottom:16px;">
+                <label>📂 Categorie accessibili</label>
+                <div id="categorieCheckboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;"></div>
+                <small style="color:#666;margin-top:6px;display:block;">Nessuna selezione = accesso a tutte</small>
+              </div>
+              
+              <!-- Capabilities toggle -->
+              <div id="capabilitiesSection" style="padding:14px;background:#f8f9ff;border-radius:10px;border:1px solid #e0e4f0;">
+                <label style="font-weight:600;font-size:13px;color:#333;margin-bottom:10px;display:block;">🔐 Capabilities</label>
+                <div id="capabilitiesGrid" style="display:grid;gap:8px;"></div>
+              </div>
+              
+              <!-- Stato (solo in edit) -->
+              <div class="form-group" id="isActiveGroup" style="display:none;margin-top:16px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="userIsActive" checked> Account attivo</label>
+              </div>
+              
+              <input type="hidden" id="userId">
+              
+              <div style="display:flex;justify-content:space-between;margin-top:24px;">
+                <button type="button" class="btn btn-secondary" id="btnPrevStep">← Indietro</button>
+                <button type="submit" class="btn btn-primary">✓ Salva</button>
+              </div>
             </div>
-            
-            <!-- Categorie (checkbox) -->
-            <div class="form-group" id="categorieGroup">
-              <label>📂 Categorie accessibili</label>
-              <div id="categorieCheckboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;"></div>
-              <small style="color:#666;">Nessuna selezione = accesso a tutte</small>
-            </div>
-            
-            <!-- Capabilities toggle -->
-            <div id="capabilitiesSection" style="margin-top:16px;padding:14px;background:#f8f9ff;border-radius:10px;border:1px solid #e0e4f0;">
-              <label style="font-weight:600;font-size:13px;color:#333;margin-bottom:10px;display:block;">🔐 Capabilities</label>
-              <div id="capabilitiesGrid" style="display:grid;gap:8px;"></div>
-            </div>
-            
-            <!-- Stato (solo in edit) -->
-            <div class="form-group" id="isActiveGroup" style="display:none;margin-top:12px;">
-              <label><input type="checkbox" id="userIsActive" checked> Account attivo</label>
-            </div>
-            
-            <input type="hidden" id="userId">
-            
-            <div style="display:flex;justify-content:space-between;margin-top:20px;">
-              <button type="button" class="btn btn-secondary" id="btnPrevStep">← Indietro</button>
-              <button type="submit" class="btn btn-primary">✓ Salva</button>
-            </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
     
@@ -148,6 +171,7 @@ export default async function loadUsers() {
   document.getElementById('userForm')?.addEventListener('submit', handleSubmit);
   document.getElementById('btnNextStep')?.addEventListener('click', goToStep2);
   document.getElementById('btnPrevStep')?.addEventListener('click', goToStep1);
+  document.getElementById('btnTogglePassword')?.addEventListener('click', togglePasswordFields);
   
   document.getElementById('userProfilo')?.addEventListener('change', onProfiloChange);
   document.getElementById('userWorkspace')?.addEventListener('change', onWorkspaceChange);
@@ -168,15 +192,37 @@ function goToStep1() {
   document.getElementById('progressBar').style.width = '0%';
 }
 
+function togglePasswordFields() {
+  const fields = document.getElementById('passwordFields');
+  const btn = document.getElementById('btnTogglePassword');
+  if (fields.style.display === 'none') {
+    fields.style.display = 'block';
+    btn.textContent = 'Annulla';
+    document.getElementById('userPassword').value = '';
+    document.getElementById('userPasswordConfirm').value = '';
+  } else {
+    fields.style.display = 'none';
+    btn.textContent = 'Cambia';
+    document.getElementById('userPassword').value = '';
+    document.getElementById('userPasswordConfirm').value = '';
+  }
+}
+
 function goToStep2() {
-  // Validazione step 1
   const nome = document.getElementById('userNome').value.trim();
   const email = document.getElementById('userEmail').value.trim();
   if (!nome || !email) { alert('Nome e Email sono obbligatori'); return; }
   
   const isEdit = !!document.getElementById('userId').value;
   const password = document.getElementById('userPassword').value;
-  if (!isEdit && password.length < 6) { alert('Password deve avere almeno 6 caratteri'); return; }
+  const passwordConfirm = document.getElementById('userPasswordConfirm').value;
+  const passwordFieldsVisible = document.getElementById('passwordFields').style.display !== 'none';
+  
+  // Validazione password solo se i campi sono visibili e compilati
+  if (passwordFieldsVisible && (password || !isEdit)) {
+    if (password.length < 6) { alert('Password deve avere almeno 6 caratteri'); return; }
+    if (password !== passwordConfirm) { alert('Le password non coincidono'); return; }
+  }
   
   document.getElementById('wizardStep1').style.display = 'none';
   document.getElementById('wizardStep2').style.display = 'block';
@@ -437,7 +483,11 @@ async function openModal(userId = null) {
     
     document.getElementById('modalTitle').textContent = 'Modifica Utente';
     document.getElementById('isActiveGroup').style.display = 'block';
-    document.getElementById('passwordHint').textContent = '(lascia vuoto per non cambiare)';
+    
+    // Password: mostra status bar, nascondi campi
+    document.getElementById('passwordStatusBar').style.display = 'flex';
+    document.getElementById('passwordFields').style.display = 'none';
+    document.getElementById('btnTogglePassword').textContent = 'Cambia';
     
     document.getElementById('userNome').value = user.nome || '';
     document.getElementById('userCognome').value = user.cognome || '';
@@ -465,7 +515,11 @@ async function openModal(userId = null) {
   } else {
     document.getElementById('modalTitle').textContent = 'Nuovo Utente';
     document.getElementById('isActiveGroup').style.display = 'none';
-    document.getElementById('passwordHint').textContent = '(obbligatoria)';
+    
+    // Password: nascondi status bar, mostra campi
+    document.getElementById('passwordStatusBar').style.display = 'none';
+    document.getElementById('passwordFields').style.display = 'block';
+    
     document.getElementById('userProfilo').value = 'allenatore';
     window._pendingCaps = null;
     renderCategorieCheckboxes([]);
@@ -485,6 +539,7 @@ async function handleSubmit(e) {
   const cognome = document.getElementById('userCognome').value.trim();
   const email = document.getElementById('userEmail').value.trim();
   const password = document.getElementById('userPassword').value;
+  const passwordFieldsVisible = document.getElementById('passwordFields').style.display !== 'none';
   const ruolo = document.getElementById('userRuolo').value;
   const is_active = document.getElementById('userIsActive').checked;
   
@@ -502,7 +557,7 @@ async function handleSubmit(e) {
   
   try {
     const body = { nome, cognome, email, ruolo, categorie_accesso, workspace_id };
-    if (password) body.password = password;
+    if (passwordFieldsVisible && password) body.password = password;
     if (isEdit) body.is_active = is_active;
     
     // Permessi nel nuovo formato {profilo, capabilities}
