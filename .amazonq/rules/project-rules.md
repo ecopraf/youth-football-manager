@@ -240,6 +240,70 @@ I workspace attivi nel DB sono:
 
 ---
 
+## 🎨 Regole UI/UX (OBBLIGATORIO)
+
+### Principio generale
+
+Ogni elemento UI deve essere **coerente con il design system dell'app**. Mai usare componenti nativi del browser quando esiste un equivalente custom.
+
+### Divieti assoluti
+
+| ❌ Vietato | ✅ Usare invece |
+|---|---|
+| `alert()` | Toast notification (`showToast()`) o modal custom |
+| `prompt()` | Modal custom con input stilizzato |
+| `confirm()` | Modal custom con bottoni Annulla/Conferma |
+| Checkbox/radio nativi non stilizzati | Componenti con stile app (border-radius, colori brand) |
+
+### Modal custom — Template
+
+Quando serve un input dall'utente (es. minuto sostituzione, conferma azione):
+
+```javascript
+// Overlay centrato + card animata
+const overlay = document.createElement('div');
+overlay.className = 'modal-overlay-class'; // fixed, centered, backdrop blur
+overlay.innerHTML = `<div class="modal-card-class">
+  <div class="modal-icon">🔄</div>
+  <div class="modal-title">Titolo</div>
+  <!-- contenuto -->
+  <div class="modal-actions">
+    <button class="btn btn-secondary" id="cancelBtn">Annulla</button>
+    <button class="btn btn-primary" id="confirmBtn">Conferma</button>
+  </div>
+</div>`;
+```
+
+### Stile obbligatorio per modali/popup
+
+- Overlay: `position:fixed; background:rgba(0,0,0,0.5); z-index:2000; display:flex; align-items:center; justify-content:center`
+- Card: `background:white; border-radius:16px; padding:24px; max-width:360px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.3); animation:scale-in 0.2s`
+- Chiusura: click overlay, tasto Escape, bottone Annulla
+- Focus automatico sull'input principale
+
+### Layout e responsive
+
+- **Mobile-first**: ogni layout DEVE funzionare su mobile (320px+)
+- **Max-width contenuto**: usare `max-width` + `margin: 0 auto` per centrare sezioni
+- **Flex-direction**: `row` su desktop → `column` su mobile via media query
+- **Touch targets**: minimo 44x44px per bottoni/elementi interattivi su mobile
+- **No overflow nascosto**: verificare sempre che il contenuto non esca dal viewport su mobile
+
+### Colori e stile card
+
+- Card: `background:white; border-radius:12px; padding:16px; border:1px solid #eee`
+- Badge/chip colorati: usare sfondo pastello + testo scuro (es. `background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe`)
+- Mai grigio chiaro (`#f5f5f5`) per elementi interattivi — usare colori che si distinguano
+- Hover: leggero `transform` o `box-shadow`, mai solo cambio colore
+
+### Interazioni touch/mobile
+
+- **Drag & drop**: funziona solo su desktop. Su mobile usare **two-tap flow** (tap per selezionare → tap per posizionare)
+- **Selezione attiva**: evidenziare con colore brand (`#667eea` sfondo, testo bianco)
+- **Feedback visivo**: sempre mostrare stato selezionato/hover/attivo
+
+---
+
 ## 🗄️ Ottimizzazione DB (OBBLIGATORIO)
 
 ### Regola #1: UNA query per operazione batch
