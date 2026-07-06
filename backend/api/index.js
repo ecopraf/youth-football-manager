@@ -74,6 +74,11 @@ const authMiddleware = async (req, res, next) => {
       req.user = { isGuest: true, tipo: decoded.tipo, squadre_accesso: decoded.squadre_accesso || [], ruolo: 'guest', is_superadmin: false, permessi: {} };
       return next();
     }
+    // Superadmin hardcoded — nessuna query DB
+    if (decoded.is_superadmin && decoded.userId === 'superadmin') {
+      req.user = { id: 'superadmin', nome: 'Raffaele', cognome: 'Coppola', email: decoded.email, ruolo: 'admin', workspace_id: null, is_superadmin: true, permessi: {}, squadre_accesso: [], stagioni_accesso: [] };
+      return next();
+    }
     const { data: user } = await supabase.from('users').select('*').eq('id', decoded.userId).single();
     if (!user) return res.status(401).json({ error: 'Utente non trovato' });
     if (user.is_active === false) return res.status(401).json({ error: 'Account disattivato' });

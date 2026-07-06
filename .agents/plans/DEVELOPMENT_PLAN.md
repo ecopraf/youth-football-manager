@@ -216,6 +216,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| 7c70cb4 | fix: report giocatore filtro stagione/competizione + searchbox + fix nomi troncati |
 | 17f6fbf | feat: MC single entry point + formazione sub-tabs Iniziale/Finale + protezione temporale live (countdown + long-press override) |
 | (pending) | feat: training calendar — holidays italiane (Pasqua dinamica), mini counters presenti/assenti, auto-navigate ultimo mese con dati per stagioni passate |
 | (pending) | fix: Supabase 1000-row limit — batch fetch (20 IDs + .range(0,9999)) su /presenze e /summary |
