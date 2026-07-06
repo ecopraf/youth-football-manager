@@ -29,7 +29,7 @@
 | Convocazioni | ✅ | modules/team/convocazioni.js |
 | Formazione | ✅ | modules/team/formazione.js |
 | Distinta | ✅ | modules/team/distinta.js |
-| Match Center | ✅ | modules/team/matchCenter.js (hub partita: eventi live, formazione interattiva, sostituzioni drag/tap, modulo_finale tracking) |
+| Match Center | ✅ | modules/team/matchCenter.js (single entry point partita: eventi live, formazione con sub-tabs Iniziale/Finale, sostituzioni drag/tap, modulo_finale tracking, protezione temporale transizioni, override emergenza long-press 3s) |
 | Allenamenti | ✅ | modules/coach/training*.js, routes/training.js |
 | Statistiche | ✅ | modules/performance/stats.js, routes/statistics.js |
 | Report | ✅ | modules/performance/reports.js |
@@ -216,6 +216,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| 17f6fbf | feat: MC single entry point + formazione sub-tabs Iniziale/Finale + protezione temporale live (countdown + long-press override) |
 | (pending) | feat: training calendar — holidays italiane (Pasqua dinamica), mini counters presenti/assenti, auto-navigate ultimo mese con dati per stagioni passate |
 | (pending) | fix: Supabase 1000-row limit — batch fetch (20 IDs + .range(0,9999)) su /presenze e /summary |
 | (pending) | feat: summary season-aware — rileva stagione passata (>30gg da ultimo allenamento), nasconde Ass.Sett., mostra range stagione completo |

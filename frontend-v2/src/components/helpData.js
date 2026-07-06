@@ -32,6 +32,8 @@ export const PAGE_HELP = {
     items: [
       'Click sulla card per il dettaglio partita',
       'Pallini colorati indicano lo stato di completamento',
+      'Usa ⚽ Match Center per gestire la partita live (eventi, formazione, note)',
+      'Convoca i giocatori e genera la Distinta dai bottoni dedicati',
       'Archivia le partite concluse per bloccare modifiche'
     ]
   },
@@ -42,6 +44,20 @@ export const PAGE_HELP = {
       'Inserisci risultato, formazione, eventi e convocazioni',
       'Archivia quando tutto è completo',
       'Genera il report PDF dalla sezione Report'
+    ]
+  },
+  matchCenter: {
+    title: '⚽ Match Center',
+    desc: 'Centro di comando della partita: gestisci live, eventi, formazione e note da un unico punto.',
+    items: [
+      'Usa le Azioni Rapide per registrare gol, ammonizioni e sostituzioni',
+      'Il bottone di stato gestisce il flusso: Inizio 1°T → Fine 1°T → Inizio 2°T → Fine Partita',
+      'Il bottone si disabilita per il tempo regolamentare (35-45 min) per evitare click accidentali',
+      'In emergenza (partita sospesa, arbitro fischia prima): tieni premuto 3 secondi per forzare',
+      'Tab Formazione: mostra Iniziale e Finale (con sub-tabs) se ci sono state sostituzioni',
+      'Tab Note: appunti con timestamp automatico del minuto live',
+      'Max 7 sostituzioni per partita (contatore visibile)',
+      'Salva per confermare risultato, eventi e note'
     ]
   },
   stats: {

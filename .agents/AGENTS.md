@@ -140,9 +140,9 @@ backend/scripts/
 | `team` | Squadra | season_id, category_id, classifica_url |
 | `player` | Giocatore | - |
 | `team_player` | Associazione giocatore-squadra | team_id, player_id, aggregato |
-| `match` | Partita | team_id, competition_id, live_meta JSONB |
+| `match` | Partita | team_id, competition_id, live_meta JSONB, formazione_meta JSONB |
 | `match_event` | Eventi (GOAL, ASSIST, YELLOW...) | match_id, player_id, player_id_secondario |
-| `match_formation` | Formazione | match_id, team_player_id |
+| `match_formation` | Formazione (is_starter = fonte verità) | match_id, team_player_id, ordine |
 | `match_statistics` | Statistiche dettagliate | match_id, team_player_id |
 | `convocation` | Convocazioni | match_id, team_player_id |
 | `training` | Sessioni allenamento | team_id |
@@ -183,6 +183,42 @@ backend/scripts/
 4. Verifica fix
 5. Commit + Push
 ```
+
+---
+
+## ⚽ Match Center — Lifecycle Partita
+
+Match Center è il **single entry point** per tutte le operazioni partita (formazione, eventi, note).
+
+### Flusso Live
+```
+▶️ Inizio 1°T → ⏸️ Fine 1°T → ▶️ Inizio 2°T → 🏁 Fine Partita
+```
+
+### Protezione Temporale
+| Transizione | Tempo minimo | Categoria |
+|---|---|---|
+| Fine 1°T | 35/40/45 min | U14-15 / U16 / U17+ |
+| Inizio 2°T | 10 min (intervallo fisso) | Tutte |
+| Fine Partita | 35/40/45 min | U14-15 / U16 / U17+ |
+
+- Bottone **disabilitato** (grigio) finché non passa il tempo minimo
+- **Countdown** sotto il bottone: "⏸️ Intervallo · X min" o "⏳ Abilitato tra X min"
+- **Override emergenza**: long-press 3 secondi → conferma "Forzare transizione?"
+
+### Formazione
+- `match_formation.is_starter` = fonte di verità formazione iniziale
+- `formazione_meta.modulo` = modulo iniziale, `formazione_meta.modulo_finale` = se cambiato durante partita
+- Partite terminate con sostituzioni: tab Formazione mostra sub-tabs **Finale** / **Iniziale**
+- Durante live: formazione cristallizzata, solo `modulo_finale` aggiornabile
+
+### Sostituzioni
+- Max 7 per partita (contatore visibile "🔄 X/7")
+- Drawer filtra: "Esce" = giocatori in campo, "Entra" = panchina
+
+### Calendario
+- Bottoni: **Convoca**, **Distinta**, **⚽ Match Center**
+- Partite archiviate: MC in read-only
 
 ---
 
