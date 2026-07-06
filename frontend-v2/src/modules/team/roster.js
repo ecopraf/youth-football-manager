@@ -757,10 +757,21 @@ function renderImportPreview(data, modal) {
 
   const years = Object.keys(data.byYear).filter(y => y !== 'sconosciuto').sort();
   
-  // Calcola categoria suggerita per ogni anno (stagione 25-26)
-  const currentSeasonEnd = 2026;
+  // Calcola anno fine stagione: dalla stagione selezionata o dalla data corrente
+  // Stagione calcistica: 01/07 → 30/06. Dopo il 30/06 si è già nella nuova stagione.
+  let seasonEndYear;
+  const squadra = window.YFM.getSquadra();
+  const seasonName = squadra._stagione || ((window.YFM.accessibleSeasons || []).find(s => s.id === window.YFM.currentSeasonId) || {}).nome || '';
+  const yearMatch = seasonName.match(/(\d{4})\/(\d{2,4})/);
+  if (yearMatch) {
+    seasonEndYear = yearMatch[2].length === 2 ? 2000 + parseInt(yearMatch[2]) : parseInt(yearMatch[2]);
+  } else {
+    // Fallback: se oggi >= 01/07, siamo nella stagione che finisce l'anno prossimo
+    const now = new Date();
+    seasonEndYear = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+  }
   const suggestCategory = (year) => {
-    const age = currentSeasonEnd - parseInt(year);
+    const age = seasonEndYear - parseInt(year);
     return `Under ${age}`;
   };
 
