@@ -125,13 +125,14 @@ function renderPitchReadOnly(match, giocatoriConvocati, formazione, allPlayers) 
 function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers) {
   const savedModulo = formazione?.modulo || '4-3-3';
   const titolariIds = formazione ? [formazione.portiere, ...(formazione.difensori||[]), ...(formazione.centrocampisti||[]), ...(formazione.attaccanti||[])].filter(Boolean) : [];
+  const isLive = !!(match.live_meta?.stato);
 
   let html = `<style>${PITCH_CSS}</style>`;
   html += `<p style="margin-bottom:8px;font-size:13px;color:#666;">Trascina i giocatori dalla lista al campo.</p>`;
-  html += `<div class="modulo-select" id="moduloSelect" data-help="formazione.modulo">`;
+  html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;"><div class="modulo-select" id="moduloSelect" data-help="formazione.modulo" style="margin-bottom:0;">`;
   Object.keys(MODULI).forEach(k => { html += `<button class="modulo-btn${k===savedModulo?' active':''}" data-modulo="${k}">${k}</button>`; });
-  html += `</div><div class="pitch-container">`;
-  html += `<div class="pitch-panel"><div class="pitch" id="pitchField" data-help="formazione.campo">${buildPitchSlots(savedModulo, titolariIds, allPlayers, formazione?.positions)}</div>`;
+  html += `</div>${!isLive ? '<button id="recallLastForm" style="padding:6px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#666;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.2s;">📋 Ultima</button>' : ''}</div>`;
+  html += `<div class="pitch-container"><div class="pitch-panel"><div class="pitch" id="pitchField" data-help="formazione.campo">${buildPitchSlots(savedModulo, titolariIds, allPlayers, formazione?.positions)}</div>`;
   html += `<div id="pitchCount" style="text-align:center;margin-top:8px;font-size:12px;font-weight:600;color:#667eea;">${titolariIds.length}/11 titolari</div></div>`;
   html += `<div class="pitch-roster" id="rosterList" data-help="formazione.roster"><h5 style="margin:0 0 8px;font-size:12px;color:#333;">📋 Convocati</h5>`;
   giocatoriConvocati.forEach(g => {
@@ -157,11 +158,39 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
       const totalSlots = MODULI[currentModulo].rows.reduce((a,b)=>a+b,0);
       const newA = {}; Object.values(slotAssignments).forEach((pid,i) => { if(i<totalSlots) newA[i]=pid; });
       slotAssignments = newA; customPositions = {};
+      resetRecallBtn();
       refreshPitch();
     });
   });
 
   setupDragDrop(slotAssignments, allPlayers, refreshPitch, customPositions);
+
+  // Recall last formation button
+  const recallBtn = document.getElementById('recallLastForm');
+  function resetRecallBtn() {
+    if (!recallBtn) return;
+    recallBtn.textContent = '📋 Ultima';
+    recallBtn.style.border = '1px solid #ddd';
+    recallBtn.style.color = '#666';
+    recallBtn.disabled = false;
+  }
+  recallBtn?.addEventListener('click', async () => {
+    try {
+      recallBtn.disabled = true; recallBtn.textContent = '⏳ Carico...';
+      const res = await apiFetch('/squadre/' + window.YFM.squadraId + '/ultima-formazione');
+      const arr = res?.formazione || [];
+      if (arr.length === 0) { resetRecallBtn(); alert('Nessuna formazione precedente trovata'); return; }
+      const meta = res?.meta || {};
+      const newModulo = meta.modulo || '4-3-3';
+      currentModulo = newModulo;
+      document.querySelectorAll('#moduloSelect .modulo-btn').forEach(b => b.classList.toggle('active', b.dataset.modulo === newModulo));
+      slotAssignments = {};
+      arr.forEach((f, i) => { slotAssignments[i] = f.calciatoreId; });
+      customPositions = meta.positions || {};
+      refreshPitch();
+      recallBtn.textContent = '✅ Ultima'; recallBtn.style.border = '1px solid #27AE60'; recallBtn.style.color = '#27AE60';
+    } catch(e) { resetRecallBtn(); alert('Errore: ' + e.message); }
+  });
 
   function refreshPitch() {
     const field = document.getElementById('pitchField');

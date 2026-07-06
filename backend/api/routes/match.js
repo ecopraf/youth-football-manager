@@ -242,10 +242,42 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  // GET ultima formazione INIZIALE schierata per la squadra
+  router.get('/api/squadre/:teamId/ultima-formazione', authMiddleware, async (req, res) => {
+    try {
+      const { data: lastMatch } = await supabase.from('match').select('id, formazione_meta')
+        .eq('team_id', req.params.teamId).eq('stato', 'Terminata')
+        .order('data_ora', { ascending: false }).limit(1).single();
+      if (!lastMatch) return res.json({ formazione: [], meta: {} });
+      const { data } = await supabase.from('match_formation').select('*, team_player:team_player_id(player_id)')
+        .eq('match_id', lastMatch.id).eq('is_starter', true);
+      const result = (data || []).map(f => ({
+        ...f, calciatoreId: f.team_player?.player_id || f.team_player_id,
+        posizione: 'Titolare', numeroMaglia: f.numero_maglia
+      }));
+      const meta = lastMatch.formazione_meta || {};
+      res.json({ formazione: result, meta: { modulo: meta.modulo || '4-3-3', positions: meta.positions || {} } });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   router.put('/api/partite/:matchId/formazione', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
     try {
       const { formazione, modulo, positions } = req.body;
       if (!formazione || !Array.isArray(formazione)) return res.status(400).json({ error: 'Dati mancanti' });
+
+      // Check if match is live — block formation rewrite
+      const { data: matchCheck } = await supabase.from('match').select('live_meta, formazione_meta').eq('id', req.params.matchId).single();
+      const isLive = !!(matchCheck?.live_meta?.stato);
+      if (isLive) {
+        // Partita live: solo aggiornamento modulo_finale, non toccare match_formation
+        if (modulo) {
+          const existingMeta = matchCheck.formazione_meta || {};
+          const newMeta = { ...existingMeta, modulo_finale: modulo, positions: positions || existingMeta.positions || {} };
+          await supabase.from('match').update({ formazione_meta: newMeta }).eq('id', req.params.matchId);
+        }
+        return res.json({ success: true, saved: 0, locked: true });
+      }
+
       const playerIds = formazione.map(f => f.calciatoreId);
       const { data: tps } = await supabase.from('team_player').select('id, player_id').in('player_id', playerIds);
       const playerToTp = {};
@@ -262,7 +294,8 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         if (error) return res.status(400).json({ error: error.message });
       }
       if (modulo || positions) {
-        await supabase.from('match').update({ formazione_meta: { modulo: modulo || '4-3-3', positions: positions || {} } }).eq('id', req.params.matchId);
+        const newMeta = { modulo: modulo || '4-3-3', positions: positions || {} };
+        await supabase.from('match').update({ formazione_meta: newMeta }).eq('id', req.params.matchId);
       }
       res.json({ success: true, saved: inserts.length });
     } catch (err) { res.status(500).json({ error: err.message }); }

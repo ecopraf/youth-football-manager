@@ -64,6 +64,8 @@ export default async function loadMatchCenter() {
     if (formazioneData) {
       eventi.filter(e => e.tipo === 'SUB' && e.principale_id && e.sub_in_id)
         .forEach(e => applySubToFormation(e.principale_id, e.sub_in_id));
+      // Use modulo_finale if match ended with a different module
+      if (apiMeta.modulo_finale) formazioneData.modulo = apiMeta.modulo_finale;
     }
 
     // Check read-only
@@ -82,6 +84,7 @@ export default async function loadMatchCenter() {
       if (formazioneData) {
         eventi.filter(e => e.tipo === 'SUB' && e.principale_id && e.sub_in_id)
           .forEach(e => applySubToFormation(e.principale_id, e.sub_in_id));
+        if (apiMeta.modulo_finale) formazioneData.modulo = apiMeta.modulo_finale;
       }
       render(c, mid);
       document.querySelector('.mc-tab[data-tab="formation"]')?.click();
@@ -225,7 +228,7 @@ function getLiveFormation(mid) {
   if (!formazioneData) {
     return `<div class="mc-qa-card" style="text-align:center;padding:20px;color:#888;">
       <p style="margin:0 0 8px;">Nessuna formazione</p>
-      <button class="btn btn-primary btn-small" onclick="window.YFM.openFormazioneForm('${mid}')">🏟️ Crea</button>
+      ${!isReadOnly ? '<button class="btn btn-primary btn-small" onclick="window.YFM.openFormazioneForm(\'' + mid + '\')">🏟️ Crea</button>' : ''}
     </div>`;
   }
   const modulo = formazioneData.modulo || '4-3-3';
@@ -547,6 +550,7 @@ function getDrawer() {
       <div class="form-group" id="drFlagsGroup" style="display:none;"><label class="mc-recup"><input type="checkbox" id="drRigore"> Rigore</label><label class="mc-recup" style="margin-left:12px;"><input type="checkbox" id="drAutogol"> Autogol</label></div>
     </div>
     <div id="drPanelSostituzione" style="display:none;">
+      <div id="drSubCounter" style="text-align:center;padding:8px;margin-bottom:8px;border-radius:8px;background:#f0f4ff;font-size:12px;font-weight:600;color:#667eea;"></div>
       <div class="form-group"><label>Minuto</label>
         <div class="mc-min-row"><button class="mc-min-btn" id="drMinDec2">−</button><input type="number" id="drMin2" min="1" max="120" placeholder="0"><button class="mc-min-btn" id="drMinInc2">+</button></div>
       </div>
@@ -634,6 +638,7 @@ function bindEvents(mid) {
       const panel = tab.dataset.dtab;
       document.getElementById('drPanelEvento').style.display = panel === 'evento' ? 'block' : 'none';
       document.getElementById('drPanelSostituzione').style.display = panel === 'sostituzione' ? 'block' : 'none';
+      refreshDrawerSelects(panel === 'sostituzione');
       // Pre-fill minute when switching tab
       const liveMin = calcLiveMinute();
       if (liveMin) {
@@ -714,6 +719,8 @@ function bindEvents(mid) {
       const res = await apiFetch('/partite/' + mid + '/live-action', { method: 'PUT', body: JSON.stringify({ action }) });
       match.live_meta = res.live_meta;
       if (action === 'end_match') match.stato = 'Terminata';
+      const amIdx = (window.YFM.allMatches||[]).findIndex(m => m.id === mid);
+      if (amIdx >= 0) { window.YFM.allMatches[amIdx].live_meta = res.live_meta; if (action === 'end_match') window.YFM.allMatches[amIdx].stato = 'Terminata'; }
       render(document.getElementById('pageContent'), mid);
     } catch (err) { alert('Errore: ' + err.message); }
   });
@@ -725,6 +732,42 @@ function bindEvents(mid) {
 }
 
 // ── DRAWER LOGIC ──
+function getInCampoOptions() {
+  if (!formazioneData) return giocatori;
+  const ids = getCurrentTitolari();
+  return giocatori.filter(g => ids.includes(g.calciatoreId));
+}
+
+function getPanchinaOptions() {
+  if (!formazioneData) return giocatori;
+  const ids = getCurrentRiserve();
+  return giocatori.filter(g => ids.includes(g.calciatoreId));
+}
+
+function buildOptions(list, placeholder) {
+  return `<option value="">${placeholder}</option>` + list.map(g => `<option value="${g.calciatoreId}">${g.cognome} ${g.nome}</option>`).join('');
+}
+
+function refreshDrawerSelects(isSub) {
+  const inCampo = getInCampoOptions();
+  const panchina = getPanchinaOptions();
+  if (!isSub) {
+    document.getElementById('drPlayer').innerHTML = buildOptions(inCampo, '-- Seleziona --');
+    document.getElementById('drAssist').innerHTML = buildOptions(inCampo, '-- Nessuno --');
+  }
+  document.getElementById('drSubOut').innerHTML = buildOptions(inCampo, '-- Seleziona --');
+  document.getElementById('drSubIn').innerHTML = buildOptions(panchina, '-- Seleziona --');
+  // Update sub counter
+  const subCount = eventi.filter(e => e.tipo === 'SUB').length;
+  const counter = document.getElementById('drSubCounter');
+  if (counter) {
+    const remaining = 7 - subCount;
+    counter.textContent = `🔄 ${subCount}/7 sostituzioni effettuate` + (remaining <= 2 ? ` — ${remaining} rimaste` : '');
+    counter.style.color = remaining <= 0 ? '#E74C3C' : remaining <= 2 ? '#F39C12' : '#667eea';
+    counter.style.background = remaining <= 0 ? '#fef2f2' : remaining <= 2 ? '#fffbeb' : '#f0f4ff';
+  }
+}
+
 function openDrawer(tipo, editIdx = -1) {
   const isSub = tipo === 'SUB';
   document.getElementById('drTipo').value = isSub ? 'SUB' : tipo;
@@ -736,6 +779,9 @@ function openDrawer(tipo, editIdx = -1) {
   document.querySelector(`.mc-drawer-tab[data-dtab="${isSub ? 'sostituzione' : 'evento'}"]`)?.classList.add('active');
   document.getElementById('drPanelEvento').style.display = isSub ? 'none' : 'block';
   document.getElementById('drPanelSostituzione').style.display = isSub ? 'block' : 'none';
+
+  // Refresh select options based on who's on pitch
+  refreshDrawerSelects(isSub);
 
   // Select tipo card
   if (!isSub) {
@@ -793,6 +839,9 @@ function saveEventFromDrawer(mid) {
   let evento;
 
   if (activeTab === 'sostituzione') {
+    // Check max 7 subs
+    const currentSubs = eventi.filter(e => e.tipo === 'SUB').length;
+    if (editIdx < 0 && currentSubs >= 7) { alert('Limite massimo di 7 sostituzioni raggiunto'); return; }
     const minuto = parseInt(document.getElementById('drMin2').value) || null;
     const outId = document.getElementById('drSubOut').value;
     const inId = document.getElementById('drSubIn').value;
