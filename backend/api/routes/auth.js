@@ -82,6 +82,14 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
 
   router.get('/api/auth/me', authMiddleware, async (req, res) => {
     try {
+      // Superadmin hardcoded
+      if (req.user.is_superadmin && req.user.id === 'superadmin') {
+        return res.json({
+          id: 'superadmin', nome: 'Raffaele', cognome: 'Coppola', email: 'coppola.raffaele@gmail.com',
+          ruolo: 'admin', workspace_id: null,
+          is_superadmin: true, categorie_accesso: [], stagioni_accesso: [], permessi: {}
+        });
+      }
       const { data: user } = await supabase.from('users')
         .select('id, nome, cognome, email, ruolo, workspace_id, is_superadmin, permessi, squadre_accesso')
         .eq('id', req.user.id).single();
