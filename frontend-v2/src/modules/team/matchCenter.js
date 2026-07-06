@@ -10,6 +10,7 @@ let eventi = [];
 let giocatori = [];
 let allPlayers = [];
 let formazioneData = null;
+let formazioneIniziale = null;
 let moduloIniziale = null;
 let isReadOnly = false;
 let liveInterval = null;
@@ -60,6 +61,11 @@ export default async function loadMatchCenter() {
     formazioneData = convertApiFormation(apiFormazione, allPlayers, apiMeta);
     moduloIniziale = formazioneData?.modulo || null;
 
+    // Save initial formation before applying subs
+    if (formazioneData) {
+      formazioneIniziale = { modulo: formazioneData.modulo, portiere: formazioneData.portiere, difensori: [...(formazioneData.difensori||[])], centrocampisti: [...(formazioneData.centrocampisti||[])], attaccanti: [...(formazioneData.attaccanti||[])], riserve: [...(formazioneData.riserve||[])], positions: formazioneData.positions };
+    }
+
     // Apply existing SUB events to formation (show current state)
     if (formazioneData) {
       eventi.filter(e => e.tipo === 'SUB' && e.principale_id && e.sub_in_id)
@@ -82,6 +88,7 @@ export default async function loadMatchCenter() {
       formazioneData = convertApiFormation(apiFormazione, allPlayers, apiMeta);
       if (!moduloIniziale) moduloIniziale = formazioneData?.modulo || null;
       if (formazioneData) {
+        formazioneIniziale = { modulo: formazioneData.modulo, portiere: formazioneData.portiere, difensori: [...(formazioneData.difensori||[])], centrocampisti: [...(formazioneData.centrocampisti||[])], attaccanti: [...(formazioneData.attaccanti||[])], riserve: [...(formazioneData.riserve||[])], positions: formazioneData.positions };
         eventi.filter(e => e.tipo === 'SUB' && e.principale_id && e.sub_in_id)
           .forEach(e => applySubToFormation(e.principale_id, e.sub_in_id));
         if (apiMeta.modulo_finale) formazioneData.modulo = apiMeta.modulo_finale;
@@ -137,11 +144,38 @@ function render(c, mid) {
 
 // ── LIVE MODE UTILITIES ──
 function getHalfDuration() {
-  // Detect from category name: U14/U15=35, U16=40, U17+=45
   const cat = (window.YFM.getSquadra()?.category?.nome || '').toLowerCase();
   if (cat.includes('14') || cat.includes('15')) return 35;
   if (cat.includes('16')) return 40;
   return 45;
+}
+
+function getIntervalDuration() {
+  return 10; // 10 min fissi per tutte le categorie
+}
+
+function getTransitionInfo() {
+  const meta = match?.live_meta;
+  if (!meta?.stato) return { allowed: true, remaining: 0 };
+  const now = Date.now();
+  const half = getHalfDuration();
+  const interval = getIntervalDuration();
+  if (meta.stato === '1t' && meta.start_1t) {
+    const elapsed = (now - new Date(meta.start_1t).getTime()) / 60000;
+    const remaining = Math.max(0, half - elapsed);
+    return { allowed: remaining <= 0, remaining: Math.ceil(remaining) };
+  }
+  if (meta.stato === 'intervallo' && meta.end_1t) {
+    const elapsed = (now - new Date(meta.end_1t).getTime()) / 60000;
+    const remaining = Math.max(0, interval - elapsed);
+    return { allowed: remaining <= 0, remaining: Math.ceil(remaining) };
+  }
+  if (meta.stato === '2t' && meta.start_2t) {
+    const elapsed = (now - new Date(meta.start_2t).getTime()) / 60000;
+    const remaining = Math.max(0, half - elapsed);
+    return { allowed: remaining <= 0, remaining: Math.ceil(remaining) };
+  }
+  return { allowed: true, remaining: 0 };
 }
 
 function calcLiveMinute() {
@@ -173,8 +207,8 @@ function getLiveStateLabel() {
 
 function startLiveInterval() {
   const meta = match?.live_meta;
-  if (!meta || meta.stato === 'fine' || meta.stato === 'intervallo') return;
-  if (meta.stato === '1t' || meta.stato === '2t') {
+  if (!meta || meta.stato === 'fine') return;
+  if (meta.stato === '1t' || meta.stato === '2t' || meta.stato === 'intervallo') {
     updateMinuteBadge();
     liveInterval = setInterval(updateMinuteBadge, 10000);
   }
@@ -193,6 +227,27 @@ function updateMinuteBadge() {
   const meta = match?.live_meta;
   const shouldBlink = (meta?.stato === '1t' && min >= half) || (meta?.stato === '2t' && min >= half * 2);
   btn.classList.toggle('mc-live-btn-blink', shouldBlink);
+  // Update disabled state + countdown
+  updateLiveBtnState();
+}
+
+function updateLiveBtnState() {
+  const btn = document.getElementById('mcLiveBtn');
+  const countdown = document.getElementById('mcLiveCountdown');
+  if (!btn) return;
+  const { allowed, remaining } = getTransitionInfo();
+  const meta = match?.live_meta;
+  btn.disabled = !allowed;
+  btn.classList.toggle('mc-live-btn-disabled', !allowed);
+  if (countdown) {
+    if (!allowed) {
+      countdown.textContent = meta?.stato === 'intervallo' ? `⏸️ Intervallo · ${remaining} min` : `⏳ Abilitato tra ${remaining} min`;
+      countdown.style.display = 'block';
+    } else {
+      countdown.textContent = '';
+      countdown.style.display = 'none';
+    }
+  }
 }
 
 function getTabs() {
@@ -231,15 +286,57 @@ function getLiveFormation(mid) {
       ${!isReadOnly ? '<button class="btn btn-primary btn-small" onclick="window.YFM.openFormazioneForm(\'' + mid + '\')">🏟️ Crea</button>' : ''}
     </div>`;
   }
-  const modulo = formazioneData.modulo || '4-3-3';
+
+  const hasSubs = eventi.some(e => e.tipo === 'SUB');
+  const isTerminata = match.stato === 'Terminata' || match.archiviata;
+
+  // Show sub-tabs (Iniziale/Finale) for terminated matches with subs
+  if (isTerminata && hasSubs && formazioneIniziale) {
+    return getFormationWithTabs(mid);
+  }
+
+  // Default: single formation view (current state)
+  return getSingleFormationView(mid, formazioneData, !isReadOnly);
+}
+
+function getFormationWithTabs(mid) {
+  let html = `<div class="mc-qa-card mc-formation-card">`;
+  html += `<div style="display:flex;gap:4px;margin-bottom:12px;">`;
+  html += `<button class="mc-form-subtab active" data-ftab="finale" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#667eea;color:white;">Finale</button>`;
+  html += `<button class="mc-form-subtab" data-ftab="iniziale" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;background:#f3f4f6;color:#666;">Iniziale</button>`;
+  html += `</div>`;
+  html += `<div id="mcFormFinale">${renderFormationPitch(formazioneData)}</div>`;
+  html += `<div id="mcFormIniziale" style="display:none;">${renderFormationPitch(formazioneIniziale)}</div>`;
+  html += `</div>`;
+  return html;
+}
+
+function renderFormationPitch(fData) {
+  const modulo = fData.modulo || '4-3-3';
+  const titIds = [fData.portiere, ...(fData.difensori||[]), ...(fData.centrocampisti||[]), ...(fData.attaccanti||[])].filter(Boolean);
+  const riserveIds = fData.riserve || [];
+  let html = `<div class="mc-form-header"><span class="mc-form-modulo">${modulo}</span></div>`;
+  html += `<div class="mc-form-layout">`;
+  html += `<div class="mc-form-pitch"><div class="pitch">${buildPitchSlots(modulo, titIds, allPlayers, fData.positions)}</div></div>`;
+  html += `<div class="mc-form-bench"><div class="mc-bench-title">🪑 Panchina (${riserveIds.length})</div>`;
+  riserveIds.forEach(id => {
+    const g = allPlayers.find(p => p.id === id);
+    if (g) html += `<div class="mc-bench-item">${g.numero_maglia||'?'} ${g.cognome}</div>`;
+  });
+  html += `</div></div>`;
+  return html;
+}
+
+function getSingleFormationView(mid, fData, canEdit) {
+  const modulo = fData.modulo || '4-3-3';
   const titolariIds = getCurrentTitolari();
   const riserveIds = getCurrentRiserve();
   let html = `<div class="mc-qa-card mc-formation-card">`;
   html += `<div class="mc-form-header"><span class="mc-form-modulo">${modulo}</span>`;
-  if (!isReadOnly) html += `<button class="btn btn-secondary btn-small mc-form-edit" onclick="window.YFM.openFormazioneForm('${mid}')">✏️</button>`;
+  if (canEdit) html += `<button class="btn btn-secondary btn-small mc-form-edit" onclick="window.YFM.openFormazioneForm('${mid}')">✏️</button>`;
   html += `</div>`;
   html += `<div class="mc-form-layout">`;
-  html += `<div class="mc-form-pitch"><div class="pitch" id="mcPitchLive">${buildPitchSlots(modulo, titolariIds, allPlayers, formazioneData.positions)}</div></div>`;
+  html += `<div class="mc-form-pitch"><div class="pitch" id="mcPitchLive">${buildPitchSlots(modulo, titolariIds, allPlayers, fData.positions)}</div></div>`;
   html += `<div class="mc-form-bench" id="mcBenchLive"><div class="mc-bench-title">🪑 Panchina (${riserveIds.length})</div>`;
   riserveIds.forEach(id => {
     const g = allPlayers.find(p => p.id === id);
@@ -358,7 +455,9 @@ function getStyles() {
 .mc-sub-input:focus{border-color:#667eea;}
 .mc-sub-actions{display:flex;gap:10px;justify-content:center;}
 .mc-live-btn{padding:10px 24px;border:none;border-radius:10px;color:white;font-size:13px;font-weight:700;cursor:pointer;transition:opacity 0.15s;}
-.mc-live-btn:hover{opacity:0.85;}
+.mc-live-btn:hover:not(:disabled){opacity:0.85;}
+.mc-live-btn-disabled{opacity:0.4;cursor:not-allowed;filter:grayscale(0.5);}
+.mc-live-countdown{font-size:11px;color:#888;margin-top:6px;text-align:center;}
 .mc-live-btn-blink{animation:live-btn-pulse 1s ease-in-out infinite;}
 @keyframes live-btn-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,0.6);}50%{transform:scale(1.05);box-shadow:0 0 0 8px rgba(255,255,255,0);}}
 .mc-tabs{display:flex;gap:4px;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:16px;overflow-x:auto;}
@@ -467,7 +566,13 @@ function getLiveButton() {
   const { label, action } = getLiveStateLabel();
   if (!action) return '<div style="margin-top:12px;"><span class="mc-badge" style="background:#27AE60;color:white;">✅ Partita terminata</span></div>';
   const colors = { start_1t: '#667eea', end_1t: '#F39C12', start_2t: '#667eea', end_match: '#E74C3C' };
-  return `<div style="margin-top:12px;"><button class="mc-live-btn" id="mcLiveBtn" data-action="${action}" style="background:${colors[action]};">${label}</button></div>`;
+  const { allowed, remaining } = getTransitionInfo();
+  const meta = match?.live_meta;
+  const disabledAttr = !allowed ? ' disabled' : '';
+  const disabledClass = !allowed ? ' mc-live-btn-disabled' : '';
+  const countdownText = !allowed ? (meta?.stato === 'intervallo' ? `⏸️ Intervallo · ${remaining} min` : `⏳ Abilitato tra ${remaining} min`) : '';
+  const countdownHtml = !allowed ? `<div id="mcLiveCountdown" class="mc-live-countdown">${countdownText}</div>` : '<div id="mcLiveCountdown" class="mc-live-countdown" style="display:none;"></div>';
+  return `<div style="margin-top:12px;"><button class="mc-live-btn${disabledClass}" id="mcLiveBtn" data-action="${action}" style="background:${colors[action]};"${disabledAttr}>${label}</button>${countdownHtml}</div>`;
 }
 
 function getQuickActions(mid) {
@@ -590,7 +695,7 @@ function bindEvents(mid) {
       document.querySelectorAll('.mc-tab-panel').forEach(p => p.classList.remove('mc-tab-active'));
       const panelMap = { events: 'mcBodyEvents', formation: 'mcBodyFormation', notes: 'mcBodyNotes' };
       document.getElementById(panelMap[t])?.classList.add('mc-tab-active');
-      if (t === 'formation') bindLiveFormation(mid);
+      if (t === 'formation') { bindLiveFormation(mid); bindFormationSubtabs(); }
       if (t === 'notes') bindNotesPanel(mid);
     });
   });
@@ -710,20 +815,37 @@ function bindEvents(mid) {
   // Save result button
   document.getElementById('mcSave')?.addEventListener('click', () => saveAll(mid));
 
-  // Live button
-  document.getElementById('mcLiveBtn')?.addEventListener('click', async () => {
-    const action = document.getElementById('mcLiveBtn').dataset.action;
-    const confirmMsg = action === 'end_match' ? 'Confermi Fine Partita?' : null;
-    if (confirmMsg && !await confirm(confirmMsg)) return;
-    try {
-      const res = await apiFetch('/partite/' + mid + '/live-action', { method: 'PUT', body: JSON.stringify({ action }) });
-      match.live_meta = res.live_meta;
-      if (action === 'end_match') match.stato = 'Terminata';
-      const amIdx = (window.YFM.allMatches||[]).findIndex(m => m.id === mid);
-      if (amIdx >= 0) { window.YFM.allMatches[amIdx].live_meta = res.live_meta; if (action === 'end_match') window.YFM.allMatches[amIdx].stato = 'Terminata'; }
-      render(document.getElementById('pageContent'), mid);
-    } catch (err) { alert('Errore: ' + err.message); }
-  });
+  // Live button — normal click + long-press override
+  const liveBtn = document.getElementById('mcLiveBtn');
+  if (liveBtn) {
+    let pressTimer = null;
+    let longPressed = false;
+
+    const executeLiveAction = async (forced) => {
+      const action = liveBtn.dataset.action;
+      if (!forced && liveBtn.disabled) return;
+      const confirmMsg = action === 'end_match' ? 'Confermi Fine Partita?' : (forced ? 'Forzare transizione? (tempo minimo non raggiunto)' : null);
+      if (confirmMsg && !await confirm(confirmMsg)) return;
+      try {
+        const res = await apiFetch('/partite/' + mid + '/live-action', { method: 'PUT', body: JSON.stringify({ action }) });
+        match.live_meta = res.live_meta;
+        if (action === 'end_match') match.stato = 'Terminata';
+        const amIdx = (window.YFM.allMatches||[]).findIndex(m => m.id === mid);
+        if (amIdx >= 0) { window.YFM.allMatches[amIdx].live_meta = res.live_meta; if (action === 'end_match') window.YFM.allMatches[amIdx].stato = 'Terminata'; }
+        render(document.getElementById('pageContent'), mid);
+      } catch (err) { alert('Errore: ' + err.message); }
+    };
+
+    liveBtn.addEventListener('click', () => { if (!longPressed) executeLiveAction(false); longPressed = false; });
+
+    // Long-press 3s → force override
+    liveBtn.addEventListener('pointerdown', () => {
+      longPressed = false;
+      pressTimer = setTimeout(() => { longPressed = true; executeLiveAction(true); }, 3000);
+    });
+    liveBtn.addEventListener('pointerup', () => clearTimeout(pressTimer));
+    liveBtn.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+  }
 
   // Close dropdowns on outside click
   document.addEventListener('click', () => {
@@ -931,6 +1053,22 @@ function bindNotesPanel(mid) {
     area.selectionStart = area.selectionEnd = pos + newLine.length + prefix.length;
     area.focus();
     area.dispatchEvent(new Event('input'));
+  });
+}
+
+function bindFormationSubtabs() {
+  document.querySelectorAll('.mc-form-subtab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.mc-form-subtab').forEach(t => {
+        t.style.background = '#f3f4f6'; t.style.color = '#666';
+      });
+      tab.style.background = '#667eea'; tab.style.color = 'white';
+      const show = tab.dataset.ftab;
+      const fin = document.getElementById('mcFormFinale');
+      const ini = document.getElementById('mcFormIniziale');
+      if (fin) fin.style.display = show === 'finale' ? 'block' : 'none';
+      if (ini) ini.style.display = show === 'iniziale' ? 'block' : 'none';
+    });
   });
 }
 

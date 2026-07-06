@@ -430,16 +430,13 @@ export function renderMatchCard(m, stats, isNext = false) {
   const convLabel = isPast ? '📋 Conv.' : '📋 Convoca';
   if (!isArchiviata) {
     actionsHtml += makeBtn(convLabel, `window.YFM.openConvocation('${m.id}',${isPast})`, false);
-    actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);
     actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
-    actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
     const mcGlow = isLive ? ' btn-live-glow' : '';
     actionsHtml += `<button class="btn btn-secondary btn-small${mcGlow}" onclick="event.stopPropagation();window.YFM.openMatchCenter('${m.id}')">${isLive ? '<span class="pallino-blink"></span>' : ''}⚽ Match Center</button>`;
   } else {
     actionsHtml += makeBtn('📋 Conv.', `window.YFM.openConvocation('${m.id}',true)`, false);
-    actionsHtml += makeBtn('🏟️ Formazione', `window.YFM.openFormazioneForm('${m.id}')`, false);
     actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
-    actionsHtml += makeBtn('📝 Note', `window.YFM.openNoteAvversario('${m.id}')`, false);
+    actionsHtml += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openMatchCenter('${m.id}')">⚽ Match Center</button>`;
   }
 
   // === EDIT/DELETE/ARCHIVIA (solo admin) ===
