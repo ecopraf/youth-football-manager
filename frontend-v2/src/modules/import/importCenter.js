@@ -74,19 +74,13 @@ function renderMain(c, logs, teamName) {
       <div class="import-card" id="icGrConfig" data-help="import.grConfig">
         <div class="import-card-icon">⚙️</div>
         <div class="import-card-title">Configura URL Girone</div>
-        <div class="import-card-desc">Inserisci l'URL della classifica/calendario del tuo girone sul portale regionale</div>
+        <div class="import-card-desc">Seleziona campionato e girone sul portale regionale</div>
         <span class="import-card-badge" style="background:#E8EAF6;color:#283593;">Setup</span>
       </div>
-      <div class="import-card" id="icGrCalendario" data-help="import.grCalendario">
-        <div class="import-card-icon">📅</div>
-        <div class="import-card-title">Calendario + Risultati</div>
-        <div class="import-card-desc">Importa tutte le partite con risultati aggiornati dal girone</div>
-        <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">Import</span>
-      </div>
-      <div class="import-card" id="icGrEventi">
-        <div class="import-card-icon">⚽</div>
-        <div class="import-card-title">Import Marcatori Partite</div>
-        <div class="import-card-desc">Estrai gol (cognome + minuto) dalle partite e associali ai giocatori in rosa</div>
+      <div class="import-card" id="icGrImport" data-help="import.grCalendario">
+        <div class="import-card-icon">📥</div>
+        <div class="import-card-title">Import da Portale</div>
+        <div class="import-card-desc">Calendario, risultati e marcatori dal girone configurato</div>
         <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">Import</span>
       </div>
       ${window.YFM.getUser()?.is_superadmin ? `<div class="import-card" id="icGrLoghi">
@@ -134,8 +128,7 @@ function renderMain(c, logs, teamName) {
   document.getElementById('icText').addEventListener('click', openImportText);
   document.getElementById('icXls').addEventListener('click', () => { if (window.YFM.openImportXlsModal) window.YFM.openImportXlsModal(); else { window.YFM.navigateTo('roster'); setTimeout(() => document.getElementById('btnImportXls')?.click(), 300); } });
   document.getElementById('icGrConfig').addEventListener('click', openGrConfig);
-  document.getElementById('icGrCalendario').addEventListener('click', openGrCalendario);
-  document.getElementById('icGrEventi')?.addEventListener('click', openGrEventi);
+  document.getElementById('icGrImport')?.addEventListener('click', openGrUnifiedImport);
   document.getElementById('icGrLoghi')?.addEventListener('click', openGrLoghi);
   document.getElementById('icGrLoghiWizard')?.addEventListener('click', openGrLoghiWizard);
   document.getElementById('icGrPreview').addEventListener('click', openGrPreview);
@@ -347,10 +340,22 @@ function openGrConfig() {
   const squadra = window.YFM.getSquadra();
   const teamName = squadra.nome || window.YFM.getSquadraName();
   const categoryName = squadra.category?.nome || '';
+  const currentUrl = squadra.classifica_url || '';
+
+  // Mostra stato attuale se configurato
+  let statusHtml = '';
+  if (currentUrl) {
+    const parts = currentUrl.match(/levels\/(\d+)\/(\d+)\/(\d+)/);
+    statusHtml = `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#2E7D32;">
+      ✅ Girone già configurato${parts ? ` (campionato ${parts[2]}, girone ${parts[3]})` : ''}
+    </div>`;
+  }
+
   const modal = createModal('⚙️ Configura Girone — ' + teamName, `
     <div style="background:#f0f4ff;padding:10px 12px;border-radius:8px;margin-bottom:16px;font-size:13px;">
       🏃 Squadra: <strong>${teamName}</strong>${categoryName ? ' <span style="color:#667eea;">('+categoryName+')</span>' : ''}
     </div>
+    ${statusHtml}
     <div id="grCategoryWarning" style="display:none;background:#fff3cd;padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#856404;">⚠️ Stai configurando un campionato di categoria diversa da <strong>${categoryName}</strong></div>
     <div id="grWizard">
       <div class="form-group" style="margin-bottom:12px;">
@@ -488,6 +493,9 @@ function openGrConfig() {
     showLoading('Salvataggio...');
     try {
       await apiFetch('/gr/configure', { method: 'POST', body: JSON.stringify({ teamId: window.YFM.squadraId, url }) });
+      // Aggiorna classifica_url in memoria
+      const sq = window.YFM.allSquadre?.find(s => s.id === window.YFM.squadraId);
+      if (sq) sq.classifica_url = `https://v2.apiweb.gazzettaregionale.it/classifiche/levels/1/${selectedChamp}/${selectedGroup}/classifica`;
       hideLoading();
       modal.close();
       alert('✅ Girone configurato per ' + teamName + '!');
@@ -510,6 +518,82 @@ function openGrConfig() {
     } catch (err) {
       hideLoading();
       alert('❌ ' + err.message);
+    }
+  });
+}
+
+// === GAZZETTA REGIONALE: IMPORT UNIFICATO ===
+async function openGrUnifiedImport() {
+  const sq = window.YFM.getSquadra();
+  if (!sq?.classifica_url) {
+    alert('⚠️ Configura prima l\'URL del girone nella card "Configura URL Girone"');
+    return;
+  }
+
+  const teamId = window.YFM.squadraId;
+  const modal = createModal('📥 Import da Portale Regionale', `
+    <div style="background:#f0f4ff;padding:12px;border-radius:8px;margin-bottom:16px;">
+      <p style="margin:0 0 12px;font-size:13px;color:#333;">Seleziona cosa importare:</p>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="grImpCalendario" checked> 📅 Calendario + Risultati
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="grImpMarcatori" checked> ⚽ Marcatori (gol + minuto)
+      </label>
+    </div>
+    <div id="grImpPreview" style="font-size:13px;color:#666;">Clicca "Avvia Import" per procedere.</div>
+  `, '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grImpStart">🚀 Avvia Import</button>', '600px');
+
+  document.getElementById('grImpStart').addEventListener('click', async () => {
+    const doCalendario = document.getElementById('grImpCalendario').checked;
+    const doMarcatori = document.getElementById('grImpMarcatori').checked;
+    if (!doCalendario && !doMarcatori) { alert('Seleziona almeno un\'opzione'); return; }
+
+    const btn = document.getElementById('grImpStart');
+    btn.disabled = true;
+    btn.textContent = 'Importazione...';
+    const preview = document.getElementById('grImpPreview');
+    const results = [];
+
+    try {
+      // 1. Calendario + Risultati
+      if (doCalendario) {
+        preview.innerHTML = '<div class="spinner" style="margin:8px auto;"></div> Importazione calendario e risultati...';
+        const resp = await apiFetch('/gr/import-calendario/' + teamId, {
+          method: 'POST', body: JSON.stringify({ mode: 'all' })
+        });
+        results.push(`📅 Calendario: ${resp.imported} importate, ${resp.updated || 0} aggiornate, ${resp.skipped} già presenti`);
+      }
+
+      // 2. Marcatori
+      if (doMarcatori) {
+        preview.innerHTML = '<div class="spinner" style="margin:8px auto;"></div> Importazione marcatori...';
+        const evData = await apiFetch('/gr/match-events/preview?teamId=' + teamId);
+        if (evData.matches && evData.matches.length > 0) {
+          const matchIds = evData.matches.filter(m => !m.already_imported).map(m => m.gr_match_id);
+          if (matchIds.length > 0) {
+            const evResp = await apiFetch('/gr/match-events/import', {
+              method: 'POST', body: JSON.stringify({ teamId, matches: matchIds })
+            });
+            results.push(`⚽ Marcatori: ${evResp.imported} gol importati, ${evResp.skipped} saltati`);
+          } else {
+            results.push('⚽ Marcatori: tutti già importati');
+          }
+        } else {
+          results.push('⚽ Marcatori: nessuna partita con gol disponibile');
+        }
+      }
+
+      preview.innerHTML = '<div style="background:#e8f5e9;padding:12px;border-radius:8px;">' +
+        '<div style="font-weight:600;margin-bottom:8px;">✅ Import completato!</div>' +
+        results.map(r => '<div style="padding:2px 0;">' + r + '</div>').join('') + '</div>';
+      btn.textContent = '✅ Fatto';
+      btn.addEventListener('click', () => { modal.close(); loadImportCenter(); });
+      btn.disabled = false;
+    } catch (err) {
+      preview.innerHTML = `<div style="color:#c00;padding:12px;">❌ Errore: ${err.message}</div>`;
+      btn.textContent = '🚀 Riprova';
+      btn.disabled = false;
     }
   });
 }

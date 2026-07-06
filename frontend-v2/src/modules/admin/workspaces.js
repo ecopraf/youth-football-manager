@@ -38,21 +38,20 @@ function parseTCText(text) {
     'sede': 'indirizzo',
     'telefono': 'telefono',
     'sito web': 'sito_web',
-    'email': 'email',
     'sponsor tecnico': 'sponsor_tecnico'
   };
 
+  const allKeys = [...Object.keys(mapping), 'categoria', 'stadio', 'regione', 'fax', 'email secondaria', 'email', 'facebook', 'instagram'];
   let stadioLines = [];
   let inStadio = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const lineLow = line.toLowerCase();
 
     // Handle "Stadio" which can span multiple lines
     if (inStadio) {
-      // Next key found? stop collecting stadio
-      const isKey = Object.keys(mapping).some(k => line.toLowerCase().startsWith(k)) ||
-        /^(categoria|regione|fax|email secondaria|facebook|instagram)/i.test(line);
+      const isKey = allKeys.some(k => lineLow.startsWith(k));
       if (isKey) {
         inStadio = false;
       } else {
@@ -68,13 +67,45 @@ function parseTCText(text) {
       continue;
     }
 
+    // Skip "email secondaria" — non ci interessa
+    if (lineLow.startsWith('email secondaria')) continue;
+
+    // Email (solo quella principale)
+    if (lineLow.startsWith('email')) {
+      let val = line.substring(5).replace(/^\t+/, '').trim();
+      if (!val && i + 1 < lines.length && !allKeys.some(k => lines[i+1].toLowerCase().startsWith(k))) {
+        val = lines[++i].trim();
+      }
+      if (val && val !== '-') result.email = val;
+      continue;
+    }
+
+    // Facebook
+    if (lineLow.startsWith('facebook')) {
+      let val = line.substring(8).replace(/^\t+/, '').trim();
+      if (!val && i + 1 < lines.length && !allKeys.some(k => lines[i+1].toLowerCase().startsWith(k))) {
+        val = lines[++i].trim();
+      }
+      if (val && val !== '-') result.facebook = val;
+      continue;
+    }
+
+    // Instagram
+    if (lineLow.startsWith('instagram')) {
+      let val = line.substring(9).replace(/^\t+/, '').trim();
+      if (!val && i + 1 < lines.length && !allKeys.some(k => lines[i+1].toLowerCase().startsWith(k))) {
+        val = lines[++i].trim();
+      }
+      if (val && val !== '-') result.instagram = val;
+      continue;
+    }
+
     for (const [key, field] of Object.entries(mapping)) {
-      if (line.toLowerCase().startsWith(key)) {
+      if (lineLow.startsWith(key)) {
         let val = line.substring(key.length).replace(/^\t+/, '').trim();
         if (!val && i + 1 < lines.length) {
-          // Value might be on next line (tab-separated format)
           const next = lines[i + 1];
-          if (!Object.keys(mapping).some(k => next.toLowerCase().startsWith(k)) && !/^(categoria|stadio|regione|fax|email secondaria|facebook|instagram)/i.test(next)) {
+          if (!allKeys.some(k => next.toLowerCase().startsWith(k))) {
             val = next.trim();
             i++;
           }
@@ -152,6 +183,10 @@ function render(c) {
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div class="form-group"><label>Email</label><input id="wsEmail" type="email"></div>
             <div class="form-group"><label>Sito web</label><input id="wsSitoWeb" placeholder="https://..."></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group"><label>Facebook</label><input id="wsFacebook" placeholder="URL o nome pagina"></div>
+            <div class="form-group"><label>Instagram</label><input id="wsInstagram" placeholder="URL o @username"></div>
           </div>
 
           <div style="background:#f8f9fa;border-radius:10px;padding:14px;margin-top:12px;">
@@ -271,6 +306,8 @@ function handleParse() {
     wsTelefono: parsed.telefono,
     wsEmail: parsed.email,
     wsSitoWeb: parsed.sito_web,
+    wsFacebook: parsed.facebook,
+    wsInstagram: parsed.instagram,
     wsFacNome: parsed._stadio_nome,
     wsFacIndirizzo: parsed._stadio_indirizzo
   };
@@ -382,6 +419,8 @@ async function openModal(wsId = null) {
     document.getElementById('wsTelefono').value = ws.telefono || '';
     document.getElementById('wsEmail').value = ws.email || '';
     document.getElementById('wsSitoWeb').value = ws.sito_web || '';
+    document.getElementById('wsFacebook').value = ws.facebook || '';
+    document.getElementById('wsInstagram').value = ws.instagram || '';
     document.getElementById('wsLogoUrl').value = ws.logo_url || '';
     if (ws.logo_url) renderLogoPreview(ws.logo_url, true);
 
@@ -416,7 +455,9 @@ async function handleSave(e) {
     indirizzo: document.getElementById('wsIndirizzo').value.trim() || null,
     telefono: document.getElementById('wsTelefono').value.trim() || null,
     email: document.getElementById('wsEmail').value.trim() || null,
-    sito_web: document.getElementById('wsSitoWeb').value.trim() || null
+    sito_web: document.getElementById('wsSitoWeb').value.trim() || null,
+    facebook: document.getElementById('wsFacebook').value.trim() || null,
+    instagram: document.getElementById('wsInstagram').value.trim() || null
   };
   if (!body.nome) { alert('Nome obbligatorio'); return; }
 
