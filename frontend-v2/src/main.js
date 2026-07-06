@@ -124,16 +124,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (isAuth) {
     try {
-      // Refresh profilo dal server (ruolo/permessi potrebbero essere cambiati)
-      try {
-        const freshUser = await apiFetch('/auth/me');
-        if (freshUser?.id) window.YFM.setUser(freshUser);
-      } catch (e) { /* token scaduto → gestito da 401 handler */ }
-
       const user = window.YFM.getUser();
       
       let currentWs = null;
       if (isSuperAdmin(user)) {
+        // Superadmin: /auth/me non serve (hardcoded), carica workspaces
         const workspaces = await loadAvailableWorkspaces();
         const savedWsId = getSavedWorkspaceId();
         currentWs = (savedWsId && workspaces.find(w => w.id === savedWsId)) || workspaces[0];
@@ -145,10 +140,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
         populateWorkspaceSelect(workspaces);
       } else {
-        // Non-superadmin: workspace noto dal JWT, skip chiamata workspaces
+        // Admin/staff: usa dati localStorage, refresh /auth/me in background
         window.YFM.activeWorkspaceId = user.workspace_id;
         saveCurrentWorkspace(user.workspace_id);
+        // Carica app subito, refresh profilo in background
+        const mePromise = apiFetch('/auth/me').then(freshUser => {
+          if (freshUser?.id) window.YFM.setUser(freshUser);
+        }).catch(() => {});
         await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+        // Attendi /auth/me solo se ancora in corso (non blocca il render)
+        await mePromise;
       }
       
       window.YFM.navigateTo('dashboard');

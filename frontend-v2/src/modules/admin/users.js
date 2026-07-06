@@ -390,25 +390,19 @@ async function loadData() {
       workspaces = await apiFetch('/auth/workspaces');
     }
     
-    // Carica categorie del workspace corrente
     const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
-    if (wsId) {
-      try { categorie = await apiFetch(`/workspaces/${wsId}/categorie`); } catch(e) { categorie = []; }
-    }
     
-    // Carica stagioni del workspace
-    if (wsId) {
-      try { stagioni = await apiFetch(`/workspaces/${wsId}/stagioni`); } catch(e) { stagioni = []; }
-    }
-    
-    // Carica staff del workspace (per dropdown collegamento)
-    if (wsId) {
-      try { staffList = await apiFetch(`/workspaces/${wsId}/staff`); } catch(e) { staffList = []; }
-    }
-    
-    // Carica utenti: filtrati per workspace attivo
+    // Carica tutto in parallelo
     const usersUrl = '/auth/users' + (wsId ? `?workspace_id=${wsId}` : '');
-    const usersRes = await apiFetch(usersUrl);
+    const [catRes, stagRes, staffRes, usersRes] = await Promise.all([
+      wsId ? apiFetch(`/workspaces/${wsId}/categorie`).catch(() => []) : [],
+      wsId ? apiFetch(`/workspaces/${wsId}/stagioni`).catch(() => []) : [],
+      wsId ? apiFetch(`/workspaces/${wsId}/staff`).catch(() => []) : [],
+      apiFetch(usersUrl)
+    ]);
+    categorie = catRes;
+    stagioni = stagRes;
+    staffList = staffRes;
     users = usersRes.users || [];
     
     hideLoading();
