@@ -74,6 +74,21 @@ export default async function loadMatchCenter() {
       if (apiMeta.modulo_finale) formazioneData.modulo = apiMeta.modulo_finale;
     }
 
+    // Auto-expire: se partita live da troppo tempo → termina automaticamente
+    if (match.live_meta?.stato && match.live_meta.stato !== 'fine' && match.live_meta.start_1t) {
+      const halfDur = getHalfDuration();
+      const maxLiveMins = halfDur * 2 + getIntervalDuration() + 30; // durata totale + 30min buffer
+      const elapsed = (Date.now() - new Date(match.live_meta.start_1t).getTime()) / 60000;
+      if (elapsed > maxLiveMins) {
+        // Auto-termina
+        try {
+          const res = await apiFetch('/partite/' + mid + '/live-action', { method: 'PUT', body: JSON.stringify({ action: 'end_match' }) });
+          match.live_meta = res.live_meta;
+          match.stato = 'Terminata';
+        } catch(e) {}
+      }
+    }
+
     // Check read-only
     const isGuest = !!(window.YFM.guestSquadreAccesso?.length);
     isReadOnly = isGuest || match.archiviata === true;
@@ -565,13 +580,33 @@ function getHeader(mid) {
 function getLiveButton() {
   const { label, action } = getLiveStateLabel();
   if (!action) return '<div style="margin-top:12px;"><span class="mc-badge" style="background:#27AE60;color:white;">✅ Partita terminata</span></div>';
+
+  // Blocco avvio: "Inizio 1°T" abilitato solo 5min prima dell'orario schedulato
+  let startBlocked = false, startRemaining = 0;
+  if (action === 'start_1t' && match.data_ora) {
+    const kickoff = new Date(match.data_ora).getTime();
+    const now = Date.now();
+    const diff = kickoff - now;
+    if (diff > 5 * 60 * 1000) {
+      startBlocked = true;
+      startRemaining = Math.ceil(diff / 60000) - 5;
+    }
+  }
+
   const colors = { start_1t: '#667eea', end_1t: '#F39C12', start_2t: '#667eea', end_match: '#E74C3C' };
   const { allowed, remaining } = getTransitionInfo();
   const meta = match?.live_meta;
-  const disabledAttr = !allowed ? ' disabled' : '';
-  const disabledClass = !allowed ? ' mc-live-btn-disabled' : '';
-  const countdownText = !allowed ? (meta?.stato === 'intervallo' ? `⏸️ Intervallo · ${remaining} min` : `⏳ Abilitato tra ${remaining} min`) : '';
-  const countdownHtml = !allowed ? `<div id="mcLiveCountdown" class="mc-live-countdown">${countdownText}</div>` : '<div id="mcLiveCountdown" class="mc-live-countdown" style="display:none;"></div>';
+  const isDisabled = !allowed || startBlocked;
+  const disabledAttr = isDisabled ? ' disabled' : '';
+  const disabledClass = isDisabled ? ' mc-live-btn-disabled' : '';
+
+  let countdownText = '';
+  if (startBlocked) {
+    countdownText = `⏳ Disponibile tra ${startRemaining} min`;
+  } else if (!allowed) {
+    countdownText = meta?.stato === 'intervallo' ? `⏸️ Intervallo · ${remaining} min` : `⏳ Abilitato tra ${remaining} min`;
+  }
+  const countdownHtml = countdownText ? `<div id="mcLiveCountdown" class="mc-live-countdown">${countdownText}</div>` : '<div id="mcLiveCountdown" class="mc-live-countdown" style="display:none;"></div>';
   return `<div style="margin-top:12px;"><button class="mc-live-btn${disabledClass}" id="mcLiveBtn" data-action="${action}" style="background:${colors[action]};"${disabledAttr}>${label}</button>${countdownHtml}</div>`;
 }
 
@@ -583,7 +618,7 @@ function getQuickActions(mid) {
     { icon: '🟥', label: 'Espulsione', tipo: 'RED' },
     { icon: '🔄', label: 'Sostituzione', tipo: 'SUB' },
     { icon: '🥅', label: 'Gol Subito', tipo: 'SUBITO' },
-    { icon: '🧤', label: 'Autogol', tipo: 'AUTOGOL' }
+    { icon: '📋', label: 'Incolla eventi', tipo: 'PASTE_EVENTS' }
   ];
   const btns = actions.map(a => `<div class="mc-qa-btn" data-tipo="${a.tipo}"><span class="qa-icon">${a.icon}</span><span class="qa-label">${a.label}</span></div>`).join('');
   return `<div class="mc-qa-card"><div class="mc-qa-title">Azioni rapide</div><div class="mc-qa">${btns}</div></div>`;
@@ -725,7 +760,10 @@ function bindEvents(mid) {
 
   // Quick actions → open drawer
   document.querySelectorAll('.mc-qa-btn').forEach(btn => {
-    btn.addEventListener('click', () => openDrawer(btn.dataset.tipo));
+    btn.addEventListener('click', () => {
+      if (btn.dataset.tipo === 'PASTE_EVENTS') { openPasteEventsModal(mid); return; }
+      openDrawer(btn.dataset.tipo);
+    });
   });
 
   // Drawer cancel/close
@@ -1204,6 +1242,244 @@ function applySubToFormation(outPid, inPid) {
   // Move outPid to bench, remove inPid from bench
   formazioneData.riserve = (formazioneData.riserve || []).filter(id => id !== inPid);
   formazioneData.riserve.push(outPid);
+}
+
+// ── PASTE EVENTS FROM WEB ──
+function openPasteEventsModal(mid) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:mc-sub-in 0.2s ease-out;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="margin:0;font-size:16px;">📋 Incolla tabellino</h3>
+      <button id="peClose" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+    </div>
+    <p style="font-size:12px;color:#666;margin-bottom:12px;line-height:1.5;">Incolla il tabellino copiato da Tuttocampo. Riconosce marcatori, formazione, sostituzioni.</p>
+    <textarea id="peText" rows="10" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:11px;font-family:monospace;resize:vertical;box-sizing:border-box;" placeholder="Incolla qui il tabellino da Tuttocampo..."></textarea>
+    <div id="pePreview" style="margin-top:12px;"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-secondary" id="peCancel" style="flex:1;">Annulla</button>
+      <button class="btn btn-primary" id="peParse" style="flex:1;">🔍 Analizza</button>
+      <button class="btn btn-primary" id="peConfirm" style="flex:1;display:none;background:#27AE60;">✅ Importa</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  let parsedData = { events: [], formation: null };
+
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelector('#peClose').addEventListener('click', close);
+  overlay.querySelector('#peCancel').addEventListener('click', close);
+
+  overlay.querySelector('#peParse').addEventListener('click', () => {
+    const text = overlay.querySelector('#peText').value.trim();
+    if (!text) { alert('Incolla del testo prima di analizzare'); return; }
+    parsedData = parseTabellino(text);
+    const preview = overlay.querySelector('#pePreview');
+    const hasData = parsedData.events.length > 0 || parsedData.formation;
+    if (!hasData) {
+      preview.innerHTML = '<div style="color:#c00;padding:8px;background:#fee;border-radius:8px;font-size:12px;">❌ Nessun dato riconosciuto. Verifica il formato.</div>';
+      return;
+    }
+    let html = '';
+    if (parsedData.formation) {
+      const f = parsedData.formation;
+      html += `<div style="background:#e8f5e9;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:8px;">🏟️ Formazione: <strong>${f.modulo}</strong> — ${f.titolari.length} titolari, ${f.riserve.length} riserve</div>`;
+    }
+    if (parsedData.events.length > 0) {
+      html += `<div style="background:#e3f2fd;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:8px;">⚽ ${parsedData.events.length} eventi (marcatori + sostituzioni)</div>`;
+      html += '<div style="max-height:120px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;font-size:11px;">' +
+        parsedData.events.map(e => {
+          const icon = EVT_CONFIG[e.tipo]?.icon || '⚪';
+          return `<div style="padding:2px 0;border-bottom:1px solid #f5f5f5;">${e.minuto ? e.minuto + "'" : '—'} ${icon} ${e.principale}</div>`;
+        }).join('') + '</div>';
+    }
+    preview.innerHTML = html;
+    overlay.querySelector('#peConfirm').style.display = 'block';
+    overlay.querySelector('#peParse').style.display = 'none';
+  });
+
+  overlay.querySelector('#peConfirm').addEventListener('click', async () => {
+    // Import formation if present
+    if (parsedData.formation) {
+      const f = parsedData.formation;
+      const formPayload = [];
+      [...f.titolari, ...f.riserve].forEach((name, i) => {
+        const matched = matchPlayerByName(name);
+        if (matched) {
+          const tp = allPlayers.find(p => p.id === matched.calciatoreId);
+          formPayload.push({ calciatoreId: matched.calciatoreId, is_starter: i < f.titolari.length, posizione: i + 1, numero_maglia: tp?.numero_maglia || i + 1 });
+        }
+      });
+      if (formPayload.length > 0) {
+        try {
+          await apiFetch('/partite/' + mid + '/formazione', {
+            method: 'POST',
+            body: JSON.stringify({ formazione: formPayload, meta: { modulo: f.modulo, positions: {} } })
+          });
+        } catch(e) {}
+      }
+    }
+    // Import events
+    if (parsedData.events.length > 0) {
+      parsedData.events.forEach(pe => {
+        const matched = matchPlayerByName(pe.principale);
+        if (matched) { pe.principale = matched.cognome + ' ' + matched.nome; pe.principale_id = matched.calciatoreId; }
+        if (pe.sub_in) {
+          const sm = matchPlayerByName(pe.sub_in);
+          if (sm) { pe.sub_in = sm.cognome + ' ' + sm.nome; pe.sub_in_id = sm.calciatoreId; }
+        }
+      });
+      eventi.push(...parsedData.events);
+    }
+    close();
+    // Reload formation data
+    const formRes = await apiFetch('/partite/' + mid + '/formazione').catch(() => ({ formazione: [], meta: {} }));
+    const apiFormazione = formRes?.formazione || [];
+    const apiMeta = formRes?.meta || {};
+    formazioneData = convertApiFormation(apiFormazione, allPlayers, apiMeta);
+    if (formazioneData) formazioneIniziale = { modulo: formazioneData.modulo, portiere: formazioneData.portiere, difensori: [...(formazioneData.difensori||[])], centrocampisti: [...(formazioneData.centrocampisti||[])], attaccanti: [...(formazioneData.attaccanti||[])], riserve: [...(formazioneData.riserve||[])], positions: formazioneData.positions };
+    render(document.getElementById('pageContent'), mid);
+    showToast(`✅ Tabellino importato — salva per confermare`);
+  });
+}
+
+function parseTabellino(text) {
+  const result = { events: [], formation: null };
+  const teamName = (window.YFM.getSocietaName() || '').toLowerCase();
+
+  // Parse MARCATORI
+  const marcLine = text.match(/MARCATORI:\s*([^\n]+)/i);
+  if (marcLine) {
+    const marcatori = marcLine[1].split(',').map(s => s.trim()).filter(Boolean);
+    marcatori.forEach(m => {
+      // Filter only our team's goals: "I. Cognome (A)" where A = first letter of our team
+      const name = m.replace(/\([^)]*\)/g, '').replace(/\d+['’′]\s*(st|pt)?/gi, '').trim();
+      if (name.length < 2) return;
+      result.events.push({ tipo: 'GOAL', minuto: '', principale: name, principale_id: null, assist_name: '', assist_id: null, sub_in: '', sub_in_id: null, autogol: /autogol|og/i.test(m), rigore: /rigore|rig/i.test(m) });
+    });
+  }
+
+  // Parse formation: "TEAMNAME (modulo): I.Cognome, I.Cognome (\u2193), ..."
+  const lines = text.split('\n').map(l => l.trim());
+  for (let i = 0; i < lines.length; i++) {
+    const fMatch = lines[i].match(/^([A-Z][A-Z\s]+)\s*\(([^)]+)\)\s*:\s*(.+)/i);
+    if (!fMatch) continue;
+    const fTeam = fMatch[1].trim().toLowerCase();
+    // Check if this is our team
+    if (!fTeam.includes(teamName) && !teamName.includes(fTeam)) continue;
+    const modulo = fMatch[2].trim();
+    const titolariRaw = fMatch[3].split(',').map(s => s.trim()).filter(Boolean);
+    const titolari = titolariRaw.map(s => s.replace(/\([^)]*\)/g, '').trim());
+
+    // Next line: "A disposizione: ..."
+    let riserve = [];
+    if (i + 1 < lines.length && /a disposizione/i.test(lines[i + 1])) {
+      const dispLine = lines[i + 1].replace(/^a disposizione:\s*/i, '');
+      const riserveRaw = dispLine.split(',').map(s => s.trim()).filter(Boolean);
+      riserve = riserveRaw.map(s => s.replace(/\([^)]*\)/g, '').trim());
+
+      // Parse substitutions from \u2193/\u2191 markers with minutes
+      titolariRaw.forEach(s => {
+        if (!/↓/.test(s)) return;
+        const nameClean = s.replace(/\([^)]*\)/g, '').trim();
+        const minMatch = s.match(/(\d+)['’′]\s*(st|pt)?/i);
+        let minuto = '';
+        if (minMatch) {
+          minuto = parseInt(minMatch[1]);
+          if (minMatch[2] && /st/i.test(minMatch[2])) minuto += 45;
+        }
+        result.events.push({ tipo: 'SUB', minuto, principale: nameClean, principale_id: null, assist_name: '', assist_id: null, sub_in: '', sub_in_id: null, autogol: false, rigore: false });
+      });
+      riserveRaw.forEach(s => {
+        if (!/↑/.test(s)) return;
+        const nameClean = s.replace(/\([^)]*\)/g, '').trim();
+        const minMatch = s.match(/(\d+)['’′]\s*(st|pt)?/i);
+        let minuto = '';
+        if (minMatch) {
+          minuto = parseInt(minMatch[1]);
+          if (minMatch[2] && /st/i.test(minMatch[2])) minuto += 45;
+        }
+        // Find matching SUB OUT event at same minute to pair
+        const outEvt = result.events.find(e => e.tipo === 'SUB' && e.minuto === minuto && !e.sub_in);
+        if (outEvt) { outEvt.sub_in = nameClean; }
+        else { result.events.push({ tipo: 'SUB', minuto, principale: '', principale_id: null, assist_name: '', assist_id: null, sub_in: nameClean, sub_in_id: null, autogol: false, rigore: false }); }
+      });
+    }
+
+    result.formation = { modulo, titolari, riserve };
+    break;
+  }
+
+  return result;
+}
+
+function parseEventsFromText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+  const results = [];
+
+  // --- Detect Tuttocampo tabellino format ---
+  const isTCFormat = text.includes('MARCATORI:') || text.includes('A disposizione:');
+
+  if (isTCFormat) {
+    // Parse MARCATORI line: "I. Cognome (A), I. Cognome (A)"
+    const marcLine = text.match(/MARCATORI:\s*([^\n]+)/i);
+    if (marcLine) {
+      const marcatori = marcLine[1].split(',').map(s => s.trim()).filter(Boolean);
+      marcatori.forEach((m, i) => {
+        const name = m.replace(/\([^)]*\)/g, '').trim();
+        results.push({ tipo: 'GOAL', minuto: '', principale: name, principale_id: null, assist_name: '', assist_id: null, sub_in: '', sub_in_id: null, autogol: false, rigore: /rigore|rig/i.test(m) });
+      });
+    }
+    return results;
+  }
+
+  // --- Generic line-by-line format: "minuto' Nome (tipo)" ---
+  for (const line of lines) {
+    const m = line.match(/^(\d+)['’′]?\s*(.+)/);
+    if (!m) continue;
+    const minuto = parseInt(m[1]);
+    let rest = m[2].trim();
+    let tipo = 'GOAL', rigore = false, autogol = false, assist_name = '', sub_in = '';
+
+    const lower = rest.toLowerCase();
+    if (/ammoniz|giallo|yellow/i.test(lower)) tipo = 'YELLOW';
+    else if (/espuls|rosso|red/i.test(lower)) tipo = 'RED';
+    else if (/sost|->|→|entra|esce/i.test(lower)) tipo = 'SUB';
+    else if (/subito|avversario/i.test(lower)) tipo = 'SUBITO';
+
+    if (/rigore|rig\b|penalty/i.test(lower)) rigore = true;
+    if (/autogol|auto[- ]?gol|og\b/i.test(lower)) autogol = true;
+
+    let name = rest.replace(/\(.*?\)/g, '').replace(/rigore|ammoniz\w*|espuls\w*|gol|autogol/gi, '').trim();
+
+    if (tipo === 'SUB') {
+      const subMatch = name.split(/->|→|\//).map(s => s.trim());
+      if (subMatch.length >= 2) { name = subMatch[0]; sub_in = subMatch[1]; }
+    }
+
+    const assistMatch = rest.match(/assist[:\s]+([^)]+)/i);
+    if (assistMatch) assist_name = assistMatch[1].trim();
+
+    if (!name || name.length < 2) continue;
+    results.push({ tipo, minuto, principale: name, principale_id: null, assist_name, assist_id: null, sub_in, sub_in_id: null, autogol, rigore });
+  }
+  return results;
+}
+
+function matchPlayerByName(name) {
+  if (!name) return null;
+  const lower = name.toLowerCase().trim();
+  // Exact match on cognome
+  let found = giocatori.find(g => (g.cognome || '').toLowerCase() === lower);
+  if (found) return found;
+  // Partial match: cognome contains or is contained
+  found = giocatori.find(g => lower.includes((g.cognome || '').toLowerCase()) || (g.cognome || '').toLowerCase().includes(lower));
+  if (found) return found;
+  // First word match
+  const firstWord = lower.split(' ')[0];
+  found = giocatori.find(g => (g.cognome || '').toLowerCase().startsWith(firstWord));
+  return found || null;
 }
 
 async function saveAll(mid) {
