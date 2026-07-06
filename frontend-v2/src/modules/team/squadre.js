@@ -116,7 +116,11 @@ export async function loadSquadre(stagioneId) {
         if (allSquadre.length === 1) window.YFM.squadraId = allSquadre[0].id;
         return;
       }
-      sel.innerHTML = allSquadre.map(s => {
+      sel.innerHTML = allSquadre.slice().sort((a, b) => {
+        const numA = parseInt((a.category?.nome || '').replace(/\D/g, '')) || 0;
+        const numB = parseInt((b.category?.nome || '').replace(/\D/g, '')) || 0;
+        return numB - numA;
+      }).map(s => {
         const categoriaNome = s.category?.nome || s.categoria || '';
         const tipoCampionato = s.category?.tipo_campionato || '';
         const displayNome = categoriaNome && tipoCampionato 

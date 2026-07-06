@@ -237,20 +237,31 @@ function renderCalendarPage(c, matches, stats) {
   </style>`;
 
   html += `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
       <div><h1 class="page-title">Calendario</h1></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         ${window.YFM.isAdmin() ? `<button class="btn btn-primary" id="btnAdd" data-help="calendar.btnNuova">+ Nuova</button>
-        ${window.YFM.currentUser?.is_superadmin ? '<button class="btn btn-secondary" id="btnImportTc" style="font-size:13px;">⚽ Tuttocampo</button>' : ''}
         <button class="btn btn-secondary" id="btnImportPdf" data-help="calendar.btnImporta" style="font-size:13px;">📄 PDF</button>
-        <button class="btn btn-secondary" id="btnImport" data-help="calendar.btnImportCSV" style="font-size:13px;">📥 CSV</button>
-        <button class="btn btn-secondary" id="btnArchiveAll" style="font-size:13px;color:#856404;">📦 Archivia giocate</button>
-        <button class="btn btn-secondary" id="btnDeleteAll" data-help="calendar.eliminaTutte" style="font-size:13px;color:#E74C3C;">🗑️ Cancella tutto</button>` : ''}
+        <select id="calFilterStato" class="filter-select" style="font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid #ddd;">
+          <option value="tutte">Tutte</option>
+          <option value="prossime">Prossime</option>
+          <option value="archiviate">Archiviate</option>
+        </select>
+        <button class="btn btn-secondary" id="btnCalSelect" style="font-size:13px;">☐ Seleziona</button>` : ''}
       </div>
+    </div>
+    <div id="calSelActions" style="display:none;margin-bottom:16px;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-secondary" id="btnCalSelAll" style="font-size:12px;">☑ Tutti</button>
+      <button class="btn btn-secondary" id="btnCalSelCancel" style="font-size:12px;">Annulla</button>
+      <button class="btn btn-secondary" id="btnCalSelArchive" style="font-size:12px;color:#856404;" disabled>📦 Archivia (0)</button>
+      <button class="btn btn-danger" id="btnCalSelDelete" style="font-size:12px;" disabled>🗑️ Elimina (0)</button>
     </div>`;
 
+  // Filtro stato (preserva selezione tra render)
+  const filterStato = window._calFilterStato || 'tutte';
+
   // PROSSIMA PARTITA in evidenza
-  if (nextMatch) {
+  if (nextMatch && filterStato !== 'archiviate') {
     const nextIsLive = !!(nextMatch.live_meta && ['1t','2t','intervallo'].includes(nextMatch.live_meta.stato));
     const sectionBg = nextIsLive ? 'background:linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);' : 'background:linear-gradient(135deg, #E8F8F0 0%, #D4F1E0 100%);';
     const sectionBorder = nextIsLive ? 'border-left:4px solid #E74C3C;' : 'border-left:4px solid #28a745;';
@@ -258,7 +269,7 @@ function renderCalendarPage(c, matches, stats) {
       ? '<span style="background:#E74C3C;color:white;padding:2px 10px;border-radius:10px;font-size:12px;animation:blink-text 1.5s infinite;">🟢 IN CORSO</span>'
       : '<span style="background:#28a745;color:white;padding:2px 10px;border-radius:10px;font-size:12px;">🟢 PROSSIMA</span>';
     html += `
-      <div class="card" style="margin-bottom:20px;${sectionBorder}${sectionBg}">
+      <div class="card cal-match-card" data-mid="${nextMatch.id}" style="margin-bottom:20px;${sectionBorder}${sectionBg}">
         <div style="display:flex;align-items:center;margin-bottom:8px;">
           ${sectionBadge}
         </div>
@@ -267,29 +278,29 @@ function renderCalendarPage(c, matches, stats) {
   }
 
   // ALTRE PARTITE FUTURE
-  if (otherFutureMatches.length > 0) {
+  if (otherFutureMatches.length > 0 && filterStato !== 'archiviate') {
     html += `<div style="margin:20px 0 12px 0;"><span style="background:#D1ECF1;color:#0C5460;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;">📅 IN ARRIVO</span></div>`;
     otherFutureMatches.forEach(m => {
-      html += `<div class="card" style="margin-bottom:12px;">${renderMatchCard(m, stats)}</div>`;
+      html += `<div class="card cal-match-card" data-mid="${m.id}" style="margin-bottom:12px;">${renderMatchCard(m, stats)}</div>`;
     });
   }
 
   // PARTITE GIOCATE
-  if (pastMatches.length > 0) {
+  if (pastMatches.length > 0 && filterStato !== 'prossime') {
     html += `<div style="margin:20px 0 12px 0;"><span style="background:#E9ECEF;color:#495057;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:600;">🏆 GIOCATE</span></div>`;
     pastMatches.forEach(m => {
-      html += `<div class="card" style="margin-bottom:12px;">${renderMatchCard(m, stats)}</div>`;
+      html += `<div class="card cal-match-card" data-mid="${m.id}" style="margin-bottom:12px;">${renderMatchCard(m, stats)}</div>`;
     });
   }
 
   c.innerHTML = html;
 
   document.getElementById('btnAdd')?.addEventListener('click', () => openMatchForm());
-  document.getElementById('btnImportTc')?.addEventListener('click', openImportTuttocampo);
-  document.getElementById('btnImport')?.addEventListener('click', openImportCSV);
   document.getElementById('btnImportPdf')?.addEventListener('click', openImportPdf);
-  document.getElementById('btnArchiveAll')?.addEventListener('click', archiveAllPlayed);
-  document.getElementById('btnDeleteAll')?.addEventListener('click', deleteAllMatches);
+  document.getElementById('calFilterStato')?.addEventListener('change', (e) => { window._calFilterStato = e.target.value; loadCalendar(); });
+  const filterSel = document.getElementById('calFilterStato');
+  if (filterSel) filterSel.value = filterStato;
+  bindCalendarSelection();
   attachCardListeners();
 }
 
@@ -355,6 +366,115 @@ function renderGuestCalendar(c, nextMatch, pastMatches, stats) {
   }
 
   c.innerHTML = html;
+}
+
+// ── CALENDAR SELECTION MODE ──
+let calSelectedIds = new Set();
+let calSelectionMode = false;
+
+function bindCalendarSelection() {
+  const btnSelect = document.getElementById('btnCalSelect');
+  if (!btnSelect) return;
+  btnSelect.addEventListener('click', () => {
+    calSelectionMode = !calSelectionMode;
+    calSelectedIds.clear();
+    toggleCalSelectionUI();
+  });
+}
+
+function toggleCalSelectionUI() {
+  const actionsBar = document.getElementById('calSelActions');
+  const btnSelect = document.getElementById('btnCalSelect');
+  if (calSelectionMode) {
+    if (actionsBar) actionsBar.style.display = 'flex';
+    if (btnSelect) { btnSelect.textContent = '\u2713 Selezione'; btnSelect.style.background = '#667eea'; btnSelect.style.color = 'white'; }
+    document.querySelectorAll('.cal-match-card').forEach(card => {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', calCardClickHandler);
+    });
+  } else {
+    if (actionsBar) actionsBar.style.display = 'none';
+    if (btnSelect) { btnSelect.textContent = '\u2610 Seleziona'; btnSelect.style.background = ''; btnSelect.style.color = ''; }
+    document.querySelectorAll('.cal-match-card').forEach(card => {
+      card.style.border = '';
+      card.style.background = '';
+      card.removeEventListener('click', calCardClickHandler);
+    });
+  }
+  updateCalSelButtons();
+  // Bind action buttons
+  document.getElementById('btnCalSelAll')?.addEventListener('click', () => {
+    const all = document.querySelectorAll('.cal-match-card');
+    if (calSelectedIds.size === all.length) { calSelectedIds.clear(); }
+    else { all.forEach(c => calSelectedIds.add(c.dataset.mid)); }
+    highlightCalSelected();
+    updateCalSelButtons();
+  });
+  document.getElementById('btnCalSelCancel')?.addEventListener('click', () => {
+    calSelectionMode = false;
+    calSelectedIds.clear();
+    toggleCalSelectionUI();
+  });
+  document.getElementById('btnCalSelArchive')?.addEventListener('click', archiveSelected);
+  document.getElementById('btnCalSelDelete')?.addEventListener('click', deleteSelected);
+}
+
+function calCardClickHandler(e) {
+  if (!calSelectionMode) return;
+  e.stopPropagation();
+  e.preventDefault();
+  const card = e.currentTarget;
+  const mid = card.dataset.mid;
+  if (calSelectedIds.has(mid)) calSelectedIds.delete(mid);
+  else calSelectedIds.add(mid);
+  highlightCalSelected();
+  updateCalSelButtons();
+}
+
+function highlightCalSelected() {
+  document.querySelectorAll('.cal-match-card').forEach(card => {
+    const sel = calSelectedIds.has(card.dataset.mid);
+    card.style.border = sel ? '2px solid #667eea' : '';
+    card.style.background = sel ? 'rgba(102,126,234,0.05)' : '';
+  });
+}
+
+function updateCalSelButtons() {
+  const n = calSelectedIds.size;
+  const archBtn = document.getElementById('btnCalSelArchive');
+  const delBtn = document.getElementById('btnCalSelDelete');
+  if (archBtn) { archBtn.disabled = n === 0; archBtn.textContent = `\ud83d\udce6 Archivia (${n})`; }
+  if (delBtn) { delBtn.disabled = n === 0; delBtn.textContent = `\ud83d\uddd1\ufe0f Elimina (${n})`; }
+}
+
+async function archiveSelected() {
+  if (calSelectedIds.size === 0) return;
+  if (!await confirm(`Archiviare ${calSelectedIds.size} partite?`)) return;
+  showLoading();
+  try {
+    for (const mid of calSelectedIds) {
+      await apiFetch('/partite/' + mid, { method: 'PUT', body: JSON.stringify({ archiviata: true }) });
+    }
+    calSelectedIds.clear();
+    calSelectionMode = false;
+    hideLoading();
+    loadCalendar();
+  } catch (e) { hideLoading(); alert('Errore: ' + e.message); }
+}
+
+async function deleteSelected() {
+  if (calSelectedIds.size === 0) return;
+  if (!await confirm(`Eliminare ${calSelectedIds.size} partite? Questa azione \u00e8 irreversibile.`)) return;
+  showLoading();
+  try {
+    for (const mid of calSelectedIds) {
+      await apiFetch('/partite/' + mid, { method: 'DELETE' });
+    }
+    calSelectedIds.clear();
+    calSelectionMode = false;
+    hideLoading();
+    loadCalendar();
+  } catch (e) { hideLoading(); alert('Errore: ' + e.message); }
 }
 
 function attachCardListeners() {

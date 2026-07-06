@@ -271,6 +271,7 @@ function getTabs() {
     <button class="mc-tab active" data-tab="events">📋 Eventi${count ? ' <span class="mc-tab-badge">' + count + '</span>' : ''}</button>
     <button class="mc-tab" data-tab="formation">🏟️ Formazione</button>
     <button class="mc-tab" data-tab="notes">📝 Note</button>
+    <button class="mc-tab" data-tab="import">📋 Import</button>
   </div>`;
 }
 
@@ -278,6 +279,7 @@ function getBody(mid) {
   return `<div class="mc-tab-panel mc-tab-active" id="mcBodyEvents">${getTimeline(mid)}</div>
   <div class="mc-tab-panel" id="mcBodyFormation">${getLiveFormation(mid)}</div>
   <div class="mc-tab-panel" id="mcBodyNotes">${getNotesPanel(mid)}</div>
+  <div class="mc-tab-panel" id="mcBodyImport">${getImportPanel(mid)}</div>
   ${getQuickActions(mid)}
   ${getSaveButton()}
   </div>`;
@@ -582,6 +584,7 @@ function getLiveButton() {
   if (!action) return '<div style="margin-top:12px;"><span class="mc-badge" style="background:#27AE60;color:white;">✅ Partita terminata</span></div>';
 
   // Blocco avvio: "Inizio 1°T" abilitato solo 5min prima dell'orario schedulato
+  // Countdown visibile solo da 90min prima (orario convocazione tipico)
   let startBlocked = false, startRemaining = 0;
   if (action === 'start_1t' && match.data_ora) {
     const kickoff = new Date(match.data_ora).getTime();
@@ -601,7 +604,7 @@ function getLiveButton() {
   const disabledClass = isDisabled ? ' mc-live-btn-disabled' : '';
 
   let countdownText = '';
-  if (startBlocked) {
+  if (startBlocked && startRemaining <= 85) {
     countdownText = `⏳ Disponibile tra ${startRemaining} min`;
   } else if (!allowed) {
     countdownText = meta?.stato === 'intervallo' ? `⏸️ Intervallo · ${remaining} min` : `⏳ Abilitato tra ${remaining} min`;
@@ -618,7 +621,7 @@ function getQuickActions(mid) {
     { icon: '🟥', label: 'Espulsione', tipo: 'RED' },
     { icon: '🔄', label: 'Sostituzione', tipo: 'SUB' },
     { icon: '🥅', label: 'Gol Subito', tipo: 'SUBITO' },
-    { icon: '📋', label: 'Incolla eventi', tipo: 'PASTE_EVENTS' }
+    { icon: '🪷', label: 'Autogol', tipo: 'AUTOGOL' }
   ];
   const btns = actions.map(a => `<div class="mc-qa-btn" data-tipo="${a.tipo}"><span class="qa-icon">${a.icon}</span><span class="qa-label">${a.label}</span></div>`).join('');
   return `<div class="mc-qa-card"><div class="mc-qa-title">Azioni rapide</div><div class="mc-qa">${btns}</div></div>`;
@@ -728,10 +731,11 @@ function bindEvents(mid) {
       tab.classList.add('active');
       const t = tab.dataset.tab;
       document.querySelectorAll('.mc-tab-panel').forEach(p => p.classList.remove('mc-tab-active'));
-      const panelMap = { events: 'mcBodyEvents', formation: 'mcBodyFormation', notes: 'mcBodyNotes' };
+      const panelMap = { events: 'mcBodyEvents', formation: 'mcBodyFormation', notes: 'mcBodyNotes', import: 'mcBodyImport' };
       document.getElementById(panelMap[t])?.classList.add('mc-tab-active');
       if (t === 'formation') { bindLiveFormation(mid); bindFormationSubtabs(); }
       if (t === 'notes') bindNotesPanel(mid);
+      if (t === 'import') bindImportPanel(mid);
     });
   });
 
@@ -761,7 +765,7 @@ function bindEvents(mid) {
   // Quick actions → open drawer
   document.querySelectorAll('.mc-qa-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (btn.dataset.tipo === 'PASTE_EVENTS') { openPasteEventsModal(mid); return; }
+      if (btn.dataset.tipo === 'AUTOGOL') { openDrawer('AUTOGOL'); return; }
       openDrawer(btn.dataset.tipo);
     });
   });
@@ -1244,7 +1248,78 @@ function applySubToFormation(outPid, inPid) {
   formazioneData.riserve.push(outPid);
 }
 
-// ── PASTE EVENTS FROM WEB ──
+// ── IMPORT TAB PANEL ──
+function getImportPanel(mid) {
+  return `<div class="mc-qa-card">
+    <div style="margin-bottom:12px;"><strong>\ud83d\udccb Incolla tabellino</strong><p style="font-size:12px;color:#666;margin-top:4px;line-height:1.5;">Incolla il tabellino copiato dal sito del campionato. Riconosce marcatori, formazione e sostituzioni.</p></div>
+    <textarea id="mcImportText" rows="8" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;font-size:11px;font-family:monospace;resize:vertical;box-sizing:border-box;" placeholder="Incolla qui il tabellino..."></textarea>
+    <button class="btn btn-primary" id="mcImportParse" style="margin-top:12px;width:100%;">\ud83d\udd0d Analizza</button>
+    <div id="mcImportResult" style="margin-top:12px;"></div>
+  </div>`;
+}
+
+function bindImportPanel(mid) {
+  document.getElementById('mcImportParse')?.addEventListener('click', () => {
+    const text = document.getElementById('mcImportText')?.value?.trim();
+    if (!text || text.length < 10) { alert('Incolla il tabellino prima di analizzare'); return; }
+    const resultDiv = document.getElementById('mcImportResult');
+    let parsedData;
+    try {
+      parsedData = parseTabellino(text);
+    } catch (e) { resultDiv.innerHTML = `<div style="color:#c00;">\u274c Errore parsing: ${e.message}</div>`; return; }
+    const evCount = parsedData.events?.length || 0;
+    const hasFormation = parsedData.formation?.length > 0;
+    const modulo = parsedData.modulo || '';
+    let html = `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;">\u2705 Trovati: <strong>${evCount}</strong> eventi${hasFormation ? ` + formazione ${modulo} (${parsedData.formation.length} giocatori)` : ''}</div>`;
+    if (evCount > 0) {
+      html += '<div style="max-height:150px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;font-size:12px;">';
+      parsedData.events.forEach(e => {
+        const icon = e.tipo === 'GOAL' ? '\u26bd' : e.tipo === 'SUB' ? '\ud83d\udd04' : '\ud83d\udfe8';
+        html += `<div style="padding:2px 0;">${icon} ${e.minuto ? e.minuto + "'" : ''} ${e.principale || e.sub_in || ''}</div>`;
+      });
+      html += '</div>';
+    }
+    html += `<button class="btn btn-primary" id="mcImportConfirm" style="margin-top:12px;width:100%;">\u2705 Conferma e Importa</button>`;
+    resultDiv.innerHTML = html;
+    document.getElementById('mcImportConfirm')?.addEventListener('click', async () => {
+      await applyParsedImport(mid, parsedData);
+      resultDiv.innerHTML = '<div style="color:#27AE60;font-weight:600;padding:8px;">\u2705 Importazione completata!</div>';
+      document.getElementById('mcImportText').value = '';
+    });
+  });
+}
+
+async function applyParsedImport(mid, parsedData) {
+  // Apply events
+  if (parsedData.events?.length > 0) {
+    for (const e of parsedData.events) {
+      const matched = matchPlayerByName(e.principale);
+      if (matched) { e.principale = matched.nome; e.principale_id = matched.id; }
+      if (e.sub_in) {
+        const matchedIn = matchPlayerByName(e.sub_in);
+        if (matchedIn) { e.sub_in = matchedIn.nome; e.sub_in_id = matchedIn.id; }
+      }
+      eventi.push(e);
+    }
+  }
+  // Apply formation
+  if (parsedData.formation?.length > 0 && parsedData.modulo) {
+    const formPayload = parsedData.formation.map((name, i) => {
+      const matched = matchPlayerByName(name);
+      return { team_player_id: matched?.tpId || null, ordine: i + 1, is_starter: true, nome: matched?.nome || name };
+    }).filter(f => f.team_player_id);
+    if (formPayload.length > 0) {
+      try {
+        await apiFetch('/partite/' + mid + '/formazione', {
+          method: 'POST',
+          body: JSON.stringify({ formazione: formPayload, modulo: parsedData.modulo })
+        });
+      } catch (e) { /* silent */ }
+    }
+  }
+}
+
+// ── PASTE EVENTS FROM WEB (legacy modal, kept for reference) ──
 function openPasteEventsModal(mid) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;';

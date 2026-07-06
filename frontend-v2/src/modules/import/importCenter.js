@@ -132,7 +132,7 @@ function renderMain(c, logs, teamName) {
   // Event listeners
   document.getElementById('icPdf').addEventListener('click', openImportPdf);
   document.getElementById('icText').addEventListener('click', openImportText);
-  document.getElementById('icXls').addEventListener('click', () => { window.YFM.navigateTo('roster'); setTimeout(() => document.getElementById('btnImportXls')?.click(), 300); });
+  document.getElementById('icXls').addEventListener('click', () => { if (window.YFM.openImportXlsModal) window.YFM.openImportXlsModal(); else { window.YFM.navigateTo('roster'); setTimeout(() => document.getElementById('btnImportXls')?.click(), 300); } });
   document.getElementById('icGrConfig').addEventListener('click', openGrConfig);
   document.getElementById('icGrCalendario').addEventListener('click', openGrCalendario);
   document.getElementById('icGrEventi')?.addEventListener('click', openGrEventi);

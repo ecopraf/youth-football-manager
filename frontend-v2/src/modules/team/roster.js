@@ -67,7 +67,7 @@ function renderRoster(c, players, scadenze) {
   }
   
   toolbarHtml += '<button class="btn btn-secondary" id="btnImportXls" title="Importa rosa da file Excel" data-help="roster.btnAggiungi">📥 XLS</button>';
-  toolbarHtml += '<button class="btn btn-secondary" id="btnImportTc" title="Importa rosa da Tuttocampo (copia-incolla)" style="background:#149347;color:#fff;">⚽ Tuttocampo</button>';
+  toolbarHtml += '<button class="btn btn-secondary" id="btnImportTc" title="Importa rosa manualmente (copia-incolla)">📋 Incolla Rosa</button>';
   toolbarHtml += '<button class="btn btn-primary" id="btnAdd" data-help="roster.btnAggiungi">+ Aggiungi</button></div></div>';
 
   let scadenzeHtml = scadenze.length > 0 ? '<div class="card" data-help="roster.alertMedico" style="margin-bottom:20px;border-left:4px solid #F39C12;"><h3>⚠️ Certificati in scadenza</h3>' + scadenze.map(x => '<div>' + x.nome + ' ' + x.cognome + ' - ' + formatDateShort(x.scadenza) + ' (' + (x.giorni_rimanenti || x.giorniRimanenti) + 'gg)</div>').join('') + '</div>' : '';
@@ -684,6 +684,7 @@ function openPlayerForm(pid) {
 
 window.YFM = window.YFM || {};
 window.YFM.openPlayerForm = openPlayerForm;
+window.YFM.openImportXlsModal = openImportXlsModal;
 
 // === IMPORT ROSA DA XLS ===
 async function openImportXlsModal() {
@@ -857,15 +858,15 @@ function openImportTcModal() {
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal-content" style="max-width:600px;max-height:90vh;overflow-y:auto;">
-      <h2 style="margin-bottom:16px;">⚽ Importa Rosa da Tuttocampo</h2>
+      <h2 style="margin-bottom:16px;">📋 Incolla Rosa</h2>
       <div style="padding:14px;background:#f0f7ff;border-radius:10px;border:1px solid #b3d4fc;">
-        <p style="font-size:13px;font-weight:600;margin:0 0 10px 0;">📋 Copia-incolla dalla pagina Rosa</p>
+        <p style="font-size:13px;font-weight:600;margin:0 0 10px 0;">📋 Copia-incolla da una pagina web</p>
         <ol style="font-size:12px;color:#444;margin:0 0 12px 16px;line-height:1.8;">
-          <li>Apri la pagina Rosa della squadra su <a href="https://www.tuttocampo.it" target="_blank" style="color:#667eea;">Tuttocampo.it</a></li>
+          <li>Apri la pagina Rosa della squadra sul sito del campionato</li>
           <li>Seleziona tutta la tabella giocatori (Ctrl+A o seleziona con mouse)</li>
           <li>Copia (Ctrl+C) e incolla qui sotto (Ctrl+V)</li>
         </ol>
-        <textarea id="tcTextFallback" rows="6" placeholder="Incolla qui il testo o HTML copiato dalla pagina Rosa di Tuttocampo..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:vertical;font-family:monospace;"></textarea>
+        <textarea id="tcTextFallback" rows="6" placeholder="Incolla qui il testo o HTML copiato dalla pagina Rosa..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:vertical;font-family:monospace;"></textarea>
         <button id="tcParseTextBtn" class="btn btn-primary" style="margin-top:10px;width:100%;">🔍 Analizza testo</button>
       </div>
       <div id="tcPreview" style="margin-top:12px;"></div>
