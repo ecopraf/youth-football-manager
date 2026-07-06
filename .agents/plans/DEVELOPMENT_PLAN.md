@@ -164,6 +164,20 @@
 
 ---
 
+### EPIC 9: Workspace Hub (superadmin)
+
+> Pagina workspace centralizzata con tab Info (modificabile), Stagioni, Utenti. Permette al superadmin di gestire tutto il setup di un workspace senza navigare tra pagine diverse.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 9.1 | Click su card workspace → vista dettaglio con tab (Info, Stagioni, Utenti) | ⬜ | — | modules/admin/workspaces.js | ~15min |
+| 9.2 | Tab Info: form inline modificabile (nome, contatti, social, facility, logo) | ⬜ | 9.1 | modules/admin/workspaces.js | ~10min |
+| 9.3 | Tab Stagioni: lista stagioni con team, azioni (crea, migra, attiva) | ⬜ | 9.1 | modules/admin/workspaces.js | ~15min |
+| 9.4 | Tab Utenti: lista utenti workspace + creazione rapida + modifica ruolo/permessi | ⬜ | 9.1 | modules/admin/workspaces.js | ~15min |
+| 9.5 | Test build + aggiornare docs | ⬜ | 9.4 | DEVELOPMENT_PLAN.md | ~2min |
+
+---
+
 ## 4. Dipendenze tra Epic
 
 ```
@@ -174,6 +188,7 @@ EPIC 4 (Opponent) ──→ nessuna dipendenza
 EPIC 5 (Import TC3) ──→ nessuna dipendenza
 EPIC 6 (Polish) ──→ nessuna dipendenza
 EPIC 7 (Tornei) ──→ nessuna dipendenza (codice già pronto)
+EPIC 9 (Workspace Hub) ──→ nessuna dipendenza
 ```
 
 Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
@@ -278,6 +293,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | ff6fcff | fix: persist squadraId in localStorage |
 | 448882a | style: rimuove nome categoria dai titoli |
 | dbc0b9b | feat: guest token season_id — legame stagione, blocco creazione post-31/07, nome giocatore da DB |
+| e715772 | style: sidebar Coach sopra Performance, rinomina 'Genera Link Atleti' |
+| 36c1276 | feat: workspace social (facebook/instagram) + import GR unificato con checkbox + fix classifica_url in memoria |
 
 ---
 

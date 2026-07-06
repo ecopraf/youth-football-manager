@@ -655,7 +655,7 @@ function renderPlayerReport(report) {
   
   const avgGolPerPartita = report.stats.partiteGiocate > 0 
     ? (report.stats.gol / report.stats.partiteGiocate).toFixed(2) : 0;
-  const minutiTotali = report.stats.partiteGiocate * 90;
+  const minutiTotali = report.stats.minutiTotali || 0;
   
   container.innerHTML = `
     <div id="playerPrintArea" style="background:white;padding:24px;">

@@ -120,7 +120,7 @@ function renderCalendarPage(c, matches, stats) {
   // Separa future e passate
   // Terminata → sempre nelle giocate. Live → sempre nelle future.
   const isMatchLive = (m) => !!(m.live_meta && ['1t','2t','intervallo'].includes(m.live_meta.stato));
-  const isPlayed = (m) => m.stato === 'Terminata' || m.gol_casa !== null;
+  const isPlayed = (m) => m.stato === 'Terminata' || (m.gol_casa !== null && m.stato !== 'Da disputare');
   const futureMatches = matches
     .filter(m => !isPlayed(m) && (new Date(m.data_ora) >= now || isMatchLive(m)))
     .sort((a, b) => {
@@ -620,10 +620,41 @@ export async function openMatchForm(mid) {
   const compOptions = '<option value="">Amichevole</option>' + competitions.map(c => 
     `<option value="${c.nome}" ${m && m.competizione === c.nome ? 'selected' : ''}>${c.nome}</option>`
   ).join('');
-  
+
+  // Carica squadre del girone se configurato
+  let gironeTeams = [];
+  const sq = window.YFM.getSquadra();
+  if (sq?.classifica_url) {
+    try {
+      const clData = await apiFetch('/gr/classifica/' + window.YFM.squadraId);
+      if (clData?.classifica) {
+        const teamName = (sq.nome || '').toLowerCase();
+        gironeTeams = clData.classifica
+          .filter(r => !r.nome.toLowerCase().includes(teamName) && !teamName.includes(r.nome.toLowerCase()))
+          .map(r => ({ nome: r.nome, logo: r.logo || null }));
+      }
+    } catch(e) {}
+  }
+
+  const gironeChipsHtml = gironeTeams.length > 0
+    ? `<div style="margin-bottom:8px;">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">🏆 Squadre del tuo girone</label>
+        <div id="mfGironeChips" style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${gironeTeams.map(t => `<button type="button" class="mf-chip" data-nome="${t.nome}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid #ddd;border-radius:16px;background:#f8f9fa;font-size:12px;cursor:pointer;transition:all .15s;">${t.logo ? `<img src="${t.logo}" style="width:16px;height:16px;border-radius:50%;object-fit:contain;">` : ''}${t.nome}</button>`).join('')}
+        </div>
+      </div>`
+    : '';
+
   const content = `
   <div class="form-group" style="margin-bottom:12px;"><label>Data e Ora</label><input id="mfD" type="datetime-local" value="${editDate}"></div>
-  <div class="form-group" style="margin-bottom:12px;"><label>Avversario</label><input id="mfA" value="${m ? m.avversario || '' : ''}"></div>
+  <div class="form-group" style="margin-bottom:12px;">
+    <label>Avversario</label>
+    ${gironeChipsHtml}
+    <div style="position:relative;">
+      <input id="mfA" value="${m ? m.avversario || '' : ''}" placeholder="Digita 2+ lettere per cercare..." autocomplete="off">
+      <div id="mfAResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+    </div>
+  </div>
   <div class="form-group" style="margin-bottom:12px;"><label>Luogo</label><select id="mfL"><option ${m && m.luogo === 'Casa' ? 'selected' : ''}>Casa</option><option ${m && m.luogo === 'Trasferta' ? 'selected' : ''}>Trasferta</option></select></div>
   <div class="form-group" style="margin-bottom:12px;"><label>Competizione</label><select id="mfC">${compOptions}</select></div>
   <div class="form-group" id="mfTorneoGroup" style="margin-bottom:12px;display:none;"><label>Nome torneo</label><input id="mfTorneo" placeholder="es. Torneo Città di Roma" value="${m && !m.competition_id && m.competizione ? m.competizione : ''}"></div>
@@ -631,6 +662,54 @@ export async function openMatchForm(mid) {
   const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="saveBtn">Salva</button>';
   const modal = createModal(m ? 'Modifica' : 'Nuova Partita', content, footer, '500px');
   
+  // --- Chiudi picker data/ora dopo selezione ---
+  document.getElementById('mfD').addEventListener('change', (e) => { e.target.blur(); });
+
+  // --- Chip girone: click per selezionare ---
+  document.querySelectorAll('.mf-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.getElementById('mfA').value = chip.dataset.nome;
+      document.querySelectorAll('.mf-chip').forEach(c => { c.style.background = '#f8f9fa'; c.style.borderColor = '#ddd'; c.style.color = ''; });
+      chip.style.background = '#667eea'; chip.style.borderColor = '#667eea'; chip.style.color = 'white';
+      document.getElementById('mfAResults').style.display = 'none';
+    });
+  });
+
+  // --- Ricerca live da team_logo ---
+  let searchTimeout = null;
+  const mfAInput = document.getElementById('mfA');
+  const mfAResults = document.getElementById('mfAResults');
+  mfAInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    const q = mfAInput.value.trim();
+    if (q.length < 2) { mfAResults.style.display = 'none'; return; }
+    searchTimeout = setTimeout(async () => {
+      try {
+        const results = await apiFetch('/teams/search?q=' + encodeURIComponent(q));
+        if (results.length === 0) { mfAResults.style.display = 'none'; return; }
+        mfAResults.innerHTML = results.map(r => `
+          <div class="mf-search-item" data-nome="${r.nome}" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:13px;">
+            ${r.logo_path ? `<img src="${r.logo_path}" style="width:20px;height:20px;border-radius:50%;object-fit:contain;">` : '<span style="width:20px;"></span>'}
+            ${r.nome}
+          </div>
+        `).join('');
+        mfAResults.style.display = 'block';
+        mfAResults.querySelectorAll('.mf-search-item').forEach(item => {
+          item.addEventListener('click', () => {
+            mfAInput.value = item.dataset.nome;
+            mfAResults.style.display = 'none';
+          });
+          item.addEventListener('mouseenter', () => { item.style.background = '#f0f4ff'; });
+          item.addEventListener('mouseleave', () => { item.style.background = ''; });
+        });
+      } catch(e) { mfAResults.style.display = 'none'; }
+    }, 300);
+  });
+  // Chiudi risultati se click fuori
+  document.addEventListener('click', (e) => {
+    if (!mfAInput.contains(e.target) && !mfAResults.contains(e.target)) mfAResults.style.display = 'none';
+  }, { once: false });
+
   // Mostra campo torneo se amichevole
   const compSel = document.getElementById('mfC');
   const torneoGroup = document.getElementById('mfTorneoGroup');

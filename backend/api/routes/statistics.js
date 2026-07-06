@@ -525,9 +525,19 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const ammonizioni = eventi.filter(e => e.tipo_evento === 'YELLOW').length;
       const espulsioni = eventi.filter(e => e.tipo_evento === 'RED').length;
 
+      // Minuti reali da match_statistics
+      let minutiTotali = 0;
+      if (tpIds.length > 0 && matchIds.length > 0) {
+        const { data: msData } = await supabase.from('match_statistics')
+          .select('minuti_giocati')
+          .in('team_player_id', tpIds)
+          .in('match_id', matchIds);
+        minutiTotali = (msData || []).reduce((sum, s) => sum + (s.minuti_giocati || 0), 0);
+      }
+
       res.json({
         giocatore: { nome: player.nome, cognome: player.cognome, data_nascita: player.data_nascita, nazionalita: player.nazionalita },
-        stats: { partiteGiocate: presenze, gol, assist, ammonizioni, espulsioni },
+        stats: { partiteGiocate: presenze, gol, assist, ammonizioni, espulsioni, minutiTotali },
         storico
       });
     } catch (err) {

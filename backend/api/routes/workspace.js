@@ -184,6 +184,22 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // GET /api/teams/search?q=alb — ricerca squadre da team_logo
+  router.get('/api/teams/search', authMiddleware, async (req, res) => {
+    try {
+      const q = (req.query.q || '').trim().toLowerCase();
+      if (q.length < 2) return res.json([]);
+      const { data } = await supabase.from('team_logo')
+        .select('nome, logo_path')
+        .ilike('nome', `%${q}%`)
+        .order('nome')
+        .limit(20);
+      res.json(data || []);
+    } catch (err) {
+      res.json([]);
+    }
+  });
+
   // ── FACILITY ──
   router.get('/api/workspaces/:id/facility', authMiddleware, async (req, res) => {
     try {
