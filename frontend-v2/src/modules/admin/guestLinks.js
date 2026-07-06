@@ -25,7 +25,7 @@ export default async function loadGuestLinks() {
       <h1 class="page-title">🔗 Link di Accesso Guest</h1>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-primary" id="btnCreateLink" data-help="guest.genera">+ Crea Link</button>
-        <button class="btn btn-secondary" id="btnBatchLinks">👥 Genera Batch Atleti</button>
+        <button class="btn btn-secondary" id="btnBatchLinks">👥 Genera Link Atleti</button>
         <button class="btn btn-danger" id="btnDeleteSelected" style="display:none;">🗑️ Elimina</button>
         <button class="btn btn-secondary" id="btnRenewSelected" style="display:none;">🔄 Rinnova</button>
       </div>

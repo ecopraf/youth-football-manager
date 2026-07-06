@@ -32,13 +32,6 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
   if (hasCap('rosa')) html += navItem('roster', '👥', 'Rosa', 'Lista giocatori, statistiche individuali, storico');
   if (hasCap('partite')) html += navItem('calendar', '📅', 'Calendario', 'Calendario partite, risultati, archiviazione');
 
-  // Performance
-  if (hasCap('statistiche') || hasCap('report')) {
-    html += sectionTitle('📈 Performance');
-    if (hasCap('statistiche')) html += navItem('stats', '📊', 'Statistiche', 'Marcatori, assist, discipline, statistiche');
-    if (hasCap('report')) html += navItem('reports', '📄', 'Report', 'Report partita e stagionale PDF');
-  }
-
   // Coach
   if (hasCap('allenamenti')) {
     html += sectionTitle('🎯 Coach');
@@ -48,6 +41,13 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
     html += navItem('trainingPresenze', '🙋', 'Presenze', 'Presenze allenamenti');
     html += navItem('trainingSettings', '⚙️', 'Impostazioni', 'Configurazione allenamenti');
     html += '</div>';
+  }
+
+  // Performance
+  if (hasCap('statistiche') || hasCap('report')) {
+    html += sectionTitle('📈 Performance');
+    if (hasCap('statistiche')) html += navItem('stats', '📊', 'Statistiche', 'Marcatori, assist, discipline, statistiche');
+    if (hasCap('report')) html += navItem('reports', '📄', 'Report', 'Report partita e stagionale PDF');
   }
 
   // Club

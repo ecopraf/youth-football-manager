@@ -277,6 +277,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | ab137a2 | feat: contatti genitori (padre/madre/tutore) nel form |
 | ff6fcff | fix: persist squadraId in localStorage |
 | 448882a | style: rimuove nome categoria dai titoli |
+| dbc0b9b | feat: guest token season_id — legame stagione, blocco creazione post-31/07, nome giocatore da DB |
 
 ---
 
