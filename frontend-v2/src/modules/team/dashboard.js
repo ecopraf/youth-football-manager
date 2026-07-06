@@ -66,7 +66,7 @@ export default async function loadDashboard() {
   }
   
   const s = window.YFM.getSquadra();
-  const stagioneName = s._stagione || 'Stagione';
+  const stagioneName = s._stagione || ((window.YFM.accessibleSeasons || []).find(ss => ss.id === window.YFM.currentSeasonId) || {}).nome || '';
   const isToday = (d) => new Date(d).toDateString() === new Date().toDateString();
   const isMatchDone = (m) => m.live_meta?.stato === 'fine' || m.stato === 'Terminata';
   // Pick first match: today's finished match takes priority, otherwise first non-finished future match
