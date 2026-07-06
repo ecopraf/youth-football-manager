@@ -60,8 +60,8 @@ export async function loadSquadre(stagioneId) {
         }
       }
       
-      // Ordina: attiva prima, poi per data decrescente
-      accessibleSeasons.sort((a, b) => (b.attiva ? 1 : 0) - (a.attiva ? 1 : 0) || b.data_inizio?.localeCompare(a.data_inizio));
+      // Ordina per anno decrescente (2026/27 prima, 2024/25 dopo)
+      accessibleSeasons.sort((a, b) => (b.nome || '').localeCompare(a.nome || ''));
       
       window.YFM.accessibleSeasons = accessibleSeasons;
       

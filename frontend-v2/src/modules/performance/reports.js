@@ -19,9 +19,12 @@ export default async function loadReports() {
       <div class="card">
         <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
           <label style="font-weight:500;">Seleziona partita:</label>
-          <select id="reportMatchSelect" style="flex:1;min-width:250px;padding:10px;border:1px solid var(--border);border-radius:8px;">
-            <option value="">-- Caricamento partite --</option>
-          </select>
+          <div style="flex:1;min-width:250px;position:relative;">
+            <input type="text" id="matchSearchInput" placeholder="🔍 Cerca avversario..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:4px;">
+            <select id="reportMatchSelect" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;">
+              <option value="">-- Caricamento partite --</option>
+            </select>
+          </div>
           <button class="btn btn-primary" id="btnGenerateReport" disabled>Genera Report</button>
           <button class="btn btn-secondary" id="btnPrintReport" style="display:none;">🖨️ Stampa / Salva PDF</button>
         </div>
@@ -45,11 +48,20 @@ export default async function loadReports() {
       <div class="card">
         <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
           <label style="font-weight:500;">Seleziona giocatore:</label>
-          <select id="playerSelect" style="flex:1;min-width:250px;padding:10px;border:1px solid var(--border);border-radius:8px;">
-            <option value="">-- Seleziona giocatore --</option>
-          </select>
+          <div style="flex:1;min-width:250px;position:relative;">
+            <input type="text" id="playerSearchInput" placeholder="🔍 Cerca giocatore..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:4px;">
+            <select id="playerSelect" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;">
+              <option value="">-- Seleziona giocatore --</option>
+            </select>
+          </div>
           <button class="btn btn-primary" id="btnGeneratePlayerReport" disabled>Genera Report</button>
           <button class="btn btn-secondary" id="btnPrintPlayerReport" style="display:none;">🖨️ Stampa / Salva PDF</button>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:16px;padding:12px;background:#f8f9fa;border-radius:8px;">
+          <span style="font-weight:500;font-size:13px;">Includi:</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="chkCampionato" checked style="accent-color:#667eea;"> Campionato</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="chkCoppa" checked style="accent-color:#667eea;"> Coppa</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="chkAmichevoli" style="accent-color:#667eea;"> Amichevoli</label>
         </div>
         <div id="playerReportContent" style="display:none;"></div>
       </div>
@@ -86,6 +98,29 @@ export default async function loadReports() {
   document.getElementById('btnPrintSeasonalReport').addEventListener('click', () => printSeasonalReport());
   document.getElementById('btnGeneratePlayerReport').addEventListener('click', generatePlayerReport);
   document.getElementById('btnPrintPlayerReport').addEventListener('click', () => printPlayerReport());
+
+  // Search filters
+  document.getElementById('matchSearchInput').addEventListener('input', (e) => {
+    filterSelect('reportMatchSelect', e.target.value);
+  });
+  document.getElementById('playerSearchInput').addEventListener('input', (e) => {
+    filterSelect('playerSelect', e.target.value);
+  });
+}
+
+function filterSelect(selectId, query) {
+  const select = document.getElementById(selectId);
+  const q = query.toLowerCase().trim();
+  Array.from(select.options).forEach((opt, i) => {
+    if (i === 0) { opt.hidden = false; return; } // keep placeholder
+    opt.hidden = q ? !opt.textContent.toLowerCase().includes(q) : false;
+  });
+  // Auto-select if only one visible option
+  const visible = Array.from(select.options).filter((o, i) => i > 0 && !o.hidden);
+  if (visible.length === 1) {
+    select.value = visible[0].value;
+    select.dispatchEvent(new Event('change'));
+  }
 }
 
 async function loadPlayerList() {
@@ -365,8 +400,10 @@ function generateSocialComment(report) {
   
   if (marcatori.length > 0) {
     const marcatoriList = marcatori.map(m => {
-      const nome = (m.principale || 'Giocatore').split(' ')[0];
-      return `${nome} (${m.minuto || '?'}')`;
+      // Usa cognome completo (tutto tranne l'ultima parola che è il nome)
+      const parts = (m.principale || 'Giocatore').split(' ');
+      const cognome = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0];
+      return `${cognome} (${m.minuto || '?'}')`;
     }).join(', ');
     comment += `⚽ Marcatori: ${marcatoriList}\n`;
   }
@@ -590,9 +627,19 @@ async function generatePlayerReport() {
   const playerId = document.getElementById('playerSelect').value;
   if (!playerId) return;
   
+  // Build competition filter from checkboxes
+  const comps = [];
+  if (document.getElementById('chkCampionato')?.checked) comps.push('Campionato');
+  if (document.getElementById('chkCoppa')?.checked) comps.push('Coppa');
+  if (document.getElementById('chkAmichevoli')?.checked) comps.push('Amichevole', 'Torneo');
+  
+  const params = new URLSearchParams();
+  params.set('team_id', window.YFM.squadraId);
+  if (comps.length > 0) params.set('competizioni', comps.join(','));
+  
   showLoading('Generazione report giocatore...');
   try {
-    const report = await apiFetch('/calciatori/' + playerId + '/report');
+    const report = await apiFetch('/calciatori/' + playerId + '/report?' + params.toString());
     renderPlayerReport(report);
     document.getElementById('btnPrintPlayerReport').style.display = 'inline-block';
   } catch (err) {
@@ -609,33 +656,6 @@ function renderPlayerReport(report) {
   const avgGolPerPartita = report.stats.partiteGiocate > 0 
     ? (report.stats.gol / report.stats.partiteGiocate).toFixed(2) : 0;
   const minutiTotali = report.stats.partiteGiocate * 90;
-  
-  // Raggruppa storico per competizione e partita (giornata)
-  const gruppiStorico = {};
-  (report.storico || []).forEach(e => {
-    // Crea chiave univoca per partita: competizione + giornata
-    const key = (e.competizione || 'Altro') + '||' + (e.giornata || '') + '||' + (e.partita || '') + '||' + (e.data || '');
-    if (!gruppiStorico[key]) {
-      gruppiStorico[key] = {
-        competizione: e.competizione || 'Altro',
-        giornata: e.giornata,
-        partita: e.partita,
-        data: e.data,
-        eventi: []
-      };
-    }
-    gruppiStorico[key].eventi.push(e);
-  });
-  
-  // Ordina eventi per minuto e gruppi per giornata crescente
-  Object.values(gruppiStorico).forEach(g => {
-    g.eventi.sort((a, b) => a.minuto - b.minuto);
-  });
-  const gruppiOrdinati = Object.values(gruppiStorico).sort((a, b) => {
-    const gA = parseInt(a.giornata) || 0;
-    const gB = parseInt(b.giornata) || 0;
-    return gA - gB;
-  });
   
   container.innerHTML = `
     <div id="playerPrintArea" style="background:white;padding:24px;">
@@ -684,30 +704,52 @@ function renderPlayerReport(report) {
         @media (max-width: 450px) { .player-stats-grid { grid-template-columns: repeat(2, 1fr) !important; } }
       </style>
       
-      <!-- Storico Eventi Raggruppato per partita -->
+      <!-- Storico Eventi Raggruppato per competizione -->
       <div>
         <h3 style="margin:0 0 8px 0;font-size:14px;border-bottom:1px solid #ddd;padding-bottom:6px;">📋 Storico Gol & Assist</h3>
-        ${gruppiOrdinati.length > 0 ? gruppiOrdinati.map(gruppo => `
-          <div style="margin-bottom:14px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-              <span style="background:#667eea;color:white;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;min-width:50px;text-align:center;">
-                ${gruppo.giornata ? 'G.' + String(gruppo.giornata).padStart(2, '0') : ''}
-              </span>
-              <span style="font-size:12px;font-weight:500;color:#333;">
-                vs ${gruppo.partita || 'Avversario'}
-              </span>
-              <span style="font-size:10px;color:#888;">${formatDateShort(gruppo.data)}</span>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:#f8f9fa;border-radius:6px;">
-              ${gruppo.eventi.map(e => `
-                <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:${e.tipo === 'GOAL' ? '#d4edda' : e.tipo === 'ASSIST' ? '#cce5ff' : e.tipo === 'YELLOW' ? '#fff3cd' : '#f8d7da'};border-radius:4px;font-size:11px;">
-                  ${e.minuto != null ? `<span style="font-weight:bold;color:#667eea;">${e.minuto}'</span>` : ''}
-                  <span>${getEventIcon(e.tipo)}</span>
-                </span>
+        ${(() => {
+          // Raggruppa per competizione
+          const byComp = {};
+          (report.storico || []).forEach(e => {
+            const comp = e.competizione || 'Altro';
+            if (!byComp[comp]) byComp[comp] = [];
+            byComp[comp].push(e);
+          });
+          if (Object.keys(byComp).length === 0) return '<p style="color:#666;font-size:13px;text-align:center;padding:20px;">Nessun evento registrato</p>';
+          return Object.entries(byComp).map(([comp, eventi]) => {
+            // Raggruppa per partita dentro la competizione
+            const byMatch = {};
+            eventi.forEach(e => {
+              const key = (e.giornata || '') + '||' + (e.partita || '') + '||' + (e.data || '');
+              if (!byMatch[key]) byMatch[key] = { giornata: e.giornata, partita: e.partita, data: e.data, eventi: [] };
+              byMatch[key].eventi.push(e);
+            });
+            const gruppi = Object.values(byMatch).sort((a, b) => (parseInt(a.giornata) || 0) - (parseInt(b.giornata) || 0));
+            return `
+            <div style="margin-bottom:16px;">
+              <div style="background:#667eea;color:white;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;margin-bottom:8px;display:inline-block;">${comp}</div>
+              ${gruppi.map(gruppo => `
+                <div style="margin-bottom:10px;margin-left:8px;">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                    <span style="background:#f0f0f0;color:#667eea;padding:3px 7px;border-radius:4px;font-size:10px;font-weight:600;min-width:40px;text-align:center;">
+                      ${gruppo.giornata ? 'G.' + String(gruppo.giornata).padStart(2, '0') : ''}
+                    </span>
+                    <span style="font-size:12px;font-weight:500;color:#333;">vs ${gruppo.partita || 'Avversario'}</span>
+                    <span style="font-size:10px;color:#888;">${formatDateShort(gruppo.data)}</span>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;background:#f8f9fa;border-radius:6px;">
+                    ${gruppo.eventi.map(e => `
+                      <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:${e.tipo === 'GOAL' ? '#d4edda' : e.tipo === 'ASSIST' ? '#cce5ff' : e.tipo === 'YELLOW' ? '#fff3cd' : '#f8d7da'};border-radius:4px;font-size:11px;">
+                        ${e.minuto != null ? `<span style="font-weight:bold;color:#667eea;">${e.minuto}'</span>` : ''}
+                        <span>${getEventIcon(e.tipo)}</span>
+                      </span>
+                    `).join('')}
+                  </div>
+                </div>
               `).join('')}
-            </div>
-          </div>
-        `).join('') : '<p style="color:#666;font-size:13px;text-align:center;padding:20px;">Nessun evento registrato</p>'}
+            </div>`;
+          }).join('');
+        })()}
       </div>
     </div>
   `;

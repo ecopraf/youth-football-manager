@@ -457,33 +457,44 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
     }
   });
 
-  // GET /api/calciatori/:playerId/report
+  // GET /api/calciatori/:playerId/report?team_id=X&competizioni=Campionato,Coppa
   router.get('/api/calciatori/:playerId/report', authMiddleware, async (req, res) => {
     try {
       const { playerId } = req.params;
+      const filterTeamId = req.query.team_id || null;
+      const filterComp = req.query.competizioni ? req.query.competizioni.split(',') : null; // ['Campionato','Coppa','Amichevole']
       const { data: player } = await supabase.from('player').select('*').eq('id', playerId).single();
       if (!player) return res.status(404).json({ error: 'Giocatore non trovato' });
 
-      // Find all team_player records
-      const { data: tps } = await supabase.from('team_player').select('id, team_id').eq('player_id', playerId);
+      // Find team_player records (filtered by team if provided)
+      let tpQuery = supabase.from('team_player').select('id, team_id').eq('player_id', playerId);
+      if (filterTeamId) tpQuery = tpQuery.eq('team_id', filterTeamId);
+      const { data: tps } = await tpQuery;
       const teamIds = (tps || []).map(tp => tp.team_id);
 
       // All matches for those teams
       const { data: matches } = teamIds.length > 0
-        ? await supabase.from('match').select('id, data_ora, avversario, giornata, competition:competition_id(nome)').in('team_id', teamIds).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora')
+        ? await supabase.from('match').select('id, data_ora, avversario, giornata, competition:competition_id(nome, tipo)').in('team_id', teamIds).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora')
         : { data: [] };
-      const matchIds = (matches || []).map(m => m.id);
 
-      // Events for this player (gol, cartellini, assist)
+      // Filter by competition types
+      let filteredMatches = matches || [];
+      if (filterComp && filterComp.length > 0) {
+        filteredMatches = filteredMatches.filter(m => {
+          const tipo = m.competition?.tipo || 'Amichevole';
+          return filterComp.includes(tipo);
+        });
+      }
+      const matchIds = filteredMatches.map(m => m.id);
+
+      // Events for this player
       let eventi = [];
-      let assistCount = 0;
       if (matchIds.length > 0) {
         const { data: evts } = await supabase.from('match_event').select('tipo_evento, minuto, match_id').eq('player_id', playerId).in('match_id', matchIds);
         eventi = evts || [];
-        assistCount = eventi.filter(e => e.tipo_evento === 'ASSIST').length;
       }
 
-      // Presenze (convocazioni o formazioni)
+      // Presenze
       const tpIds = (tps || []).map(tp => tp.id);
       let presenze = 0;
       if (matchIds.length > 0 && tpIds.length > 0) {
@@ -492,16 +503,17 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       }
 
       const matchMap = {};
-      (matches || []).forEach(m => { matchMap[m.id] = m; });
+      filteredMatches.forEach(m => { matchMap[m.id] = m; });
 
       const storico = eventi
-        .filter(e => e.tipo_evento === 'GOAL' || e.tipo_evento === 'ASSIST')
+        .filter(e => e.tipo_evento === 'GOAL' || e.tipo_evento === 'ASSIST' || e.tipo_evento === 'YELLOW' || e.tipo_evento === 'RED')
         .map(e => {
           const m = matchMap[e.match_id];
           return {
             tipo: e.tipo_evento,
             minuto: e.minuto,
             competizione: m?.competition?.nome || '',
+            tipoCompetizione: m?.competition?.tipo || '',
             giornata: m?.giornata || '',
             partita: m?.avversario || '',
             data: m?.data_ora || ''
@@ -509,7 +521,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         });
 
       const gol = eventi.filter(e => e.tipo_evento === 'GOAL').length;
-      const assist = assistCount;
+      const assist = eventi.filter(e => e.tipo_evento === 'ASSIST').length;
       const ammonizioni = eventi.filter(e => e.tipo_evento === 'YELLOW').length;
       const espulsioni = eventi.filter(e => e.tipo_evento === 'RED').length;
 

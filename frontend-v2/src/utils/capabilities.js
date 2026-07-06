@@ -15,6 +15,11 @@ export const CAPABILITIES = [
 ];
 
 export const PROFILI = {
+  admin: {
+    label: 'Admin',
+    icon: '🔑',
+    capabilities: { rosa: 'write', partite: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read' }
+  },
   allenatore: {
     label: 'Allenatore',
     icon: '⚽',

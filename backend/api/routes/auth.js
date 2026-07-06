@@ -12,11 +12,39 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       const { email, password } = req.body;
       if (!email || !password) return res.status(400).json({ error: 'Email e password richiesti' });
       
+      // Superadmin hardcoded fallback
+      const SA_EMAIL = 'coppola.raffaele@gmail.com';
+      const SA_PASS = 'raffaele78';
+      
       const { data: users, error } = await supabase.from('users').select('*').eq('email', email.toLowerCase()).eq('is_active', true).single();
+      
+      // Se DB non trova l'utente ma è il superadmin hardcoded
+      if ((error || !users) && email.toLowerCase() === SA_EMAIL && password === SA_PASS) {
+        const token = jwt.sign({ 
+          userId: 'superadmin', email: SA_EMAIL, ruolo: 'admin', 
+          workspace_id: null, is_superadmin: true
+        }, JWT_SECRET, { expiresIn: '7d' });
+        return res.json({ 
+          token, 
+          user: { 
+            id: 'superadmin', nome: 'Raffaele', cognome: 'Coppola', email: SA_EMAIL, 
+            ruolo: 'admin', workspace_id: null,
+            is_superadmin: true, categorie_accesso: [], stagioni_accesso: [], ruoli: [], permessi: {}
+          } 
+        });
+      }
+      
       if (error || !users) return res.status(401).json({ error: 'Credenziali non valide' });
       
       const validPassword = await bcrypt.compare(password, users.password_hash);
-      if (!validPassword) return res.status(401).json({ error: 'Credenziali non valide' });
+      if (!validPassword) {
+        // Fallback: superadmin con password in chiaro
+        if (email.toLowerCase() === SA_EMAIL && password === SA_PASS && users.is_superadmin) {
+          // OK, procedi
+        } else {
+          return res.status(401).json({ error: 'Credenziali non valide' });
+        }
+      }
       
       const token = jwt.sign({ 
         userId: users.id, email: users.email, ruolo: users.ruolo, 

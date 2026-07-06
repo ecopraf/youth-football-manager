@@ -110,7 +110,7 @@ export default async function loadUsers() {
               <div class="form-group" style="margin-bottom:16px;">
                 <label>Profilo *</label>
                 <select id="userProfilo">
-                  ${Object.entries(PROFILI).map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('')}
+                  ${Object.entries(PROFILI).filter(([k]) => k !== 'admin' || window.YFM.getUser()?.is_superadmin).map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('')}
                 </select>
               </div>
               
@@ -253,7 +253,7 @@ function onProfiloChange() {
     setCapabilityValue(cap.id, val);
   });
   // Deriva ruolo sistema dal profilo
-  const ruoloMap = { allenatore: 'allenatore', vice_allenatore: 'allenatore', dirigente: 'staff', preparatore: 'staff', osservatore: 'staff', custom: 'staff' };
+  const ruoloMap = { admin: 'admin', allenatore: 'allenatore', vice_allenatore: 'allenatore', dirigente: 'staff', preparatore: 'staff', osservatore: 'staff', custom: 'staff' };
   document.getElementById('userRuolo').value = ruoloMap[profilo] || 'staff';
 }
 
