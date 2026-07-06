@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 16 Luglio 2025 | Versione: v3.15 | Commit: (pending push)
+> Ultimo aggiornamento: 17 Luglio 2025 | Versione: v3.15 | Commit: 088d446
 
 ---
 
@@ -216,7 +216,9 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
-| (pending) | feat: import XLS matching a cascata (CF → matricola → nome+DN) + colonna codice_fiscale su player + preview migliorata + rimosse card TC da Import Center + rename "Gazzetta Regionale" → "Portale Regionale" |
+| 088d446 | feat: cleanup UI — rimuovi brand, redesign calendar toolbar, import tab Match Center (rimossi card TC, XLS modal diretto, tab Import in MC, countdown fix, filtro+selezione calendario, selector categorie ordinato, rename GR→Portale Regionale) |
+| 4adc933 | feat: import XLS matching a cascata (CF → matricola → nome+DN) + colonna codice_fiscale su player + preview migliorata |
+| 7649ccc | fix: dashboard DR +0 → mostra "0" neutro grigio |
 | 0afd4fe | feat: Match Center — blocco avvio 5min, auto-expire, incolla tabellino TC |
 | 43134b5 | fix: dashboard stagione dinamica |
 | a209b32 | fix: import XLS categoria suggerita dinamica da stagione |
