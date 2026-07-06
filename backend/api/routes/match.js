@@ -28,15 +28,20 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         const lower = avv.toLowerCase().trim();
         const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
+        // Pass 1: exact match
         for (const l of logos) {
           const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
           if (l.nome.toLowerCase() === lower || compact === lCompact) return l.logo_path;
         }
+        // Pass 2: substring match — prefer longest (most specific)
+        let best = null, bestLen = 0;
         for (const l of logos) {
           const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
-          if (compact.includes(lCompact) || lCompact.includes(compact)) return l.logo_path;
+          if (compact.includes(lCompact) || lCompact.includes(compact)) {
+            if (lCompact.length > bestLen) { best = l.logo_path; bestLen = lCompact.length; }
+          }
         }
-        return null;
+        return best;
       };
       const result = (data || []).map(m => ({ ...m, competizione: m.competition?.nome || null, tipoCompetizione: m.competition?.tipo || null, logo: findLogo(m.avversario) }));
       res.json(result);
@@ -332,15 +337,17 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
               match.logo = l.logo_path; break;
             }
           }
-          // Pass 2: partial includes (medium confidence)
+          // Pass 2: partial includes (medium confidence) — prefer longest match
           if (!match.logo) {
+            let best = null, bestLen = 0;
             for (const l of logos) {
               const lLower = l.nome.toLowerCase();
               const lCompact = stripAccents(l.nome_normalizzato).replace(/[^a-z0-9]/g, '');
               if (compact.includes(lCompact) || lCompact.includes(compact) || lower.includes(lLower) || lLower.includes(lower)) {
-                match.logo = l.logo_path; break;
+                if (lCompact.length > bestLen) { best = l.logo_path; bestLen = lCompact.length; }
               }
             }
+            if (best) match.logo = best;
           }
           // Pass 3: core name fallback (low confidence, only if no ambiguity)
           if (!match.logo) {

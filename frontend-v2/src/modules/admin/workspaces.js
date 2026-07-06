@@ -179,6 +179,7 @@ function render(c) {
           <h2>Seleziona Logo</h2>
           <button class="modal-close-btn" id="logoGridClose">&times;</button>
         </div>
+        <div style="padding:12px 16px 0;"><input type="text" id="logoSearch" placeholder="🔍 Cerca logo (es. pomezia, lodigiani...)" style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;"></div>
         <div id="logoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:10px;padding:16px;"></div>
       </div>
     </div>
@@ -331,15 +332,26 @@ function renderLogoPreview(url, found) {
 function openLogoGrid() {
   const modal = document.getElementById('logoGridModal');
   const grid = document.getElementById('logoGrid');
-  grid.innerHTML = allLogos.map(l => `<img class="logo-item" src="${l}" data-logo="${l}" title="${l.replace('/logos/', '')}">`).join('');
-  grid.querySelectorAll('.logo-item').forEach(img => {
-    img.addEventListener('click', () => {
-      document.getElementById('wsLogoUrl').value = img.dataset.logo;
-      renderLogoPreview(img.dataset.logo, true);
-      modal.style.display = 'none';
+  const search = document.getElementById('logoSearch');
+  search.value = '';
+
+  const renderLogos = (filter) => {
+    const q = (filter || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const filtered = q ? allLogos.filter(l => l.replace('/logos/', '').replace(/\.(png|jpg|jpeg|svg|webp)$/i, '').replace(/-/g, '').includes(q)) : allLogos;
+    grid.innerHTML = filtered.length ? filtered.map(l => `<img class="logo-item" src="${l}" data-logo="${l}" title="${l.replace('/logos/', '').replace(/\.(png|jpg|jpeg|svg|webp)$/i, '')}">`).join('') : '<p style="padding:16px;color:#888;grid-column:1/-1;">Nessun logo trovato</p>';
+    grid.querySelectorAll('.logo-item').forEach(img => {
+      img.addEventListener('click', () => {
+        document.getElementById('wsLogoUrl').value = img.dataset.logo;
+        renderLogoPreview(img.dataset.logo, true);
+        modal.style.display = 'none';
+      });
     });
-  });
+  };
+
+  renderLogos('');
+  search.oninput = () => renderLogos(search.value);
   modal.style.display = 'flex';
+  setTimeout(() => search.focus(), 100);
 }
 
 // ── MODAL OPEN/CLOSE ──
