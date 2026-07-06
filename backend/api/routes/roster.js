@@ -129,21 +129,53 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
       const { players, teamId } = req.body;
       if (!players || !players.length || !teamId) return res.status(400).json({ error: 'players e teamId richiesti' });
 
-      let imported = 0, skipped = 0;
+      let imported = 0, skipped = 0, updated = 0;
+      const results = [];
+
       for (const p of players) {
-        const { data: existing } = await supabase.from('player').select('id').ilike('cognome', p.cognome).ilike('nome', p.nome).eq('data_nascita', p.data_nascita).maybeSingle();
+        let existing = null;
+        let matchType = null;
+
+        // 1. Match by Codice Fiscale (gold standard)
+        if (p.codice_fiscale) {
+          const { data } = await supabase.from('player').select('id').eq('codice_fiscale', p.codice_fiscale.toUpperCase()).maybeSingle();
+          if (data) { existing = data; matchType = 'cf'; }
+        }
+
+        // 2. Match by Matricola FIGC
+        if (!existing && p.matricola) {
+          const { data } = await supabase.from('player').select('id').eq('matricola_figc', p.matricola).maybeSingle();
+          if (data) { existing = data; matchType = 'matricola'; }
+        }
+
+        // 3. Match by Nome + Cognome + Data Nascita
+        if (!existing && p.data_nascita) {
+          const { data } = await supabase.from('player').select('id').ilike('cognome', p.cognome).ilike('nome', p.nome).eq('data_nascita', p.data_nascita).maybeSingle();
+          if (data) { existing = data; matchType = 'nome_dn'; }
+        }
 
         let playerId;
         if (existing) {
           playerId = existing.id;
+          // Update dati mancanti (CF, matricola)
+          const updates = {};
+          if (p.codice_fiscale) updates.codice_fiscale = p.codice_fiscale.toUpperCase();
+          if (p.matricola) updates.matricola_figc = p.matricola;
+          if (Object.keys(updates).length > 0) {
+            await supabase.from('player').update(updates).eq('id', playerId);
+            updated++;
+          }
+          // Check if already in team
           const { data: tp } = await supabase.from('team_player').select('id').eq('team_id', teamId).eq('player_id', playerId).maybeSingle();
-          if (tp) { skipped++; continue; }
+          if (tp) { skipped++; results.push({ ...p, status: 'skipped', matchType }); continue; }
         } else {
           const { data: newP, error } = await supabase.from('player').insert({
             nome: p.nome, cognome: p.cognome, data_nascita: p.data_nascita,
-            matricola_figc: p.matricola || null, sesso: 'M'
+            matricola_figc: p.matricola || null,
+            codice_fiscale: p.codice_fiscale ? p.codice_fiscale.toUpperCase() : null,
+            sesso: 'M'
           }).select().single();
-          if (error) { skipped++; continue; }
+          if (error) { skipped++; results.push({ ...p, status: 'error', error: error.message }); continue; }
           playerId = newP.id;
         }
 
@@ -152,9 +184,10 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
           data_assegnazione: new Date().toISOString().split('T')[0]
         });
         imported++;
+        results.push({ ...p, status: 'imported', matchType });
       }
 
-      res.json({ success: true, imported, skipped });
+      res.json({ success: true, imported, skipped, updated, results });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -234,10 +267,21 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
       const rosterPlayers = existingPlayers || [];
 
       for (const p of players) {
-        let query = supabase.from('player').select('id').ilike('cognome', p.cognome).ilike('nome', p.nome);
-        if (p.data_nascita) query = query.eq('data_nascita', p.data_nascita);
-        let { data: existing } = await query.maybeSingle();
+        let existing = null;
 
+        // 1. Match by Nome + Cognome + Data Nascita (exact)
+        if (p.data_nascita) {
+          const { data } = await supabase.from('player').select('id').ilike('cognome', p.cognome).ilike('nome', p.nome).eq('data_nascita', p.data_nascita).maybeSingle();
+          if (data) existing = data;
+        }
+
+        // 2. Match by Nome + Cognome (senza data)
+        if (!existing) {
+          const { data } = await supabase.from('player').select('id').ilike('cognome', p.cognome).ilike('nome', p.nome).maybeSingle();
+          if (data) existing = data;
+        }
+
+        // 3. Fuzzy match nel roster corrente
         if (!existing && rosterPlayers.length > 0) {
           const cogLower = p.cognome.toLowerCase(), nomeLower = p.nome.toLowerCase();
           const match = rosterPlayers.find(r => {

@@ -806,12 +806,15 @@ function renderImportPreview(data, modal) {
       
       if (players.length > 0) {
         let table = `<div style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:8px;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead><tr style="background:#f0f0f0;position:sticky;top:0;"><th style="padding:6px;text-align:left;">Cognome</th><th style="padding:6px;text-align:left;">Nome</th><th style="padding:6px;">Nascita</th><th style="padding:6px;">Matricola</th></tr></thead><tbody>`;
+          <thead><tr style="background:#f0f0f0;position:sticky;top:0;"><th style="padding:6px;text-align:left;">Cognome</th><th style="padding:6px;text-align:left;">Nome</th><th style="padding:6px;">Nascita</th><th style="padding:6px;">CF</th><th style="padding:6px;">Matricola</th></tr></thead><tbody>`;
         players.forEach(p => {
-          table += `<tr style="border-bottom:1px solid #f0f0f0;"><td style="padding:6px;">${p.cognome}</td><td style="padding:6px;">${p.nome}</td><td style="padding:6px;text-align:center;">${p.data_nascita || '-'}</td><td style="padding:6px;text-align:center;">${p.matricola || '-'}</td></tr>`;
+          const cfBadge = p.codice_fiscale ? `<span title="${p.codice_fiscale}" style="color:#27AE60;font-weight:600;">✓</span>` : '<span style="color:#ccc;">—</span>';
+          table += `<tr style="border-bottom:1px solid #f0f0f0;"><td style="padding:6px;">${p.cognome}</td><td style="padding:6px;">${p.nome}</td><td style="padding:6px;text-align:center;">${p.data_nascita || '-'}</td><td style="padding:6px;text-align:center;">${cfBadge}</td><td style="padding:6px;text-align:center;">${p.matricola || '-'}</td></tr>`;
         });
         table += `</tbody></table></div>`;
-        document.getElementById('importPreviewTable').innerHTML = `<p style="margin-bottom:8px;"><strong>${players.length}</strong> giocatori da importare:</p>` + table;
+        const withCF = players.filter(p => p.codice_fiscale).length;
+        const cfNote = withCF > 0 ? `<span style="color:#27AE60;font-size:12px;"> · ${withCF} con CF (matching univoco)</span>` : '';
+        document.getElementById('importPreviewTable').innerHTML = `<p style="margin-bottom:8px;"><strong>${players.length}</strong> giocatori da importare${cfNote}:</p>` + table;
       } else {
         document.getElementById('importPreviewTable').innerHTML = '';
       }

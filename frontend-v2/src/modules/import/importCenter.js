@@ -59,40 +59,22 @@ function renderMain(c, logs, teamName) {
       <div class="import-card-desc">Copia-incolla il testo del calendario dal sito o da file</div>
       <span class="import-card-badge" style="background:#F3E5F5;color:#7B1FA2;">Copia-incolla</span>
     </div>
-    <div class="import-card" id="icTc"${window.YFM.getUser()?.is_superadmin ? '' : ' style="display:none;"'}>
-      <div class="import-card-icon">🌐</div>
-      <div class="import-card-title">Calendario Tuttocampo</div>
-      <div class="import-card-desc">Scraping calendario, risultati e marcatori da Tuttocampo.it</div>
-      <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">URL</span>
-    </div>
     <div class="import-card" id="icXls" data-help="import.rosaXls">
       <div class="import-card-icon">📊</div>
       <div class="import-card-title">Rosa XLS FIGC</div>
       <div class="import-card-desc">Upload tabulato atleti Excel (.xlsx) dalla federazione</div>
       <span class="import-card-badge" style="background:#E3F2FD;color:#1565C0;">Upload file</span>
     </div>
-    <div class="import-card" id="icRosaTc"${window.YFM.getUser()?.is_superadmin ? '' : ' style="display:none;"'}>
-      <div class="import-card-icon">⚽</div>
-      <div class="import-card-title">Rosa Tuttocampo</div>
-      <div class="import-card-desc">Scraping rosa giocatori da pagina Tuttocampo</div>
-      <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">URL</span>
-    </div>
-    <div class="import-card" id="icFormations"${window.YFM.getUser()?.is_superadmin ? '' : ' style="display:none;"'}>
-      <div class="import-card-icon">🏟️</div>
-      <div class="import-card-title">Formazioni Tuttocampo</div>
-      <div class="import-card-desc">Importa formazioni e sostituzioni per partite già in calendario</div>
-      <span class="import-card-badge" style="background:#FFF3E0;color:#E65100;">Batch / URL</span>
-    </div>
   </div>
 
   <div style="margin-bottom:32px;">
-    <h2 style="font-size:16px;font-weight:600;margin-bottom:12px;">📰 Gazzetta Regionale</h2>
-    <p style="color:#666;font-size:13px;margin-bottom:12px;">Importa classifica, calendario, marcatori e loghi dal portale Gazzetta Regionale. Funziona da qualsiasi dispositivo.</p>
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:12px;">📰 Portale Regionale</h2>
+    <p style="color:#666;font-size:13px;margin-bottom:12px;">Importa classifica, calendario, marcatori e loghi dal portale del campionato regionale. Funziona da qualsiasi dispositivo.</p>
     <div class="import-cards">
       <div class="import-card" id="icGrConfig" data-help="import.grConfig">
         <div class="import-card-icon">⚙️</div>
         <div class="import-card-title">Configura URL Girone</div>
-        <div class="import-card-desc">Inserisci l'URL della classifica/calendario del tuo girone su Gazzetta Regionale</div>
+        <div class="import-card-desc">Inserisci l'URL della classifica/calendario del tuo girone sul portale regionale</div>
         <span class="import-card-badge" style="background:#E8EAF6;color:#283593;">Setup</span>
       </div>
       <div class="import-card" id="icGrCalendario" data-help="import.grCalendario">
@@ -104,7 +86,7 @@ function renderMain(c, logs, teamName) {
       <div class="import-card" id="icGrEventi">
         <div class="import-card-icon">⚽</div>
         <div class="import-card-title">Import Marcatori Partite</div>
-        <div class="import-card-desc">Estrai gol (cognome + minuto) dalle partite GR e associali ai giocatori in rosa</div>
+        <div class="import-card-desc">Estrai gol (cognome + minuto) dalle partite e associali ai giocatori in rosa</div>
         <span class="import-card-badge" style="background:#E8F5E9;color:#2E7D32;">Import</span>
       </div>
       ${window.YFM.getUser()?.is_superadmin ? `<div class="import-card" id="icGrLoghi">
@@ -116,7 +98,7 @@ function renderMain(c, logs, teamName) {
       ${window.YFM.getUser()?.is_superadmin ? `<div class="import-card" id="icGrLoghiWizard">
         <div class="import-card-icon">🧙</div>
         <div class="import-card-title">Wizard Loghi (Batch)</div>
-        <div class="import-card-desc">Scansiona tutti i gironi GR, scarica nuovi loghi e verifica aggiornamenti</div>
+        <div class="import-card-desc">Scansiona tutti i gironi, scarica nuovi loghi e verifica aggiornamenti</div>
         <span class="import-card-badge" style="background:#EDE7F6;color:#4527A0;">Superadmin</span>
       </div>` : ''}
       <div class="import-card" id="icGrPreview" data-help="import.grPreview">
@@ -150,10 +132,7 @@ function renderMain(c, logs, teamName) {
   // Event listeners
   document.getElementById('icPdf').addEventListener('click', openImportPdf);
   document.getElementById('icText').addEventListener('click', openImportText);
-  document.getElementById('icTc')?.addEventListener('click', () => { window.YFM.navigateTo('calendar'); setTimeout(() => document.getElementById('btnImportTc')?.click(), 300); });
   document.getElementById('icXls').addEventListener('click', () => { window.YFM.navigateTo('roster'); setTimeout(() => document.getElementById('btnImportXls')?.click(), 300); });
-  document.getElementById('icRosaTc')?.addEventListener('click', () => { window.YFM.navigateTo('roster'); setTimeout(() => document.getElementById('btnImportTc')?.click(), 300); });
-  document.getElementById('icFormations')?.addEventListener('click', openImportFormations);
   document.getElementById('icGrConfig').addEventListener('click', openGrConfig);
   document.getElementById('icGrCalendario').addEventListener('click', openGrCalendario);
   document.getElementById('icGrEventi')?.addEventListener('click', openGrEventi);
@@ -537,7 +516,7 @@ function openGrConfig() {
 
 // === GAZZETTA REGIONALE: IMPORT CALENDARIO ===
 async function openGrCalendario() {
-  const modal = createModal('📅 Import Calendario da Gazzetta Regionale', '<div class="loading"><div class="spinner"></div>Caricamento anteprima...</div>', '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grCalConfirm" disabled>Importa</button>', '700px');
+  const modal = createModal('📅 Import Calendario da Portale Regionale', '<div class="loading"><div class="spinner"></div>Caricamento anteprima...</div>', '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grCalConfirm" disabled>Importa</button>', '700px');
 
   try {
     const data = await apiFetch('/gr/calendario/' + window.YFM.squadraId);
@@ -594,16 +573,16 @@ async function openGrEventi() {
   const teamId = window.YFM.squadraId;
   const sq = window.YFM.getSquadra();
   if (!sq?.classifica_url) {
-    alert('Configura prima l\'URL del girone GR nella sezione "Configura URL Girone"');
+    alert('Configura prima l\'URL del girone nella sezione "Configura URL Girone"');
     return;
   }
 
-  const modal = createModal('⚽ Import Marcatori da GR', '<div class="loading"><div class="spinner"></div>Caricamento partite...</div>', '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grEventiConfirm" disabled>Importa Marcatori</button>', '700px');
+  const modal = createModal('⚽ Import Marcatori da Portale Regionale', '<div class="loading"><div class="spinner"></div>Caricamento partite...</div>', '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grEventiConfirm" disabled>Importa Marcatori</button>', '700px');
 
   try {
     const data = await apiFetch('/gr/match-events/preview?teamId=' + teamId);
     if (!data.matches || data.matches.length === 0) {
-      document.querySelector('#importModal .modal-body').innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Nessuna partita con marcatori disponibili su GR.</p>';
+      document.querySelector('#importModal .modal-body').innerHTML = '<p style="text-align:center;color:#999;padding:20px;">Nessuna partita con marcatori disponibili.</p>';
       return;
     }
 
@@ -655,7 +634,7 @@ async function openGrEventi() {
 
 // === GAZZETTA REGIONALE: IMPORT LOGHI ===
 async function openGrLoghi() {
-  const modal = createModal('🏷️ Import Loghi da Gazzetta Regionale', '<div class="loading"><div class="spinner"></div>Caricamento anteprima...</div>', '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grLoghiConfirm" disabled>Scarica loghi</button>', '600px');
+  const modal = createModal('🏷️ Import Loghi da Portale Regionale', '<div class="loading"><div class="spinner"></div>Caricamento anteprima...</div>', '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grLoghiConfirm" disabled>Scarica loghi</button>', '600px');
 
   try {
     const data = await apiFetch('/gr/calendario/' + window.YFM.squadraId);
@@ -702,7 +681,7 @@ async function openGrLoghi() {
 
 // === GAZZETTA REGIONALE: ANTEPRIMA ===
 async function openGrPreview() {
-  const modal = createModal('👁️ Anteprima Girone — Gazzetta Regionale', '<div class="loading"><div class="spinner"></div>Caricamento dati...</div>', '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>', '800px');
+  const modal = createModal('👁️ Anteprima Girone — Portale Regionale', '<div class="loading"><div class="spinner"></div>Caricamento dati...</div>', '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>', '800px');
 
   try {
     const teamId = window.YFM.squadraId;
@@ -769,7 +748,7 @@ async function openGrPreview() {
 
 // === WIZARD LOGHI BATCH (superadmin) ===
 function openGrLoghiWizard() {
-  const modal = createModal('🧙 Wizard Loghi — Batch GR', `
+  const modal = createModal('🧙 Wizard Loghi — Batch Portale Regionale', `
     <p style="margin-bottom:16px;color:#666;font-size:13px;">Seleziona livello e campionati da scansionare per scaricare loghi mancanti e rilevare aggiornamenti.</p>
     <div id="wizStep1">
       <label style="font-size:13px;font-weight:600;margin-bottom:8px;display:block;">1. Livello</label>

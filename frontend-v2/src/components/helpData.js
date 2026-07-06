@@ -187,7 +187,7 @@ export const ELEMENT_HELP = {
   },
   'dashboard.classifica': {
     title: 'Classifica',
-    desc: 'Classifica del girone aggiornata da Gazzetta Regionale. La tua squadra è evidenziata in blu. Configurala da Import Center → Gazzetta Regionale.'
+    desc: 'Classifica del girone aggiornata dal portale regionale. La tua squadra è evidenziata in blu. Configurala da Import Center → Portale Regionale.'
   },
   'dashboard.calendario': {
     title: 'Calendario Girone',

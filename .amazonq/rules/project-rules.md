@@ -115,6 +115,8 @@ Le tabelle reali nel DB Supabase sono:
 - `workspace`, `season`, `category`, `competition`, `facility`
 - `team`, `player`, `team_player`, `staff`, `team_staff`
 
+**Colonne notevoli `player`**: `codice_fiscale TEXT` (UNIQUE partial, nullable — gold standard per matching import), `matricola_figc TEXT` (tessera FIGC)
+
 **Colonne notevoli `team_player`**: `stato TEXT` (Attivo, Infortunato, Svincolato), `aggregato BOOLEAN DEFAULT false` (true se giocatore aggregato da categoria inferiore)
 - `match`, `match_event`, `match_formation`, `match_statistics`, `convocation`
 

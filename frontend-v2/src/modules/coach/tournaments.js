@@ -157,7 +157,7 @@ function openWizard() {
               <input id="wSquadraLogo" placeholder="URL logo (opz.)" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:11px;">
               <button id="wAddSquadra" style="background:var(--blue,#667eea);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:700;">+</button>
             </div>
-            <button id="wImportGR" style="margin-top:8px;background:#f0f4ff;color:#667eea;border:1px solid #667eea;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;width:100%;">📥 Importa squadre da Gazzetta Regionale</button>
+            <button id="wImportGR" style="margin-top:8px;background:#f0f4ff;color:#667eea;border:1px solid #667eea;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;width:100%;">📥 Importa squadre da Portale Regionale</button>
             <div id="wGRPanel" style="display:none;margin-top:8px;"></div>
           </div>
         </div>

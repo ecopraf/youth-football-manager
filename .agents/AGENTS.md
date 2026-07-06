@@ -138,7 +138,7 @@ backend/scripts/
 | `category` | Categorie (U14, U15...) | workspace_id |
 | `competition` | Campionati | - |
 | `team` | Squadra | season_id, category_id, classifica_url |
-| `player` | Giocatore | - |
+| `player` | Giocatore (codice_fiscale TEXT UNIQUE nullable) | - |
 | `team_player` | Associazione giocatore-squadra | team_id, player_id, aggregato |
 | `match` | Partita | team_id, competition_id, live_meta JSONB, formazione_meta JSONB |
 | `match_event` | Eventi (GOAL, ASSIST, YELLOW...) | match_id, player_id, player_id_secondario |

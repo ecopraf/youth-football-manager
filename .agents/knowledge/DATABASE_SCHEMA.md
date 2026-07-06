@@ -181,6 +181,7 @@ WORKSPACE (società sportiva)
 | nazionalita | text | SI | | |
 | residenza | text | SI | | |
 | matricola_figc | text | SI | | Tessera FIGC |
+| codice_fiscale | text | SI | UNIQUE (partial, WHERE NOT NULL) | CF per matching univoco |
 | tipo_documento | text | SI | | |
 | numero_documento | text | SI | | |
 | rilasciato_da | date | SI | | |
