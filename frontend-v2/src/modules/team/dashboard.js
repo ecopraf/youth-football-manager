@@ -100,7 +100,7 @@ export default async function loadDashboard() {
     { v:stats.sconfitte, l:'S', c:'#E74C3C' },
     { v:stats.golFatti, l:'GF', c:'#27AE60' },
     { v:stats.golSubiti, l:'GS' },
-    { v:(stats.differenzaReti >= 0 ? '+' : '') + stats.differenzaReti, l:'DR', c:stats.differenzaReti >= 0 ? '#27AE60' : '#E74C3C' }
+    { v:(stats.differenzaReti > 0 ? '+' : '') + stats.differenzaReti, l:'DR', c:stats.differenzaReti > 0 ? '#27AE60' : stats.differenzaReti < 0 ? '#E74C3C' : '#666' }
   ];
   
   // Helper function for conditional sections
@@ -522,7 +522,7 @@ export default async function loadDashboard() {
           { v:stats.sconfitte, l:'S', c:'#E74C3C' },
           { v:stats.golFatti, l:'GF', c:'#27AE60' },
           { v:stats.golSubiti, l:'GS' },
-          { v:(stats.differenzaReti >= 0 ? '+' : '') + stats.differenzaReti, l:'DR', c:stats.differenzaReti >= 0 ? '#27AE60' : '#E74C3C' }
+          { v:(stats.differenzaReti > 0 ? '+' : '') + stats.differenzaReti, l:'DR', c:stats.differenzaReti > 0 ? '#27AE60' : stats.differenzaReti < 0 ? '#E74C3C' : '#666' }
         ];
         wContainer.innerHTML = w.map(wi => '<div class="dash-card"><div style="font-size:20px;font-weight:bold;color:' + (wi.c || 'var(--text)') + ';">' + wi.v + '</div><div style="font-size:10px;color:var(--gray);margin-top:4px;">' + wi.l + '</div></div>').join('');
       }
