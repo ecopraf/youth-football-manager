@@ -89,16 +89,34 @@ export async function openFormazioneForm(mid) {
 
 function convertApiFormation(apiData, allPlayers, meta) {
   if (!apiData || !Array.isArray(apiData) || apiData.length === 0) return null;
+  const modulo = meta?.modulo || '4-3-3';
+  const rows = (MODULI[modulo] || MODULI['4-3-3']).rows;
   const titolari = apiData.filter(f => f.posizione === 'Titolare' || f.is_starter);
-  const riserve = apiData.filter(f => f.posizione === 'Panchina' || !f.is_starter);
-  const portiere = titolari.find(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Portiere'; });
+  const riserve = apiData.filter(f => f.posizione === 'Panchina' || (!f.is_starter && f.posizione !== 'Titolare'));
+
+  // Sort by ordine to preserve slot positions (sx/centro/dx)
+  const sorted = [...titolari].sort((a, b) => (a.ordine ?? 99) - (b.ordine ?? 99));
+  const ids = sorted.map(f => f.calciatoreId);
+
+  // Split ids by modulo rows
+  let idx = 0;
+  const portiere = ids[idx] || null; idx += rows[0];
+  const difensori = ids.slice(idx, idx + rows[1]); idx += rows[1];
+  // All middle rows = centrocampisti
+  let centrocampisti = [];
+  for (let r = 2; r < rows.length - 1; r++) {
+    centrocampisti = centrocampisti.concat(ids.slice(idx, idx + rows[r])); idx += rows[r];
+  }
+  // Last row = attaccanti
+  const attaccanti = ids.slice(idx, idx + rows[rows.length - 1]);
+
   return {
-    modulo: meta?.modulo || '4-3-3',
+    modulo,
     positions: meta?.positions || {},
-    portiere: portiere?.calciatoreId || titolari[0]?.calciatoreId,
-    difensori: titolari.filter(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Difensore'; }).map(f => f.calciatoreId),
-    centrocampisti: titolari.filter(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Centrocampista'; }).map(f => f.calciatoreId),
-    attaccanti: titolari.filter(f => { const g = allPlayers.find(p => p.id === f.calciatoreId); return g?.ruolo === 'Attaccante'; }).map(f => f.calciatoreId),
+    portiere,
+    difensori,
+    centrocampisti,
+    attaccanti,
     riserve: riserve.map(f => f.calciatoreId)
   };
 }
