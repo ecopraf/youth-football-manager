@@ -14,11 +14,34 @@ function createImportCalendarioRouter({ supabase, authMiddleware, requirePermiss
   router.post('/api/calendario/parse-pdf', authMiddleware, upload.single('pdf'), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: 'File PDF richiesto' });
+
+      // Validazione formato file
+      const ext = (req.file.originalname || '').toLowerCase();
+      if (!ext.endsWith('.pdf')) {
+        return res.status(400).json({ error: 'Formato file non valido. Richiesto un file PDF (.pdf) del calendario SGS/LND.' });
+      }
+      // Check PDF magic bytes
+      if (req.file.buffer.length < 5 || req.file.buffer.slice(0, 5).toString() !== '%PDF-') {
+        return res.status(400).json({ error: 'Il file non è un documento PDF valido. Assicurati di caricare il calendario SGS/LND in formato PDF.' });
+      }
+
       const searchName = req.body.searchName;
       if (!searchName) return res.status(400).json({ error: 'Nome squadra richiesto' });
       const result = await findTeamInPdf(req.file.buffer, searchName);
+
+      // Validazione contenuto: verifica che il PDF contenga dati di calendario
+      if (!result.categorie || result.categorie.length === 0) {
+        const hint = result.suggestions && result.suggestions.length > 0
+          ? ' Squadre trovate nel PDF: ' + result.suggestions.slice(0, 5).join(', ')
+          : ' Il PDF potrebbe non essere un calendario SGS/LND valido.';
+        return res.status(400).json({ error: 'Nessuna categoria/girone trovata per "' + searchName + '".' + hint });
+      }
+
       res.json(result);
     } catch (err) {
+      if (err.message && err.message.includes('Invalid PDF')) {
+        return res.status(400).json({ error: 'Il file non è un PDF valido o è corrotto. Scarica nuovamente il calendario dal sito SGS.' });
+      }
       res.status(500).json({ error: 'Errore parsing PDF: ' + err.message });
     }
   });

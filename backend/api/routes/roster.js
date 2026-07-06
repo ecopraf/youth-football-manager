@@ -15,9 +15,45 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
   router.post('/api/roster/parse-xls', authMiddleware, requirePermission('rosa', 'write'), upload.single('file'), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: 'File richiesto' });
-      const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+
+      // Validazione formato file
+      const ext = (req.file.originalname || '').toLowerCase();
+      if (!ext.endsWith('.xlsx') && !ext.endsWith('.xls')) {
+        return res.status(400).json({ error: 'Formato file non valido. Richiesto file Excel (.xlsx o .xls).' });
+      }
+
+      let wb;
+      try {
+        wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+      } catch (e) {
+        return res.status(400).json({ error: 'Il file non è un documento Excel valido. Assicurati di caricare il tabulato atleti FIGC in formato .xlsx.' });
+      }
+
+      if (!wb.SheetNames || wb.SheetNames.length === 0) {
+        return res.status(400).json({ error: 'Il file Excel è vuoto (nessun foglio trovato).' });
+      }
+
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+      // Validazione struttura: il tabulato FIGC ha almeno 7 colonne e la riga header contiene parole chiave
+      if (!rows || rows.length < 2) {
+        return res.status(400).json({ error: 'Il file non contiene dati sufficienti. Il tabulato FIGC deve avere almeno una riga di intestazione e una riga dati.' });
+      }
+
+      const header = (rows[0] || []).map(h => String(h || '').toLowerCase());
+      const figcKeywords = ['matricola', 'cognome', 'nome', 'nascita', 'disciplina', 'fiscale', 'codice'];
+      const matchedKeywords = figcKeywords.filter(kw => header.some(h => h.includes(kw)));
+
+      // Se nessuna keyword FIGC trovata nell'header, verifica struttura colonne (almeno 5 colonne con dati)
+      if (matchedKeywords.length === 0) {
+        const firstDataRow = rows[1] || [];
+        const hasEnoughCols = firstDataRow.filter(c => c != null && String(c).trim() !== '').length >= 4;
+        const hasNameLike = firstDataRow.some(c => typeof c === 'string' && c.trim().length > 3 && /[A-Z]/.test(c));
+        if (!hasEnoughCols || !hasNameLike) {
+          return res.status(400).json({ error: 'Il formato del file non corrisponde al tabulato atleti FIGC. Colonne attese: Matricola, Nome Completo, Disciplina, Data Nascita, ..., Codice Fiscale. Verifica di aver selezionato il file corretto.' });
+        }
+      }
 
       const PREFIXES = ['DE','DI','DEL','DELLA','DELLO','DEGLI','DELLE','DA','LO','LA','LI','LE','D','MC','MAC'];
       function splitNameByCF(fullName, cf) {
@@ -71,6 +107,15 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
 
       const byYear = {};
       players.forEach(p => { const y = p.anno_nascita || 'sconosciuto'; if (!byYear[y]) byYear[y] = []; byYear[y].push(p); });
+
+      // Validazione post-parsing: verifica che i dati abbiano senso
+      if (players.length === 0) {
+        return res.status(400).json({ error: 'Nessun giocatore trovato nel file. Verifica che il formato corrisponda al tabulato atleti FIGC (colonne: Matricola, Nome, Disciplina, Data Nascita, ...).' });
+      }
+      const playersWithName = players.filter(p => p.cognome && p.cognome.length > 1);
+      if (playersWithName.length < players.length * 0.5) {
+        return res.status(400).json({ error: 'Il file non sembra contenere dati validi. La maggior parte delle righe non ha un nome riconoscibile. Verifica di aver caricato il tabulato atleti FIGC corretto.' });
+      }
 
       res.json({ success: true, players, byYear, total: players.length });
     } catch (err) {
