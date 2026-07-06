@@ -72,6 +72,15 @@ const authMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     if (decoded.isGuest) {
       req.user = { isGuest: true, tipo: decoded.tipo, squadre_accesso: decoded.squadre_accesso || [], ruolo: 'guest', is_superadmin: false, permessi: {} };
+      // Validazione team_id → categoria per guest
+      const teamId = req.params.teamId || req.query.team_id || req.body?.team_id;
+      if (teamId) {
+        try {
+          await require('./helpers/teamAccess').validateTeamAccess(supabase, req.user, teamId);
+        } catch (e) {
+          return res.status(403).json({ error: e.message });
+        }
+      }
       return next();
     }
     // Superadmin hardcoded — nessuna query DB
@@ -83,11 +92,23 @@ const authMiddleware = async (req, res, next) => {
     if (!user) return res.status(401).json({ error: 'Utente non trovato' });
     if (user.is_active === false) return res.status(401).json({ error: 'Account disattivato' });
     req.user = user;
+    // Validazione team_id → workspace
+    const teamId = req.params.teamId || req.query.team_id || req.body?.team_id;
+    if (teamId) {
+      try {
+        await require('./helpers/teamAccess').validateTeamAccess(supabase, user, teamId);
+      } catch (e) {
+        return res.status(403).json({ error: e.message });
+      }
+    }
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Token non valido' });
   }
 };
+
+// ── TEAM ACCESS VALIDATION ──
+const { teamAccessMiddleware } = require('./helpers/teamAccess');
 
 // ── PERMISSION HELPERS ──
 const { getUserCapabilities } = require('./helpers/capabilities');
