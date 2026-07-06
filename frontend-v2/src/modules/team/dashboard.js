@@ -66,6 +66,7 @@ export default async function loadDashboard() {
   }
   
   const s = window.YFM.getSquadra();
+  const stagioneName = s._stagione || 'Stagione';
   const isToday = (d) => new Date(d).toDateString() === new Date().toDateString();
   const isMatchDone = (m) => m.live_meta?.stato === 'fine' || m.stato === 'Terminata';
   // Pick first match: today's finished match takes priority, otherwise first non-finished future match
@@ -459,7 +460,7 @@ export default async function loadDashboard() {
     // GUEST VIEW: solo prossima partita + widgets + ultimi risultati
     c.innerHTML = styles +
       '<div style="margin-bottom:24px;"><h1 class="page-title">Dashboard</h1>' +
-      '<p class="page-subtitle">Stagione 2025/26 · ' + stats.partiteGiocate + ' partite</p></div>' +
+      '<p class="page-subtitle">Stagione ' + stagioneName + ' · ' + stats.partiteGiocate + ' partite</p></div>' +
       renderProssimaPartitaSection() +
       '<div class="dash-widgets">' +
       widgets.map(w => '<div class="dash-card"><div style="font-size:20px;font-weight:bold;color:' + (w.c || 'var(--text)') + ';">' + w.v + '</div><div style="font-size:10px;color:var(--gray);margin-top:4px;">' + w.l + '</div></div>').join('') +
@@ -476,7 +477,7 @@ export default async function loadDashboard() {
   c.innerHTML = styles +
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">' +
     '<div><h1 class="page-title">Dashboard</h1>' +
-    '<p class="page-subtitle">Stagione 2025/26 · ' + stats.partiteGiocate + ' partite</p></div>' +
+    '<p class="page-subtitle">Stagione ' + stagioneName + ' · ' + stats.partiteGiocate + ' partite</p></div>' +
     '<div>' + dropdownHtml + '</div></div>' +
     
     renderProssimoAllenamento() +
@@ -509,7 +510,7 @@ export default async function loadDashboard() {
       top = filtered.top;
       // Update subtitle
       const sub = c.querySelector('.page-subtitle');
-      if (sub) sub.textContent = 'Stagione 2025/26 · ' + stats.partiteGiocate + ' partite';
+      if (sub) sub.textContent = 'Stagione ' + stagioneName + ' · ' + stats.partiteGiocate + ' partite';
       // Update widgets
       const wContainer = c.querySelector('.dash-widgets');
       if (wContainer) {
