@@ -217,6 +217,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | Commit | Descrizione |
 |--------|-------------|
 | 088d446 | feat: cleanup UI — rimuovi brand, redesign calendar toolbar, import tab Match Center (rimossi card TC, XLS modal diretto, tab Import in MC, countdown fix, filtro+selezione calendario, selector categorie ordinato, rename GR→Portale Regionale) |
+| b887482 | feat: team access validation middleware — verifica workspace (utenti) e categoria (guest) su ogni richiesta con team_id |
 | 4adc933 | feat: import XLS matching a cascata (CF → matricola → nome+DN) + colonna codice_fiscale su player + preview migliorata |
 | 7649ccc | fix: dashboard DR +0 → mostra "0" neutro grigio |
 | 0afd4fe | feat: Match Center — blocco avvio 5min, auto-expire, incolla tabellino TC |

@@ -106,6 +106,22 @@ export default async function loadGuestLinks() {
 
   await loadData();
 
+  // Disabilita bottoni se stagione scaduta
+  if (isSeasonExpiredForLinks()) {
+    document.getElementById('btnCreateLink').disabled = true;
+    document.getElementById('btnCreateLink').style.opacity = '0.5';
+    document.getElementById('btnBatchLinks').disabled = true;
+    document.getElementById('btnBatchLinks').style.opacity = '0.5';
+    const infoCard = document.querySelector('.card[style*="background:#f8f9fa"]');
+    if (infoCard) {
+      infoCard.style.background = '#fff3cd';
+      infoCard.innerHTML = `<p style="color:#856404;margin:0;line-height:1.6;">
+        ⚠️ <strong>Stagione conclusa</strong> — Non è possibile creare nuovi link guest per questa stagione.
+        Seleziona la stagione corrente per generare nuovi link.
+      </p>`;
+    }
+  }
+
   document.getElementById('btnCreateLink').addEventListener('click', openCreateModal);
   document.getElementById('btnBatchLinks').addEventListener('click', handleBatchGenerate);
   document.getElementById('btnDeleteSelected').addEventListener('click', handleDeleteSelected);
@@ -181,10 +197,15 @@ async function handleRenewSelected() {
 async function loadData() {
   const user = window.YFM.getUser() || {};
   try {
-    // Filtra link per categoria della squadra selezionata
+    // Filtra link per categoria e stagione della squadra selezionata
     const squadra = window.YFM.getSquadra();
     const catId = squadra.category_id || '';
-    const tokensRes = await apiFetch('/auth/guest-links' + (catId ? '?categoryId=' + catId : ''));
+    const seasonId = squadra.season_id || '';
+    const params = new URLSearchParams();
+    if (catId) params.set('categoryId', catId);
+    if (seasonId) params.set('seasonId', seasonId);
+    const qs = params.toString() ? '?' + params.toString() : '';
+    const tokensRes = await apiFetch('/auth/guest-links' + qs);
     tokens = tokensRes.links || [];
 
     const teamId = window.YFM.squadraId;
@@ -261,7 +282,8 @@ function renderTokens() {
     const link = `${window.location.origin}/guest/${t.token}`;
     const createdAt = t.created_at ? new Date(t.created_at).toLocaleDateString('it-IT') : '-';
 
-    const playerInfo = t.player_id ? rosterPlayers.find(p => p.id === t.player_id) : null;
+    const playerFromApi = t.player || null;
+    const playerInfo = playerFromApi || (t.player_id ? rosterPlayers.find(p => p.id === t.player_id) : null);
     const playerName = playerInfo ? `${playerInfo.cognome} ${playerInfo.nome}` : (t.player_id ? '(giocatore)' : '-');
     const telefono = t.telefono || playerInfo?.telefono || '';
     const waNum = telefono ? telefono.replace(/[^0-9+]/g, '') : '';
@@ -380,6 +402,12 @@ function renderCatCheckboxes(preselected, disabled) {
 
 async function handleCreate(e) {
   e.preventDefault();
+
+  if (isSeasonExpiredForLinks()) {
+    alert('⚠️ Non è possibile creare link guest per una stagione conclusa (limite: 31 luglio).\nSeleziona la stagione corrente.');
+    return;
+  }
+
   const user = window.YFM.getUser() || {};
 
   const tipo = document.getElementById('linkTipo').value;
@@ -398,7 +426,9 @@ async function handleCreate(e) {
     return;
   }
 
+  const squadra = window.YFM.getSquadra();
   const body = { tipo, categorie_accesso, scadenza_giorni: scadenza_giorni ? parseInt(scadenza_giorni) : null };
+  if (squadra?.season_id) body.season_id = squadra.season_id;
 
   if (tipo === 'atleta') {
     const playerId = document.getElementById('linkPlayer').value;
@@ -440,7 +470,22 @@ function onTipoChange() {
   }
 }
 
+function isSeasonExpiredForLinks() {
+  const squadra = window.YFM.getSquadra();
+  if (!squadra || !squadra.season_id) return false;
+  const stagioni = window.YFM.allStagioni || window.YFM.accessibleSeasons || [];
+  const season = stagioni.find(s => s.id === squadra.season_id);
+  if (!season || !season.data_fine) return false;
+  const dataFine = new Date(season.data_fine);
+  const limite = new Date(dataFine.getFullYear(), dataFine.getMonth() + 1, 31, 23, 59, 59); // 31 luglio
+  return new Date() > limite;
+}
+
 async function handleBatchGenerate() {
+  if (isSeasonExpiredForLinks()) {
+    alert('⚠️ Non è possibile creare link guest per una stagione conclusa (limite: 31 luglio).\nSeleziona la stagione corrente.');
+    return;
+  }
   const teamId = window.YFM.squadraId;
   if (!teamId) { alert('Seleziona una squadra'); return; }
   if (!await confirm(`Generare link atleta per tutti i giocatori attivi della rosa?\nI giocatori che hanno già un link valido verranno saltati.`)) return;

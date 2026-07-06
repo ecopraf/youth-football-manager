@@ -183,7 +183,20 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
 
   router.post('/api/auth/guest-link', authMiddleware, async (req, res) => {
     try {
-      const { tipo = 'genitore', categorie_accesso = [], scadenza_giorni, player_id, telefono } = req.body;
+      const { tipo = 'genitore', categorie_accesso = [], scadenza_giorni, player_id, telefono, season_id } = req.body;
+
+      // Blocco creazione se stagione scaduta (dopo 31 luglio)
+      if (season_id) {
+        const { data: season } = await supabase.from('season').select('data_fine').eq('id', season_id).single();
+        if (season && season.data_fine) {
+          const limiteCreazione = new Date(season.data_fine);
+          limiteCreazione.setMonth(limiteCreazione.getMonth() + 1); // +1 mese (31 luglio)
+          if (new Date() > limiteCreazione) {
+            return res.status(400).json({ error: 'Non è possibile creare link guest per una stagione conclusa (limite: 31 luglio)' });
+          }
+        }
+      }
+
       const token = crypto.randomBytes(32).toString('hex');
       let scadenza;
       if (!scadenza_giorni) {
@@ -198,6 +211,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       const insertData = { token, utente_id: req.user.id, tipo, squadre_accesso: categorie_accesso, scadenza };
       if (player_id) insertData.player_id = player_id;
       if (telefono) insertData.telefono = telefono;
+      if (season_id) insertData.season_id = season_id;
       const { data, error } = await supabase.from('guest_token').insert(insertData).select().single();
       if (error) return res.status(400).json({ error: error.message });
       const link = `${req.headers.origin || 'https://youth-football-manager.vercel.app'}/guest/${data.token}`;
@@ -213,6 +227,19 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       const { team_id, categorie_accesso = [] } = req.body;
       if (!team_id) return res.status(400).json({ error: 'team_id richiesto' });
 
+      // Fetch team per ottenere season_id e verificare stagione
+      const { data: team } = await supabase.from('team').select('id, season_id, season:season_id(data_fine)').eq('id', team_id).single();
+      if (!team) return res.status(404).json({ error: 'Team non trovato' });
+
+      // Blocco se stagione scaduta (dopo 31 luglio)
+      if (team.season?.data_fine) {
+        const limiteCreazione = new Date(team.season.data_fine);
+        limiteCreazione.setMonth(limiteCreazione.getMonth() + 1);
+        if (new Date() > limiteCreazione) {
+          return res.status(400).json({ error: 'Non è possibile creare link guest per una stagione conclusa (limite: 31 luglio)' });
+        }
+      }
+
       // Fetch rosa attiva
       const { data: roster } = await supabase.from('team_player')
         .select('player_id, player:player_id(id, nome, cognome, telefono)')
@@ -220,9 +247,10 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
 
       if (!roster || roster.length === 0) return res.json({ success: true, generated: 0, links: [] });
 
-      // Fetch existing player links per non duplicare
+      // Fetch existing player links per non duplicare (stessa stagione)
       const { data: existing } = await supabase.from('guest_token')
         .select('player_id').eq('tipo', 'atleta')
+        .eq('season_id', team.season_id)
         .in('player_id', roster.map(r => r.player_id))
         .gte('scadenza', new Date().toISOString());
       const existingPlayerIds = new Set((existing || []).map(e => e.player_id));
@@ -240,7 +268,8 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         const { data, error } = await supabase.from('guest_token').insert({
           token, utente_id: req.user.id, tipo: 'atleta',
           squadre_accesso: categorie_accesso, scadenza,
-          player_id: r.player_id, telefono: p.telefono || null
+          player_id: r.player_id, telefono: p.telefono || null,
+          season_id: team.season_id
         }).select().single();
         if (!error && data) {
           generated.push({
@@ -260,7 +289,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   router.get('/api/auth/guest-links', authMiddleware, async (req, res) => {
     try {
       const user = req.user;
-      const { categoryId } = req.query;
+      const { categoryId, seasonId } = req.query;
       let query = supabase.from('guest_token').select('*').order('created_at', { ascending: false });
       
       if (user.is_superadmin) {
@@ -272,6 +301,9 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       } else {
         query = query.eq('utente_id', user.id);
       }
+
+      // Filtra per stagione se specificata
+      if (seasonId) query = query.eq('season_id', seasonId);
       
       const { data, error } = await query;
       if (error) return res.status(400).json({ error: error.message });
@@ -285,14 +317,25 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         });
       }
       
+      // Resolve player names + utente names in parallel
+      const playerIds = [...new Set(filtered.map(t => t.player_id).filter(Boolean))];
       const utenteIds = [...new Set(filtered.map(t => t.utente_id).filter(Boolean))];
-      let utenteMap = {};
-      if (utenteIds.length > 0) {
-        const { data: utenti } = await supabase.from('users').select('id, nome, cognome').in('id', utenteIds);
-        (utenti || []).forEach(u => { utenteMap[u.id] = { nome: u.nome, cognome: u.cognome }; });
-      }
+
+      const [playersRes, utentiRes] = await Promise.all([
+        playerIds.length > 0 ? supabase.from('player').select('id, nome, cognome').in('id', playerIds) : { data: [] },
+        utenteIds.length > 0 ? supabase.from('users').select('id, nome, cognome').in('id', utenteIds) : { data: [] }
+      ]);
+
+      const playerMap = {};
+      (playersRes.data || []).forEach(p => { playerMap[p.id] = { nome: p.nome, cognome: p.cognome }; });
+      const utenteMap = {};
+      (utentiRes.data || []).forEach(u => { utenteMap[u.id] = { nome: u.nome, cognome: u.cognome }; });
       
-      const links = filtered.map(t => ({ ...t, utente: utenteMap[t.utente_id] || null }));
+      const links = filtered.map(t => ({
+        ...t,
+        utente: utenteMap[t.utente_id] || null,
+        player: playerMap[t.player_id] || null
+      }));
       res.json({ links });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
@@ -349,17 +392,18 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       if (data.player_id) payload.player_id = data.player_id;
       const guestJwt = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
       
-      // Risolvi category_id → team_id della stagione attiva
+      // Risolvi category_id → team_id: usa season_id del token se presente, altrimenti stagione attiva
       let team_id = null;
       const categorie = data.squadre_accesso || [];
       if (categorie.length > 0) {
-        const { data: teams } = await supabase.from('team')
-          .select('id, category_id, season:season_id(attiva)')
-          .in('category_id', categorie)
-          .eq('season.attiva', true);
-        const activeTeams = (teams || []).filter(t => t.season?.attiva);
-        if (activeTeams.length === 1) team_id = activeTeams[0].id;
-        else if (activeTeams.length > 1) team_id = activeTeams[0].id;
+        let teamQuery = supabase.from('team').select('id, category_id, season_id').in('category_id', categorie);
+        if (data.season_id) {
+          teamQuery = teamQuery.eq('season_id', data.season_id);
+        } else {
+          teamQuery = teamQuery.eq('season_id', (await supabase.from('season').select('id').eq('attiva', true).limit(1).single()).data?.id);
+        }
+        const { data: teams } = await teamQuery;
+        if (teams && teams.length > 0) team_id = teams[0].id;
       }
 
       // Risolvi nome giocatore se player_id presente
