@@ -8,6 +8,7 @@ import { loadPlayerDetail } from './modules/team/playerDetail.js'
 import { getSavedWorkspaceId, resetWorkspaceCache, loadAvailableWorkspaces, isSuperAdmin, saveCurrentWorkspace, populateWorkspaceSelect } from './modules/club/workspaceSwitcher'
 import { BUILD_INFO } from './build-info'
 import { apiFetch } from './services/api'
+import { initSessionGuard, destroySessionGuard } from './utils/sessionGuard'
 
 window.YFM_BUILD_ID = BUILD_INFO.id
 
@@ -40,6 +41,7 @@ window.YFM.getWorkspaceLogo = () => {
 };
 
 window.YFM.handleLogout = function() {
+  destroySessionGuard();
   const wasGuest = !!sessionStorage.getItem('yfm_guest');
   localStorage.removeItem('yfm_token');
   localStorage.removeItem('yfm_user');
@@ -153,6 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       
       window.YFM.navigateTo('dashboard');
+      initSessionGuard();
       // Badge notifiche assenze (subito + polling ogni 60s)
       import('./modules/coach/notifications.js').then(m => {
         m.updateNotifBadge();

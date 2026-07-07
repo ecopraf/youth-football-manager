@@ -22,7 +22,7 @@
 
 | Modulo | Stato | File principali |
 |--------|-------|-----------------|
-| Auth & Permessi | ✅ | routes/auth.js, modules/auth/ |
+| Auth & Permessi | ✅ | routes/auth.js, modules/auth/, utils/sessionGuard.js |
 | Dashboard | ✅ | modules/team/dashboard.js |
 | Rosa (Roster) | ✅ | modules/team/roster.js, routes/player.js |
 | Calendario | ✅ | modules/team/calendar.js, routes/match.js |
@@ -295,6 +295,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | dbc0b9b | feat: guest token season_id — legame stagione, blocco creazione post-31/07, nome giocatore da DB |
 | e715772 | style: sidebar Coach sopra Performance, rinomina 'Genera Link Atleti' |
 | 36c1276 | feat: workspace social (facebook/instagram) + import GR unificato con checkbox + fix classifica_url in memoria |
+| c624f55 | feat: minuti reali da match_statistics nel report giocatore, fix calendario isPlayed, autocomplete avversario |
+| (pending) | feat: session guard — visibility check (5min) + inactivity timer (30min) con banner + auto-reload pagina |
 
 ---
 
