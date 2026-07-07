@@ -298,7 +298,10 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
           if (p.ruolo) await supabase.from('player').update({ ruolo_principale: p.ruolo }).eq('id', playerId).is('ruolo_principale', null);
           const { data: tp } = await supabase.from('team_player').select('id').eq('team_id', teamId).eq('player_id', playerId).maybeSingle();
           if (tp) {
-            if (p.ruolo) await supabase.from('team_player').update({ ruolo_preferito: p.ruolo }).eq('id', tp.id).is('ruolo_preferito', null);
+            const updates = {};
+            if (p.numero_maglia && p.numero_maglia > 0) updates.numero_maglia = p.numero_maglia;
+            if (p.ruolo) updates.ruolo_preferito = p.ruolo;
+            if (Object.keys(updates).length > 0) await supabase.from('team_player').update(updates).eq('id', tp.id);
             skipped++; continue;
           }
         } else {
@@ -312,6 +315,7 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
 
         await supabase.from('team_player').insert({
           team_id: teamId, player_id: playerId, stato: 'Attivo', ruolo_preferito: p.ruolo || null,
+          numero_maglia: p.numero_maglia || null,
           data_assegnazione: new Date().toISOString().split('T')[0]
         });
         imported++;
@@ -370,29 +374,86 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
   router.post('/api/roster/parse-text-tuttocampo', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
     try {
       const { text } = req.body;
-      if (!text || text.length < 50) return res.status(400).json({ error: 'Testo troppo corto' });
+      if (!text || text.length < 30) return res.status(400).json({ error: 'Testo troppo corto' });
 
       const prefixes = ['de', 'di', 'del', 'della', 'dello', 'degli', 'dei', "d'", 'lo', 'la', 'le', 'li', 'el', 'al', 'van', 'von'];
       const players = [];
       const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
 
-      // Pattern TC text: "Cognome Nome    DD-MM-YYYY    POS"
-      // Or: lines with name, birthdate pattern, and position code
       const dateRegex = /\d{2}-\d{2}-\d{4}/;
       const posRegex = /\b(POR|DIF|CEN|ATT)\b/i;
+      const ruoloMap = { 'POR': 'Portiere', 'DIF': 'Difensore', 'CEN': 'Centrocampista', 'ATT': 'Attaccante' };
 
       for (const line of lines) {
+        // Skip header lines
+        if (/^(GIOCATORE|NOME|COGNOME)/i.test(line)) continue;
+
+        const cols = line.split('\t');
+
+        // Tab-separated format: Nome\tNome(num)\tData\tRuolo\tGol\tPres\tGialli\tRossi
+        if (cols.length >= 4) {
+          // First column is always the clean name
+          let namePart = cols[0].replace(/\(\d+\)/g, '').replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+          if (namePart.length < 3) continue;
+
+          const parts = namePart.split(' ').filter(p => p.length > 0);
+          if (parts.length < 2) continue;
+
+          let cognome, nome;
+          if (parts.length >= 3 && prefixes.includes(parts[0].toLowerCase())) {
+            cognome = parts[0] + ' ' + parts[1]; nome = parts.slice(2).join(' ');
+          } else { cognome = parts[0]; nome = parts.slice(1).join(' '); }
+
+          // Find date and position in remaining columns
+          let dataNascita = null, ruolo = null, numero_maglia = null;
+          let gol = null, presenze = null, ammonizioni = null, espulsioni = null;
+
+          // Extract numero maglia from second column (e.g. "Cognome Nome(6)")
+          const numMatch = cols.length > 1 ? cols[1].match(/\((\d+)\)/) : null;
+          if (numMatch) numero_maglia = parseInt(numMatch[1]);
+
+          for (let i = 1; i < cols.length; i++) {
+            const col = cols[i].trim();
+            if (!col || col === '-') continue;
+            const dm = col.match(dateRegex);
+            if (dm) { const [dd, mm, yyyy] = dm[0].split('-'); dataNascita = `${yyyy}-${mm}-${dd}`; continue; }
+            const pm = col.match(posRegex);
+            if (pm) { ruolo = ruoloMap[pm[0].toUpperCase()] || null; continue; }
+          }
+
+          // Stats: after ruolo column, expect Gol, Pres, Gialli, Rossi (numeric)
+          // Find the position column index
+          let posIdx = -1;
+          for (let i = 1; i < cols.length; i++) {
+            if (posRegex.test(cols[i].trim())) { posIdx = i; break; }
+          }
+          if (posIdx >= 0 && posIdx + 4 < cols.length) {
+            const g = parseInt(cols[posIdx + 1]); if (!isNaN(g)) gol = g;
+            const p = parseInt(cols[posIdx + 2]); if (!isNaN(p)) presenze = p;
+            const a = parseInt(cols[posIdx + 3]); if (!isNaN(a)) ammonizioni = a;
+            const e = parseInt(cols[posIdx + 4]); if (!isNaN(e)) espulsioni = e;
+          }
+
+          const player = { cognome, nome, data_nascita: dataNascita, ruolo };
+          if (numero_maglia) player.numero_maglia = numero_maglia;
+          if (gol !== null) player.gol = gol;
+          if (presenze !== null) player.presenze = presenze;
+          if (ammonizioni !== null) player.ammonizioni = ammonizioni;
+          if (espulsioni !== null) player.espulsioni = espulsioni;
+          players.push(player);
+          continue;
+        }
+
+        // Fallback: space-separated format
         const dateMatch = line.match(dateRegex);
         const posMatch = line.match(posRegex);
         if (!dateMatch && !posMatch) continue;
 
-        // Extract name (everything before the date or position)
         let namePart = line;
         if (dateMatch) namePart = line.substring(0, line.indexOf(dateMatch[0])).trim();
         else if (posMatch) namePart = line.substring(0, line.indexOf(posMatch[0])).trim();
 
-        // Clean up name - remove numbers, extra spaces
-        namePart = namePart.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+        namePart = namePart.replace(/\(\d+\)/g, '').replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
         if (namePart.length < 3) continue;
 
         const parts = namePart.split(' ').filter(p => p.length > 0);
@@ -404,19 +465,14 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
         } else { cognome = parts[0]; nome = parts.slice(1).join(' '); }
 
         let dataNascita = null;
-        if (dateMatch) {
-          const [dd, mm, yyyy] = dateMatch[0].split('-');
-          dataNascita = `${yyyy}-${mm}-${dd}`;
-        }
-
-        const ruoloMap = { 'POR': 'Portiere', 'DIF': 'Difensore', 'CEN': 'Centrocampista', 'ATT': 'Attaccante' };
+        if (dateMatch) { const [dd, mm, yyyy] = dateMatch[0].split('-'); dataNascita = `${yyyy}-${mm}-${dd}`; }
         const ruolo = posMatch ? (ruoloMap[posMatch[0].toUpperCase()] || null) : null;
-
         players.push({ cognome, nome, data_nascita: dataNascita, ruolo });
       }
 
       if (!players.length) return res.status(400).json({ error: 'Nessun giocatore trovato. Assicurati di copiare la tabella giocatori dalla pagina Rosa.' });
-      res.json({ success: true, teamName: 'Import manuale', players });
+      const hasStats = players.some(p => p.gol !== undefined || p.presenze !== undefined);
+      res.json({ success: true, teamName: 'Import manuale', players, hasStats });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

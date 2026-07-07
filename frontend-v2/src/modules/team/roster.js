@@ -67,7 +67,7 @@ function renderRoster(c, players, scadenze) {
   }
   
   toolbarHtml += '<button class="btn btn-secondary" id="btnImportXls" title="Importa rosa da file Excel" data-help="roster.btnAggiungi">📥 XLS</button>';
-  toolbarHtml += '<button class="btn btn-secondary" id="btnImportTc" title="Importa rosa manualmente (copia-incolla)">📋 Incolla Rosa</button>';
+  toolbarHtml += '<button class="btn btn-secondary" id="btnImportTc" title="Importa rosa da copia-incolla (Tuttocampo o simili)">📋 Import Manuale</button>';
   toolbarHtml += '<button class="btn btn-primary" id="btnAdd" data-help="roster.btnAggiungi">+ Aggiungi</button></div></div>';
 
   let scadenzeHtml = scadenze.length > 0 ? '<div class="card" data-help="roster.alertMedico" style="margin-bottom:20px;border-left:4px solid #F39C12;"><h3>⚠️ Certificati in scadenza</h3>' + scadenze.map(x => '<div>' + x.nome + ' ' + x.cognome + ' - ' + formatDateShort(x.scadenza) + ' (' + (x.giorni_rimanenti || x.giorniRimanenti) + 'gg)</div>').join('') + '</div>' : '';
@@ -858,15 +858,20 @@ function openImportTcModal() {
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal-content" style="max-width:600px;max-height:90vh;overflow-y:auto;">
-      <h2 style="margin-bottom:16px;">📋 Incolla Rosa</h2>
+      <h2 style="margin-bottom:16px;">📋 Import Rosa</h2>
       <div style="padding:14px;background:#f0f7ff;border-radius:10px;border:1px solid #b3d4fc;">
-        <p style="font-size:13px;font-weight:600;margin:0 0 10px 0;">📋 Copia-incolla da una pagina web</p>
+        <p style="font-size:13px;font-weight:600;margin:0 0 8px 0;">Come funziona</p>
         <ol style="font-size:12px;color:#444;margin:0 0 12px 16px;line-height:1.8;">
-          <li>Apri la pagina Rosa della squadra sul sito del campionato</li>
-          <li>Seleziona tutta la tabella giocatori (Ctrl+A o seleziona con mouse)</li>
-          <li>Copia (Ctrl+C) e incolla qui sotto (Ctrl+V)</li>
+          <li>Apri la pagina Rosa della squadra su Tuttocampo (o sito simile)</li>
+          <li>Seleziona la tabella giocatori e copia (Ctrl+C)</li>
+          <li>Incolla qui sotto (Ctrl+V)</li>
         </ol>
-        <textarea id="tcTextFallback" rows="6" placeholder="Incolla qui il testo o HTML copiato dalla pagina Rosa..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:vertical;font-family:monospace;"></textarea>
+        <div style="font-size:11px;color:#666;background:#fff;border-radius:8px;padding:10px;border:1px solid #e0e0e0;margin-bottom:12px;">
+          <p style="margin:0 0 4px;font-weight:600;">Formato riconosciuto:</p>
+          <code style="font-size:10px;line-height:1.6;display:block;white-space:pre;overflow-x:auto;">Cognome Nome  [Cognome Nome(num)]  DD-MM-YYYY  POR/DIF/CEN/ATT  [Gol  Pres  Gialli  Rossi]</code>
+          <p style="margin:6px 0 0;font-size:10px;color:#888;">I campi tra [ ] sono opzionali. Separatori: tab o spazi multipli.</p>
+        </div>
+        <textarea id="tcTextFallback" rows="6" placeholder="Incolla qui il testo copiato dalla pagina Rosa..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:vertical;font-family:monospace;box-sizing:border-box;"></textarea>
         <button id="tcParseTextBtn" class="btn btn-primary" style="margin-top:10px;width:100%;">🔍 Analizza testo</button>
       </div>
       <div id="tcPreview" style="margin-top:12px;"></div>
@@ -897,15 +902,25 @@ function openImportTcModal() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error);
       fetchedPlayers = data.players;
+      const hs = data.hasStats;
+
       document.getElementById('tcPreview').innerHTML = `<p style="font-weight:600;margin-bottom:8px;">📋 ${fetchedPlayers.length} giocatori trovati</p>
         <div style="max-height:300px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;">
-        ${fetchedPlayers.map((p, i) => `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #f5f5f5;">
-          <input type="checkbox" checked data-idx="${i}">
-          <span style="flex:1;font-size:13px;">${p.cognome} ${p.nome}</span>
-          <span style="font-size:11px;color:#888;">${p.ruolo || '?'}</span>
-          <span style="font-size:11px;color:#aaa;">${p.data_nascita || '-'}</span>
-        </label>`).join('')}
-        </div>`;
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <thead><tr style="border-bottom:2px solid #eee;text-align:left;">
+            <th style="padding:4px;"></th><th style="padding:4px;">Giocatore</th><th style="padding:4px;">Nascita</th><th style="padding:4px;">Ruolo</th>
+            ${hs ? '<th style="padding:4px;color:#888;">G</th><th style="padding:4px;color:#888;">P</th>' : ''}
+          </tr></thead><tbody>
+          ${fetchedPlayers.map((p, i) => `<tr style="border-bottom:1px solid #f5f5f5;">
+            <td style="padding:4px;"><input type="checkbox" checked data-idx="${i}"></td>
+            <td style="padding:4px;font-weight:500;">${p.cognome} ${p.nome}${p.numero_maglia ? ' <span style="color:#888;font-size:10px;">(${p.numero_maglia})</span>' : ''}</td>
+            <td style="padding:4px;color:#888;">${p.data_nascita || '-'}</td>
+            <td style="padding:4px;color:#888;">${p.ruolo || '?'}</td>
+            ${hs ? `<td style="padding:4px;color:#aaa;">${p.gol ?? '-'}</td><td style="padding:4px;color:#aaa;">${p.presenze ?? '-'}</td>` : ''}
+          </tr>`).join('')}
+          </tbody></table>
+        </div>
+        ${hs ? '<p style="font-size:11px;color:#999;margin-top:6px;">ℹ️ Gol e presenze mostrati come riferimento — le statistiche reali vengono tracciate dal Match Center.</p>' : ''}`;
       document.getElementById('tcImportBtn').style.display = 'block';
     } catch (e) {
       alert('❌ ' + e.message);
@@ -915,7 +930,10 @@ function openImportTcModal() {
 
   document.getElementById('tcImportBtn').onclick = async () => {
     const checked = [...document.querySelectorAll('#tcPreview input[type=checkbox]:checked')].map(c => parseInt(c.dataset.idx));
-    const selected = checked.map(i => fetchedPlayers[i]);
+    const selected = checked.map(i => {
+      const { cognome, nome, data_nascita, ruolo, numero_maglia } = fetchedPlayers[i];
+      return { cognome, nome, data_nascita, ruolo, numero_maglia };
+    });
     if (!selected.length) return;
     const btn = document.getElementById('tcImportBtn');
     btn.disabled = true; btn.textContent = '⏳ Importazione...';

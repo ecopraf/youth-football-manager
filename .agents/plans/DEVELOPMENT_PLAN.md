@@ -297,6 +297,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | 36c1276 | feat: workspace social (facebook/instagram) + import GR unificato con checkbox + fix classifica_url in memoria |
 | c624f55 | feat: minuti reali da match_statistics nel report giocatore, fix calendario isPlayed, autocomplete avversario |
 | (pending) | feat: session guard — visibility check (5min) + inactivity timer (30min) con banner + auto-reload pagina |
+| (pending) | feat: import manuale rosa — fix parsing tab-separated (nome duplicato), legenda formato, preview tabella con numero maglia |
 
 ---
 
