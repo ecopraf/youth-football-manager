@@ -102,7 +102,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     try {
       const { data: rosa } = await supabase.from('team_player')
         .select('calciatore:player_id(id, nome, cognome, scadenza_visita_medica)')
-        .eq('team_id', req.params.squadraId);
+        .eq('team_id', req.params.squadraId).eq('stato', 'Attivo');
 
       const oggi = new Date();
       const scadenze = (rosa || [])
@@ -280,7 +280,26 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         agg[key].espulsioni += ev.espulsioni;
       });
 
-      res.json(Object.values(agg));
+      // Logo lookup for team names
+      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
+      const findLogo = (nome) => {
+        if (!nome || !logos) return null;
+        const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const compact = stripAccents(nome.toLowerCase().trim()).replace(/[^a-z0-9]/g, '');
+        for (const l of logos) {
+          const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
+          if (l.nome.toLowerCase() === nome.toLowerCase().trim() || compact === lCompact) return l.logo_path;
+        }
+        for (const l of logos) {
+          const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
+          if (compact.includes(lCompact) || lCompact.includes(compact)) return l.logo_path;
+        }
+        return null;
+      };
+
+      const results = Object.values(agg);
+      results.forEach(r => { r.logo = findLogo(r.squadra); });
+      res.json(results);
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }
@@ -318,10 +337,28 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const minutiMap = {};
       (statsRows || []).forEach(s => { minutiMap[s.match_id] = (minutiMap[s.match_id] || 0) + (s.minuti_giocati || 0); });
 
+      // Logo lookup for opponents
+      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
+      const findLogo = (avv) => {
+        if (!avv || !logos) return null;
+        const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const compact = stripAccents(avv.toLowerCase().trim()).replace(/[^a-z0-9]/g, '');
+        for (const l of logos) {
+          const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
+          if (l.nome.toLowerCase() === avv.toLowerCase().trim() || compact === lCompact) return l.logo_path;
+        }
+        for (const l of logos) {
+          const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
+          if (compact.includes(lCompact) || lCompact.includes(compact)) return l.logo_path;
+        }
+        return null;
+      };
+
       const result = (matches || []).map(m => {
         const mEvents = (events || []).filter(e => e.match_id === m.id);
         return {
           avversario: m.avversario,
+          logo: findLogo(m.avversario),
           data: m.data_ora,
           risultato: `${m.gol_casa}-${m.gol_ospite}`,
           luogo: m.luogo,

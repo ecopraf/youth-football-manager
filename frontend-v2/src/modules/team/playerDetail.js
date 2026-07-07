@@ -2,6 +2,7 @@ import { apiFetch } from '../../services/api.js';
 import { formatDateShort } from '../../utils/formatters.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
 import { calcolaCodiceFiscale, cercaComune } from '../../utils/codiceFiscale.js';
+import { DataGrid } from '../../components/DataGrid.js';
 
 export async function loadPlayerDetail(container, playerId) {
   if (!container) {
@@ -126,11 +127,11 @@ function renderPlayerDetail(container, data) {
         <table class="pd-table" style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;">
           <thead><tr style="background:#F8F9FA;">
             <th style="padding:6px 4px;text-align:left;">Tipo</th>
-            <th style="padding:6px 4px;">Inizio</th>
-            <th style="padding:6px 4px;">Rientro</th>
-            <th style="padding:6px 4px;">Effettivo</th>
-            <th style="padding:6px 4px;">Grav.</th>
-            ${isAdmin ? '<th style="padding:6px 4px;">Azioni</th>' : ''}
+            <th style="padding:6px 4px;text-align:center;">Inizio</th>
+            <th style="padding:6px 4px;text-align:center;">Rientro</th>
+            <th style="padding:6px 4px;text-align:center;">Effettivo</th>
+            <th style="padding:6px 4px;text-align:center;">Grav.</th>
+            ${isAdmin ? '<th style="padding:6px 4px;text-align:center;">Azioni</th>' : ''}
           </tr></thead>
           <tbody>${(injuries || []).map(inj => {
             const isOpen = !inj.data_rientro_effettiva;
@@ -159,11 +160,55 @@ function renderPlayerDetail(container, data) {
       t.ammonizioni += s.ammonizioni || 0; t.espulsioni += s.espulsioni || 0;
       return t;
     }, { partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 });
-    return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="pd-table" style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;">
-      <thead><tr style="background:#F8F9FA;"><th style="padding:6px 4px;text-align:left;">Stagione</th><th style="padding:6px 4px;">Squadra</th><th style="padding:6px 4px;">PG</th><th style="padding:6px 4px;">Min</th><th style="padding:6px 4px;">G</th><th style="padding:6px 4px;">A</th><th style="padding:6px 4px;">🟨</th><th style="padding:6px 4px;">🟥</th></tr></thead>
-      <tbody>${rows.map(s => `<tr><td style="padding:6px 4px;">${s.stagione || '-'}</td><td style="padding:6px 4px;text-align:center;">${s.squadra || '-'}</td><td style="padding:6px 4px;text-align:center;">${s.partite || 0}</td><td style="padding:6px 4px;text-align:center;">${s.minuti || 0}</td><td style="padding:6px 4px;text-align:center;color:#27AE60;font-weight:600;">${s.gol || 0}</td><td style="padding:6px 4px;text-align:center;color:#2980B9;font-weight:600;">${s.assist || 0}</td><td style="padding:6px 4px;text-align:center;color:#F39C12;">${s.ammonizioni || 0}</td><td style="padding:6px 4px;text-align:center;color:#E74C3C;">${s.espulsioni || 0}</td></tr>`).join('')}</tbody>
-      <tfoot><tr style="background:#f0f4ff;font-weight:700;"><td style="padding:6px 4px;">TOT</td><td></td><td style="padding:6px 4px;text-align:center;">${totals.partite}</td><td style="padding:6px 4px;text-align:center;">${totals.minuti}</td><td style="padding:6px 4px;text-align:center;color:#27AE60;">${totals.gol}</td><td style="padding:6px 4px;text-align:center;color:#2980B9;">${totals.assist}</td><td style="padding:6px 4px;text-align:center;color:#F39C12;">${totals.ammonizioni}</td><td style="padding:6px 4px;text-align:center;color:#E74C3C;">${totals.espulsioni}</td></tr></tfoot>
-    </table></div>`;
+    const mappedRows = rows.map(s => ({ stagione: s.stagione || '-', squadra: s.squadra || '-', partite: s.partite || 0, minuti: s.minuti || 0, gol: s.gol || 0, assist: s.assist || 0, ammonizioni: s.ammonizioni || 0, espulsioni: s.espulsioni || 0 }));
+
+    // Desktop: DataGrid table
+    const div = document.createElement('div');
+    DataGrid({
+      container: div,
+      columns: [
+        { key: 'stagione', label: 'Stagione', width: '2.2fr', align: 'left', secondary: true },
+        { key: 'squadra', label: 'Squadra', width: '2.5fr', align: 'left', primary: true },
+        { key: 'partite', label: 'Partite', labelShort: 'PG', width: '1fr', meta: true, metaPrefix: 'PG', metaSuffix: '' },
+        { key: 'minuti', label: 'Minuti', labelShort: 'Min', width: '1.3fr', mobileIcon: '🕐' },
+        { key: 'gol', label: 'Gol', labelShort: 'G', width: '1fr', color: '#27AE60', bold: true, mobileIcon: '⚽' },
+        { key: 'assist', label: 'Assist', labelShort: 'A', width: '1fr', color: '#2980B9', bold: true, mobileIcon: '🅰️' },
+        { key: 'ammonizioni', label: '🟨', width: '1fr', color: '#F39C12', mobileIcon: '🟨' },
+        { key: 'espulsioni', label: '🟥', width: '1fr', color: '#E74C3C', mobileIcon: '🟥' }
+      ],
+      rows: mappedRows,
+      footer: { stagione: 'TOTALE', squadra: '', partite: totals.partite, minuti: totals.minuti, gol: totals.gol, assist: totals.assist, ammonizioni: totals.ammonizioni, espulsioni: totals.espulsioni }
+    });
+
+    // Mobile: raggruppato per squadra con logo
+    const wsLogo = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : null;
+    const wsName = window.YFM.getSocietaName ? window.YFM.getSocietaName() : '';
+    const grouped = [];
+    mappedRows.forEach(r => {
+      const last = grouped[grouped.length - 1];
+      if (last && last.squadra === r.squadra) { last.rows.push(r); }
+      else { grouped.push({ squadra: r.squadra, logo: r.logo, rows: [r] }); }
+    });
+    const logoImg = (g) => {
+      if (g.logo) return `<img src="${g.logo}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;" onerror="this.outerHTML='🛡️'">`;
+      const isWs = wsName && g.squadra.toLowerCase().includes(wsName.toLowerCase());
+      if (isWs && wsLogo) return `<img src="${wsLogo}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;" onerror="this.outerHTML='🛡️'">`;
+      return '🛡️';
+    };
+    const statLine = (r) => `<div class="dg-card-stats" style="margin-top:2px;"><span class="dg-card-stat">PG <strong>${r.partite}</strong></span><span class="dg-card-stat">🕐 <strong>${r.minuti}</strong></span><span class="dg-card-stat" style="color:#27AE60;">⚽ <strong>${r.gol}</strong></span><span class="dg-card-stat" style="color:#2980B9;">🅰️ <strong>${r.assist}</strong></span><span class="dg-card-stat" style="color:#F39C12;">🟨 <strong>${r.ammonizioni}</strong></span><span class="dg-card-stat" style="color:#E74C3C;">🟥 <strong>${r.espulsioni}</strong></span></div>`;
+    const mobileHtml = grouped.map(g => {
+      const header = `<div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;padding:8px 14px 4px;">${logoImg(g)} ${g.squadra}</div>`;
+      const seasonRows = g.rows.map(r => `<div class="dg-card" style="padding:4px 14px 8px;"><div style="font-size:11px;color:#666;margin-bottom:2px;">📅 ${r.stagione}</div>${statLine(r)}</div>`).join('');
+      return header + seasonRows;
+    }).join('');
+    const footerMobile = `<div class="dg-card dg-card-footer"><div style="font-weight:700;font-size:12px;color:#667eea;margin-bottom:4px;">TOTALE</div>${statLine(totals)}</div>`;
+
+    // Replace the dg-cards content with grouped layout
+    const wrapper = div.querySelector('.dg-wrap');
+    const cardsDiv = wrapper.querySelector('.dg-cards');
+    cardsDiv.innerHTML = mobileHtml + footerMobile;
+
+    return div.innerHTML;
   }
 
   let careerSection = '';
@@ -185,33 +230,33 @@ function renderPlayerDetail(container, data) {
   }
 
   // Sezione ultime partite
-  const matchRows = (lastMatches || []).map(m => `
-    <tr>
-      <td style="padding:6px 4px;">${safeFormatDate(m.data)}</td>
-      <td style="padding:6px 4px;">${m.avversario || '-'}</td>
-      <td style="padding:6px 4px;text-align:center;">${m.minuti || 0}</td>
-      <td style="padding:6px 4px;text-align:center;color:#27AE60;">${m.gol || 0}</td>
-      <td style="padding:6px 4px;text-align:center;color:#2980B9;">${m.assist || 0}</td>
-      <td style="padding:6px 4px;text-align:center;">${m.cartellini_gialli ? '<span style="color:#F39C12;">' + m.cartellini_gialli + '</span>' : '0'}/${m.cartellini_rossi ? '<span style="color:#E74C3C;">' + m.cartellini_rossi + '</span>' : '0'}</td>
-    </tr>`).join('');
-
-  const lastMatchesSection = lastMatches && lastMatches.length ? `
-    <div class="card" data-help="player.ultimePartite" style="margin-top:20px;">
-      <h3 class="section-title">Ultime partite</h3>
-      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-        <table class="pd-table" style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;">
-          <thead><tr style="background:#F8F9FA;">
-            <th style="padding:6px 4px;">Data</th>
-            <th style="padding:6px 4px;">Avversario</th>
-            <th style="padding:6px 4px;">Min</th>
-            <th style="padding:6px 4px;">G</th>
-            <th style="padding:6px 4px;">A</th>
-            <th style="padding:6px 4px;">🟨/🟥</th>
-          </tr></thead>
-          <tbody>${matchRows}</tbody>
-        </table>
-      </div>
-    </div>` : '';
+  const shortDate = (d) => { if (!d) return '-'; try { const dt = new Date(d); return (dt.getDate()+'').padStart(2,'0')+'/'+(dt.getMonth()+1+'').padStart(2,'0'); } catch(e) { return '-'; } };
+  let lastMatchesSection = '';
+  if (lastMatches && lastMatches.length) {
+    const mappedMatches = lastMatches.map(m => ({ data: shortDate(m.data), avversario: m.avversario || '-', logo: m.logo || null, minuti: m.minuti || 0, gol: m.gol || 0, assist: m.assist || 0, gialli: m.cartellini_gialli || 0, rossi: m.cartellini_rossi || 0 }));
+    const matchDiv = document.createElement('div');
+    DataGrid({
+      container: matchDiv,
+      columns: [
+        { key: 'avversario', label: 'Avversario', width: '3fr', align: 'left', primary: true },
+        { key: 'data', label: 'Data', width: '1.5fr', align: 'left', secondary: true },
+        { key: 'minuti', label: 'Minuti', labelShort: 'Min', width: '1.2fr', meta: true },
+        { key: 'gol', label: 'Gol', labelShort: 'G', width: '1fr', color: '#27AE60', mobileIcon: '⚽' },
+        { key: 'assist', label: 'Assist', labelShort: 'A', width: '1fr', color: '#2980B9', mobileIcon: '🅰️' },
+        { key: 'gialli', label: '🟨', width: '1fr', color: '#F39C12', mobileIcon: '🟨' },
+        { key: 'rossi', label: '🟥', width: '1fr', color: '#E74C3C', mobileIcon: '🟥' }
+      ],
+      rows: mappedMatches
+    });
+    // Mobile: layout compatto - tutto su una riga: logo+nome a sx, stats+data+min a dx
+    const mobileMatchHtml = mappedMatches.map(m => {
+      const logoHtml = m.logo ? `<img src="${m.logo}" style="width:16px;height:16px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : '';
+      return `<div class="dg-card" style="padding:8px 14px;display:flex;align-items:center;justify-content:space-between;"><span style="font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:4px;">${logoHtml}${m.avversario}</span><span class="dg-card-stats" style="gap:6px;flex-shrink:0;"><span class="dg-card-stat" style="color:#666;">📅${m.data}</span><span class="dg-card-stat" style="color:#666;">🕐${m.minuti}'</span><span class="dg-card-stat" style="color:#27AE60;">⚽<strong>${m.gol}</strong></span><span class="dg-card-stat" style="color:#2980B9;">🅰️<strong>${m.assist}</strong></span><span class="dg-card-stat" style="color:#F39C12;">🟨<strong>${m.gialli}</strong></span><span class="dg-card-stat" style="color:#E74C3C;">🟥<strong>${m.rossi}</strong></span></span></div>`;
+    }).join('');
+    const wrapper = matchDiv.querySelector('.dg-wrap');
+    wrapper.querySelector('.dg-cards').innerHTML = mobileMatchHtml;
+    lastMatchesSection = `<div class="card" data-help="player.ultimePartite" style="margin-top:20px;"><h3 class="section-title">Ultime partite</h3>${matchDiv.innerHTML}</div>`;
+  }
 
   // Costruisci i pulsanti azione per Admin
   const adminActions = isAdmin ? `

@@ -303,6 +303,37 @@ overlay.innerHTML = `<div class="modal-card-class">
 - **Tabelle su mobile**: usare `overflow-x:auto` sul wrapper oppure layout card/stack verticale
 - **Tabelle dati numerici su mobile**: usare media query per ridurre padding (`3px 2px`), font (`10px`), e forzare `width` fissa sulle colonne numeriche (es. `22px`) per allineamento
 - **Tabelle con colonne miste (testo+numeri)**: numeri sempre `text-align:right` + `font-variant-numeric:tabular-nums` per incolonnamento perfetto
+
+### Standard Tabelle Responsive (DataGrid)
+
+Per tabelle con **5+ colonne** o dati misti (testo + numeri), usare il componente `DataGrid` (`components/DataGrid.js`) che gestisce automaticamente:
+
+| Viewport | Rendering |
+|----------|----------|
+| Desktop (>500px) | `<table>` con `table-layout:fixed` e `<colgroup>` proporzionale (fr) |
+| Mobile (≤500px) | Layout card custom (CSS media query, no JS resize) |
+
+**Pattern mobile per dati raggruppabili** (es. carriera per squadra):
+- Header gruppo: logo + nome (bold, 13px)
+- Sotto-righe: label secondaria (📅 stagione) + stats inline
+- Footer: totali con sfondo `#f0f4ff`
+
+**Pattern mobile per liste flat** (es. ultime partite):
+- Riga unica: logo + nome a sinistra, stats + meta a destra (`justify-content:space-between`)
+- Stats compatte: emoji + valore bold, gap 6-8px
+
+**Regole DataGrid mobile**:
+- Mai più di 6-7 stat icons per riga (altrimenti wrappa)
+- Logo squadra: 16-18px, `border-radius:50%`, `object-fit:contain`, con `onerror` fallback
+- Font stats: 12px, `font-variant-numeric:tabular-nums`
+- Padding card: 6-8px verticale, 14px orizzontale
+- Separatore: `border-bottom:1px solid #f0f0f0`
+- Il desktop NON viene mai toccato quando si modifica il mobile
+
+**Come aggiungere loghi**:
+- Workspace corrente: `window.YFM.getWorkspaceLogo()`
+- Avversari/altre squadre: endpoint backend con `findLogo()` da tabella `team_logo`
+- Fallback: emoji 🛡️ (carriera) o nessun logo (partite)
 - **Layout desktop vs mobile diverso**: usare `window.innerWidth >= 900` per rendering condizionale (non solo CSS) quando la struttura HTML deve cambiare radicalmente
 - **Sezioni GR (classifica/calendario/marcatori)**: su desktop card unica con `gr-grid` 2 colonne; su mobile card separate con sfondo sfumato individuale
 - **Sfondi sfumati sezioni**: usare gradienti pastello leggeri per distinguere visivamente le aree (es. blu `#f0f4ff→#e8eeff`, verde `#f0fdf4→#e6f9ed`, arancio `#fef7ed→#fdf2e4`)

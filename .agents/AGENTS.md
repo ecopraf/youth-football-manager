@@ -137,6 +137,7 @@ frontend-v2/src/
 │   ├── charts.js              — Grafici canvas (trend, barre)
 │   └── teamMatch.js           — Utility partita (formazione, eventi)
 ├── components/
+│   ├── DataGrid.js            — Tabella responsive (table desktop / card mobile)
 │   ├── PageHelp.js            — Help interattivo contestuale
 │   ├── helpData.js            — Dati help per pagina
 │   └── layout/
