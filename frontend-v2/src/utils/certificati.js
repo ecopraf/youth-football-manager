@@ -79,10 +79,12 @@ export function renderCertificatiCard(status) {
         <span style="${badgeStyle('#F5F5F5', '#666')}">⚪ Mancanti (${mancanti.length})</span>
       </div>
       <div class="cert-detail" style="display:none;margin-top:16px;">
-        ${scaduti.length ? `<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:700;color:#E74C3C;margin-bottom:6px;">🔴 SCADUTI</div>${playerList(scaduti, 'scaduti')}</div>` : ''}
-        ${inScadenza.length ? `<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:700;color:#F39C12;margin-bottom:6px;">🟡 IN SCADENZA (entro 30gg)</div>${playerList(inScadenza, 'inScadenza')}</div>` : ''}
-        ${validi.length ? `<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:700;color:#27AE60;margin-bottom:6px;">🟢 VALIDI</div>${playerList(validi, 'validi')}</div>` : ''}
-        ${mancanti.length ? `<div><div style="font-size:12px;font-weight:700;color:#666;margin-bottom:6px;">⚪ MANCANTI</div>${playerList(mancanti, 'mancanti')}</div>` : ''}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+          ${scaduti.length ? `<div style="background:#FDEDEE;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#E74C3C;margin-bottom:8px;">🔴 SCADUTI (${scaduti.length})</div>${playerList(scaduti, 'scaduti')}</div>` : ''}
+          ${inScadenza.length ? `<div style="background:#FFF8E1;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#F39C12;margin-bottom:8px;">🟡 IN SCADENZA (${inScadenza.length})</div>${playerList(inScadenza, 'inScadenza')}</div>` : ''}
+          ${validi.length ? `<div style="background:#E8F8F0;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#27AE60;margin-bottom:8px;">🟢 VALIDI (${validi.length})</div>${playerList(validi, 'validi')}</div>` : ''}
+          ${mancanti.length ? `<div style="background:#F5F5F5;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#666;margin-bottom:8px;">⚪ MANCANTI (${mancanti.length})</div>${playerList(mancanti, 'mancanti')}</div>` : ''}
+        </div>
       </div>
     </div>`;
 }
