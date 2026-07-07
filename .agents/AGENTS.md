@@ -55,7 +55,7 @@ git status
 | **Versione** | v3.15 |
 | **Build ID** | `v3.15.<git-hash>` |
 | **Frontend** | Vite + JavaScript ES Modules |
-| **Backend** | Node.js/Express + Supabase |
+| **Backend** | Node.js/Express (16 router) + Supabase |
 | **Deploy** | Vercel (auto su push a main) |
 | **Auth** | JWT + permessi granulari JSONB |
 | **Guest** | JWT guest (24h, solo lettura). Login risolve team_id + player_name |
@@ -64,7 +64,7 @@ git status
 
 ### Backend Dependencies
 - `express`, `cors`, `bcryptjs`, `jsonwebtoken`
-- `@supabase/supabase-js`
+- `@supabase/supabase-js`, `pg`
 - `multer` (upload file PDF/XLS)
 - `xlsx` (parsing tabulato atleti FIGC .xlsx)
 - `pdf-parse@1.1.1` (parsing PDF calendario SGS/LND)
@@ -74,41 +74,118 @@ git status
 ### Backend Files (Architettura Modulare)
 ```
 api/
-├── index.js                    — Entry point: middleware, health, mount router (~130 righe)
+├── index.js                    — Entry point: middleware, health, mount router (~225 righe)
 ├── pdfCalendarioParser.js      — Parser PDF calendario SGS/LND
+├── middleware/
+│   └── auth.middleware.js       — authMiddleware, requirePermission, checkSquadraAccess
+├── db/
+│   └── supabase.js             — Client Supabase inizializzato
 ├── helpers/
 │   ├── tuttocampo.js           — Login/request Tuttocampo
 │   ├── importUtils.js          — Normalizzazione nomi, parsing eventi, log, scrape loghi
 │   ├── importFormationTC.js    — Import formazioni da Tuttocampo
-│   └── gazzettaRegionale.js    — Fetch classifica/calendario/marcatori da GR API
-└── routes/
+│   ├── gazzettaRegionale.js    — Fetch classifica/calendario/marcatori da GR API
+│   ├── dbErrors.js             — Traduzione errori DB (duplicate key → messaggi IT)
+│   ├── capabilities.js         — Profili/capabilities utente (mirror CommonJS)
+│   └── teamAccess.js           — Validazione accesso team (team→category resolution)
+└── routes/ (16 router)
     ├── auth.js                 — Login, register, users CRUD, guest (batch delete/renew)
-    ├── workspace.js            — Workspace, facility, staff workspace (GET/POST con categorie)
+    ├── workspace.js            — Workspace, facility, stagioni, categorie, migrazione
     ├── team.js                 — Squadre CRUD, PUT stagioni, POST categorie/:catId/team
-    ├── training.js             — Config, presenze, templates, programma, allenamenti-futuri (virtuali da config)
+    ├── training.js             — Config, presenze, templates, programma, allenamenti-futuri
     ├── match.js                — Partite CRUD, convocazioni, formazione, eventi, live-action
     ├── staff.js                — Staff completo per distinta
     ├── admin.js                — Migrazioni schema DB
     ├── statistics.js           — Statistiche complete, top players, report partita/stagionale/giocatore
-    ├── player.js               — Calciatori CRUD, scadenze, stats, move
+    ├── player.js               — Calciatori CRUD, scadenze, career, last-matches, injuries, move
     ├── roster.js               — Import rosa XLS/Tuttocampo
     ├── importCalendario.js     — PDF, testo SGS, import-log
     ├── importTuttocampo.js     — Scraping calendario TC, eventi, loghi automatici
     ├── importConfirm.js        — Confirm TC, formations batch, matches-without-formation
-    ├── gazzettaRegionale.js    — Classifica, calendario, marcatori, loghi da GR API, wizard loghi batch (superadmin)
-    └── absence.js              — Segnalazione assenze atleti (notifiche, storico, motivi, badge nuove/totali settimana)
+    ├── gazzettaRegionale.js    — Classifica, calendario, marcatori, loghi da GR API, wizard loghi
+    ├── absence.js              — Segnalazione assenze atleti (notifiche, storico, motivi)
+    └── tournament.js           — Tornei CRUD (disabilitato in sidebar)
 ```
 
 ### Script Utility
 ```
 backend/scripts/
-├── import-loghi-gr.js         — Batch download loghi da tutti i gironi GR (standalone, eseguire in locale)
+├── import-loghi-gr.js         — Batch download loghi da tutti i gironi GR
+└── scrape-logos.js            — Scraping loghi da Tuttocampo
 ```
 
 ### Endpoint Wizard Loghi (solo superadmin, locale)
 - `POST /api/gr/logos-wizard` — body: `{levels: [1], championshipIds: ['49','55']}` → scan gironi, scarica nuovi, rileva aggiornamenti
 - `POST /api/gr/logos-confirm` — body: `{decisions: [{fileName, nomeNorm, nome, action: 'accept'|'reject'}]}` → applica scelte
 - `GET /api/gr/logos-pending` — lista loghi in `.pending/` per confronto
+
+### Frontend Files
+```
+frontend-v2/src/
+├── main.js                    — Entry point, init app
+├── router.js                  — Routing SPA
+├── style.css                  — Stili globali + responsive
+├── build-info.js              — Auto-generato (NON modificare)
+├── services/
+│   └── api.js                 — apiFetch wrapper con auth
+├── utils/
+│   ├── formatters.js          — Formattazione date, avatar colors
+│   ├── ui.js                  — Loading spinner, toast
+│   ├── capabilities.js        — Profili, capabilities, getUserCapabilities()
+│   ├── sessionGuard.js        — Visibility check + inactivity timer
+│   ├── codiceFiscale.js       — Calcolo CF + autocomplete comuni
+│   ├── charts.js              — Grafici canvas (trend, barre)
+│   └── teamMatch.js           — Utility partita (formazione, eventi)
+├── components/
+│   ├── PageHelp.js            — Help interattivo contestuale
+│   ├── helpData.js            — Dati help per pagina
+│   └── layout/
+│       ├── Sidebar.js         — Sidebar responsive
+│       └── sidebarNav.js      — Nav filtrato per capabilities
+└── modules/
+    ├── auth/
+    │   ├── login.js           — Login page
+    │   ├── guest.js           — Guest view
+    │   └── absence.js         — Segnalazione assenza (guest)
+    ├── admin/
+    │   ├── users.js           — Gestione utenti
+    │   ├── guestLinks.js      — Link guest CRUD
+    │   └── workspaces.js      — Gestione workspace (superadmin)
+    ├── team/
+    │   ├── dashboard.js       — Dashboard principale
+    │   ├── roster.js          — Rosa giocatori + import XLS
+    │   ├── playerDetail.js    — Scheda giocatore (dettaglio, carriera, infortuni)
+    │   ├── calendar.js        — Calendario partite
+    │   ├── convocazioni.js    — Convocazioni
+    │   ├── formazione.js      — Formazione pre-partita
+    │   ├── distinta.js        — Distinta gara
+    │   ├── matchCenter.js     — Match Center (eventi, formazione live, note)
+    │   ├── matchDetail.js     — Dettaglio partita (read-only)
+    │   ├── resultForm.js      — Form risultato partita
+    │   ├── noteAvversario.js  — Note avversario
+    │   ├── valutazioni.js     — Valutazioni giocatori
+    │   └── squadre.js         — Selettore squadre
+    ├── coach/
+    │   ├── trainingCalendar.js  — Calendario allenamenti
+    │   ├── trainingPresenze.js  — Presenze allenamenti
+    │   ├── trainingSessions.js  — Sessioni/programma
+    │   ├── trainingSettings.js  — Config settimana tipo
+    │   ├── trainingData.js      — Dati/cache allenamenti
+    │   ├── notifications.js     — Notifiche assenze
+    │   └── tournaments.js       — Tornei (disabilitato)
+    ├── performance/
+    │   ├── stats.js           — Statistiche squadra/giocatori
+    │   └── reports.js         — Report PDF
+    ├── club/
+    │   ├── club.js            — Pagina società
+    │   ├── staff.js           — Gestione staff
+    │   ├── seasonsCategories.js — Stagioni e categorie (wizard)
+    │   ├── settings.js        — Impostazioni
+    │   ├── workspace.js       — Dettaglio workspace
+    │   └── workspaceSwitcher.js — Switch workspace (superadmin)
+    └── import/
+        └── importCenter.js    — Hub import (XLS, PDF, TC)
+```
 
 - **App**: https://youth-football-manager.vercel.app
 - **Backend API**: https://youth-football-manager-backend.vercel.app/api
@@ -138,8 +215,9 @@ backend/scripts/
 | `category` | Categorie (U14, U15...) | workspace_id |
 | `competition` | Campionati | - |
 | `team` | Squadra | season_id, category_id, classifica_url |
-| `player` | Giocatore (codice_fiscale TEXT UNIQUE nullable) | - |
+| `player` | Giocatore (codice_fiscale TEXT UNIQUE partial nullable) | - |
 | `team_player` | Associazione giocatore-squadra | team_id, player_id, aggregato |
+| `injury` | Infortuni giocatore | player_id, team_id |
 | `match` | Partita | team_id, competition_id, live_meta JSONB, formazione_meta JSONB |
 | `match_event` | Eventi (GOAL, ASSIST, YELLOW...) | match_id, player_id, player_id_secondario |
 | `match_formation` | Formazione (is_starter = fonte verità) | match_id, team_player_id, ordine |
@@ -337,7 +415,8 @@ curl -s 'https://csxdlxbhcnyfppojwwzy.supabase.co/rest/v1/workspace?select=*' \
 ### Modifiche Backend
 1. Mantieni compatibilità con versioni precedenti
 2. Aggiungi validazione input
-3. Gestisci errori con messaggi user-friendly
+3. Gestisci errori con `handleDbError()` (mai esporre messaggi Postgres raw)
+4. Ogni INSERT/UPDATE su tabelle con UNIQUE constraint deve usare `handleDbError(error, res)`
 
 ### Deploy
 1. **Non fare deploy manuale** - è automatico su push

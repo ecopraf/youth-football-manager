@@ -3,6 +3,7 @@
  */
 const express = require('express');
 const crypto = require('crypto');
+const { handleDbError } = require('../helpers/dbErrors');
 
 module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddleware, bcrypt, jwt }) {
   const router = express.Router();
@@ -147,7 +148,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         stagioni_accesso: stagioni_accesso || null,
         permessi: permessi || {}, is_active: true
       }).select().single();
-      if (error) return res.status(400).json({ error: error.message });
+      if (error) return handleDbError(error, res);
       res.status(201).json({ ...data, categorie_accesso: data.squadre_accesso || [], stagioni_accesso: data.stagioni_accesso || [] });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });

@@ -1,5 +1,5 @@
 import { apiFetch } from '../../services/api.js';
-import { formatDateShort, getAvatarColor } from '../../utils/formatters.js';
+import { formatDateShort } from '../../utils/formatters.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
 import { calcolaCodiceFiscale, cercaComune } from '../../utils/codiceFiscale.js';
 
@@ -13,7 +13,6 @@ export async function loadPlayerDetail(container, playerId) {
 
   try {
     let player;
-    let currentSeasonStats = null;
     let career = [];
     let lastMatches = [];
     let valutazioni = null;
@@ -21,12 +20,6 @@ export async function loadPlayerDetail(container, playerId) {
 
     // Carica dati dal backend
     player = await apiFetch('/calciatori/' + playerId + '?squadraId=' + window.YFM.squadraId);
-
-    try {
-      currentSeasonStats = await apiFetch('/calciatori/' + playerId + '/stats-current');
-    } catch (e) {
-      currentSeasonStats = null;
-    }
 
     try {
       career = await apiFetch('/calciatori/' + playerId + '/career');
@@ -60,7 +53,7 @@ export async function loadPlayerDetail(container, playerId) {
     }
 
     hideLoading();
-    renderPlayerDetail(container, { player, currentSeasonStats, career, lastMatches, valutazioni, allSquadre, injuries });
+    renderPlayerDetail(container, { player, career, lastMatches, valutazioni, allSquadre, injuries });
   } catch (e) {
     console.error(e);
     hideLoading();
@@ -69,7 +62,7 @@ export async function loadPlayerDetail(container, playerId) {
 }
 
 function renderPlayerDetail(container, data) {
-  const { player, currentSeasonStats, career, lastMatches, valutazioni, allSquadre, injuries } = data;
+  const { player, career, lastMatches, valutazioni, allSquadre, injuries } = data;
 
   if (!player) {
     container.innerHTML = '<div class="error-box">Giocatore non trovato.</div>';
@@ -94,11 +87,7 @@ function renderPlayerDetail(container, data) {
   const rilasciatoDa = player.rilasciato_da || '-';
   const matricolaFigc = player.matricola_figc || '-';
 
-  const stagioneCorrente = (currentSeasonStats && currentSeasonStats.stagione) || '-';
-  const partite = (currentSeasonStats && currentSeasonStats.partite_giocate) || 0;
-  const minuti = (currentSeasonStats && currentSeasonStats.minuti) || 0;
-  const gol = (currentSeasonStats && currentSeasonStats.gol) || 0;
-  const assist = (currentSeasonStats && currentSeasonStats.assist) || 0;
+
 
   // Sezione valutazioni
   const valutazioniSection = valutazioni && valutazioni.partiteValutate > 0 ? `
@@ -133,105 +122,91 @@ function renderPlayerDetail(container, data) {
         ${isAdmin ? '<button class="btn btn-primary" id="btnAddInjury" style="font-size:12px;padding:6px 12px;">+ Aggiungi</button>' : ''}
       </div>
       ${(injuries || []).length > 0 ? `
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <table class="pd-table" style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;">
           <thead><tr style="background:#F8F9FA;">
-            <th style="padding:8px;text-align:left;">Tipo</th>
-            <th style="padding:8px;">Inizio</th>
-            <th style="padding:8px;">Rientro prev.</th>
-            <th style="padding:8px;">Rientro eff.</th>
-            <th style="padding:8px;">Gravità</th>
-            ${isAdmin ? '<th style="padding:8px;">Azioni</th>' : ''}
+            <th style="padding:6px 4px;text-align:left;">Tipo</th>
+            <th style="padding:6px 4px;">Inizio</th>
+            <th style="padding:6px 4px;">Rientro</th>
+            <th style="padding:6px 4px;">Effettivo</th>
+            <th style="padding:6px 4px;">Grav.</th>
+            ${isAdmin ? '<th style="padding:6px 4px;">Azioni</th>' : ''}
           </tr></thead>
           <tbody>${(injuries || []).map(inj => {
             const isOpen = !inj.data_rientro_effettiva;
             return `<tr style="${isOpen ? 'background:#FFF3F3;' : ''}">
-              <td style="padding:8px;font-weight:${isOpen ? '600' : '400'};">${inj.tipo}${isOpen ? ' <span style="color:#E74C3C;font-size:10px;">● ATTIVO</span>' : ''}</td>
-              <td style="padding:8px;text-align:center;">${safeFormatDate(inj.data_inizio)}</td>
-              <td style="padding:8px;text-align:center;">${inj.data_rientro_prevista ? safeFormatDate(inj.data_rientro_prevista) : '—'}</td>
-              <td style="padding:8px;text-align:center;">${inj.data_rientro_effettiva ? safeFormatDate(inj.data_rientro_effettiva) : '—'}</td>
-              <td style="padding:8px;text-align:center;"><span style="padding:2px 8px;border-radius:8px;font-size:11px;background:${inj.gravita === 'grave' ? '#FDEDEE' : inj.gravita === 'lieve' ? '#E8F8F0' : '#FFF8E1'};color:${inj.gravita === 'grave' ? '#E74C3C' : inj.gravita === 'lieve' ? '#27AE60' : '#F39C12'};">${inj.gravita || 'media'}</span></td>
-              ${isAdmin ? `<td style="padding:8px;text-align:center;">${isOpen ? '<button class="btn-close-injury" data-id="' + inj.id + '" style="font-size:11px;padding:4px 8px;background:#27AE60;color:white;border:none;border-radius:6px;cursor:pointer;">✅ Rientro</button>' : ''} <button class="btn-del-injury" data-id="${inj.id}" style="font-size:11px;padding:4px 8px;background:#eee;border:none;border-radius:6px;cursor:pointer;">🗑️</button></td>` : ''}
+              <td style="padding:6px 4px;font-weight:${isOpen ? '600' : '400'};">${inj.tipo}${isOpen ? ' <span style="color:#E74C3C;font-size:10px;">●</span>' : ''}</td>
+              <td style="padding:6px 4px;text-align:center;">${safeFormatDate(inj.data_inizio)}</td>
+              <td style="padding:6px 4px;text-align:center;">${inj.data_rientro_prevista ? safeFormatDate(inj.data_rientro_prevista) : '—'}</td>
+              <td style="padding:6px 4px;text-align:center;">${inj.data_rientro_effettiva ? safeFormatDate(inj.data_rientro_effettiva) : '—'}</td>
+              <td style="padding:6px 4px;text-align:center;"><span style="padding:2px 6px;border-radius:8px;font-size:10px;background:${inj.gravita === 'grave' ? '#FDEDEE' : inj.gravita === 'lieve' ? '#E8F8F0' : '#FFF8E1'};color:${inj.gravita === 'grave' ? '#E74C3C' : inj.gravita === 'lieve' ? '#27AE60' : '#F39C12'};">${inj.gravita || 'media'}</span></td>
+              ${isAdmin ? `<td style="padding:6px 4px;text-align:center;">${isOpen ? '<button class="btn-close-injury" data-id="' + inj.id + '" style="font-size:10px;padding:3px 6px;background:#27AE60;color:white;border:none;border-radius:6px;cursor:pointer;">✅</button>' : ''} <button class="btn-del-injury" data-id="${inj.id}" style="font-size:10px;padding:3px 6px;background:#eee;border:none;border-radius:6px;cursor:pointer;">🗑️</button></td>` : ''}
             </tr>`;
           }).join('')}</tbody>
         </table>
       </div>` : '<p style="color:var(--gray);font-size:13px;">Nessun infortunio registrato.</p>'}
     </div>`;
 
-  // Sezione carriera (originale)
-  const careerRows = (career || []).map(s => `
-    <tr>
-      <td style="padding:8px;">${s.stagione || '-'}</td>
-      <td style="padding:8px;text-align:center;">${s.squadra || '-'}</td>
-      <td style="padding:8px;text-align:center;">${s.partite || 0}</td>
-      <td style="padding:8px;text-align:center;">${s.minuti || 0}</td>
-      <td style="padding:8px;text-align:center;color:#27AE60;font-weight:600;">${s.gol || 0}</td>
-      <td style="padding:8px;text-align:center;color:#2980B9;font-weight:600;">${s.assist || 0}</td>
-      <td style="padding:8px;text-align:center;color:#F39C12;">${s.ammonizioni || 0}</td>
-      <td style="padding:8px;text-align:center;color:#E74C3C;">${s.espulsioni || 0}</td>
-    </tr>`).join('');
+  // Sezione carriera — raggruppata per tipo competizione
+  const tipoOrder = ['Campionato', 'Coppa', 'Amichevole', 'Altro'];
+  const tipoLabels = { Campionato: '🏆 Campionato', Coppa: '🏅 Coppa', Amichevole: '⚽ Amichevoli', Altro: '📋 Altro' };
+  const tipoColors = { Campionato: '#667eea', Coppa: '#F39C12', Amichevole: '#27AE60', Altro: '#888' };
 
-  const careerTotals = (career || []).reduce((t, s) => {
-    t.partite += s.partite || 0; t.minuti += s.minuti || 0;
-    t.gol += s.gol || 0; t.assist += s.assist || 0;
-    t.ammonizioni += s.ammonizioni || 0; t.espulsioni += s.espulsioni || 0;
-    return t;
-  }, { partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 });
+  function buildCareerTable(rows) {
+    const totals = rows.reduce((t, s) => {
+      t.partite += s.partite || 0; t.minuti += s.minuti || 0;
+      t.gol += s.gol || 0; t.assist += s.assist || 0;
+      t.ammonizioni += s.ammonizioni || 0; t.espulsioni += s.espulsioni || 0;
+      return t;
+    }, { partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 });
+    return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="pd-table" style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;">
+      <thead><tr style="background:#F8F9FA;"><th style="padding:6px 4px;text-align:left;">Stagione</th><th style="padding:6px 4px;">Squadra</th><th style="padding:6px 4px;">PG</th><th style="padding:6px 4px;">Min</th><th style="padding:6px 4px;">G</th><th style="padding:6px 4px;">A</th><th style="padding:6px 4px;">🟨</th><th style="padding:6px 4px;">🟥</th></tr></thead>
+      <tbody>${rows.map(s => `<tr><td style="padding:6px 4px;">${s.stagione || '-'}</td><td style="padding:6px 4px;text-align:center;">${s.squadra || '-'}</td><td style="padding:6px 4px;text-align:center;">${s.partite || 0}</td><td style="padding:6px 4px;text-align:center;">${s.minuti || 0}</td><td style="padding:6px 4px;text-align:center;color:#27AE60;font-weight:600;">${s.gol || 0}</td><td style="padding:6px 4px;text-align:center;color:#2980B9;font-weight:600;">${s.assist || 0}</td><td style="padding:6px 4px;text-align:center;color:#F39C12;">${s.ammonizioni || 0}</td><td style="padding:6px 4px;text-align:center;color:#E74C3C;">${s.espulsioni || 0}</td></tr>`).join('')}</tbody>
+      <tfoot><tr style="background:#f0f4ff;font-weight:700;"><td style="padding:6px 4px;">TOT</td><td></td><td style="padding:6px 4px;text-align:center;">${totals.partite}</td><td style="padding:6px 4px;text-align:center;">${totals.minuti}</td><td style="padding:6px 4px;text-align:center;color:#27AE60;">${totals.gol}</td><td style="padding:6px 4px;text-align:center;color:#2980B9;">${totals.assist}</td><td style="padding:6px 4px;text-align:center;color:#F39C12;">${totals.ammonizioni}</td><td style="padding:6px 4px;text-align:center;color:#E74C3C;">${totals.espulsioni}</td></tr></tfoot>
+    </table></div>`;
+  }
 
-  const careerSection = career && career.length ? `
-    <div class="card" data-help="player.carriera">
-      <h3 class="section-title">Carriera</h3>
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead><tr style="background:#F8F9FA;">
-            <th style="padding:8px;text-align:left;">Stagione</th>
-            <th style="padding:8px;">Squadra</th>
-            <th style="padding:8px;">Partite</th>
-            <th style="padding:8px;">Minuti</th>
-            <th style="padding:8px;">Gol</th>
-            <th style="padding:8px;">Assist</th>
-            <th style="padding:8px;">🟨</th>
-            <th style="padding:8px;">🟥</th>
-          </tr></thead>
-          <tbody>${careerRows}</tbody>
-          <tfoot><tr style="background:#f0f4ff;font-weight:700;">
-            <td style="padding:8px;">TOTALE</td><td></td>
-            <td style="padding:8px;text-align:center;">${careerTotals.partite}</td>
-            <td style="padding:8px;text-align:center;">${careerTotals.minuti}</td>
-            <td style="padding:8px;text-align:center;color:#27AE60;">${careerTotals.gol}</td>
-            <td style="padding:8px;text-align:center;color:#2980B9;">${careerTotals.assist}</td>
-            <td style="padding:8px;text-align:center;color:#F39C12;">${careerTotals.ammonizioni}</td>
-            <td style="padding:8px;text-align:center;color:#E74C3C;">${careerTotals.espulsioni}</td>
-          </tr></tfoot>
-        </table>
-      </div>
-    </div>` : '<div class="card"><h3 class="section-title">Carriera</h3><p style="color:var(--gray);">Nessun dato carriera disponibile.</p></div>';
+  let careerSection = '';
+  if (career && career.length) {
+    const byTipo = {};
+    (career || []).forEach(s => {
+      const t = s.tipo_competizione || 'Altro';
+      if (!byTipo[t]) byTipo[t] = [];
+      byTipo[t].push(s);
+    });
+    const sections = tipoOrder.filter(t => byTipo[t]?.length).map(t => `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:700;color:${tipoColors[t]};margin-bottom:8px;">${tipoLabels[t]}</div>
+        ${buildCareerTable(byTipo[t])}
+      </div>`).join('');
+    careerSection = `<div class="card" data-help="player.carriera"><h3 class="section-title">Carriera</h3>${sections}</div>`;
+  } else {
+    careerSection = '<div class="card"><h3 class="section-title">Carriera</h3><p style="color:var(--gray);">Nessun dato carriera disponibile.</p></div>';
+  }
 
   // Sezione ultime partite
   const matchRows = (lastMatches || []).map(m => `
     <tr>
-      <td style="padding:8px;">${safeFormatDate(m.data)}</td>
-      <td style="padding:8px;">${m.avversario || '-'}</td>
-      <td style="padding:8px;text-align:center;">${m.competizione || '-'}</td>
-      <td style="padding:8px;text-align:center;">${m.minuti || 0}</td>
-      <td style="padding:8px;text-align:center;color:#27AE60;">${m.gol || 0}</td>
-      <td style="padding:8px;text-align:center;color:#2980B9;">${m.assist || 0}</td>
-      <td style="padding:8px;text-align:center;">${m.cartellini_gialli ? '<span style="color:#F39C12;">' + m.cartellini_gialli + '</span>' : '0'}/${m.cartellini_rossi ? '<span style="color:#E74C3C;">' + m.cartellini_rossi + '</span>' : '0'}</td>
+      <td style="padding:6px 4px;">${safeFormatDate(m.data)}</td>
+      <td style="padding:6px 4px;">${m.avversario || '-'}</td>
+      <td style="padding:6px 4px;text-align:center;">${m.minuti || 0}</td>
+      <td style="padding:6px 4px;text-align:center;color:#27AE60;">${m.gol || 0}</td>
+      <td style="padding:6px 4px;text-align:center;color:#2980B9;">${m.assist || 0}</td>
+      <td style="padding:6px 4px;text-align:center;">${m.cartellini_gialli ? '<span style="color:#F39C12;">' + m.cartellini_gialli + '</span>' : '0'}/${m.cartellini_rossi ? '<span style="color:#E74C3C;">' + m.cartellini_rossi + '</span>' : '0'}</td>
     </tr>`).join('');
 
   const lastMatchesSection = lastMatches && lastMatches.length ? `
     <div class="card" data-help="player.ultimePartite" style="margin-top:20px;">
       <h3 class="section-title">Ultime partite</h3>
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <table class="pd-table" style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;">
           <thead><tr style="background:#F8F9FA;">
-            <th style="padding:8px;">Data</th>
-            <th style="padding:8px;">Avversario</th>
-            <th style="padding:8px;">Competizione</th>
-            <th style="padding:8px;">Min</th>
-            <th style="padding:8px;">Gol</th>
-            <th style="padding:8px;">Assist</th>
-            <th style="padding:8px;">Gialli/Rossi</th>
+            <th style="padding:6px 4px;">Data</th>
+            <th style="padding:6px 4px;">Avversario</th>
+            <th style="padding:6px 4px;">Min</th>
+            <th style="padding:6px 4px;">G</th>
+            <th style="padding:6px 4px;">A</th>
+            <th style="padding:6px 4px;">🟨/🟥</th>
           </tr></thead>
           <tbody>${matchRows}</tbody>
         </table>
@@ -325,20 +300,7 @@ function renderPlayerDetail(container, data) {
     <p class="page-subtitle">${ruolo} • N° ${numero} • ${dataMorte} • piede ${piede}</p>
     ${adminActions}
     ${datiAnagrafici}
-    <div class="grid-2" style="margin-bottom:20px;">
-      <div class="card" data-help="player.stats" style="display:flex;align-items:center;gap:16px;">
-        <div class="player-avatar" style="width:64px;height:64px;font-size:24px;background:${getAvatarColor(nome)};">${initials.toUpperCase()}</div>
-        <div style="flex:1;">
-          <div style="font-size:14px;color:var(--gray);margin-bottom:4px;">Stagione ${stagioneCorrente}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:13px;">
-            <div><strong>${partite}</strong> partite</div>
-            <div><strong>${minuti}</strong> minuti</div>
-            <div style="color:#27AE60;"><strong>${gol}</strong> gol</div>
-            <div style="color:#2980B9;"><strong>${assist}</strong> assist</div>
-          </div>
-        </div>
-      </div>
-    </div>
+
     ${valutazioniSection}
     ${injuriesSection}
     ${careerSection}

@@ -104,10 +104,16 @@ Dopo ogni task completato, l'agente DEVE aggiornare:
 
 1. **`.agents/plans/DEVELOPMENT_PLAN.md`** — Stato task (⬜→✅), changelog, bug noti
 2. **`.agents/knowledge/DATABASE_SCHEMA.md`** — Solo se cambiano tabelle/colonne DB
-3. **`.agents/AGENTS.md`** — Solo se cambiano endpoint API o struttura file
+3. **`.agents/AGENTS.md`** — **OBBLIGATORIO** se la modifica tocca:
+   - Nuovi file/router/helper/middleware backend
+   - Nuovi moduli/utils/components frontend
+   - Nuove dipendenze (package.json)
+   - Nuove tabelle o colonne rilevanti nel DB
+   - Cambiamenti architetturali (auth flow, deploy, ecc.)
 
 > ⚠️ I file `PROJECT_STATUS.md` e `.agents/knowledge/ROADMAP.md` sono deprecati.
 > La fonte di verità unica è `DEVELOPMENT_PLAN.md`.
+> ⚠️ **AGENTS.md** deve essere aggiornato contestualmente ad ogni modifica che cambia struttura file, endpoint, dipendenze o architettura (nuovi router, nuovi helper, nuovi moduli frontend, nuove tabelle DB).
 
 ## Schema Database (Fonte di verità)
 
@@ -322,6 +328,46 @@ overlay.innerHTML = `<div class="modal-card-class">
 - **Drag & drop**: funziona solo su desktop. Su mobile usare **two-tap flow** (tap per selezionare → tap per posizionare)
 - **Selezione attiva**: evidenziare con colore brand (`#667eea` sfondo, testo bianco)
 - **Feedback visivo**: sempre mostrare stato selezionato/hover/attivo
+
+---
+
+## 🚨 Gestione Errori DB (OBBLIGATORIO)
+
+### Helper centralizzato: `backend/api/helpers/dbErrors.js`
+
+Tutti gli errori Supabase/Postgres su operazioni di scrittura (INSERT/UPDATE) DEVONO essere gestiti tramite `handleDbError(error, res)` anziché restituire `error.message` raw.
+
+```javascript
+const { handleDbError } = require('../helpers/dbErrors');
+
+// ❌ VIETATO (espone errore tecnico Postgres all'utente)
+if (error) return res.status(400).json({ error: error.message });
+
+// ✅ OBBLIGATORIO (messaggio user-friendly in italiano)
+if (error) return handleDbError(error, res);
+```
+
+### Mappatura constraint → messaggio
+
+| Constraint | Messaggio utente |
+|---|---|
+| `idx_player_codice_fiscale` | "Esiste già un giocatore con questo Codice Fiscale" |
+| `users_email_key` | "Esiste già un utente con questa email" |
+| `team_logo_nome_normalizzato_key` | "Logo già presente per questa squadra" |
+| `convocation_match_id_team_player_id_key` | "Giocatore già convocato per questa partita" |
+| `match_statistics_match_id_team_player_id_key` | "Statistiche già registrate per questo giocatore in questa partita" |
+| `training_attendance_training_id_team_player_id_key` | "Presenza già registrata per questo allenamento" |
+| `team_staff_team_id_staff_id_ruolo_squadra_key` | "Staff già assegnato con questo ruolo" |
+
+### Quando usare `handleDbError`
+
+- **SEMPRE** su endpoint che fanno `.insert()` o `.update()` su tabelle con UNIQUE constraint
+- In particolare: `player` (CF), `users` (email), `team_logo`, `convocation`, `match_statistics`, `training_attendance`, `team_staff`
+- Per errori non-duplicate, il helper restituisce comunque `error.message` con status 400
+
+### Aggiungere nuovi constraint
+
+Se si aggiunge un nuovo UNIQUE constraint al DB, aggiungere la mappatura in `DUPLICATE_MESSAGES` dentro `dbErrors.js`.
 
 ---
 

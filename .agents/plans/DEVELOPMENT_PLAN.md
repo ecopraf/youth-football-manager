@@ -12,7 +12,7 @@
 | Versione | v3.15 |
 | Target MVP | 15 Settembre 2026 |
 | Frontend | Vite + JS ES Modules → Vercel |
-| Backend | Node.js/Express (13 router) → Vercel |
+| Backend | Node.js/Express (16 router) → Vercel |
 | Database | Supabase PostgreSQL |
 | Workspace attivi | Albalonga, DF Academy, Polisportiva Ciampino |
 
@@ -321,6 +321,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | 22d2b8e | style: upload XLS drag&drop + modal utenti responsive mobile |
 | d733428 | style: responsive globale mobile — griglie 1col @500px, tabelle scroll, modal compatti |
 | (pending) | feat: dashboard personalizzabile — riordino + show/hide widget, preferenze utente in DB, GR card sfondo sfumato, layout responsive (2-col desktop / card separate mobile), fix calendario centrato, marcatori 2-col con gol allineati a dx |
+| (pending) | fix: scheda giocatore — rimossa card summary rotta (stats-current eliminato), carriera raggruppata per tipo competizione (Campionato/Coppa/Amichevole), endpoint ottimizzato (batch fetch) |
+| (pending) | fix: gestione errori DB — helper centralizzato dbErrors.js traduce duplicate key in messaggi IT user-friendly (CF giocatore, email utente, ecc.) |
 
 ---
 

@@ -2,6 +2,7 @@
  * Player routes — CRUD giocatori, stats, scadenze, move
  */
 const express = require('express');
+const { handleDbError } = require('../helpers/dbErrors');
 
 function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
   const router = express.Router();
@@ -82,7 +83,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         tesserato_dal: toDate(c.tesserato_dal), tesserato_fino_al: toDate(c.tesserato_fino_al),
         contatti_genitori: c.contatti_genitori || []
       }).select().single();
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) return handleDbError(error, res);
 
       await supabase.from('team_player').insert({
         team_id: req.params.squadraId, player_id: cal.id,
@@ -171,7 +172,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       };
       if (c.contatti_genitori !== undefined) updateData.contatti_genitori = c.contatti_genitori;
       const { data, error } = await supabase.from('player').update(updateData).eq('id', req.params.id).select().single();
-      if (error) return res.status(400).json({ error: error.message });
+      if (error) return handleDbError(error, res);
 
       if (c.numero_maglia !== undefined || c.ruolo || c.stato) {
         await supabase.from('team_player').update({
@@ -187,24 +188,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     }
   });
 
-  // GET /api/calciatori/:id/stats-current
-  router.get('/api/calciatori/:id/stats-current', authMiddleware, async (req, res) => {
-    try {
-      const { data: rose } = await supabase.from('team_player').select('team_id').eq('player_id', req.params.id);
-      if (!rose || rose.length === 0) return res.json({ gol: 0, assist: 0, presenze: 0, partite: 0 });
-      const sqIds = rose.map(r => r.team_id);
-      const { data: partite } = await supabase.from('match').select('id').in('team_id', sqIds).eq('stato', 'Terminata');
-      if (!partite || partite.length === 0) return res.json({ gol: 0, assist: 0, presenze: 0, partite: 0 });
-      const partitaIds = partite.map(p => p.id);
-      const { data: eventi } = await supabase.from('match_event').select('tipo_evento').eq('player_id', req.params.id).in('match_id', partitaIds);
-      const { data: convocazioni } = await supabase.from('convocation').select('presente').eq('player_id', req.params.id).in('match_id', partitaIds);
-      res.json({ gol: (eventi || []).filter(e => e.tipo_evento === 'GOAL').length, assist: (eventi || []).filter(e => e.tipo_evento === 'ASSIST').length, presenze: (convocazioni || []).filter(c => c.presente).length, partite: partite.length });
-    } catch (err) {
-      res.status(500).json({ error: 'Errore server' });
-    }
-  });
-
-  // GET /api/calciatori/:id/career — stats aggregate per stagione (cross-season)
+  // GET /api/calciatori/:id/career — stats aggregate per stagione e tipo competizione
   router.get('/api/calciatori/:id/career', authMiddleware, async (req, res) => {
     try {
       const playerId = req.params.id;
@@ -213,37 +197,90 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         .eq('player_id', playerId);
       if (!tps?.length) return res.json([]);
 
-      const result = [];
-      for (const tp of tps) {
-        const stagione = tp.team?.season?.nome || '-';
-        const squadra = tp.team?.nome || '-';
-        const { data: formations } = await supabase.from('match_formation')
-          .select('match_id').eq('team_player_id', tp.id);
-        const { data: stats } = await supabase.from('match_statistics')
-          .select('minuti_giocati, gol, assist, ammonizioni, espulsioni').eq('team_player_id', tp.id);
-        const partite = (formations || []).length;
-        const minuti = (stats || []).reduce((s, r) => s + (r.minuti_giocati || 0), 0);
-        let gol = (stats || []).reduce((s, r) => s + (r.gol || 0), 0);
-        let assist = (stats || []).reduce((s, r) => s + (r.assist || 0), 0);
-        let ammonizioni = (stats || []).reduce((s, r) => s + (r.ammonizioni || 0), 0);
-        let espulsioni = (stats || []).reduce((s, r) => s + (r.espulsioni || 0), 0);
-        // Fallback to match_event if match_statistics has no data
-        if (gol === 0 && assist === 0 && ammonizioni === 0) {
-          const matchIds = (formations || []).map(f => f.match_id);
-          if (matchIds.length > 0) {
-            const { data: events } = await supabase.from('match_event')
-              .select('tipo_evento').eq('player_id', playerId).in('match_id', matchIds);
-            (events || []).forEach(e => {
-              if (e.tipo_evento === 'GOAL') gol++;
-              if (e.tipo_evento === 'ASSIST') assist++;
-              if (e.tipo_evento === 'AMMONIZIONE' || e.tipo_evento === 'YELLOW') ammonizioni++;
-              if (e.tipo_evento === 'ESPULSIONE' || e.tipo_evento === 'RED') espulsioni++;
-            });
-          }
+      const tpIds = tps.map(t => t.id);
+      const tpMap = {};
+      tps.forEach(tp => { tpMap[tp.id] = { stagione: tp.team?.season?.nome || '-', squadra: tp.team?.nome || '-' }; });
+
+      // Fetch formations + match competition in one go
+      const { data: formations } = await supabase.from('match_formation')
+        .select('team_player_id, match_id').in('team_player_id', tpIds);
+      const matchIds = [...new Set((formations || []).map(f => f.match_id))];
+      
+      // Fetch match → competition type
+      let matchCompMap = {};
+      if (matchIds.length > 0) {
+        const { data: matches } = await supabase.from('match')
+          .select('id, competition_id').in('id', matchIds);
+        const compIds = [...new Set((matches || []).filter(m => m.competition_id).map(m => m.competition_id))];
+        let compMap = {};
+        if (compIds.length > 0) {
+          const { data: comps } = await supabase.from('competition').select('id, tipo').in('id', compIds);
+          (comps || []).forEach(c => { compMap[c.id] = c.tipo; });
         }
-        result.push({ stagione, squadra, partite, minuti, gol, assist, ammonizioni, espulsioni });
+        (matches || []).forEach(m => { matchCompMap[m.id] = compMap[m.competition_id] || 'Altro'; });
       }
-      res.json(result);
+
+      // Fetch stats
+      const { data: stats } = await supabase.from('match_statistics')
+        .select('team_player_id, match_id, minuti_giocati, gol, assist, ammonizioni, espulsioni').in('team_player_id', tpIds);
+
+      // Fallback: match_event for tps with no stats
+      const tpIdsWithStats = new Set((stats || []).map(s => s.team_player_id));
+      const tpIdsNoStats = tpIds.filter(id => !tpIdsWithStats.has(id));
+      let eventsByMatch = {};
+      if (tpIdsNoStats.length > 0) {
+        const noStatsMatchIds = [...new Set((formations || []).filter(f => tpIdsNoStats.includes(f.team_player_id)).map(f => f.match_id))];
+        if (noStatsMatchIds.length > 0) {
+          const { data: events } = await supabase.from('match_event')
+            .select('match_id, tipo_evento').eq('player_id', playerId).in('match_id', noStatsMatchIds);
+          (events || []).forEach(e => {
+            if (!eventsByMatch[e.match_id]) eventsByMatch[e.match_id] = { gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
+            if (e.tipo_evento === 'GOAL') eventsByMatch[e.match_id].gol++;
+            if (e.tipo_evento === 'ASSIST') eventsByMatch[e.match_id].assist++;
+            if (e.tipo_evento === 'AMMONIZIONE' || e.tipo_evento === 'YELLOW') eventsByMatch[e.match_id].ammonizioni++;
+            if (e.tipo_evento === 'ESPULSIONE' || e.tipo_evento === 'RED') eventsByMatch[e.match_id].espulsioni++;
+          });
+        }
+      }
+
+      // Aggregate: key = stagione|squadra|tipo_competizione
+      const agg = {};
+      (formations || []).forEach(f => {
+        const info = tpMap[f.team_player_id];
+        const tipo = matchCompMap[f.match_id] || 'Altro';
+        const key = `${info.stagione}|${info.squadra}|${tipo}`;
+        if (!agg[key]) agg[key] = { stagione: info.stagione, squadra: info.squadra, tipo_competizione: tipo, partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
+        agg[key].partite++;
+      });
+
+      // Add stats data
+      (stats || []).forEach(s => {
+        const info = tpMap[s.team_player_id];
+        const tipo = matchCompMap[s.match_id] || 'Altro';
+        const key = `${info.stagione}|${info.squadra}|${tipo}`;
+        if (!agg[key]) agg[key] = { stagione: info.stagione, squadra: info.squadra, tipo_competizione: tipo, partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
+        agg[key].minuti += s.minuti_giocati || 0;
+        agg[key].gol += s.gol || 0;
+        agg[key].assist += s.assist || 0;
+        agg[key].ammonizioni += s.ammonizioni || 0;
+        agg[key].espulsioni += s.espulsioni || 0;
+      });
+
+      // Add event fallback data
+      Object.entries(eventsByMatch).forEach(([matchId, ev]) => {
+        const f = (formations || []).find(f2 => f2.match_id === matchId);
+        if (!f) return;
+        const info = tpMap[f.team_player_id];
+        const tipo = matchCompMap[matchId] || 'Altro';
+        const key = `${info.stagione}|${info.squadra}|${tipo}`;
+        if (!agg[key]) return;
+        agg[key].gol += ev.gol;
+        agg[key].assist += ev.assist;
+        agg[key].ammonizioni += ev.ammonizioni;
+        agg[key].espulsioni += ev.espulsioni;
+      });
+
+      res.json(Object.values(agg));
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }
