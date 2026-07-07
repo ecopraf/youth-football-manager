@@ -321,6 +321,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | 22d2b8e | style: upload XLS drag&drop + modal utenti responsive mobile |
 | (pending) | feat: CF e Luogo Nascita visibili e modificabili nella scheda giocatore (playerDetail view+edit) |
 | (pending) | refactor: redesign form Nuovo Calciatore e Modifica — 3 sezioni card (Anagrafica/Sportivi/Documenti), griglia 2 colonne, CF auto-calcolato, header contestuale categoria+stagione, feedback visivo modalità edit (banner + bordo brand) |
+| (pending) | feat: card certificati medici compatta con 4 badge (Scaduti/In Scadenza/Validi/Mancanti) + espansione dettaglio — in Rosa e Dashboard (nascosta di default, visibile per segreteria) |
 | d733428 | style: responsive globale mobile — griglie 1col @500px, tabelle scroll, modal compatti |
 | (pending) | feat: dashboard personalizzabile — riordino + show/hide widget, preferenze utente in DB, GR card sfondo sfumato, layout responsive (2-col desktop / card separate mobile), fix calendario centrato, marcatori 2-col con gol allineati a dx |
 | (pending) | fix: scheda giocatore — rimossa card summary rotta (stats-current eliminato), carriera raggruppata per tipo competizione (Campionato/Coppa/Amichevole), endpoint ottimizzato (batch fetch) |

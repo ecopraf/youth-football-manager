@@ -1,6 +1,7 @@
 import { apiFetch } from '../../services/api';
 import { formatDate, formatDateShort, formatTime } from '../../utils/formatters';
 import { isOurTeam } from '../../utils/teamMatch';
+import { calcCertificatiStatus, renderCertificatiCard, bindCertificatiToggle } from '../../utils/certificati.js';
 
 const CACHE_TTL_LAZY = 10 * 60 * 1000; // 10 min per classifica/GR
 const CACHE_TTL_FAST = 2 * 60 * 1000; // 2 min per dati principali
@@ -597,22 +598,13 @@ export default async function loadDashboard() {
   }).catch(() => {});
 
   // Lazy load: certificati medici
-  apiFetch('/squadre/' + squadraId + '/scadenze-mediche').then(scadenze => {
+  apiFetch('/squadre/' + squadraId + '/calciatori').then(players => {
     const widget = document.getElementById('dashCertificatiWidget');
-    if (!widget || !scadenze || scadenze.length === 0) return;
-    const scaduti = scadenze.filter(x => x.giorni_rimanenti < 0);
-    const inScad = scadenze.filter(x => x.giorni_rimanenti >= 0);
-    let rows = '';
-    if (scaduti.length > 0) {
-      rows += '<div style="font-size:12px;font-weight:700;color:#E74C3C;margin-bottom:4px;">🔴 Scaduti (' + scaduti.length + ')</div>';
-      rows += scaduti.map(x => '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid #f5f5f5;"><span>' + x.cognome + ' ' + x.nome + '</span><span style="color:#E74C3C;font-weight:600;">' + formatDateShort(x.scadenza) + '</span></div>').join('');
-    }
-    if (inScad.length > 0) {
-      rows += '<div style="font-size:12px;font-weight:700;color:#F39C12;margin:' + (scaduti.length ? '10' : '0') + 'px 0 4px;">⚠️ In scadenza (' + inScad.length + ')</div>';
-      rows += inScad.map(x => '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid #f5f5f5;"><span>' + x.cognome + ' ' + x.nome + '</span><span style="color:#F39C12;font-weight:600;">' + x.giorni_rimanenti + ' gg</span></div>').join('');
-    }
-    widget.innerHTML = '<div style="background:#FFF9F0;border:1px solid #FDE8C8;border-radius:12px;padding:14px;">' +
-      '<h4 style="margin:0 0 10px 0;font-size:13px;color:#D97706;">🏥 Certificati Medici (' + scadenze.length + ')</h4>' + rows + '</div>';
+    if (!widget || !players || players.length === 0) return;
+    const status = calcCertificatiStatus(players);
+    if (status.scaduti.length === 0 && status.inScadenza.length === 0 && status.mancanti.length === 0) return;
+    widget.innerHTML = '<div style="background:#FFF9F0;border:1px solid #FDE8C8;border-radius:12px;padding:14px;">' + renderCertificatiCard(status) + '</div>';
+    bindCertificatiToggle(widget);
   }).catch(() => {});
 
   // --- Dashboard Organize ---
