@@ -282,24 +282,42 @@ function renderPlayerDetail(container, data) {
   const datiAnagrafici = `
     <div class="card" data-help="player.anagrafica" style="margin-bottom:20px;">
       <h3 class="section-title">📋 Dati Giocatore</h3>
-      <div id="playerDataView" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
-        <div><span style="font-size:12px;color:#888;">Nome</span><div style="font-size:14px;font-weight:500;">${nome}</div></div>
-        <div><span style="font-size:12px;color:#888;">Cognome</span><div style="font-size:14px;font-weight:500;">${cognome}</div></div>
-        <div><span style="font-size:12px;color:#888;">Data di Nascita</span><div style="font-size:14px;">${dataMorte}</div></div>
-        <div><span style="font-size:12px;color:#888;">Luogo di Nascita</span><div style="font-size:14px;">${luogoNascita}</div></div>
-        <div><span style="font-size:12px;color:#888;">Ruolo</span><div style="font-size:14px;">${ruolo}</div></div>
-        <div><span style="font-size:12px;color:#888;">N. Maglia</span><div style="font-size:14px;">#${numero}</div></div>
-        <div><span style="font-size:12px;color:#888;">Piede Preferito</span><div style="font-size:14px;">${piede}</div></div>
-        <div><span style="font-size:12px;color:#888;">Peso (kg)</span><div style="font-size:14px;">${peso}</div></div>
-        <div><span style="font-size:12px;color:#888;">Altezza (cm)</span><div style="font-size:14px;">${altezza}</div></div>
-        <div><span style="font-size:12px;color:#888;">Telefono</span><div style="font-size:14px;">${telefono}</div></div>
-        <div><span style="font-size:12px;color:#888;">Tipo Documento</span><div style="font-size:14px;">${tipoDoc}</div></div>
-        <div><span style="font-size:12px;color:#888;">N. Documento</span><div style="font-size:14px;">${numDoc}</div></div>
-        <div><span style="font-size:12px;color:#888;">Rilasciato Da</span><div style="font-size:14px;">${rilasciatoDa}</div></div>
-        <div><span style="font-size:12px;color:#888;">Matricola FIGC</span><div style="font-size:14px;">${matricolaFigc}</div></div>
-        <div><span style="font-size:12px;color:#888;">Codice Fiscale</span><div style="font-size:14px;font-family:monospace;">${codiceFiscale}</div></div>
-        <div><span style="font-size:12px;color:#888;">Certificato Medico</span><div style="font-size:14px;">${certificato}</div></div>
-        <div><span style="font-size:12px;color:#888;">Stato</span><div style="font-size:14px;"><span class="badge ${stato === 'Attivo' ? 'badge-green' : 'badge-red'}">${stato}</span></div></div>
+      <div id="playerDataView">
+        <!-- SEZIONE 1: Dati Anagrafici -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:10px;">👤 DATI ANAGRAFICI</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div><span style="font-size:12px;color:#888;">Nome</span><div style="font-size:14px;font-weight:500;">${nome}</div></div>
+            <div><span style="font-size:12px;color:#888;">Cognome</span><div style="font-size:14px;font-weight:500;">${cognome}</div></div>
+            <div><span style="font-size:12px;color:#888;">Data di Nascita</span><div style="font-size:14px;">${dataMorte}</div></div>
+            <div><span style="font-size:12px;color:#888;">Luogo di Nascita</span><div style="font-size:14px;">${luogoNascita}</div></div>
+            <div><span style="font-size:12px;color:#888;">Telefono</span><div style="font-size:14px;">${telefono}</div></div>
+            <div><span style="font-size:12px;color:#888;">Codice Fiscale</span><div style="font-size:14px;font-family:monospace;">${codiceFiscale}</div></div>
+          </div>
+        </div>
+        <!-- SEZIONE 2: Dati Sportivi -->
+        <div style="margin-bottom:16px;padding-top:16px;border-top:1px solid #f0f0f0;">
+          <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:10px;">⚽ DATI SPORTIVI</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div><span style="font-size:12px;color:#888;">Ruolo</span><div style="font-size:14px;">${ruolo}</div></div>
+            <div><span style="font-size:12px;color:#888;">N. Maglia</span><div style="font-size:14px;">#${numero}</div></div>
+            <div><span style="font-size:12px;color:#888;">Piede Preferito</span><div style="font-size:14px;">${piede}</div></div>
+            <div><span style="font-size:12px;color:#888;">Stato</span><div style="font-size:14px;"><span class="badge ${stato === 'Attivo' ? 'badge-green' : 'badge-red'}">${stato}</span></div></div>
+            <div><span style="font-size:12px;color:#888;">Altezza (cm)</span><div style="font-size:14px;">${altezza}</div></div>
+            <div><span style="font-size:12px;color:#888;">Peso (kg)</span><div style="font-size:14px;">${peso}</div></div>
+            <div style="grid-column:1/-1;"><span style="font-size:12px;color:#888;">Matricola FIGC</span><div style="font-size:14px;">${matricolaFigc}</div></div>
+          </div>
+        </div>
+        <!-- SEZIONE 3: Documenti & Visita Medica -->
+        <div style="padding-top:16px;border-top:1px solid #f0f0f0;">
+          <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:10px;">📄 DOCUMENTI & VISITA MEDICA</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div><span style="font-size:12px;color:#888;">Tipo Documento</span><div style="font-size:14px;">${tipoDoc}</div></div>
+            <div><span style="font-size:12px;color:#888;">N. Documento</span><div style="font-size:14px;">${numDoc}</div></div>
+            <div><span style="font-size:12px;color:#888;">Rilasciato Da</span><div style="font-size:14px;">${rilasciatoDa}</div></div>
+            <div><span style="font-size:12px;color:#888;">Certificato Medico</span><div style="font-size:14px;">${certificato}</div></div>
+          </div>
+        </div>
       </div>
       ${(player.contatti_genitori && player.contatti_genitori.length) ? `
       <div style="margin-top:16px;">
@@ -309,24 +327,40 @@ function renderPlayerDetail(container, data) {
         </div>
       </div>` : ''}
       <div id="playerDataEdit" style="display:none;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Nome</label><input id="editNome" value="${nome}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Cognome</label><input id="editCognome" value="${cognome}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Nascita</label><input id="editDataNas" type="date" value="${player.data_nascita ? player.data_nascita.split('T')[0] : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Ruolo</label><select id="editRuolo" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="" ${!ruolo || ruolo === '-' ? 'selected' : ''}>-- Seleziona --</option><option value="Portiere" ${ruolo === 'Portiere' ? 'selected' : ''}>Portiere</option><option value="Difensore" ${ruolo === 'Difensore' ? 'selected' : ''}>Difensore</option><option value="Centrocampista" ${ruolo === 'Centrocampista' ? 'selected' : ''}>Centrocampista</option><option value="Attaccante" ${ruolo === 'Attaccante' ? 'selected' : ''}>Attaccante</option></select></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia</label><input id="editNumMaglia" type="number" value="${numero}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Piede Preferito</label><select id="editPiede" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="" ${!player.piede_preferito ? 'selected' : ''}>-- Seleziona --</option><option value="Destro" ${player.piede_preferito === 'Destro' ? 'selected' : ''}>Destro</option><option value="Sinistro" ${player.piede_preferito === 'Sinistro' ? 'selected' : ''}>Sinistro</option><option value="Ambidestro" ${player.piede_preferito === 'Ambidestro' ? 'selected' : ''}>Ambidestro</option></select></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Peso (kg)</label><input id="editPeso" type="number" value="${peso !== '-' ? peso : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Altezza (cm)</label><input id="editAltezza" type="number" value="${altezza !== '-' ? altezza : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="editTelefono" value="${telefono !== '-' ? telefono : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Stato</label><select id="editStato" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="Attivo" ${stato === 'Attivo' ? 'selected' : ''}>Attivo</option><option value="Infortunato" ${stato === 'Infortunato' ? 'selected' : ''}>Infortunato</option><option value="Svincolato" ${stato === 'Svincolato' ? 'selected' : ''}>Svincolato</option></select></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="editCertificato" type="date" value="${player.data_visita_medica ? player.data_visita_medica.split('T')[0] : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="editMatricola" value="${matricolaFigc !== '-' ? matricolaFigc : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group" style="position:relative;"><label style="font-size:12px;font-weight:600;color:#666;">Luogo Nascita</label><input id="editLuogoNascita" value="${luogoNascita !== '-' ? luogoNascita : ''}" placeholder="Digita comune..." autocomplete="off" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><div id="editLNList" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:0 0 6px 6px;max-height:150px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div></div>
-          <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Codice Fiscale</label><div style="display:flex;gap:8px;"><input id="editCF" value="${codiceFiscale !== '-' ? codiceFiscale : ''}" maxlength="16" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;text-transform:uppercase;font-family:monospace;"><button type="button" id="btnCalcCF" style="padding:8px 12px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;">Calcola</button></div></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Tipo Documento</label><input id="editTipoDoc" value="${tipoDoc !== '-' ? tipoDoc : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Documento</label><input id="editNumDoc" value="${numDoc !== '-' ? numDoc : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-          <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Rilasciato Da</label><input id="editRilasciatoDa" value="${rilasciatoDa !== '-' ? rilasciatoDa : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <!-- SEZIONE 1: Dati Anagrafici -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:10px;">👤 DATI ANAGRAFICI</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Nome *</label><input id="editNome" value="${nome}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Cognome *</label><input id="editCognome" value="${cognome}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Nascita</label><input id="editDataNas" type="date" value="${player.data_nascita ? player.data_nascita.split('T')[0] : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group" style="position:relative;"><label style="font-size:12px;font-weight:600;color:#666;">Luogo Nascita</label><input id="editLuogoNascita" value="${luogoNascita !== '-' ? luogoNascita : ''}" placeholder="Digita comune..." autocomplete="off" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><div id="editLNList" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:0 0 6px 6px;max-height:150px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="editTelefono" value="${telefono !== '-' ? telefono : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Codice Fiscale</label><div style="position:relative;"><input id="editCF" value="${codiceFiscale !== '-' ? codiceFiscale : ''}" maxlength="16" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;text-transform:uppercase;font-family:monospace;"><div id="cfStatusEdit" style="font-size:11px;margin-top:4px;color:#888;display:none;"></div></div></div>
+          </div>
+        </div>
+        <!-- SEZIONE 2: Dati Sportivi -->
+        <div style="margin-bottom:16px;padding-top:16px;border-top:1px solid #f0f0f0;">
+          <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:10px;">⚽ DATI SPORTIVI</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Ruolo</label><select id="editRuolo" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="" ${!ruolo || ruolo === '-' ? 'selected' : ''}>-- Seleziona --</option><option value="Portiere" ${ruolo === 'Portiere' ? 'selected' : ''}>Portiere</option><option value="Difensore" ${ruolo === 'Difensore' ? 'selected' : ''}>Difensore</option><option value="Centrocampista" ${ruolo === 'Centrocampista' ? 'selected' : ''}>Centrocampista</option><option value="Attaccante" ${ruolo === 'Attaccante' ? 'selected' : ''}>Attaccante</option></select></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia</label><input id="editNumMaglia" type="number" value="${numero}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Piede Preferito</label><select id="editPiede" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="" ${!player.piede_preferito ? 'selected' : ''}>-- Seleziona --</option><option value="Destro" ${player.piede_preferito === 'Destro' ? 'selected' : ''}>Destro</option><option value="Sinistro" ${player.piede_preferito === 'Sinistro' ? 'selected' : ''}>Sinistro</option><option value="Ambidestro" ${player.piede_preferito === 'Ambidestro' ? 'selected' : ''}>Ambidestro</option></select></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Stato</label><select id="editStato" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="Attivo" ${stato === 'Attivo' ? 'selected' : ''}>Attivo</option><option value="Infortunato" ${stato === 'Infortunato' ? 'selected' : ''}>Infortunato</option><option value="Svincolato" ${stato === 'Svincolato' ? 'selected' : ''}>Svincolato</option></select></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Altezza (cm)</label><input id="editAltezza" type="number" value="${altezza !== '-' ? altezza : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Peso (kg)</label><input id="editPeso" type="number" value="${peso !== '-' ? peso : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="editMatricola" value="${matricolaFigc !== '-' ? matricolaFigc : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+          </div>
+        </div>
+        <!-- SEZIONE 3: Documenti & Visita Medica -->
+        <div style="margin-bottom:16px;padding-top:16px;border-top:1px solid #f0f0f0;">
+          <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:10px;">📄 DOCUMENTI & VISITA MEDICA</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Tipo Documento</label><input id="editTipoDoc" value="${tipoDoc !== '-' ? tipoDoc : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Documento</label><input id="editNumDoc" value="${numDoc !== '-' ? numDoc : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Rilasciato Da</label><input id="editRilasciatoDa" value="${rilasciatoDa !== '-' ? rilasciatoDa : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="editCertificato" type="date" value="${player.data_visita_medica ? player.data_visita_medica.split('T')[0] : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+          </div>
         </div>
         <div style="margin-top:16px;">
           <span style="font-size:12px;font-weight:700;color:#667eea;">👨‍👩‍👦 CONTATTI GENITORI</span>
@@ -433,16 +467,41 @@ function renderPlayerDetail(container, data) {
     document.getElementById('btnEditInline')?.addEventListener('click', () => {
       document.getElementById('playerDataView').style.display = 'none';
       document.getElementById('playerDataEdit').style.display = 'block';
+      // Evidenzia modalità edit
+      const card = document.getElementById('playerDataEdit').closest('.card');
+      if (card) { card.style.border = '2px solid #667eea'; card.style.background = 'linear-gradient(135deg, #667eea06, #764ba206)'; }
+      // Banner edit mode
+      let banner = document.getElementById('editModeBanner');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'editModeBanner';
+        banner.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 14px;background:#eef2ff;border-radius:8px;margin-bottom:16px;border:1px solid #c7d2fe;';
+        banner.innerHTML = '<span style="font-size:16px;">✏️</span><span style="font-size:13px;font-weight:600;color:#4338ca;">Modalità modifica attiva</span>';
+        document.getElementById('playerDataEdit').prepend(banner);
+      }
       // Popola contatti genitori
       const cgContainer = document.getElementById('editContattiGenitori');
       if (cgContainer && !cgContainer.hasChildNodes()) {
         (player.contatti_genitori || []).forEach(c => addContattoRowDetail(cgContainer, c));
       }
-      // Autocomplete luogo nascita + calcolo CF in edit mode
+      // Autocomplete luogo nascita + auto-calc CF in edit mode
       let selectedBelfiore = '';
       const lnInput = document.getElementById('editLuogoNascita');
       const lnList = document.getElementById('editLNList');
+      const cfInput = document.getElementById('editCF');
+      const cfStatusEdit = document.getElementById('cfStatusEdit');
       let lnTimeout = null;
+
+      function tryAutoCalcCFEdit() {
+        const n = document.getElementById('editNome').value.trim();
+        const c = document.getElementById('editCognome').value.trim();
+        const d = document.getElementById('editDataNas').value;
+        if (n && c && d && selectedBelfiore) {
+          cfInput.value = calcolaCodiceFiscale(c, n, d, 'M', selectedBelfiore);
+          if (cfStatusEdit) { cfStatusEdit.textContent = '\u2713 Ricalcolato'; cfStatusEdit.style.display = 'block'; }
+        }
+      }
+
       if (lnInput && lnList) {
         lnInput.addEventListener('input', () => {
           clearTimeout(lnTimeout);
@@ -456,24 +515,13 @@ function renderPlayerDetail(container, data) {
               lnInput.value = el.textContent;
               selectedBelfiore = el.dataset.codice;
               lnList.style.display = 'none';
+              tryAutoCalcCFEdit();
             }));
           }, 200);
         });
         document.addEventListener('click', e => { if (!lnInput.contains(e.target) && !lnList.contains(e.target)) lnList.style.display = 'none'; });
       }
-      document.getElementById('btnCalcCF')?.addEventListener('click', async () => {
-        const nome = document.getElementById('editNome').value.trim();
-        const cognome = document.getElementById('editCognome').value.trim();
-        const data = document.getElementById('editDataNas').value;
-        if (!nome || !cognome || !data) { alert('Compila Nome, Cognome e Data Nascita'); return; }
-        let codice = selectedBelfiore;
-        if (!codice && lnInput) {
-          const results = await cercaComune(lnInput.value);
-          if (results.length > 0) { codice = results[0].codice; lnInput.value = results[0].nome + ' (' + results[0].provincia + ')'; selectedBelfiore = codice; }
-        }
-        if (!codice) { alert('Seleziona il Luogo di Nascita'); return; }
-        document.getElementById('editCF').value = calcolaCodiceFiscale(cognome, nome, data, 'M', codice);
-      });
+      document.getElementById('editDataNas')?.addEventListener('change', tryAutoCalcCFEdit);
     });
 
     document.getElementById('editAddContatto')?.addEventListener('click', () => {
@@ -482,8 +530,11 @@ function renderPlayerDetail(container, data) {
     });
 
     document.getElementById('btnCancelEdit')?.addEventListener('click', () => {
-      document.getElementById('playerDataView').style.display = 'grid';
+      document.getElementById('playerDataView').style.display = 'block';
       document.getElementById('playerDataEdit').style.display = 'none';
+      // Ripristina stile card
+      const card = document.getElementById('playerDataEdit').closest('.card');
+      if (card) { card.style.border = '1px solid #eee'; card.style.background = 'white'; }
     });
 
     document.getElementById('btnSaveEdit')?.addEventListener('click', async () => {
@@ -619,48 +670,83 @@ export function loadNewPlayerForm(container) {
   const isAdmin = window.YFM?.isAdmin?.() || false;
   if (!isAdmin) return;
 
+  const squadra = window.YFM.getSquadra();
+  const categoriaNome = squadra?.category?.nome || '';
+  const stagioneNome = squadra?.season?.nome || '';
+
   container.innerHTML = `
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
       <button class="btn btn-secondary btn-small" id="btnBackRoster">← Torna alla rosa</button>
     </div>
-    <h1 class="page-title" style="margin-top:12px;">Nuovo Calciatore</h1>
-    <p class="page-subtitle">${window.YFM.getSquadraName()}</p>
+    <h1 class="page-title" style="margin-top:12px;">👤 Nuovo Calciatore</h1>
+    <p class="page-subtitle">${categoriaNome}${stagioneNome ? ' • Stagione ' + stagioneNome : ''}</p>
+
+    <!-- SEZIONE 1: Dati Anagrafici -->
     <div class="card" style="margin-top:20px;">
-      <h3 class="section-title">📋 Dati Giocatore</h3>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+      <h3 class="section-title">👤 Dati Anagrafici</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Nome *</label><input id="editNome" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Cognome *</label><input id="editCognome" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Nascita</label><input id="editDataNas" type="date" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group" style="position:relative;"><label style="font-size:12px;font-weight:600;color:#666;">Luogo Nascita</label><input id="editLuogoNascita" value="" placeholder="Digita comune..." autocomplete="off" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><div id="editLNList" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:0 0 6px 6px;max-height:150px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="editTelefono" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Codice Fiscale</label><div style="position:relative;"><input id="editCF" value="" maxlength="16" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;text-transform:uppercase;font-family:monospace;" readonly><div id="cfStatus" style="font-size:11px;margin-top:4px;color:#27AE60;display:none;">✓ Calcolato automaticamente — <a href="#" id="cfManualEdit" style="color:#667eea;">✏️ Modifica</a></div></div></div>
+      </div>
+    </div>
+
+    <!-- SEZIONE 2: Dati Sportivi -->
+    <div class="card" style="margin-top:16px;">
+      <h3 class="section-title">⚽ Dati Sportivi</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Ruolo</label><select id="editRuolo" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="">-- Seleziona --</option><option value="Portiere">Portiere</option><option value="Difensore">Difensore</option><option value="Centrocampista">Centrocampista</option><option value="Attaccante">Attaccante</option></select></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia</label><input id="editNumMaglia" type="number" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Piede Preferito</label><select id="editPiede" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="">-- Seleziona --</option><option value="Destro">Destro</option><option value="Sinistro">Sinistro</option><option value="Ambidestro">Ambidestro</option></select></div>
-        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Peso (kg)</label><input id="editPeso" type="number" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Altezza (cm)</label><input id="editAltezza" type="number" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="editTelefono" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Stato</label><select id="editStato" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="Attivo" selected>Attivo</option><option value="Infortunato">Infortunato</option><option value="Svincolato">Svincolato</option></select></div>
-        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="editCertificato" type="date" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="editMatricola" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
-        <div class="form-group" style="position:relative;"><label style="font-size:12px;font-weight:600;color:#666;">Luogo Nascita</label><input id="editLuogoNascita" value="" placeholder="Digita comune..." autocomplete="off" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><div id="editLNList" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:0 0 6px 6px;max-height:150px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div></div>
-        <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Codice Fiscale</label><div style="display:flex;gap:8px;"><input id="editCF" value="" maxlength="16" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;text-transform:uppercase;font-family:monospace;"><button type="button" id="btnCalcCF" style="padding:8px 12px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;">Calcola</button></div></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Altezza (cm)</label><input id="editAltezza" type="number" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Peso (kg)</label><input id="editPeso" type="number" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="editMatricola" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+      </div>
+    </div>
+
+    <!-- SEZIONE 3: Documenti & Visita Medica -->
+    <div class="card" style="margin-top:16px;">
+      <h3 class="section-title">📄 Documenti & Visita Medica</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Tipo Documento</label><input id="editTipoDoc" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Documento</label><input id="editNumDoc" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
         <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Rilasciato Da</label><input id="editRilasciatoDa" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="editCertificato" type="date" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
-        <button class="btn btn-secondary" id="btnCancelNew">Annulla</button>
-        <button class="btn btn-primary" id="btnSaveNew" style="background:#667eea;">💾 Crea Giocatore</button>
-      </div>
+    </div>
+
+    <!-- AZIONI -->
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-secondary" id="btnCancelNew">Annulla</button>
+      <button class="btn btn-primary" id="btnSaveNew" style="background:#667eea;">💾 Crea Giocatore</button>
     </div>
   `;
 
   document.getElementById('btnBackRoster').addEventListener('click', () => window.YFM.navigateTo('roster'));
   document.getElementById('btnCancelNew').addEventListener('click', () => window.YFM.navigateTo('roster'));
 
-  // --- Autocomplete luogo nascita + calcolo CF ---
+  // --- Autocomplete luogo nascita + calcolo CF automatico ---
   let selectedBelfiore = '';
   const lnInput = document.getElementById('editLuogoNascita');
   const lnList = document.getElementById('editLNList');
+  const cfInput = document.getElementById('editCF');
+  const cfStatus = document.getElementById('cfStatus');
   let lnTimeout = null;
+
+  function tryAutoCalcCF() {
+    const nome = document.getElementById('editNome').value.trim();
+    const cognome = document.getElementById('editCognome').value.trim();
+    const data = document.getElementById('editDataNas').value;
+    if (nome && cognome && data && selectedBelfiore) {
+      cfInput.value = calcolaCodiceFiscale(cognome, nome, data, 'M', selectedBelfiore);
+      cfStatus.style.display = 'block';
+    }
+  }
+
   lnInput.addEventListener('input', () => {
     clearTimeout(lnTimeout);
     selectedBelfiore = '';
@@ -673,23 +759,21 @@ export function loadNewPlayerForm(container) {
         lnInput.value = el.textContent;
         selectedBelfiore = el.dataset.codice;
         lnList.style.display = 'none';
+        tryAutoCalcCF();
       }));
     }, 200);
   });
   document.addEventListener('click', e => { if (!lnInput.contains(e.target) && !lnList.contains(e.target)) lnList.style.display = 'none'; });
 
-  document.getElementById('btnCalcCF').addEventListener('click', async () => {
-    const nome = document.getElementById('editNome').value.trim();
-    const cognome = document.getElementById('editCognome').value.trim();
-    const data = document.getElementById('editDataNas').value;
-    if (!nome || !cognome || !data) { alert('Compila Nome, Cognome e Data Nascita'); return; }
-    let codice = selectedBelfiore;
-    if (!codice) {
-      const results = await cercaComune(lnInput.value);
-      if (results.length > 0) { codice = results[0].codice; lnInput.value = results[0].nome + ' (' + results[0].provincia + ')'; selectedBelfiore = codice; }
-    }
-    if (!codice) { alert('Seleziona il Luogo di Nascita'); return; }
-    document.getElementById('editCF').value = calcolaCodiceFiscale(cognome, nome, data, 'M', codice);
+  // Auto-calc on blur of data nascita
+  document.getElementById('editDataNas').addEventListener('change', tryAutoCalcCF);
+
+  // Link "Modifica manualmente"
+  document.getElementById('cfManualEdit')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    cfInput.removeAttribute('readonly');
+    cfInput.focus();
+    cfStatus.innerHTML = '<span style="color:#888;">Modalit\u00e0 manuale</span>';
   });
 
   document.getElementById('btnSaveNew').addEventListener('click', async () => {

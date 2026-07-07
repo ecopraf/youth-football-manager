@@ -558,6 +558,17 @@ style: stili (CSS)
 
 > ⚠️ **REGOLA**: Aggiornare SEMPRE la documentazione (changelog, schema, endpoint) ad ogni commit. Non serve che l'utente lo chieda esplicitamente.
 
+### Regola documentazione post-modifica (OBBLIGATORIA)
+
+Al termine di ogni task che aggiunge nuove funzionalità o modifica significativamente quelle esistenti, l'agente DEVE **autonomamente** (senza che l'utente lo chieda):
+
+1. **Aggiornare il changelog** in `DEVELOPMENT_PLAN.md` con una riga descrittiva della modifica
+2. **Aggiornare `AGENTS.md`** se la modifica tocca: nuovi file, endpoint, moduli, dipendenze, tabelle DB, flussi architetturali
+3. **Aggiornare `DATABASE_SCHEMA.md`** se la modifica tocca colonne o tabelle del DB
+4. **Aggiornare `project-rules.md`** se la modifica introduce nuove convenzioni, pattern o regole operative
+
+Questo step è parte integrante del completamento del task — un task NON è considerato completato finché la documentazione non è aggiornata.
+
 ---
 
 ## 🧪 Test Funzionale Post-Sviluppo (OBBLIGATORIO)
