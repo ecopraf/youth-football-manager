@@ -1,6 +1,7 @@
 import { apiFetch } from '../../services/api.js';
 import { formatDateShort, getAvatarColor } from '../../utils/formatters.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
+import { calcolaCodiceFiscale, cercaComune } from '../../utils/codiceFiscale.js';
 
 export async function loadPlayerDetail(container, playerId) {
   if (!container) {
@@ -494,6 +495,8 @@ export function loadNewPlayerForm(container) {
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Stato</label><select id="editStato" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="Attivo" selected>Attivo</option><option value="Infortunato">Infortunato</option><option value="Svincolato">Svincolato</option></select></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="editCertificato" type="date" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="editMatricola" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group" style="position:relative;"><label style="font-size:12px;font-weight:600;color:#666;">Luogo Nascita</label><input id="editLuogoNascita" value="" placeholder="Digita comune..." autocomplete="off" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><div id="editLNList" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:0 0 6px 6px;max-height:150px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div></div>
+        <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Codice Fiscale</label><div style="display:flex;gap:8px;"><input id="editCF" value="" maxlength="16" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;text-transform:uppercase;font-family:monospace;"><button type="button" id="btnCalcCF" style="padding:8px 12px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;">Calcola</button></div></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Tipo Documento</label><input id="editTipoDoc" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Documento</label><input id="editNumDoc" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
         <div class="form-group" style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Rilasciato Da</label><input id="editRilasciatoDa" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
@@ -507,6 +510,42 @@ export function loadNewPlayerForm(container) {
 
   document.getElementById('btnBackRoster').addEventListener('click', () => window.YFM.navigateTo('roster'));
   document.getElementById('btnCancelNew').addEventListener('click', () => window.YFM.navigateTo('roster'));
+
+  // --- Autocomplete luogo nascita + calcolo CF ---
+  let selectedBelfiore = '';
+  const lnInput = document.getElementById('editLuogoNascita');
+  const lnList = document.getElementById('editLNList');
+  let lnTimeout = null;
+  lnInput.addEventListener('input', () => {
+    clearTimeout(lnTimeout);
+    selectedBelfiore = '';
+    lnTimeout = setTimeout(async () => {
+      const results = await cercaComune(lnInput.value);
+      if (results.length === 0) { lnList.style.display = 'none'; return; }
+      lnList.innerHTML = results.map(c => `<div data-codice="${c.codice}" style="padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f5f5f5;">${c.nome} (${c.provincia})</div>`).join('');
+      lnList.style.display = 'block';
+      lnList.querySelectorAll('div').forEach(el => el.addEventListener('click', () => {
+        lnInput.value = el.textContent;
+        selectedBelfiore = el.dataset.codice;
+        lnList.style.display = 'none';
+      }));
+    }, 200);
+  });
+  document.addEventListener('click', e => { if (!lnInput.contains(e.target) && !lnList.contains(e.target)) lnList.style.display = 'none'; });
+
+  document.getElementById('btnCalcCF').addEventListener('click', async () => {
+    const nome = document.getElementById('editNome').value.trim();
+    const cognome = document.getElementById('editCognome').value.trim();
+    const data = document.getElementById('editDataNas').value;
+    if (!nome || !cognome || !data) { alert('Compila Nome, Cognome e Data Nascita'); return; }
+    let codice = selectedBelfiore;
+    if (!codice) {
+      const results = await cercaComune(lnInput.value);
+      if (results.length > 0) { codice = results[0].codice; lnInput.value = results[0].nome + ' (' + results[0].provincia + ')'; selectedBelfiore = codice; }
+    }
+    if (!codice) { alert('Seleziona il Luogo di Nascita'); return; }
+    document.getElementById('editCF').value = calcolaCodiceFiscale(cognome, nome, data, 'M', codice);
+  });
 
   document.getElementById('btnSaveNew').addEventListener('click', async () => {
     const capName = s => s ? s.trim().replace(/\s+/g, ' ').replace(/\b\w+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase()) : '';
@@ -534,6 +573,8 @@ export function loadNewPlayerForm(container) {
       stato: document.getElementById('editStato').value,
       data_visita_medica: document.getElementById('editCertificato').value || null,
       matricola_figc: document.getElementById('editMatricola').value || null,
+      luogo_nascita: document.getElementById('editLuogoNascita').value || null,
+      codice_fiscale: document.getElementById('editCF').value.toUpperCase() || null,
       tipo_documento: document.getElementById('editTipoDoc').value || null,
       numero_documento: document.getElementById('editNumDoc').value || null,
       rilasciato_da: document.getElementById('editRilasciatoDa').value || null
