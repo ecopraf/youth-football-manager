@@ -73,34 +73,61 @@ function renderRoster(c, players, scadenze) {
 
   const scaduti = scadenze.filter(x => (x.giorni_rimanenti || x.giorniRimanenti) < 0);
   const inScadenza = scadenze.filter(x => (x.giorni_rimanenti || x.giorniRimanenti) >= 0);
-  const buildScadenzeRow = (x, i, isExpired) => {
-    const gg = Math.abs(x.giorni_rimanenti || x.giorniRimanenti);
-    const label = isExpired ? `<span style="color:#E74C3C;font-weight:600;">-${gg} gg</span>` : `<span style="color:#F39C12;font-weight:600;">${gg} gg</span>`;
-    return `<tr style="${i % 2 ? 'background:#f9f9f9;' : ''}">
-      <td style="padding:6px 10px;">${x.cognome} ${x.nome}</td>
-      <td style="padding:6px 10px;text-align:right;">${formatDateShort(x.scadenza)}</td>
-      <td style="padding:6px 10px;text-align:right;">${label}</td>
-    </tr>`;
-  };
   let scadenzeHtml = '';
   if (scaduti.length > 0 || inScadenza.length > 0) {
-    let allRows = '';
-    if (scaduti.length > 0) {
-      allRows += `<tr><td colspan="3" style="padding:10px 10px 4px;font-size:14px;font-weight:700;color:#E74C3C;">🔴 Scaduti (${scaduti.length})</td></tr>`;
-      allRows += scaduti.map((x, i) => buildScadenzeRow(x, i, true)).join('');
+    const isMobile = window.innerWidth <= 500;
+    if (isMobile) {
+      // Mobile: card stack layout
+      const buildMobileItem = (x, isExpired) => {
+        const gg = Math.abs(x.giorni_rimanenti || x.giorniRimanenti);
+        const color = isExpired ? '#E74C3C' : '#F39C12';
+        const label = isExpired ? `scaduto da ${gg} gg` : `tra ${gg} gg`;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+          <div style="font-size:13px;font-weight:500;">${x.cognome} ${x.nome}</div>
+          <div style="text-align:right;">
+            <div style="font-size:12px;color:#666;">${formatDateShort(x.scadenza)}</div>
+            <div style="font-size:12px;font-weight:600;color:${color};">${label}</div>
+          </div>
+        </div>`;
+      };
+      let content = '';
+      if (scaduti.length > 0) {
+        content += `<div style="font-size:13px;font-weight:700;color:#E74C3C;padding:6px 0 4px;">🔴 Scaduti (${scaduti.length})</div>`;
+        content += scaduti.map(x => buildMobileItem(x, true)).join('');
+      }
+      if (inScadenza.length > 0) {
+        content += `<div style="font-size:13px;font-weight:700;color:#F39C12;padding:${scaduti.length ? '12' : '6'}px 0 4px;">⚠️ In scadenza (${inScadenza.length})</div>`;
+        content += inScadenza.map(x => buildMobileItem(x, false)).join('');
+      }
+      scadenzeHtml = `<div class="card" style="margin-bottom:12px;border-left:4px solid ${scaduti.length ? '#E74C3C' : '#F39C12'};padding:12px 14px;">
+        <h3 style="color:#333;margin:0 0 8px;font-size:14px;">🏥 Certificati medici</h3>
+        ${content}
+      </div>`;
+    } else {
+      // Desktop: table layout
+      const buildRow = (x, i, isExpired) => {
+        const gg = Math.abs(x.giorni_rimanenti || x.giorniRimanenti);
+        const label = isExpired ? `<span style="color:#E74C3C;font-weight:600;">-${gg} gg</span>` : `<span style="color:#F39C12;font-weight:600;">${gg} gg</span>`;
+        return `<tr style="${i % 2 ? 'background:#f9f9f9;' : ''}"><td style="padding:6px 10px;">${x.cognome} ${x.nome}</td><td style="padding:6px 10px;text-align:right;">${formatDateShort(x.scadenza)}</td><td style="padding:6px 10px;text-align:right;">${label}</td></tr>`;
+      };
+      let allRows = '';
+      if (scaduti.length > 0) {
+        allRows += `<tr><td colspan="3" style="padding:10px 10px 4px;font-size:14px;font-weight:700;color:#E74C3C;">🔴 Scaduti (${scaduti.length})</td></tr>`;
+        allRows += scaduti.map((x, i) => buildRow(x, i, true)).join('');
+      }
+      if (inScadenza.length > 0) {
+        allRows += `<tr><td colspan="3" style="padding:${scaduti.length ? '14' : '10'}px 10px 4px;font-size:14px;font-weight:700;color:#F39C12;">⚠️ In scadenza (${inScadenza.length})</td></tr>`;
+        allRows += inScadenza.map((x, i) => buildRow(x, i, false)).join('');
+      }
+      scadenzeHtml = `<div class="card" style="margin-bottom:12px;border-left:4px solid ${scaduti.length ? '#E74C3C' : '#F39C12'};padding:12px 16px;">
+        <h3 style="color:#333;margin:0 0 10px;font-size:14px;">🏥 Certificati medici</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;">
+          <colgroup><col style="width:auto;"><col style="width:100px;"><col style="width:80px;"></colgroup>
+          <thead><tr style="background:#f5f5f5;"><th style="padding:6px 10px;text-align:left;font-weight:600;">Giocatore</th><th style="padding:6px 10px;text-align:right;font-weight:600;">Scadenza</th><th style="padding:6px 10px;text-align:right;font-weight:600;">Giorni</th></tr></thead>
+          <tbody>${allRows}</tbody>
+        </table>
+      </div>`;
     }
-    if (inScadenza.length > 0) {
-      allRows += `<tr><td colspan="3" style="padding:${scaduti.length ? '14' : '10'}px 10px 4px;font-size:14px;font-weight:700;color:#F39C12;">⚠️ In scadenza (${inScadenza.length})</td></tr>`;
-      allRows += inScadenza.map((x, i) => buildScadenzeRow(x, i, false)).join('');
-    }
-    scadenzeHtml = `<div class="card" style="margin-bottom:12px;border-left:4px solid ${scaduti.length ? '#E74C3C' : '#F39C12'};padding:12px 16px;">
-      <h3 style="color:#333;margin:0 0 10px;font-size:14px;">🏥 Certificati medici</h3>
-      <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;">
-        <colgroup><col style="width:auto;"><col style="width:100px;"><col style="width:80px;"></colgroup>
-        <thead><tr style="background:#f5f5f5;"><th style="padding:6px 10px;text-align:left;font-weight:600;">Giocatore</th><th style="padding:6px 10px;text-align:right;font-weight:600;">Scadenza</th><th style="padding:6px 10px;text-align:right;font-weight:600;">Giorni</th></tr></thead>
-        <tbody>${allRows}</tbody>
-      </table></div>
-    </div>`;
   }
 
   let gridsHtml = '';
