@@ -109,17 +109,32 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
 
       let imported = 0, skipped = 0, errors = 0;
       for (const logo of logos) {
-        const nomeNorm = normalizeTeamName(logo.nome);
+        const nomeNorm = normalizeLogoName(logo.nome);
+        if (!nomeNorm) { errors++; continue; }
         const fileName = nomeNorm + '.png';
         const filePath = path.join(logosDir, fileName);
 
-        // Skip se già esiste
+        // Skip se file già esiste O se hash identico a file esistente
         if (fs.existsSync(filePath)) { skipped++; continue; }
 
         try {
           const resp = await fetch(logo.url);
           if (!resp.ok) { errors++; continue; }
           const buffer = Buffer.from(await resp.arrayBuffer());
+          if (buffer.length < 100) { errors++; continue; }
+
+          // Check duplicato binario: confronta hash con file esistenti stessa dimensione
+          const crypto = require('crypto');
+          const newHash = crypto.createHash('md5').update(buffer).digest('hex');
+          const existingFiles = fs.readdirSync(logosDir).filter(f => f.endsWith('.png'));
+          const isDupe = existingFiles.some(f => {
+            const fp = path.join(logosDir, f);
+            const stat = fs.statSync(fp);
+            if (Math.abs(stat.size - buffer.length) > 50) return false;
+            return crypto.createHash('md5').update(fs.readFileSync(fp)).digest('hex') === newHash;
+          });
+          if (isDupe) { skipped++; continue; }
+
           fs.writeFileSync(filePath, buffer);
 
           // Upsert in team_logo
