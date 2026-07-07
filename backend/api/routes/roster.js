@@ -148,8 +148,8 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
           if (data) { existing = data; matchType = 'matricola'; }
         }
 
-        // 3. Match by Nome + Cognome + Data Nascita
-        if (!existing && p.data_nascita) {
+        // 3. Match by Nome + Cognome + Data Nascita (solo se non ha CF né matricola)
+        if (!existing && !p.codice_fiscale && !p.matricola && p.data_nascita) {
           const { data } = await supabase.from('player').select('id').ilike('cognome', p.cognome).ilike('nome', p.nome).eq('data_nascita', p.data_nascita).maybeSingle();
           if (data) { existing = data; matchType = 'nome_dn'; }
         }
@@ -157,10 +157,16 @@ function createRosterRouter({ supabase, authMiddleware, requirePermission }) {
         let playerId;
         if (existing) {
           playerId = existing.id;
-          // Update dati mancanti (CF, matricola)
+          // Update dati mancanti (CF, matricola) — solo se il record non ne ha già uno diverso
           const updates = {};
-          if (p.codice_fiscale) updates.codice_fiscale = p.codice_fiscale.toUpperCase();
-          if (p.matricola) updates.matricola_figc = p.matricola;
+          if (p.codice_fiscale && matchType !== 'cf') {
+            const { data: curr } = await supabase.from('player').select('codice_fiscale').eq('id', playerId).single();
+            if (!curr.codice_fiscale) updates.codice_fiscale = p.codice_fiscale.toUpperCase();
+          }
+          if (p.matricola && matchType !== 'matricola') {
+            const { data: curr } = await supabase.from('player').select('matricola_figc').eq('id', playerId).single();
+            if (!curr.matricola_figc) updates.matricola_figc = p.matricola;
+          }
           if (Object.keys(updates).length > 0) {
             await supabase.from('player').update(updates).eq('id', playerId);
             updated++;
