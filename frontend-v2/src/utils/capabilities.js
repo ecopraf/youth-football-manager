@@ -48,7 +48,7 @@ export const PROFILI = {
   segreteria: {
     label: 'Segreteria',
     icon: '📎',
-    capabilities: { rosa: 'write', partite: 'read', formazione: '', allenamenti: '', statistiche: '', guest_links: '', import: '', report: 'read' }
+    capabilities: { rosa: 'write', partite: 'read', formazione: 'write', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read' }
   },
   custom: {
     label: 'Personalizzato',

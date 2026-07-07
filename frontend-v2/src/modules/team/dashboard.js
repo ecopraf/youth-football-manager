@@ -65,6 +65,10 @@ export default async function loadDashboard() {
     partiteFuture = [];
     nextTrainings = [];
   }
+  // Popola allMatches con partite future se vuoto
+  if (partiteFuture && partiteFuture.length > 0 && (!window.YFM.allMatches || window.YFM.allMatches.length === 0)) {
+    window.YFM.allMatches = partiteFuture;
+  }
   
   const s = window.YFM.getSquadra();
   const stagioneName = s._stagione || ((window.YFM.accessibleSeasons || []).find(ss => ss.id === window.YFM.currentSeasonId) || {}).nome || '';
@@ -505,6 +509,7 @@ export default async function loadDashboard() {
     '<div data-widget="results"><div class="result-card" data-help="dashboard.risultati"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div></div>' +
     '<div data-widget="injuries" id="dashInjuryWidget"></div>' +
     '<div data-widget="certificati" id="dashCertificatiWidget"></div>' +
+    '<div data-widget="convocazione" id="dashConvocazioneWidget"></div>' +
     '<div data-widget="classifica" id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
     '<div data-widget="staff"><div class="staff-card" data-help="dashboard.staff"><h3 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
     '</div>';
@@ -607,15 +612,43 @@ export default async function loadDashboard() {
     bindCertificatiToggle(widget);
   }).catch(() => {});
 
+  // Lazy load: prossima convocazione (per segreteria)
+  if (prossimaPartita) {
+    const convWidget = document.getElementById('dashConvocazioneWidget');
+    if (convWidget) {
+      apiFetch('/squadre/' + squadraId + '/partite/' + prossimaPartita.id + '/convocati').then(conv => {
+        const convocati = (conv || []).filter(c => c.presente === true);
+        const dataMatch = new Date(prossimaPartita.data_ora);
+        const dataStr = dataMatch.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+        const oraStr = dataMatch.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        const luogo = prossimaPartita.luogo === 'Casa' ? '🏠 Casa' : '✈️ Trasferta';
+        const stato = convocati.length > 0
+          ? '<span style="color:#27AE60;font-weight:600;">✅ ' + convocati.length + ' convocati</span>'
+          : '<span style="color:#E67E22;font-weight:600;">⬜ Da convocare</span>';
+        convWidget.innerHTML = '<div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:12px;padding:14px;">' +
+          '<h4 style="margin:0 0 10px 0;font-size:13px;color:#4338ca;">📋 Prossima Convocazione</h4>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+          '<div><strong>' + (prossimaPartita.avversario || 'TBD') + '</strong><br><span style="font-size:12px;color:#666;">' + dataStr + ' · ' + oraStr + ' · ' + luogo + '</span></div>' +
+          '<div>' + stato + '</div></div>' +
+          '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')" style="background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📋 ' + (convocati.length > 0 ? 'Vedi / Modifica' : 'Convoca') + '</button>' +
+          (convocati.length > 0 ? '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\',true)" style="background:#27AE60;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📄 PDF</button>' : '') +
+          '</div></div>';
+      }).catch(() => {});
+    }
+  }
+
   // --- Dashboard Organize ---
-  const WIDGET_LABELS = { next_training: '🏋️ Prossimo Allenamento', next_match: '⏱ Prossima Partita', stats_widgets: '📊 Statistiche', top_players: '🏆 Top Giocatori', results: '📋 Ultimi Risultati', injuries: '🏥 Infortuni', staff: '👥 Staff', classifica: '🏆 Classifica & GR', certificati: '🏥 Certificati Medici' };
-  const DEFAULT_ORDER = ['next_training', 'next_match', 'stats_widgets', 'top_players', 'results', 'injuries', 'classifica', 'staff', 'certificati'];
+  const WIDGET_LABELS = { next_training: '🏋️ Prossimo Allenamento', next_match: '⏱ Prossima Partita', stats_widgets: '📊 Statistiche', top_players: '🏆 Top Giocatori', results: '📋 Ultimi Risultati', injuries: '🏥 Infortuni', staff: '👥 Staff', classifica: '🏆 Classifica & GR', certificati: '🏥 Certificati Medici', convocazione: '📋 Prossima Convocazione' };
+  const userProfilo = window.YFM.getUser()?.permessi?.profilo || '';
+  const DEFAULT_ORDER = userProfilo === 'segreteria'
+    ? ['certificati', 'convocazione', 'next_match', 'injuries', 'staff']
+    : ['next_training', 'next_match', 'stats_widgets', 'top_players', 'results', 'injuries', 'classifica', 'staff', 'certificati', 'convocazione'];
 
   // Default hidden per profilo
-  const userProfilo = window.YFM.getUser()?.permessi?.profilo || '';
   const DEFAULT_HIDDEN = userProfilo === 'segreteria'
     ? ['next_training', 'stats_widgets', 'top_players', 'results', 'classifica']
-    : ['certificati'];
+    : ['certificati', 'convocazione'];
 
   function applyLayout(layout) {
     const container = document.getElementById('dashWidgetsContainer');

@@ -12,7 +12,7 @@
 | Versione | v3.15 |
 | Target MVP | 15 Settembre 2026 |
 | Frontend | Vite + JS ES Modules → Vercel |
-| Backend | Node.js/Express (16 router) → Vercel |
+| Backend | Node.js/Express (17 router) → Vercel |
 | Database | Supabase PostgreSQL |
 | Workspace attivi | Albalonga, DF Academy, Polisportiva Ciampino |
 
@@ -222,7 +222,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | Area | Feature | Priorità |
 |------|---------|----------|
 | Comunicazioni | Email convocazioni (SendGrid) | P2 |
-| Comunicazioni | Notifiche in-app | P2 |
+| Comunicazioni | ~~Notifiche in-app~~ | ✅ |
 | Calendario | Integrazione Google Calendar | P2 |
 | Performance | Test fisici (semplificati) | P3 |
 | Performance | Piano individuale giocatore | P3 |
@@ -322,6 +322,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: CF e Luogo Nascita visibili e modificabili nella scheda giocatore (playerDetail view+edit) |
 | (pending) | refactor: redesign form Nuovo Calciatore e Modifica — 3 sezioni card (Anagrafica/Sportivi/Documenti), griglia 2 colonne, CF auto-calcolato, header contestuale categoria+stagione, feedback visivo modalità edit (banner + bordo brand) |
 | (pending) | feat: card certificati medici compatta con 4 badge (Scaduti/In Scadenza/Validi/Mancanti) + espansione dettaglio — in Rosa e Dashboard (nascosta di default, visibile per segreteria) |
+| (pending) | feat: redesign pagina Gestione Utenti — filtri (cerca/ruolo/stato), azione Sospendi/Attiva toggle, badge stato, endpoint toggle-active, caricamento utenti inattivi |
 | d733428 | style: responsive globale mobile — griglie 1col @500px, tabelle scroll, modal compatti |
 | (pending) | feat: dashboard personalizzabile — riordino + show/hide widget, preferenze utente in DB, GR card sfondo sfumato, layout responsive (2-col desktop / card separate mobile), fix calendario centrato, marcatori 2-col con gol allineati a dx |
 | (pending) | fix: scheda giocatore — rimossa card summary rotta (stats-current eliminato), carriera raggruppata per tipo competizione (Campionato/Coppa/Amichevole), endpoint ottimizzato (batch fetch) |
@@ -329,6 +330,13 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: profilo segreteria + widget certificati medici in dashboard (nascosto di default per altri profili, visibile per segreteria) |
 | (pending) | fix: preferenze dashboard superadmin — risolto id hardcoded 'superadmin' su GET/PUT /users/preferences |
 | (pending) | feat: DataGrid component — tabella responsive riutilizzabile (table desktop / card mobile), playerDetail carriera raggruppata per squadra con logo, ultime partite compatte con logo avversario, endpoint career+last-matches con logo da team_logo |
+| (pending) | feat: Centro Comunicazioni — tabella notification DB, router notification.js (GET/PUT), trigger auto su convocazioni-batch, frontend notifications.js con tabs Comunicazioni+Assenze, badge campanella combinato |
+| (pending) | feat: segreteria capabilities — formazione:write, import:write, sidebar Import Center per non-admin con capability |
+| (pending) | feat: widget Prossima Convocazione in dashboard segreteria (stato convocati, bottoni Convoca/Vedi/PDF) |
+| (pending) | fix: convocazione PDF header — NaN anno, undefined avversario, Invalid Date, formato amichevole vs campionato |
+| (pending) | fix: notification trigger — workspace_id via category join (team non ha workspace_id), try/catch Supabase |
+| (pending) | fix: badge campanella segreteria — rimosso early return su squadraId mancante |
+| (pending) | style: wizard utenti — rimosso dot stagione attiva, bottone 💾 Salva |
 
 ---
 

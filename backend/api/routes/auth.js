@@ -126,7 +126,8 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   router.get('/api/auth/users', authMiddleware, async (req, res) => {
     try {
       const workspaceId = req.query.workspace_id;
-      let query = supabase.from('users').select('id, nome, cognome, email, ruolo, workspace_id, ruoli, squadre_accesso, stagioni_accesso, permessi, is_superadmin, is_active').eq('is_active', true).order('cognome');
+      let query = supabase.from('users').select('id, nome, cognome, email, ruolo, workspace_id, ruoli, squadre_accesso, stagioni_accesso, permessi, is_superadmin, is_active').order('cognome');
+      if (req.query.only_active !== 'false') query = query.eq('is_active', true);
       if (workspaceId) query = query.eq('workspace_id', workspaceId);
       const { data, error } = await query;
       if (error) return res.status(400).json({ error: error.message });
@@ -158,8 +159,10 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   router.put('/api/auth/users/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { nome, cognome, ruolo, workspace_id, ruoli, categorie_accesso, stagioni_accesso, is_active, permessi } = req.body;
+      const { nome, cognome, email, password, ruolo, workspace_id, ruoli, categorie_accesso, stagioni_accesso, is_active, permessi } = req.body;
       const updateData = { nome, cognome, ruolo, workspace_id, ruoli, permessi: permessi || {} };
+      if (email) updateData.email = email.toLowerCase();
+      if (password && password.length >= 6) updateData.password_hash = await bcrypt.hash(password, 10);
       if (is_active !== undefined) updateData.is_active = is_active;
       if (categorie_accesso !== undefined) updateData.squadre_accesso = categorie_accesso;
       if (stagioni_accesso !== undefined) updateData.stagioni_accesso = stagioni_accesso.length > 0 ? stagioni_accesso : null;
@@ -177,6 +180,21 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       const { error } = await supabase.from('users').update({ is_active: false }).eq('id', id);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // Toggle attivo/sospeso
+  router.put('/api/auth/users/:id/toggle-active', authMiddleware, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { data: user } = await supabase.from('users').select('is_active').eq('id', id).single();
+      if (!user) return res.status(404).json({ error: 'Utente non trovato' });
+      const newState = !user.is_active;
+      const { error } = await supabase.from('users').update({ is_active: newState }).eq('id', id);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, is_active: newState });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }

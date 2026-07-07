@@ -219,6 +219,30 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         const { error } = await supabase.from('convocation').insert(inserts);
         if (error) return res.status(400).json({ error: error.message });
       }
+      // Trigger notifica per segreteria (non-blocking)
+      const convocatiCount = inserts.filter(i => i.presente).length;
+      if (convocatiCount > 0) {
+        try {
+          const { data: match } = await supabase.from('match').select('avversario, data_ora, team_id').eq('id', req.params.matchId).single();
+          if (match) {
+            const { data: team } = await supabase.from('team').select('category_id, category:category_id(workspace_id)').eq('id', match.team_id).single();
+            const wsId = team?.category?.workspace_id;
+            if (wsId) {
+              const dataStr = new Date(match.data_ora).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+              await supabase.from('notification').insert({
+                workspace_id: wsId,
+                team_id: match.team_id,
+                tipo: 'convocazione',
+                titolo: '📋 Convocazione pronta',
+                messaggio: `${convocatiCount} convocati per ${match.avversario || 'partita'} (${dataStr})`,
+                riferimento_id: req.params.matchId,
+                destinatario_profilo: ['segreteria', 'dirigente', 'osservatore'],
+                created_by: req.user.id
+              });
+            }
+          }
+        } catch(e) { /* silent */ }
+      }
       res.json({ success: true, saved: inserts.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });

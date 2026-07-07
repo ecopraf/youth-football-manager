@@ -610,6 +610,25 @@ Questo perché un giocatore può essere in più team (aggregato) e serve sapere 
 
 ---
 
+### NOTIFICATION — Comunicazioni in-app
+
+| Colonna | Tipo | Null | Default | Note |
+|---------|------|------|---------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| workspace_id | uuid | NO | | FK → workspace.id |
+| team_id | uuid | SI | | FK → team.id |
+| tipo | text | NO | | convocazione/avviso/etc. |
+| titolo | text | NO | | |
+| messaggio | text | SI | | |
+| riferimento_id | uuid | SI | | ID entità collegata (es. match_id) |
+| destinatario_profilo | text[] | SI | | Profili destinatari: ['segreteria','dirigente'] |
+| destinatario_user_id | uuid | SI | | FK → users.id (se notifica specifica) |
+| created_by | uuid | SI | | FK → users.id |
+| letto | boolean | SI | false | |
+| created_at | timestamptz | SI | now() | |
+
+---
+
 ### PRESENZA_PARTITA — Presenze partita (tabella legacy)
 
 | Colonna | Tipo | Null | Default | Note |
@@ -655,7 +674,8 @@ workspace.id
  ├── staff.workspace_id
  ├── users.workspace_id
  ├── import_log.workspace_id
- └── tournament.workspace_id
+ ├── tournament.workspace_id
+ └── notification.workspace_id
 
 season.id
  └── team.season_id

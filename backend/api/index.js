@@ -213,6 +213,9 @@ app.use(createTournamentRouter({ supabase, authMiddleware, requirePermission }))
 const createAbsenceRouter = require('./routes/absence');
 app.use(createAbsenceRouter({ supabase, authMiddleware }));
 
+const createNotificationRouter = require('./routes/notification');
+app.use(createNotificationRouter({ supabase, authMiddleware }));
+
 module.exports = app;
 
 // Avvio server locale

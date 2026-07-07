@@ -55,6 +55,12 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
   html += navItem('club', '🏢', 'Società', 'Organigramma, staff e riferimenti società');
   if (showForRole(['admin', 'allenatore'])) html += navItem('staff', '👔', 'Staff', 'Staff tecnico e societario');
 
+  // Import Center — visibile a chi ha capability import
+  if (hasCap('import') && !showForRole(['admin'])) {
+    html += sectionTitle('📥 Strumenti');
+    html += navItem('importCenter', '📥', 'Import Center', 'Import dati da fonti esterne');
+  }
+
   // Amministrazione
   if (showForRole(['admin'])) {
     html += sectionTitle('🔐 Amministrazione');

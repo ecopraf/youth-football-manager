@@ -17,49 +17,76 @@ export default async function loadUsers() {
   }
 
   c.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
       <h1 class="page-title">👥 Gestione Utenti</h1>
       <button class="btn btn-primary" id="btnAddUser" data-help="users.crea">+ Nuovo Utente</button>
     </div>
     
-    <div class="card">
+    <!-- Filtri -->
+    <div class="card" style="padding:12px 16px;margin-bottom:16px;">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+        <input type="text" id="filterSearch" placeholder="🔍 Cerca nome o email..." style="flex:1;min-width:180px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+        <select id="filterRuolo" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+          <option value="">Tutti i ruoli</option>
+          <option value="admin">Admin</option>
+          <option value="allenatore">Allenatore</option>
+          <option value="vice_allenatore">Vice Allenatore</option>
+          <option value="dirigente">Dirigente</option>
+          <option value="preparatore">Preparatore</option>
+          <option value="segreteria">Segreteria</option>
+          <option value="osservatore">Osservatore</option>
+        </select>
+        <select id="filterStato" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+          <option value="">Tutti gli stati</option>
+          <option value="attivi">✅ Attivi</option>
+          <option value="sospesi">🔒 Sospesi</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- Tabella utenti -->
+    <div class="card" style="overflow-x:auto;">
+      <div id="usersCount" style="font-size:13px;color:#666;margin-bottom:12px;"></div>
       <table style="width:100%;border-collapse:collapse;">
         <thead>
           <tr style="border-bottom:2px solid #eee;">
-            <th style="text-align:left;padding:12px;">Nome</th>
-            <th style="text-align:left;padding:12px;">Email</th>
-            <th style="text-align:left;padding:12px;">Ruolo</th>
-            <th style="text-align:left;padding:12px;">Categorie</th>
-            <th style="text-align:center;padding:12px;">Stato</th>
-            <th style="text-align:right;padding:12px;">Azioni</th>
+            <th style="text-align:left;padding:12px;font-size:13px;">Nome</th>
+            <th style="text-align:left;padding:12px;font-size:13px;">Email</th>
+            <th style="text-align:left;padding:12px;font-size:13px;">Profilo</th>
+            <th style="text-align:left;padding:12px;font-size:13px;">Categorie</th>
+            <th style="text-align:center;padding:12px;font-size:13px;">Stato</th>
+            <th style="text-align:right;padding:12px;font-size:13px;">Azioni</th>
           </tr>
         </thead>
         <tbody id="usersTableBody"></tbody>
       </table>
     </div>
     
-    <!-- Modal Wizard -->
+    <!-- Modal Wizard 3 Step -->
     <div id="userModal" class="modal-overlay" style="display:none;">
-      <div class="modal-content" style="max-width:560px;max-height:90vh;overflow-y:auto;width:95%;margin:16px;">
+      <div class="modal-content" style="max-width:580px;max-height:90vh;overflow-y:auto;width:95%;margin:16px;">
         <div class="modal-header">
           <h2 id="modalTitle">Nuovo Utente</h2>
           <button class="modal-close-btn" id="closeModalBtn">&times;</button>
         </div>
         
         <div class="modal-body">
-          <!-- Progress bar -->
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;">
-            <div id="step1Dot" style="width:32px;height:32px;border-radius:50%;background:#667eea;color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">1</div>
-            <div style="flex:1;height:3px;background:#e0e4f0;border-radius:2px;"><div id="progressBar" style="width:0%;height:100%;background:#667eea;border-radius:2px;transition:width .3s;"></div></div>
-            <div id="step2Dot" style="width:32px;height:32px;border-radius:50%;background:#e0e4f0;color:#999;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;">2</div>
+          <!-- Progress bar 3 step -->
+          <div style="display:flex;align-items:center;gap:0;margin-bottom:28px;">
+            <div id="step1Dot" class="wiz-dot wiz-active">1</div>
+            <div class="wiz-line"><div id="prog12" class="wiz-line-fill"></div></div>
+            <div id="step2Dot" class="wiz-dot">2</div>
+            <div class="wiz-line"><div id="prog23" class="wiz-line-fill"></div></div>
+            <div id="step3Dot" class="wiz-dot">3</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:-20px;margin-bottom:20px;font-size:11px;color:#888;">
+            <span>Dati Account</span><span>Permessi</span><span>Riepilogo</span>
           </div>
           
           <form id="userForm">
             <!-- STEP 1: Dati Account -->
             <div id="wizardStep1">
-              <p style="font-size:13px;color:#666;margin-bottom:16px;">Dati account</p>
-              
-              <!-- Collega a staff esistente -->
+              <!-- Collega a staff -->
               <div class="form-group" id="staffLinkGroup" style="margin-bottom:16px;">
                 <label>👤 Collega a membro staff <span style="color:#999;font-size:11px;">(opzionale)</span></label>
                 <select id="staffLink" style="width:100%;">
@@ -68,79 +95,64 @@ export default async function loadUsers() {
               </div>
               
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;" class="user-modal-grid">
-                <div class="form-group"><label>Nome *</label><input type="text" id="userNome" required></div>
-                <div class="form-group"><label>Cognome</label><input type="text" id="userCognome"></div>
+                <div class="form-group"><label>📝 Nome *</label><input type="text" id="userNome" required></div>
+                <div class="form-group"><label>📝 Cognome</label><input type="text" id="userCognome"></div>
               </div>
-              <div class="form-group" style="margin-bottom:16px;"><label>Email *</label><input type="email" id="userEmail" required></div>
+              <div class="form-group" style="margin-bottom:16px;"><label>✉️ Email *</label><input type="email" id="userEmail" required></div>
               
               <!-- Password section -->
               <div id="passwordSection">
-                <!-- In edit: badge + toggle cambio -->
-                <div id="passwordStatusBar" style="display:none;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;margin-bottom:12px;display:none;align-items:center;justify-content:space-between;">
+                <div id="passwordStatusBar" style="display:none;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;margin-bottom:12px;align-items:center;justify-content:space-between;">
                   <span style="font-size:13px;color:#16a34a;font-weight:500;">🔒 Password impostata</span>
                   <button type="button" id="btnTogglePassword" class="btn btn-small btn-secondary" style="font-size:12px;padding:4px 10px;">Cambia</button>
                 </div>
-                
-                <!-- Campi password (visibili in creazione, nascosti in edit finché non si clicca Cambia) -->
                 <div id="passwordFields">
-                  <div class="form-group" style="margin-bottom:8px;">
-                    <label>Password *</label>
-                    <input type="password" id="userPassword" placeholder="Min. 6 caratteri" autocomplete="new-password">
-                  </div>
-                  <div class="form-group">
-                    <label>Conferma password *</label>
-                    <input type="password" id="userPasswordConfirm" placeholder="Ripeti la password" autocomplete="new-password">
-                  </div>
+                  <div class="form-group" style="margin-bottom:8px;"><label>🔒 Password *</label><input type="password" id="userPassword" placeholder="Min. 6 caratteri" autocomplete="new-password"></div>
+                  <div class="form-group"><label>🔒 Conferma password *</label><input type="password" id="userPasswordConfirm" placeholder="Ripeti la password" autocomplete="new-password"></div>
                 </div>
               </div>
               
               <div style="display:flex;justify-content:flex-end;margin-top:24px;">
-                <button type="button" class="btn btn-primary" id="btnNextStep">Avanti →</button>
+                <button type="button" class="btn btn-primary" id="btnToStep2">Avanti →</button>
               </div>
             </div>
             
-            <!-- STEP 2: Ruolo e Accessi -->
+            <!-- STEP 2: Permessi -->
             <div id="wizardStep2" style="display:none;">
-              <p style="font-size:13px;color:#666;margin-bottom:16px;">Profilo e accessi</p>
-              
-              <!-- Ruolo sistema (nascosto, derivato dal profilo) -->
               <input type="hidden" id="userRuolo" value="staff">
               
-              <!-- Profilo -->
               <div class="form-group" style="margin-bottom:16px;">
-                <label>Profilo *</label>
+                <label>👤 Profilo *</label>
                 <select id="userProfilo">
                   ${Object.entries(PROFILI).filter(([k]) => k !== 'admin' || window.YFM.getUser()?.is_superadmin).map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('')}
                 </select>
               </div>
               
-              <!-- Workspace (solo superadmin) -->
               <div class="form-group" id="workspaceGroup" style="display:none;margin-bottom:16px;">
                 <label>🏢 Workspace *</label>
                 <select id="userWorkspace"></select>
               </div>
               
-              <!-- Stagioni accessibili -->
-              <div class="form-group" id="stagioniGroup" style="margin-bottom:16px;">
-                <label>📅 Stagioni accessibili</label>
-                <div id="stagioniCheckboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;" class="user-modal-grid"></div>
-                <small style="color:#666;margin-top:6px;display:block;">Nessuna selezione = solo stagione attiva</small>
+              <!-- Stagioni + Categorie affiancate -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;" class="user-modal-grid">
+                <div class="form-group" id="stagioniGroup">
+                  <label>📅 Stagioni</label>
+                  <div id="stagioniCheckboxes" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;"></div>
+                  <small style="color:#888;margin-top:6px;display:block;font-size:11px;">ℹ️ Nessuna = solo attiva</small>
+                </div>
+                <div class="form-group" id="categorieGroup">
+                  <label>🏷️ Categorie</label>
+                  <div id="categorieCheckboxes" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;"></div>
+                  <small style="color:#888;margin-top:6px;display:block;font-size:11px;">ℹ️ Nessuna = tutte</small>
+                </div>
               </div>
               
-              <!-- Categorie (checkbox) -->
-              <div class="form-group" id="categorieGroup" style="margin-bottom:16px;">
-                <label>📂 Categorie accessibili</label>
-                <div id="categorieCheckboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;" class="user-modal-grid"></div>
-                <small style="color:#666;margin-top:6px;display:block;">Nessuna selezione = accesso a tutte</small>
-              </div>
-              
-              <!-- Capabilities toggle -->
+              <!-- Capabilities -->
               <div id="capabilitiesSection" style="padding:14px;background:#f8f9ff;border-radius:10px;border:1px solid #e0e4f0;">
-                <label style="font-weight:600;font-size:13px;color:#333;margin-bottom:10px;display:block;">🔐 Capabilities</label>
+                <label style="font-weight:600;font-size:13px;color:#333;margin-bottom:10px;display:block;">🛠️ Capabilities</label>
                 <div id="capabilitiesGrid" style="display:grid;gap:8px;"></div>
               </div>
               
-              <!-- Stato (solo in edit) -->
               <div class="form-group" id="isActiveGroup" style="display:none;margin-top:16px;">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="userIsActive" checked> Account attivo</label>
               </div>
@@ -148,8 +160,19 @@ export default async function loadUsers() {
               <input type="hidden" id="userId">
               
               <div style="display:flex;justify-content:space-between;margin-top:24px;">
-                <button type="button" class="btn btn-secondary" id="btnPrevStep">← Indietro</button>
-                <button type="submit" class="btn btn-primary">✓ Salva</button>
+                <button type="button" class="btn btn-secondary" id="btnBackTo1">← Indietro</button>
+                <button type="button" class="btn btn-primary" id="btnToStep3">Avanti →</button>
+              </div>
+            </div>
+            
+            <!-- STEP 3: Riepilogo -->
+            <div id="wizardStep3" style="display:none;">
+              <p style="font-size:13px;color:#27AE60;font-weight:600;margin-bottom:16px;">✅ Verifica i dati prima di confermare</p>
+              <div id="summaryContent" style="display:flex;flex-direction:column;gap:12px;"></div>
+              
+              <div style="display:flex;justify-content:space-between;margin-top:24px;">
+                <button type="button" class="btn btn-secondary" id="btnBackTo2">← Indietro</button>
+                <button type="submit" class="btn btn-primary" style="background:#27AE60;">💾 Salva</button>
               </div>
             </div>
           </form>
@@ -158,6 +181,11 @@ export default async function loadUsers() {
     </div>
     
     <style>
+      .wiz-dot { width:32px;height:32px;border-radius:50%;background:#e0e4f0;color:#999;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;transition:all .3s;flex-shrink:0; }
+      .wiz-dot.wiz-active { background:#667eea;color:white; }
+      .wiz-dot.wiz-done { background:#27AE60;color:white; }
+      .wiz-line { flex:1;height:3px;background:#e0e4f0;border-radius:2px;position:relative; }
+      .wiz-line-fill { height:100%;background:#27AE60;border-radius:2px;width:0%;transition:width .3s; }
       .cap-row { display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:white;border-radius:8px;border:1px solid #eee; }
       .cap-row .cap-info { display:flex;align-items:center;gap:8px;font-size:12px; }
       .cap-row .cap-icon { font-size:14px; }
@@ -169,6 +197,7 @@ export default async function loadUsers() {
       .cap-toggle button.active-write { background:#22c55e;color:white;border-color:#22c55e; }
       .cat-checkbox { display:flex;align-items:center;gap:6px;padding:6px 10px;background:#f8f9fa;border-radius:8px;font-size:13px;cursor:pointer; }
       .cat-checkbox input { margin:0; }
+      @media(max-width:500px) { .user-modal-grid { grid-template-columns:1fr !important; } }
     </style>
   `;
 
@@ -177,27 +206,49 @@ export default async function loadUsers() {
   document.getElementById('btnAddUser')?.addEventListener('click', () => openModal());
   document.getElementById('closeModalBtn')?.addEventListener('click', closeModal);
   document.getElementById('userForm')?.addEventListener('submit', handleSubmit);
-  document.getElementById('btnNextStep')?.addEventListener('click', goToStep2);
-  document.getElementById('btnPrevStep')?.addEventListener('click', goToStep1);
+  document.getElementById('btnToStep2')?.addEventListener('click', goToStep2);
+  document.getElementById('btnToStep3')?.addEventListener('click', goToStep3);
+  document.getElementById('btnBackTo1')?.addEventListener('click', goToStep1);
+  document.getElementById('btnBackTo2')?.addEventListener('click', goToStep2FromStep3);
   document.getElementById('btnTogglePassword')?.addEventListener('click', togglePasswordFields);
   
   document.getElementById('userProfilo')?.addEventListener('change', onProfiloChange);
   document.getElementById('userWorkspace')?.addEventListener('change', onWorkspaceChange);
   document.getElementById('staffLink')?.addEventListener('change', onStaffSelect);
+  
+  // Reset bordo rosso al focus
+  document.querySelectorAll('#userForm input, #userForm select').forEach(el => {
+    el.addEventListener('focus', () => { el.style.borderColor = '#ddd'; });
+  });
+  
+  // Filtri
+  document.getElementById('filterSearch')?.addEventListener('input', applyFilters);
+  document.getElementById('filterRuolo')?.addEventListener('change', applyFilters);
+  document.getElementById('filterStato')?.addEventListener('change', applyFilters);
 }
 
 function closeModal() {
   document.getElementById('userModal').style.display = 'none';
 }
 
+function setWizardStep(step) {
+  document.getElementById('wizardStep1').style.display = step === 1 ? 'block' : 'none';
+  document.getElementById('wizardStep2').style.display = step === 2 ? 'block' : 'none';
+  document.getElementById('wizardStep3').style.display = step === 3 ? 'block' : 'none';
+  // Dots
+  const d1 = document.getElementById('step1Dot');
+  const d2 = document.getElementById('step2Dot');
+  const d3 = document.getElementById('step3Dot');
+  d1.className = 'wiz-dot ' + (step > 1 ? 'wiz-done' : step === 1 ? 'wiz-active' : '');
+  d2.className = 'wiz-dot ' + (step > 2 ? 'wiz-done' : step === 2 ? 'wiz-active' : '');
+  d3.className = 'wiz-dot ' + (step === 3 ? 'wiz-active' : '');
+  // Lines
+  document.getElementById('prog12').style.width = step > 1 ? '100%' : '0%';
+  document.getElementById('prog23').style.width = step > 2 ? '100%' : '0%';
+}
+
 function goToStep1() {
-  document.getElementById('wizardStep1').style.display = 'block';
-  document.getElementById('wizardStep2').style.display = 'none';
-  document.getElementById('step1Dot').style.background = '#667eea';
-  document.getElementById('step1Dot').style.color = 'white';
-  document.getElementById('step2Dot').style.background = '#e0e4f0';
-  document.getElementById('step2Dot').style.color = '#999';
-  document.getElementById('progressBar').style.width = '0%';
+  setWizardStep(1);
 }
 
 function togglePasswordFields() {
@@ -219,28 +270,79 @@ function togglePasswordFields() {
 function goToStep2() {
   const nome = document.getElementById('userNome').value.trim();
   const email = document.getElementById('userEmail').value.trim();
-  if (!nome || !email) { alert('Nome e Email sono obbligatori'); return; }
+  if (!nome || !email) {
+    if (!nome) document.getElementById('userNome').style.borderColor = '#E74C3C';
+    if (!email) document.getElementById('userEmail').style.borderColor = '#E74C3C';
+    return;
+  }
   
   const isEdit = !!document.getElementById('userId').value;
   const password = document.getElementById('userPassword').value;
   const passwordConfirm = document.getElementById('userPasswordConfirm').value;
   const passwordFieldsVisible = document.getElementById('passwordFields').style.display !== 'none';
   
-  // Validazione password solo se i campi sono visibili e compilati
   if (passwordFieldsVisible && (password || !isEdit)) {
-    if (password.length < 6) { alert('Password deve avere almeno 6 caratteri'); return; }
-    if (password !== passwordConfirm) { alert('Le password non coincidono'); return; }
+    if (password.length < 6) { document.getElementById('userPassword').style.borderColor = '#E74C3C'; return; }
+    if (password !== passwordConfirm) { document.getElementById('userPasswordConfirm').style.borderColor = '#E74C3C'; return; }
   }
   
-  document.getElementById('wizardStep1').style.display = 'none';
-  document.getElementById('wizardStep2').style.display = 'block';
-  document.getElementById('step1Dot').style.background = '#27AE60';
-  document.getElementById('step2Dot').style.background = '#667eea';
-  document.getElementById('step2Dot').style.color = 'white';
-  document.getElementById('progressBar').style.width = '100%';
-  
+  setWizardStep(2);
   renderCapabilitiesGrid();
   onProfiloChange();
+}
+
+function goToStep2FromStep3() {
+  setWizardStep(2);
+}
+
+function goToStep3() {
+  setWizardStep(3);
+  renderSummary();
+}
+
+function renderSummary() {
+  const nome = document.getElementById('userNome').value.trim();
+  const cognome = document.getElementById('userCognome').value.trim();
+  const email = document.getElementById('userEmail').value.trim();
+  const profilo = document.getElementById('userProfilo').value;
+  const profiloData = PROFILI[profilo];
+  const profiloLabel = profiloData ? profiloData.icon + ' ' + profiloData.label : profilo;
+  
+  const selCats = [...document.querySelectorAll('#categorieCheckboxes input:checked')].map(cb => {
+    const cat = categorie.find(c => c.id === cb.value);
+    return cat?.nome || '?';
+  });
+  const selStag = [...document.querySelectorAll('#stagioniCheckboxes input:checked')].map(cb => {
+    const s = stagioni.find(st => st.id === cb.value);
+    return s?.nome || '?';
+  });
+  const caps = getCapabilitiesFromUI();
+  const capsLabels = CAPABILITIES.filter(c => caps[c.id]).map(c => c.icon + ' ' + c.label + ' (' + caps[c.id] + ')');
+  
+  const container = document.getElementById('summaryContent');
+  container.innerHTML = `
+    <div style="padding:14px;background:#f8f9fa;border-radius:10px;border:1px solid #eee;">
+      <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;">👤 Dati Account</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;">
+        <span style="color:#888;">Nome</span><span style="font-weight:500;">${nome} ${cognome}</span>
+        <span style="color:#888;">Email</span><span>${email}</span>
+      </div>
+    </div>
+    <div style="padding:14px;background:#f8f9fa;border-radius:10px;border:1px solid #eee;">
+      <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;">🔑 Permessi</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;">
+        <span style="color:#888;">Profilo</span><span style="font-weight:500;">${profiloLabel}</span>
+        <span style="color:#888;">Stagioni</span><span>${selStag.length ? selStag.join(', ') : 'Solo attiva'}</span>
+        <span style="color:#888;">Categorie</span><span>${selCats.length ? selCats.join(', ') : 'Tutte'}</span>
+      </div>
+    </div>
+    <div style="padding:14px;background:#f8f9fa;border-radius:10px;border:1px solid #eee;">
+      <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;">🛠️ Capabilities</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${capsLabels.length ? capsLabels.map(l => `<span style="padding:4px 10px;background:white;border:1px solid #e0e4f0;border-radius:6px;font-size:12px;">${l}</span>`).join('') : '<span style="color:#999;font-size:12px;">Nessuna capability assegnata</span>'}
+      </div>
+    </div>
+  `;
 }
 
 function onProfiloChange() {
@@ -373,7 +475,7 @@ function renderStagioniCheckboxes(selectedIds = []) {
   container.innerHTML = stagioni.map(s => `
     <label class="cat-checkbox">
       <input type="checkbox" value="${s.id}" ${selectedIds.includes(s.id) ? 'checked' : ''}>
-      ${s.nome}${s.attiva ? ' <span style="color:#27AE60;font-size:11px;">● attiva</span>' : ''}
+      ${s.nome}
     </label>
   `).join('');
 }
@@ -393,7 +495,7 @@ async function loadData() {
     const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
     
     // Carica tutto in parallelo
-    const usersUrl = '/auth/users' + (wsId ? `?workspace_id=${wsId}` : '');
+    const usersUrl = '/auth/users' + (wsId ? `?workspace_id=${wsId}&only_active=false` : '?only_active=false');
     const [catRes, stagRes, staffRes, usersRes] = await Promise.all([
       wsId ? apiFetch(`/workspaces/${wsId}/categorie`).catch(() => []) : [],
       wsId ? apiFetch(`/workspaces/${wsId}/stagioni`).catch(() => []) : [],
@@ -413,24 +515,57 @@ async function loadData() {
   }
 }
 
-function renderUsers() {
+function applyFilters() {
+  const search = (document.getElementById('filterSearch')?.value || '').toLowerCase();
+  const ruoloFilter = document.getElementById('filterRuolo')?.value || '';
+  const statoFilter = document.getElementById('filterStato')?.value || '';
+
+  let filtered = users;
+  if (search) {
+    filtered = filtered.filter(u => 
+      (u.nome + ' ' + (u.cognome || '') + ' ' + u.email).toLowerCase().includes(search)
+    );
+  }
+  if (ruoloFilter) {
+    filtered = filtered.filter(u => {
+      if (ruoloFilter === 'admin') return u.ruolo === 'admin';
+      const profilo = u.permessi?.profilo || '';
+      return profilo === ruoloFilter;
+    });
+  }
+  if (statoFilter === 'attivi') filtered = filtered.filter(u => u.is_active !== false);
+  if (statoFilter === 'sospesi') filtered = filtered.filter(u => u.is_active === false);
+
+  renderUsers(filtered);
+}
+
+function renderUsers(filteredUsers) {
+  const list = filteredUsers || users;
   const tbody = document.getElementById('usersTableBody');
   if (!tbody) return;
   
-  if (users.length === 0) {
+  const countEl = document.getElementById('usersCount');
+  if (countEl) countEl.textContent = `${list.length} utent${list.length === 1 ? 'e' : 'i'}`;
+  
+  if (list.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#999;">Nessun utente trovato</td></tr>';
     return;
   }
   
-  tbody.innerHTML = users.map(user => {
+  tbody.innerHTML = list.map(user => {
     const isCurrentUser = user.id === window.YFM.getUser()?.id;
     const catAccesso = user.categorie_accesso || [];
     const categorieText = catAccesso.length > 0 
       ? catAccesso.map(id => categorie.find(c => c.id === id)?.nome || '?').join(', ')
       : '<span style="color:#999;">Tutte</span>';
     
+    const isActive = user.is_active !== false;
+    const statusBadge = isActive 
+      ? '<span style="padding:3px 8px;border-radius:6px;font-size:11px;background:#E8F8F0;color:#27AE60;font-weight:600;">✅ Attivo</span>'
+      : '<span style="padding:3px 8px;border-radius:6px;font-size:11px;background:#FDEDEE;color:#E74C3C;font-weight:600;">🔒 Sospeso</span>';
+    
     return `
-      <tr style="border-bottom:1px solid #eee;">
+      <tr style="border-bottom:1px solid #eee;${!isActive ? 'opacity:0.6;' : ''}">
         <td style="padding:12px;">
           <strong>${user.nome} ${user.cognome || ''}</strong>
           ${isCurrentUser ? '<span style="background:#667eea;color:white;padding:2px 6px;border-radius:4px;font-size:11px;margin-left:8px;">Tu</span>' : ''}
@@ -441,13 +576,12 @@ function renderUsers() {
           ${user.is_superadmin ? '<span class="badge" style="background:#9b59b6;color:white;margin-left:4px;">SA</span>' : ''}
         </td>
         <td style="padding:12px;font-size:13px;">${categorieText}</td>
-        <td style="padding:12px;text-align:center;">
-          <span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${user.is_active !== false ? '#27AE60' : '#E74C3C'};"></span>
-        </td>
-        <td style="padding:12px;text-align:right;">
+        <td style="padding:12px;text-align:center;">${statusBadge}</td>
+        <td style="padding:12px;text-align:right;white-space:nowrap;">
           ${!isCurrentUser ? `
-            <button class="btn btn-small" onclick="window._editUser('${user.id}')" title="Modifica">✏️</button>
-            <button class="btn btn-small btn-danger" onclick="window._deleteUser('${user.id}')" title="Disattiva" style="margin-left:4px;">🗑️</button>
+            <button class="btn btn-small" onclick="window._editUser('${user.id}')" title="Modifica" style="padding:4px 8px;">✏️</button>
+            <button class="btn btn-small" onclick="window._toggleUser('${user.id}')" title="${isActive ? 'Sospendi' : 'Riattiva'}" style="padding:4px 8px;margin-left:4px;background:${isActive ? '#FFF8E1' : '#E8F8F0'};border:1px solid ${isActive ? '#F39C12' : '#27AE60'};">${isActive ? '🔒' : '🔓'}</button>
+            <button class="btn btn-small btn-danger" onclick="window._deleteUser('${user.id}')" title="Elimina" style="padding:4px 8px;margin-left:4px;">🗑️</button>
           ` : ''}
         </td>
       </tr>
@@ -455,8 +589,14 @@ function renderUsers() {
   }).join('');
   
   window._editUser = (id) => openModal(id);
+  window._toggleUser = async (id) => {
+    try {
+      await apiFetch(`/auth/users/${id}/toggle-active`, { method: 'PUT' });
+      await loadData();
+    } catch (err) { alert('Errore: ' + err.message); }
+  };
   window._deleteUser = async (id) => {
-    if (!await confirm('Disattivare questo utente?')) return;
+    if (!await confirm('Eliminare definitivamente questo utente?')) return;
     try {
       await apiFetch(`/auth/users/${id}`, { method: 'DELETE' });
       await loadData();

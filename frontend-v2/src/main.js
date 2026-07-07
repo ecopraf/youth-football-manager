@@ -1,5 +1,14 @@
 import './style.css'
 import './utils/ui.js'
+
+// Handle stale chunk errors after deploy (dynamic import fails → auto-reload)
+window.addEventListener('vite:preloadError', () => { window.location.reload(); });
+window.addEventListener('unhandledrejection', (e) => {
+  if (e.reason?.message?.includes('dynamically imported module')) {
+    window.location.reload();
+  }
+});
+
 import { setupLayout } from './components/layout/Sidebar'
 import { initRouter } from './router'
 import { loadWorkspaceInfo } from './modules/club/workspace'

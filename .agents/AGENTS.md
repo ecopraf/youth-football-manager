@@ -55,11 +55,11 @@ git status
 | **Versione** | v3.15 |
 | **Build ID** | `v3.15.<git-hash>` |
 | **Frontend** | Vite + JavaScript ES Modules |
-| **Backend** | Node.js/Express (16 router) + Supabase |
+| **Backend** | Node.js/Express (17 router) + Supabase |
 | **Deploy** | Vercel (auto su push a main) |
 | **Auth** | JWT + permessi granulari JSONB |
 | **Guest** | JWT guest (24h, solo lettura). Login risolve team_id + player_name |
-| **Notifiche** | Badge 🔔 aggiornato al login + polling 60s + cambio squadra |
+| **Notifiche** | Badge 🔔 aggiornato al login + polling 60s + cambio squadra. Centro Comunicazioni con tabs (Comunicazioni + Assenze). Trigger auto su convocazioni-batch. |
 | **Help** | Sistema help interattivo contestuale (PageHelp.js + helpData.js) |
 
 ### Backend Dependencies
@@ -104,6 +104,7 @@ api/
     ├── importConfirm.js        — Confirm TC, formations batch, matches-without-formation
     ├── gazzettaRegionale.js    — Classifica, calendario, marcatori, loghi da GR API, wizard loghi
     ├── absence.js              — Segnalazione assenze atleti (notifiche, storico, motivi)
+    ├── notification.js         — Comunicazioni in-app (convocazioni, avvisi) per profili destinatari
     └── tournament.js           — Tornei CRUD (disabilitato in sidebar)
 ```
 
@@ -238,6 +239,7 @@ frontend-v2/src/
 | `import_log` | Storico importazioni | workspace_id, team_id, user_id |
 | `team_logo` | Loghi squadre avversarie | nome, nome_normalizzato UNIQUE, logo_path, tc_team_id (777+ file in logos/) |
 | `absence_notification` | Segnalazioni assenza atleti | player_id, team_id, training_id (nullable), data_allenamento, motivo, messaggio, letto |
+| `notification` | Comunicazioni in-app (convocazioni, avvisi) | workspace_id, team_id, tipo, titolo, messaggio, riferimento_id, destinatario_profilo TEXT[], letto |
 
 ---
 

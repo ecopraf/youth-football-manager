@@ -139,31 +139,54 @@ export async function openConvocation(mid, readOnly) {
 
 function showConvocationPreview(match, list, isArchiviata = false) {
   list.sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
-  const dt = new Date(match.data_ora);
-  const ritrovo = new Date(dt.getTime() - 75 * 60000);
+  const dt = match.data_ora ? new Date(match.data_ora) : null;
+  const isValidDate = dt && !isNaN(dt.getTime());
+  const ritrovo = isValidDate ? new Date(dt.getTime() - 75 * 60000) : null;
   const giorni = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
-  const catYear = dt.getFullYear() - 14;
+  
+  // Categoria dalla squadra corrente
+  const squadra = window.YFM.getSquadra ? window.YFM.getSquadra() : {};
+  const catNome = squadra.category?.nome || squadra.categoria || 'U.15';
+  const tipoCampionato = squadra.category?.tipo_campionato || '';
+  
+  // Intestazione: per amichevoli solo "U.15 AMICHEVOLE", per campionato "U.15 Regionali"
+  const comp = match.competizione || '';
+  const isAmichevole = comp.toLowerCase().includes('amichevole') || comp === '';
+  let titolo2 = '';
+  if (isAmichevole) {
+    titolo2 = catNome + ' AMICHEVOLE';
+  } else {
+    titolo2 = catNome + (tipoCampionato ? ' ' + tipoCampionato : '');
+  }
+  
   const campoCasa = window.YFM.facility ? `${window.YFM.facility.nome} - ${window.YFM.facility.indirizzo}, ${window.YFM.facility.citta}` : '';
   const campoInfo = match.luogo === 'Trasferta' ? (match.indirizzo_campo || 'Trasferta') : (campoCasa || 'Casa');
+  
+  const oraStr = isValidDate ? dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+  const giornoStr = isValidDate ? `${giorni[dt.getDay()]} ${dt.toLocaleDateString('it-IT')}` : '---';
+  const ritrovoStr = ritrovo ? ritrovo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+  
   let html = '';
   
-  // Badge archivio se applicabile
   if (isArchiviata) {
     html += '<div style="background:#8B7355;color:white;padding:10px 20px;border-radius:12px;margin-bottom:20px;text-align:center;font-weight:600;">📦 Partita Archiviata</div>';
   }
   
   const logoWs = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : '';
+  const giornataStr = !isAmichevole && match.giornata ? ` (${match.giornata}a)` : '';
+  const gironeStr = !isAmichevole && match.girone ? ` - Gir. ${match.girone}` : '';
+  
   html += `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4mm;">
       <div style="width:80px;text-align:left;">${logoWs ? '<img src="' + logoWs + '" style="height:70px;object-fit:contain;">' : ''}</div>
       <div style="flex:1;text-align:center;">
         <div class="t1">CONVOCAZIONE</div>
-        <div class="t2">U.15 Regionali - (${catYear})</div>
-        <div class="t3">${match.competizione || 'Campionato'}${match.giornata ? ' (' + match.giornata + 'a) ' : ' '}${match.girone ? '- Gir. ' + match.girone : ''}</div>
+        <div class="t2">${titolo2}</div>
+        ${!isAmichevole ? `<div class="t3">${giornataStr}${gironeStr}</div>` : ''}
       </div>
       <div style="width:80px;text-align:right;"><img src="/img/logo-lnd.png" style="height:70px;object-fit:contain;" onerror="this.style.display='none'"></div>
     </div>
-    <div class="info">Partita: <strong>${window.YFM.getSocietaName().toUpperCase()} - ${match.avversario}</strong><br>Campo: <strong>${campoInfo}</strong><br>Alle ore: ${dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} del giorno: <strong>${giorni[dt.getDay()]} ${dt.toLocaleDateString('it-IT')}</strong><br>Ritrovo alle ore: <strong>${ritrovo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</strong> al Campo di Giuoco</div>
+    <div class="info">Partita: <strong>${(window.YFM.getSocietaName ? window.YFM.getSocietaName() : '').toUpperCase()} - ${match.avversario || 'TBD'}</strong><br>Campo: <strong>${campoInfo}</strong><br>Alle ore: <strong>${oraStr}</strong> del giorno: <strong>${giornoStr}</strong><br>Ritrovo alle ore: <strong>${ritrovoStr}</strong> al Campo di Giuoco</div>
     <table class="list-table" style="border:2px solid #000;border-collapse:collapse;width:100%;"><thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000;padding:5px 8px;">N.</th><th style="border:1px solid #000;padding:5px 8px;">Cognome</th><th style="border:1px solid #000;padding:5px 8px;">Nome</th><th style="border:1px solid #000;padding:5px 8px;">P</th></tr></thead><tbody>`;
   for (let i = 0; i < 25; i++) {
     if (i < list.length) {

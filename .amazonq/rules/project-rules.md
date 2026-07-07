@@ -133,10 +133,13 @@ Le tabelle reali nel DB Supabase sono:
 - `import_log`
 - `tournament`
 - `absence_notification`
+- `notification`
 
 **Colonne notevoli `import_log`**: `tipo TEXT` (calendario_pdf, calendario_testo, calendario_tuttocampo, rosa_xls, rosa_tuttocampo, formazioni_tuttocampo), `dettagli JSONB`, `record_importati INT`, `esito TEXT`
 
 **Colonne notevoli `absence_notification`**: `player_id`, `team_id`, `training_id` (nullable, null per sessioni virtuali), `data_allenamento DATE`, `motivo TEXT`, `messaggio TEXT`, `letto BOOLEAN`
+
+**Colonne notevoli `notification`**: `workspace_id`, `team_id`, `tipo TEXT` (convocazione/avviso), `titolo TEXT`, `messaggio TEXT`, `riferimento_id UUID` (es. match_id), `destinatario_profilo TEXT[]` (es. ['segreteria','dirigente']), `destinatario_user_id UUID` (nullable), `created_by UUID`, `letto BOOLEAN`
 
 **NON ESISTONO** (non usare mai nel codice):
 - `formazione_partita` → usa `match_formation`
