@@ -14,6 +14,13 @@ const CAPABILITIES = [
   { id: 'report', label: 'Report' }
 ];
 
+const PROFILI = {
+  segreteria: {
+    label: 'Segreteria',
+    capabilities: { rosa: 'write', partite: 'read', formazione: '', allenamenti: '', statistiche: '', guest_links: '', import: '', report: 'read' }
+  }
+};
+
 /**
  * Estrae le capabilities effettive da user.permessi (retrocompatibile)
  */

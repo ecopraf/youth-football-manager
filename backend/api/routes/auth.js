@@ -423,7 +423,13 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   // --- Preferenze UI utente ---
   router.get('/api/users/preferences', authMiddleware, async (req, res) => {
     try {
-      const { data } = await supabase.from('users').select('preferenze_ui').eq('id', req.user.id).single();
+      let userId = req.user.id;
+      if (userId === 'superadmin') {
+        const { data: sa } = await supabase.from('users').select('id').eq('email', 'coppola.raffaele@gmail.com').single();
+        if (sa) userId = sa.id;
+        else return res.json({});
+      }
+      const { data } = await supabase.from('users').select('preferenze_ui').eq('id', userId).single();
       res.json(data?.preferenze_ui || {});
     } catch (err) { res.status(500).json({ error: 'Errore server' }); }
   });
@@ -431,9 +437,16 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   router.put('/api/users/preferences', authMiddleware, async (req, res) => {
     try {
       const { dashboard_layout } = req.body;
-      const { data: current } = await supabase.from('users').select('preferenze_ui').eq('id', req.user.id).single();
+      let userId = req.user.id;
+      // Superadmin hardcoded: resolve real DB id
+      if (userId === 'superadmin') {
+        const { data: sa } = await supabase.from('users').select('id').eq('email', 'coppola.raffaele@gmail.com').single();
+        if (sa) userId = sa.id;
+        else return res.status(404).json({ error: 'Utente non trovato' });
+      }
+      const { data: current } = await supabase.from('users').select('preferenze_ui').eq('id', userId).single();
       const merged = { ...(current?.preferenze_ui || {}), dashboard_layout };
-      await supabase.from('users').update({ preferenze_ui: merged }).eq('id', req.user.id);
+      await supabase.from('users').update({ preferenze_ui: merged }).eq('id', userId);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Errore server' }); }
   });

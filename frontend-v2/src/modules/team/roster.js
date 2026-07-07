@@ -75,7 +75,7 @@ function renderRoster(c, players, scadenze) {
   const inScadenza = scadenze.filter(x => (x.giorni_rimanenti || x.giorniRimanenti) >= 0);
   let scadenzeHtml = '';
   if (scaduti.length > 0 || inScadenza.length > 0) {
-    const isMobile = window.innerWidth <= 500;
+    const isMobile = window.innerWidth < 900;
     if (isMobile) {
       // Mobile: card stack layout
       const buildMobileItem = (x, isExpired) => {

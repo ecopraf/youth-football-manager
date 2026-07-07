@@ -323,6 +323,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: dashboard personalizzabile — riordino + show/hide widget, preferenze utente in DB, GR card sfondo sfumato, layout responsive (2-col desktop / card separate mobile), fix calendario centrato, marcatori 2-col con gol allineati a dx |
 | (pending) | fix: scheda giocatore — rimossa card summary rotta (stats-current eliminato), carriera raggruppata per tipo competizione (Campionato/Coppa/Amichevole), endpoint ottimizzato (batch fetch) |
 | (pending) | fix: gestione errori DB — helper centralizzato dbErrors.js traduce duplicate key in messaggi IT user-friendly (CF giocatore, email utente, ecc.) |
+| (pending) | feat: profilo segreteria + widget certificati medici in dashboard (nascosto di default per altri profili, visibile per segreteria) |
+| (pending) | fix: preferenze dashboard superadmin — risolto id hardcoded 'superadmin' su GET/PUT /users/preferences |
 | (pending) | feat: DataGrid component — tabella responsive riutilizzabile (table desktop / card mobile), playerDetail carriera raggruppata per squadra con logo, ultime partite compatte con logo avversario, endpoint career+last-matches con logo da team_logo |
 
 ---

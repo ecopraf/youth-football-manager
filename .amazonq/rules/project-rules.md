@@ -205,6 +205,7 @@ I workspace attivi nel DB sono:
 | dirigente | read | read | read | — | read | write | — | read |
 | preparatore | read | — | — | write | read | — | — | — |
 | osservatore | read | read | — | — | read | — | — | read |
+| segreteria | write | read | — | — | — | — | — | read |
 | custom | (personalizzato dall'admin) |
 
 ### File di riferimento

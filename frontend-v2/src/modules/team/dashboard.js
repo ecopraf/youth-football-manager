@@ -503,6 +503,7 @@ export default async function loadDashboard() {
     '</div></div>' +
     '<div data-widget="results"><div class="result-card" data-help="dashboard.risultati"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div></div>' +
     '<div data-widget="injuries" id="dashInjuryWidget"></div>' +
+    '<div data-widget="certificati" id="dashCertificatiWidget"></div>' +
     '<div data-widget="classifica" id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
     '<div data-widget="staff"><div class="staff-card" data-help="dashboard.staff"><h3 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
     '</div>';
@@ -595,9 +596,34 @@ export default async function loadDashboard() {
       }).join('') + '</div>';
   }).catch(() => {});
 
+  // Lazy load: certificati medici
+  apiFetch('/squadre/' + squadraId + '/scadenze-mediche').then(scadenze => {
+    const widget = document.getElementById('dashCertificatiWidget');
+    if (!widget || !scadenze || scadenze.length === 0) return;
+    const scaduti = scadenze.filter(x => x.giorni_rimanenti < 0);
+    const inScad = scadenze.filter(x => x.giorni_rimanenti >= 0);
+    let rows = '';
+    if (scaduti.length > 0) {
+      rows += '<div style="font-size:12px;font-weight:700;color:#E74C3C;margin-bottom:4px;">🔴 Scaduti (' + scaduti.length + ')</div>';
+      rows += scaduti.map(x => '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid #f5f5f5;"><span>' + x.cognome + ' ' + x.nome + '</span><span style="color:#E74C3C;font-weight:600;">' + formatDateShort(x.scadenza) + '</span></div>').join('');
+    }
+    if (inScad.length > 0) {
+      rows += '<div style="font-size:12px;font-weight:700;color:#F39C12;margin:' + (scaduti.length ? '10' : '0') + 'px 0 4px;">⚠️ In scadenza (' + inScad.length + ')</div>';
+      rows += inScad.map(x => '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid #f5f5f5;"><span>' + x.cognome + ' ' + x.nome + '</span><span style="color:#F39C12;font-weight:600;">' + x.giorni_rimanenti + ' gg</span></div>').join('');
+    }
+    widget.innerHTML = '<div style="background:#FFF9F0;border:1px solid #FDE8C8;border-radius:12px;padding:14px;">' +
+      '<h4 style="margin:0 0 10px 0;font-size:13px;color:#D97706;">🏥 Certificati Medici (' + scadenze.length + ')</h4>' + rows + '</div>';
+  }).catch(() => {});
+
   // --- Dashboard Organize ---
-  const WIDGET_LABELS = { next_training: '🏋️ Prossimo Allenamento', next_match: '⏱ Prossima Partita', stats_widgets: '📊 Statistiche', top_players: '🏆 Top Giocatori', results: '📋 Ultimi Risultati', injuries: '🏥 Infortuni', staff: '👥 Staff', classifica: '🏆 Classifica & GR' };
-  const DEFAULT_ORDER = ['next_training', 'next_match', 'stats_widgets', 'top_players', 'results', 'injuries', 'classifica', 'staff'];
+  const WIDGET_LABELS = { next_training: '🏋️ Prossimo Allenamento', next_match: '⏱ Prossima Partita', stats_widgets: '📊 Statistiche', top_players: '🏆 Top Giocatori', results: '📋 Ultimi Risultati', injuries: '🏥 Infortuni', staff: '👥 Staff', classifica: '🏆 Classifica & GR', certificati: '🏥 Certificati Medici' };
+  const DEFAULT_ORDER = ['next_training', 'next_match', 'stats_widgets', 'top_players', 'results', 'injuries', 'classifica', 'staff', 'certificati'];
+
+  // Default hidden per profilo
+  const userProfilo = window.YFM.getUser()?.permessi?.profilo || '';
+  const DEFAULT_HIDDEN = userProfilo === 'segreteria'
+    ? ['next_training', 'stats_widgets', 'top_players', 'results', 'classifica']
+    : ['certificati'];
 
   function applyLayout(layout) {
     const container = document.getElementById('dashWidgetsContainer');
@@ -619,7 +645,8 @@ export default async function loadDashboard() {
   // Load and apply user preferences
   apiFetch('/users/preferences').then(prefs => {
     if (prefs && prefs.dashboard_layout) applyLayout(prefs.dashboard_layout);
-  }).catch(() => {});
+    else applyLayout({ order: DEFAULT_ORDER, hidden: DEFAULT_HIDDEN });
+  }).catch(() => applyLayout({ order: DEFAULT_ORDER, hidden: DEFAULT_HIDDEN }));
 
   // Organize button handler
   const orgBtn = document.getElementById('dashOrganizeBtn');
@@ -670,7 +697,7 @@ export default async function loadDashboard() {
           renderModal();
         }
       };
-      overlay.querySelector('#orgReset').onclick = () => { order = [...DEFAULT_ORDER]; hidden = []; renderModal(); };
+      overlay.querySelector('#orgReset').onclick = () => { order = [...DEFAULT_ORDER]; hidden = [...DEFAULT_HIDDEN]; renderModal(); };
       overlay.querySelector('#orgSave').onclick = () => {
         const layout = { order, hidden };
         applyLayout(layout);
