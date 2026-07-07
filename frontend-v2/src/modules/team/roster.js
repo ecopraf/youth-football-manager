@@ -753,7 +753,13 @@ async function openImportXlsModal() {
       <div class="modal-body">
         <div id="importStep1">
           <p style="margin-bottom:12px;color:#666;">Carica il tabulato atleti in formato Excel (.xlsx). I giocatori verranno raggruppati per anno di nascita.</p>
-          <input type="file" id="xlsFileInput" accept=".xlsx,.xls" style="margin-bottom:16px;">
+          <input type="file" id="xlsFileInput" accept=".xlsx,.xls" style="display:none;">
+          <div id="xlsDropZone" style="border:2px dashed #667eea;border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;background:#f8f9ff;transition:all .2s;margin-bottom:16px;">
+            <div style="font-size:36px;margin-bottom:8px;">📂</div>
+            <div style="font-size:14px;font-weight:600;color:#333;">Clicca o trascina il file qui</div>
+            <div style="font-size:12px;color:#888;margin-top:4px;">Formato accettato: .xlsx / .xls</div>
+            <div id="xlsFileName" style="display:none;margin-top:12px;padding:8px 12px;background:#e8f5e9;border-radius:8px;font-size:12px;color:#2e7d32;font-weight:500;"></div>
+          </div>
           ${teamOptions ? `<div style="margin-bottom:16px;"><label style="font-weight:600;">Squadra destinazione:</label><select id="importTeamSelect" class="filter-select" style="margin-top:4px;">${teamOptions}</select></div>` : ''}
           <button class="btn btn-primary" id="btnParseXls" disabled>Analizza file</button>
         </div>
@@ -767,7 +773,18 @@ async function openImportXlsModal() {
 
   const fileInput = document.getElementById('xlsFileInput');
   const btnParse = document.getElementById('btnParseXls');
-  fileInput.onchange = () => { btnParse.disabled = !fileInput.files.length; };
+  const dropZone = document.getElementById('xlsDropZone');
+  const fileNameEl = document.getElementById('xlsFileName');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#4338ca'; dropZone.style.background = '#eef2ff'; });
+  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#667eea'; dropZone.style.background = '#f8f9ff'; });
+  dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = '#667eea'; dropZone.style.background = '#f8f9ff'; if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; fileInput.dispatchEvent(new Event('change')); } });
+  fileInput.onchange = () => {
+    btnParse.disabled = !fileInput.files.length;
+    if (fileInput.files.length) { fileNameEl.textContent = '✅ ' + fileInput.files[0].name; fileNameEl.style.display = 'block'; }
+    else { fileNameEl.style.display = 'none'; }
+  };
 
   btnParse.onclick = async () => {
     const file = fileInput.files[0];

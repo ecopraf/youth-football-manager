@@ -40,7 +40,7 @@ export default async function loadUsers() {
     
     <!-- Modal Wizard -->
     <div id="userModal" class="modal-overlay" style="display:none;">
-      <div class="modal-content" style="max-width:560px;max-height:90vh;overflow-y:auto;">
+      <div class="modal-content" style="max-width:560px;max-height:90vh;overflow-y:auto;width:95%;margin:16px;">
         <div class="modal-header">
           <h2 id="modalTitle">Nuovo Utente</h2>
           <button class="modal-close-btn" id="closeModalBtn">&times;</button>
@@ -67,7 +67,7 @@ export default async function loadUsers() {
                 </select>
               </div>
               
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;" class="user-modal-grid">
                 <div class="form-group"><label>Nome *</label><input type="text" id="userNome" required></div>
                 <div class="form-group"><label>Cognome</label><input type="text" id="userCognome"></div>
               </div>
@@ -123,14 +123,14 @@ export default async function loadUsers() {
               <!-- Stagioni accessibili -->
               <div class="form-group" id="stagioniGroup" style="margin-bottom:16px;">
                 <label>📅 Stagioni accessibili</label>
-                <div id="stagioniCheckboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;"></div>
+                <div id="stagioniCheckboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;" class="user-modal-grid"></div>
                 <small style="color:#666;margin-top:6px;display:block;">Nessuna selezione = solo stagione attiva</small>
               </div>
               
               <!-- Categorie (checkbox) -->
               <div class="form-group" id="categorieGroup" style="margin-bottom:16px;">
                 <label>📂 Categorie accessibili</label>
-                <div id="categorieCheckboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;"></div>
+                <div id="categorieCheckboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;" class="user-modal-grid"></div>
                 <small style="color:#666;margin-top:6px;display:block;">Nessuna selezione = accesso a tutte</small>
               </div>
               

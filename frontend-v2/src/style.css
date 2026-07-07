@@ -551,3 +551,16 @@ body.sidebar-open::before {
   font-family: monospace;
   letter-spacing: 0.5px;
 }
+
+/* User modal responsive */
+@media (max-width: 500px) {
+  .user-modal-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .modal-content {
+    padding: 12px !important;
+  }
+  .modal-header h2 {
+    font-size: 16px;
+  }
+}
