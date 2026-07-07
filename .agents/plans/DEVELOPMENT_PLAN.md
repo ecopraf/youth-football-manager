@@ -299,6 +299,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: session guard — visibility check (5min) + inactivity timer (30min) con banner + auto-reload pagina |
 | (pending) | feat: import manuale rosa — fix parsing tab-separated (nome duplicato), legenda formato, preview tabella con numero maglia |
 | (pending) | fix: Match Center import tabellino — salvataggio reale DB, blocco su partite Da disputare, dedup eventi, verifica avversario, preview formazione |
+| (pending) | feat: codice fiscale nel form giocatore — campo CF + luogo nascita con autocomplete comuni + calcolo automatico CF |
 
 ---
 

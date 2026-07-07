@@ -2,6 +2,7 @@ import { apiFetch, API_BASE } from '../../services/api';
 import { formatDateShort, getAvatarColor } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 import { loadNewPlayerForm } from './playerDetail.js';
+import { calcolaCodiceFiscale, cercaComune } from '../../utils/codiceFiscale.js';
 
 export { openPlayerForm, filterRoster, updateRosterGrid };
 
@@ -590,9 +591,11 @@ function openPlayerForm(pid) {
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Nome *</label><input id="pfN" value="' + (p ? p.nome : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Cognome *</label><input id="pfC" value="' + (p ? p.cognome : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Data Nascita</label><input id="pfD" type="date" value="' + (p && p.data_nascita ? p.data_nascita.split('T')[0] : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Luogo Nascita</label><div style="position:relative;"><input id="pfLN" value="' + (p ? p.luogo_nascita || '' : '') + '" placeholder="Digita comune..." autocomplete="off" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><div id="pfLNList" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:0 0 6px 6px;max-height:150px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div></div></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="pfTel" value="' + (p ? p.telefono || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="pfVM" type="date" value="' + (p && p.data_visita_medica ? p.data_visita_medica.split('T')[0] : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
-    '<div><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="pfFigc" value="' + (p ? p.matricola_figc || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="pfFigc" value="' + (p ? p.matricola_figc || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Codice Fiscale</label><div style="display:flex;gap:8px;"><input id="pfCF" value="' + (p ? p.codice_fiscale || '' : '') + '" maxlength="16" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;text-transform:uppercase;font-family:monospace;"><button type="button" id="pfCalcCF" style="padding:8px 12px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;">Calcola</button></div></div></div>' +
     '<div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;margin-top:20px;">👨‍👩‍👦 CONTATTI GENITORI</div>' +
     '<div id="contattiGenitori"></div>' +
     '<button type="button" id="addContatto" style="margin-top:8px;padding:6px 12px;border:1px dashed #667eea;background:none;color:#667eea;border-radius:6px;cursor:pointer;font-size:12px;">+ Aggiungi contatto</button>' +
@@ -626,6 +629,44 @@ function openPlayerForm(pid) {
   }
   // --- Fine contatti genitori ---
   
+  // --- Autocomplete luogo nascita + calcolo CF ---
+  let selectedBelfiore = '';
+  const lnInput = document.getElementById('pfLN');
+  const lnList = document.getElementById('pfLNList');
+  let lnTimeout = null;
+  lnInput.addEventListener('input', () => {
+    clearTimeout(lnTimeout);
+    selectedBelfiore = '';
+    lnTimeout = setTimeout(async () => {
+      const results = await cercaComune(lnInput.value);
+      if (results.length === 0) { lnList.style.display = 'none'; return; }
+      lnList.innerHTML = results.map(c => `<div data-codice="${c.codice}" style="padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f5f5f5;">${c.nome} (${c.provincia})</div>`).join('');
+      lnList.style.display = 'block';
+      lnList.querySelectorAll('div').forEach(el => el.addEventListener('click', () => {
+        lnInput.value = el.textContent;
+        selectedBelfiore = el.dataset.codice;
+        lnList.style.display = 'none';
+      }));
+    }, 200);
+  });
+  document.addEventListener('click', e => { if (!lnInput.contains(e.target) && !lnList.contains(e.target)) lnList.style.display = 'none'; });
+
+  document.getElementById('pfCalcCF').addEventListener('click', async () => {
+    const nome = document.getElementById('pfN').value.trim();
+    const cognome = document.getElementById('pfC').value.trim();
+    const data = document.getElementById('pfD').value;
+    if (!nome || !cognome || !data) { alert('Compila Nome, Cognome e Data Nascita per calcolare il CF'); return; }
+    let codice = selectedBelfiore;
+    if (!codice) {
+      const results = await cercaComune(lnInput.value);
+      if (results.length > 0) { codice = results[0].codice; lnInput.value = results[0].nome + ' (' + results[0].provincia + ')'; selectedBelfiore = codice; }
+    }
+    if (!codice) { alert('Seleziona il Luogo di Nascita per calcolare il CF'); return; }
+    const cf = calcolaCodiceFiscale(cognome, nome, data, 'M', codice);
+    document.getElementById('pfCF').value = cf;
+  });
+  // --- Fine CF ---
+
   const closeModal = () => modal.remove();
   
   document.getElementById('modalCloseX').addEventListener('click', closeModal);
@@ -654,6 +695,8 @@ function openPlayerForm(pid) {
       nome,
       cognome,
       data_nascita: dataNascita,
+      luogo_nascita: document.getElementById('pfLN').value || null,
+      codice_fiscale: document.getElementById('pfCF').value.toUpperCase() || null,
       telefono: document.getElementById('pfTel').value || null,
       data_visita_medica: document.getElementById('pfVM').value || null,
       ruolo: document.getElementById('pfR').value || null,
