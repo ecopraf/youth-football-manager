@@ -285,11 +285,18 @@ overlay.innerHTML = `<div class="modal-card-class">
 
 ### Layout e responsive
 
-- **Mobile-first**: ogni layout DEVE funzionare su mobile (320px+)
+- **Mobile-first OBBLIGATORIO**: ogni funzionalità (esistente o nuova) DEVE essere ottimizzata per cellulare e tablet
+- **Breakpoints di riferimento**: mobile ≤500px, tablet 501-768px, desktop >768px
+- **Ogni nuova UI** deve essere testata visivamente su viewport 375px (iPhone) e 768px (tablet) prima del commit
 - **Max-width contenuto**: usare `max-width` + `margin: 0 auto` per centrare sezioni
+- **Griglie responsive**: usare `grid-template-columns: repeat(auto-fit, minmax(Xpx, 1fr))` oppure media query per collassare a 1 colonna su mobile
 - **Flex-direction**: `row` su desktop → `column` su mobile via media query
 - **Touch targets**: minimo 44x44px per bottoni/elementi interattivi su mobile
 - **No overflow nascosto**: verificare sempre che il contenuto non esca dal viewport su mobile
+- **Modali su mobile**: `width:95%; max-height:90vh; overflow-y:auto; margin:16px`
+- **Tabelle su mobile**: usare `overflow-x:auto` sul wrapper oppure layout card/stack verticale
+- **Font size minimo**: 12px su mobile per leggibilità
+- **Padding/gap ridotti**: su mobile usare gap/padding più compatti (8-12px vs 16-20px desktop)
 
 ### Colori e stile card
 

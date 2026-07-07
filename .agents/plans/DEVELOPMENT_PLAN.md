@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 17 Luglio 2025 | Versione: v3.15 | Commit: 088d446
+> Ultimo aggiornamento: 7 Luglio 2025 | Versione: v3.15 | Commit: 22d2b8e
 
 ---
 
@@ -39,7 +39,7 @@
 | Stagioni & Categorie | ✅ | modules/club/seasonsCategories.js (redesign v2) |
 | Guest View | ✅ | modules/auth/guest.js |
 | Help Interattivo | ✅ | components/PageHelp.js, components/helpData.js |
-| Loghi Squadre | ✅ | 777+ loghi, wizard GR |
+| Loghi Squadre | ✅ | 765 loghi, wizard GR, dedup hash MD5 |
 | Gazzetta Regionale | ✅ | routes/gazzettaRegionale.js |
 | Tornei | ⏸️ | modules/coach/tournaments.js (disabilitato) |
 | Infortuni | ⬜ | Non esiste |
@@ -300,6 +300,11 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: import manuale rosa — fix parsing tab-separated (nome duplicato), legenda formato, preview tabella con numero maglia |
 | (pending) | fix: Match Center import tabellino — salvataggio reale DB, blocco su partite Da disputare, dedup eventi, verifica avversario, preview formazione |
 | (pending) | feat: codice fiscale nel form giocatore — campo CF + luogo nascita con autocomplete comuni + calcolo automatico CF |
+| 0972348 | fix: import XLS — omonimi con CF diversi trattati come giocatori distinti (step 3 nome+DN solo se no CF/matricola, protezione sovrascrittura) |
+| 73f6557 | fix: pulizia loghi duplicati (776→765) + dedup hash MD5 in import + normalizeLogoName unificato |
+| 2bfb862 | feat: CF e Luogo Nascita nella pagina Nuovo Calciatore (playerDetail.js) |
+| 22d2b8e | style: upload XLS drag&drop + modal utenti responsive mobile |
+| (pending) | style: responsive globale mobile — griglie 1col @500px, tabelle scroll, modal compatti |
 
 ---
 
