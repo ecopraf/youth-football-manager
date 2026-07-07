@@ -304,7 +304,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | 73f6557 | fix: pulizia loghi duplicati (776→765) + dedup hash MD5 in import + normalizeLogoName unificato |
 | 2bfb862 | feat: CF e Luogo Nascita nella pagina Nuovo Calciatore (playerDetail.js) |
 | 22d2b8e | style: upload XLS drag&drop + modal utenti responsive mobile |
-| (pending) | style: responsive globale mobile — griglie 1col @500px, tabelle scroll, modal compatti |
+| d733428 | style: responsive globale mobile — griglie 1col @500px, tabelle scroll, modal compatti |
+| (pending) | fix: squadre_accesso confrontava team_id con category_id — requirePermission ora risolve team→category async (auth.middleware.js + index.js) |
 
 ---
 

@@ -131,6 +131,16 @@ function hasSquadraAccess(user, squadraId) {
   return user.squadre_accesso.includes(squadraId);
 }
 
+async function checkSquadraAccessAsync(user, squadraId) {
+  if (user.is_superadmin || user.ruolo === 'admin') return true;
+  if (!user.squadre_accesso || user.squadre_accesso.length === 0) return true;
+  if (user.squadre_accesso.includes(squadraId)) return true;
+  // Resolve team_id → category_id
+  const { data: team } = await supabase.from('team').select('category_id').eq('id', squadraId).maybeSingle();
+  if (team && user.squadre_accesso.includes(team.category_id)) return true;
+  return false;
+}
+
 function hasCategoryAccess(user, categoryId) {
   if (user.is_superadmin) return true;
   if (user.ruolo === 'admin') return true;
@@ -139,12 +149,13 @@ function hasCategoryAccess(user, categoryId) {
 }
 
 function requirePermission(modulo, livello = 'write') {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (!hasPermission(req.user, modulo, livello)) {
       return res.status(403).json({ error: 'Permesso negato' });
     }
-    if (req.params.squadraId && !hasSquadraAccess(req.user, req.params.squadraId)) {
-      return res.status(403).json({ error: 'Accesso alla squadra negato' });
+    if (req.params.squadraId) {
+      const hasAccess = await checkSquadraAccessAsync(req.user, req.params.squadraId);
+      if (!hasAccess) return res.status(403).json({ error: 'Accesso alla squadra negato' });
     }
     next();
   };
