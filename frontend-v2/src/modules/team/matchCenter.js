@@ -1268,9 +1268,23 @@ function bindImportPanel(mid) {
       parsedData = parseTabellino(text);
     } catch (e) { resultDiv.innerHTML = `<div style="color:#c00;">\u274c Errore parsing: ${e.message}</div>`; return; }
     const evCount = parsedData.events?.length || 0;
-    const hasFormation = parsedData.formation?.length > 0;
-    const modulo = parsedData.modulo || '';
-    let html = `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;">\u2705 Trovati: <strong>${evCount}</strong> eventi${hasFormation ? ` + formazione ${modulo} (${parsedData.formation.length} giocatori)` : ''}</div>`;
+    const hasFormation = parsedData.formation?.titolari?.length > 0;
+    const modulo = parsedData.formation?.modulo || '';
+
+    // Check opponent mismatch
+    let mismatchWarning = '';
+    if (parsedData.avversario && match.avversario) {
+      const parsed = parsedData.avversario.toLowerCase();
+      const expected = match.avversario.toLowerCase();
+      if (!parsed.includes(expected) && !expected.includes(parsed)) {
+        mismatchWarning = `<div style="background:#fef3c7;border:1px solid #f59e0b;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#92400e;">
+          ⚠️ <strong>Avversario diverso!</strong> Tabellino: <em>${parsedData.avversario}</em> — Partita: <em>${match.avversario}</em>. Verifica di aver incollato il tabellino corretto.
+        </div>`;
+      }
+    }
+
+    let html = mismatchWarning;
+    html += `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;">\u2705 Trovati: <strong>${evCount}</strong> eventi${hasFormation ? ` + formazione ${modulo} (${parsedData.formation.titolari.length} giocatori)` : ''}</div>`;
     if (evCount > 0) {
       html += '<div style="max-height:150px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;font-size:12px;">';
       parsedData.events.forEach(e => {
@@ -1279,18 +1293,37 @@ function bindImportPanel(mid) {
       });
       html += '</div>';
     }
+    if (hasFormation) {
+      html += `<div style="margin-top:8px;padding:8px 12px;background:#eef2ff;border-radius:8px;font-size:12px;">
+        <strong>📋 Formazione ${modulo}:</strong> ${parsedData.formation.titolari.join(', ')}
+      </div>`;
+    }
     html += `<button class="btn btn-primary" id="mcImportConfirm" style="margin-top:12px;width:100%;">\u2705 Conferma e Importa</button>`;
     resultDiv.innerHTML = html;
     document.getElementById('mcImportConfirm')?.addEventListener('click', async () => {
-      await applyParsedImport(mid, parsedData);
-      resultDiv.innerHTML = '<div style="color:#27AE60;font-weight:600;padding:8px;">\u2705 Importazione completata!</div>';
-      document.getElementById('mcImportText').value = '';
+      // Block import on matches not yet started
+      if (match.stato === 'Da disputare' && !match.live_meta?.stato) {
+        resultDiv.innerHTML = '<div style="color:#c00;font-weight:500;padding:8px;">⚠️ Non puoi importare eventi su una partita non ancora iniziata. Avvia la partita prima o imposta lo stato a Terminata.</div>';
+        return;
+      }
+      try {
+        await applyParsedImport(mid, parsedData);
+        // Auto-save to DB
+        await saveAll(mid);
+        resultDiv.innerHTML = '<div style="color:#27AE60;font-weight:600;padding:8px;">✅ Importazione completata e salvata!</div>';
+        document.getElementById('mcImportText').value = '';
+        // Refresh timeline in events tab
+        const evPanel = document.getElementById('mcBodyEvents');
+        if (evPanel) evPanel.innerHTML = getTimeline(mid);
+      } catch (err) {
+        resultDiv.innerHTML = `<div style="color:#c00;padding:8px;">❌ Errore salvataggio: ${err.message}</div>`;
+      }
     });
   });
 }
 
 async function applyParsedImport(mid, parsedData) {
-  // Apply events
+  // Apply events (with dedup against existing)
   if (parsedData.events?.length > 0) {
     for (const e of parsedData.events) {
       const matched = matchPlayerByName(e.principale);
@@ -1299,12 +1332,16 @@ async function applyParsedImport(mid, parsedData) {
         const matchedIn = matchPlayerByName(e.sub_in);
         if (matchedIn) { e.sub_in = matchedIn.nome; e.sub_in_id = matchedIn.id; }
       }
-      eventi.push(e);
+      // Dedup: skip if same tipo + player + minuto already exists
+      const isDup = eventi.some(ex =>
+        ex.tipo === e.tipo && ex.principale_id === e.principale_id && ex.minuto === e.minuto
+      );
+      if (!isDup) eventi.push(e);
     }
   }
   // Apply formation
-  if (parsedData.formation?.length > 0 && parsedData.modulo) {
-    const formPayload = parsedData.formation.map((name, i) => {
+  if (parsedData.formation?.titolari?.length > 0) {
+    const formPayload = parsedData.formation.titolari.map((name, i) => {
       const matched = matchPlayerByName(name);
       return { team_player_id: matched?.tpId || null, ordine: i + 1, is_starter: true, nome: matched?.nome || name };
     }).filter(f => f.team_player_id);
@@ -1312,7 +1349,7 @@ async function applyParsedImport(mid, parsedData) {
       try {
         await apiFetch('/partite/' + mid + '/formazione', {
           method: 'POST',
-          body: JSON.stringify({ formazione: formPayload, modulo: parsedData.modulo })
+          body: JSON.stringify({ formazione: formPayload, modulo: parsedData.formation.modulo })
         });
       } catch (e) { /* silent */ }
     }
@@ -1420,8 +1457,26 @@ function openPasteEventsModal(mid) {
 }
 
 function parseTabellino(text) {
-  const result = { events: [], formation: null };
+  const result = { events: [], formation: null, avversario: null };
   const teamName = (window.YFM.getSocietaName() || '').toLowerCase();
+  // Also try team name from current squad for better matching
+  const squadraName = (window.YFM.getSquadra()?.nome || '').toLowerCase();
+
+  function isOurTeam(name) {
+    const n = name.toLowerCase();
+    return (teamName && (n.includes(teamName) || teamName.includes(n))) ||
+           (squadraName && (n.includes(squadraName) || squadraName.includes(n)));
+  }
+
+  // Extract opponent from header: "Tabellino TeamA - TeamB 5 - 0"
+  const headerMatch = text.match(/^Tabellino\s+(.+?)\s+\d+\s*-\s*\d+/im);
+  if (headerMatch) {
+    const teams = headerMatch[1].split(/\s+-\s+/);
+    if (teams.length === 2) {
+      if (isOurTeam(teams[0])) result.avversario = teams[1].trim();
+      else result.avversario = teams[0].trim();
+    }
+  }
 
   // Parse MARCATORI
   const marcLine = text.match(/MARCATORI:\s*([^\n]+)/i);
@@ -1442,7 +1497,7 @@ function parseTabellino(text) {
     if (!fMatch) continue;
     const fTeam = fMatch[1].trim().toLowerCase();
     // Check if this is our team
-    if (!fTeam.includes(teamName) && !teamName.includes(fTeam)) continue;
+    if (!isOurTeam(fTeam)) continue;
     const modulo = fMatch[2].trim();
     const titolariRaw = fMatch[3].split(',').map(s => s.trim()).filter(Boolean);
     const titolari = titolariRaw.map(s => s.replace(/\([^)]*\)/g, '').trim());

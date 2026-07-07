@@ -913,7 +913,7 @@ function openImportTcModal() {
           </tr></thead><tbody>
           ${fetchedPlayers.map((p, i) => `<tr style="border-bottom:1px solid #f5f5f5;">
             <td style="padding:4px;"><input type="checkbox" checked data-idx="${i}"></td>
-            <td style="padding:4px;font-weight:500;">${p.cognome} ${p.nome}${p.numero_maglia ? ' <span style="color:#888;font-size:10px;">(${p.numero_maglia})</span>' : ''}</td>
+            <td style="padding:4px;font-weight:500;">${p.cognome} ${p.nome}${p.numero_maglia ? ` <span style="color:#888;font-size:10px;">(${p.numero_maglia})</span>` : ''}</td>
             <td style="padding:4px;color:#888;">${p.data_nascita || '-'}</td>
             <td style="padding:4px;color:#888;">${p.ruolo || '?'}</td>
             ${hs ? `<td style="padding:4px;color:#aaa;">${p.gol ?? '-'}</td><td style="padding:4px;color:#aaa;">${p.presenze ?? '-'}</td>` : ''}
