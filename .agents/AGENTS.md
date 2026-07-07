@@ -214,13 +214,13 @@ frontend-v2/src/
 |---------|-------------|----------|
 | `workspace` | Società/club | - |
 | `season` | Stagione sportiva | workspace_id |
-| `category` | Categorie (U14, U15...) | workspace_id |
+| `category` | Categorie (U14, U15...) con girone | workspace_id, girone TEXT |
 | `competition` | Campionati | - |
 | `team` | Squadra | season_id, category_id, classifica_url |
 | `player` | Giocatore (codice_fiscale TEXT UNIQUE partial nullable) | - |
 | `team_player` | Associazione giocatore-squadra | team_id, player_id, aggregato |
 | `injury` | Infortuni giocatore | player_id, team_id |
-| `match` | Partita | team_id, competition_id, live_meta JSONB, formazione_meta JSONB |
+| `match` | Partita | team_id, tipo_competizione TEXT, live_meta JSONB, formazione_meta JSONB |
 | `match_event` | Eventi (GOAL, ASSIST, YELLOW...) | match_id, player_id, player_id_secondario |
 | `match_formation` | Formazione (is_starter = fonte verità) | match_id, team_player_id, ordine |
 | `match_statistics` | Statistiche dettagliate | match_id, team_player_id |

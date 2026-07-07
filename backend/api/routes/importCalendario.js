@@ -62,16 +62,25 @@ function createImportCalendarioRouter({ supabase, authMiddleware, requirePermiss
   // POST /api/calendario/import
   router.post('/api/calendario/import', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
     try {
-      const { squadraId, partite } = req.body;
+      const { squadraId, partite, girone } = req.body;
       if (!squadraId || !partite || !partite.length) return res.status(400).json({ error: 'Dati mancanti' });
 
       const inserts = partite.map(p => ({
         team_id: squadraId, data_ora: p.data, avversario: p.avversario,
-        luogo: p.luogo, giornata: p.giornata, indirizzo_campo: p.indirizzo_campo || null, stato: 'Programmata'
+        luogo: p.luogo, giornata: p.giornata, indirizzo_campo: p.indirizzo_campo || null, stato: 'Programmata',
+        tipo_competizione: 'Campionato'
       }));
 
       const { data, error } = await supabase.from('match').insert(inserts).select();
       if (error) return res.status(400).json({ error: error.message });
+
+      // Salva girone nella category del team
+      if (girone) {
+        const { data: team } = await supabase.from('team').select('category_id').eq('id', squadraId).single();
+        if (team?.category_id) {
+          await supabase.from('category').update({ girone }).eq('id', team.category_id);
+        }
+      }
 
       const team = await supabase.from('team').select('season_id').eq('id', squadraId).single();
       const season = team.data ? await supabase.from('season').select('workspace_id').eq('id', team.data.season_id).single() : null;

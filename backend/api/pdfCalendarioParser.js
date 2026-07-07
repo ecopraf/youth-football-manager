@@ -4,7 +4,7 @@
  */
 const pdfParse = require('pdf-parse');
 
-const HEADER_REGEX = /\*\s+(UNDER\s+\d+[^*]+?)\s+GIRONE:\s*([A-Z](?:\s*[A-Z]*)?)\s*\*/g;
+const HEADER_REGEX = /\*\s+(UNDER\s+\d+[^*]+?)\s+GIRONE:\s*([A-Z]{1,2})(?:\s+\w+)?\s*\*/g;
 
 // Mappa parole senza accento → con accento (dal PDF SGS arrivano senza)
 const ACCENT_MAP = { 'Citta': 'Città', 'Virtus': 'Virtus', 'Universita': 'Università' };

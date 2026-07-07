@@ -184,7 +184,7 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
     }
   });
 
-  // GET /api/teams/search?q=alb — ricerca squadre da team_logo
+  // GET /api/teams/search?q=alb — ricerca squadre da team_logo (dedup per logo)
   router.get('/api/teams/search', authMiddleware, async (req, res) => {
     try {
       const q = (req.query.q || '').trim().toLowerCase();
@@ -193,8 +193,22 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
         .select('nome, logo_path')
         .ilike('nome', `%${q}%`)
         .order('nome')
-        .limit(20);
-      res.json(data || []);
+        .limit(50);
+      if (!data || data.length === 0) return res.json([]);
+      // Dedup: keep best name per logo_path (prefer full name over abbreviations)
+      const byLogo = {};
+      const abbrPrefixes = /^(c\.|pol\.|acc\.|atl\.|s\.|ss\.|asd\.|ssd\.) /i;
+      data.forEach(r => {
+        const key = r.logo_path;
+        if (!byLogo[key]) { byLogo[key] = r; return; }
+        const curIsAbbr = abbrPrefixes.test(byLogo[key].nome);
+        const newIsAbbr = abbrPrefixes.test(r.nome);
+        // Prefer non-abbreviated; if both same, prefer shorter
+        if (curIsAbbr && !newIsAbbr) byLogo[key] = r;
+        else if (curIsAbbr === newIsAbbr && r.nome.length < byLogo[key].nome.length) byLogo[key] = r;
+      });
+      const results = Object.values(byLogo).sort((a, b) => a.nome.localeCompare(b.nome)).slice(0, 15);
+      res.json(results);
     } catch (err) {
       res.json([]);
     }

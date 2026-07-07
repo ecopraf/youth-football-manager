@@ -10,11 +10,13 @@
 export const PAGE_HELP = {
   dashboard: {
     title: '📊 Dashboard',
-    desc: 'Panoramica completa della squadra: statistiche, prossima partita, classifiche e top players.',
+    desc: 'Panoramica completa della squadra: statistiche, prossima partita, classifiche e top players. Personalizzabile per ruolo.',
     items: [
       'Cambia squadra dal selettore in alto a destra',
       'Click su una partita per aprire il dettaglio',
-      'Click su un giocatore nel podio per la scheda completa'
+      'Click su un giocatore nel podio per la scheda completa',
+      'Usa ⚙️ Organizza per riordinare o nascondere i widget',
+      'Segreteria: widget Certificati e Prossima Convocazione in evidenza'
     ]
   },
   roster: {
@@ -34,7 +36,9 @@ export const PAGE_HELP = {
       'Pallini colorati indicano lo stato di completamento',
       'Usa ⚽ Match Center per gestire la partita live (eventi, formazione, note)',
       'Convoca i giocatori e genera la Distinta dai bottoni dedicati',
-      'Archivia le partite concluse per bloccare modifiche'
+      'Archivia le partite concluse per bloccare modifiche',
+      'Nuova partita: scegli tipo (Amichevole/Campionato/Coppa/Torneo)',
+      'Autocomplete avversario con loghi dal database'
     ]
   },
   matchDetail: {
@@ -107,7 +111,10 @@ export const PAGE_HELP = {
     title: '📥 Import Center',
     desc: 'Importa dati da fonti esterne: rosa, calendario, formazioni.',
     items: [
-      'Scegli la fonte (XLS FIGC, Tuttocampo, PDF SGS)',
+      'Calendario PDF: carica il PDF SGS/LND con drag & drop',
+      'Calendario Testo: copia-incolla dal sito SGS',
+      'Rosa XLS: upload tabulato atleti FIGC (.xlsx)',
+      'Portale Regionale: classifica, calendario e marcatori dal girone',
       'Preview dei dati prima della conferma',
       'Storico importazioni in basso'
     ]
@@ -153,6 +160,17 @@ export const PAGE_HELP = {
       'Scegli tipo: genitore (vede solo il figlio) o osservatore',
       'Imposta scadenza',
       'Revoca in qualsiasi momento'
+    ]
+  },
+  notifications: {
+    title: '🔔 Centro Notifiche',
+    desc: 'Comunicazioni in-app e segnalazioni assenze in un unico punto.',
+    items: [
+      'Tab Comunicazioni: notifiche automatiche (es. convocazione salvata)',
+      'Tab Assenze: segnalazioni inviate dai genitori via link guest',
+      'Click ○ per segnare come letta, click Apri per andare alla convocazione',
+      'Badge campanella in header mostra il totale non lette',
+      'Visibile per: Segreteria, Dirigente, Osservatore'
     ]
   },
   playerDetail: {
@@ -409,7 +427,7 @@ export const ELEMENT_HELP = {
   },
   'import.calendarioPDF': {
     title: 'Import Calendario PDF',
-    desc: 'Carica il PDF del calendario SGS/LND. Il parser estrae automaticamente giornate, date, avversari e campi.'
+    desc: 'Carica il PDF del calendario SGS/LND con drag & drop o click. Inserisci il nome squadra come appare nel PDF, seleziona le categorie trovate e conferma l\'import. Il parser estrae automaticamente giornate, date, avversari e indirizzi campo.'
   },
   'import.formazioniTC': {
     title: 'Import Formazioni Tuttocampo',
@@ -455,7 +473,7 @@ export const ELEMENT_HELP = {
   },
   'users.permessi': {
     title: 'Permessi',
-    desc: 'Permessi per modulo: Rosa, Partite, Formazione, Allenamenti, Statistiche, Guest Links. Livelli: Nessuno, Lettura, Scrittura.'
+    desc: 'Permessi per modulo: Rosa, Partite, Formazione, Allenamenti, Statistiche, Guest Links, Import, Report. Livelli: Nessuno, Lettura, Scrittura. Profili predefiniti: Allenatore, Vice, Dirigente, Preparatore, Osservatore, Segreteria.'
   },
   'users.categorie': {
     title: 'Accesso Categorie',

@@ -24,7 +24,7 @@ module.exports = function createTeamRouter({ supabase, authMiddleware }) {
     try {
       const { id } = req.params;
       const { data, error } = await supabase.from('team')
-        .select('*, category:category_id(id, nome, tipo_campionato, anno_da, anno_a)')
+        .select('*, category:category_id(id, nome, tipo_campionato, girone, anno_da, anno_a)')
         .eq('season_id', id).order('nome');
       if (error) return res.status(400).json({ error: error.message });
 

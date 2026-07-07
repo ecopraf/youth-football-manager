@@ -134,10 +134,141 @@ function renderMain(c, logs, teamName) {
   document.getElementById('icGrPreview').addEventListener('click', openGrPreview);
 }
 
-// === IMPORT PDF (redirect to calendar's existing modal) ===
+// === IMPORT PDF CALENDARIO SGS ===
 function openImportPdf() {
-  window.YFM.navigateTo('calendar');
-  setTimeout(() => document.getElementById('btnImportPdf')?.click(), 300);
+  const modal = createModal('📄 Importa Calendario da PDF SGS', `
+    <p style="margin-bottom:12px;color:#666;">Carica il PDF del calendario SGS/LND e inserisci il nome della squadra come riportato nel file.</p>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>File PDF</label>
+      <div id="pdfDropZone" style="border:2px dashed #ccc;border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s;">
+        <div style="font-size:32px;margin-bottom:8px;">📄</div>
+        <div style="font-size:13px;color:#666;">Trascina il PDF qui o <strong style="color:#667eea;">clicca per selezionare</strong></div>
+        <div id="pdfFileName" style="margin-top:8px;font-size:12px;color:#27AE60;display:none;"></div>
+        <input id="pdfFile" type="file" accept=".pdf" style="display:none;">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>Nome squadra nel PDF</label>
+      <input id="pdfTeamName" placeholder="es. DREAMING FOOTBALL ACADEMY">
+    </div>
+    <div id="pdfResult" style="margin-top:16px;"></div>
+  `, '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="pdfSearch">🔍 Cerca</button>', '700px');
+
+  // Drag & drop
+  const dropZone = document.getElementById('pdfDropZone');
+  const fileInput = document.getElementById('pdfFile');
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = '#667eea'; dropZone.style.background = '#f0f4ff'; });
+  dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = '#ccc'; dropZone.style.background = ''; });
+  dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = '#ccc'; dropZone.style.background = ''; if (e.dataTransfer.files[0]) { fileInput.files = e.dataTransfer.files; showFileName(e.dataTransfer.files[0].name); } });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) showFileName(fileInput.files[0].name); });
+  function showFileName(name) { const el = document.getElementById('pdfFileName'); el.textContent = '✅ ' + name; el.style.display = 'block'; }
+
+  document.getElementById('pdfSearch').addEventListener('click', async () => {
+    const file = document.getElementById('pdfFile').files[0];
+    const name = document.getElementById('pdfTeamName').value.trim();
+    if (!file || !name) { alert('Seleziona un PDF e inserisci il nome squadra'); return; }
+
+    const resultDiv = document.getElementById('pdfResult');
+    resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Analisi PDF...</div>';
+
+    const formData = new FormData();
+    formData.append('pdf', file);
+    formData.append('searchName', name);
+
+    try {
+      const token = localStorage.getItem('yfm_token');
+      const resp = await fetch(`${API_BASE}/calendario/parse-pdf`, {
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error);
+
+      if (data.categorie.length === 0) {
+        const sugg = data.suggestions && data.suggestions.length > 0 ? `<p style="margin-top:8px;">Suggerimenti: <strong>${data.suggestions.join(', ')}</strong></p>` : '';
+        resultDiv.innerHTML = `<div style="color:#c00;padding:12px;background:#fee;border-radius:8px;">❌ Squadra non trovata nel PDF.${sugg}</div>`;
+        return;
+      }
+
+      const checkboxes = data.categorie.map((c, i) => `
+        <label style="display:flex;align-items:center;gap:8px;padding:10px;background:#f8f9ff;border-radius:8px;margin-bottom:8px;cursor:pointer;">
+          <input type="checkbox" name="pdfCat" value="${i}" data-cat="${c.categoria}" data-gir="${c.girone}" ${i === 0 ? 'checked' : ''}>
+          <span style="font-weight:600;">${c.categoria}</span> <span style="color:#666;">Girone ${c.girone}</span>
+        </label>`).join('');
+
+      resultDiv.innerHTML = `
+        <div style="background:#e8f5e9;padding:12px;border-radius:8px;margin-bottom:12px;">✅ Trovata in ${data.categorie.length} categorie</div>
+        <p style="font-weight:600;margin-bottom:8px;">Seleziona le categorie da importare:</p>
+        ${checkboxes}
+        <button class="btn btn-primary" id="pdfExtract" style="margin-top:12px;">📥 Estrai Calendario</button>`;
+
+      document.getElementById('pdfExtract').addEventListener('click', () => pdfExtractAndImport(file, name, modal));
+    } catch (err) {
+      resultDiv.innerHTML = `<div style="color:#c00;padding:12px;background:#fee;border-radius:8px;">❌ ${err.message}</div>`;
+    }
+  });
+}
+
+async function pdfExtractAndImport(file, searchName, modal) {
+  const checked = document.querySelectorAll('input[name="pdfCat"]:checked');
+  if (checked.length === 0) { alert('Seleziona almeno una categoria'); return; }
+
+  const resultDiv = document.getElementById('pdfResult');
+  resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Estrazione calendario...</div>';
+
+  const token = localStorage.getItem('yfm_token');
+  let allPartite = [];
+
+  for (const cb of checked) {
+    const formData = new FormData();
+    formData.append('pdf', file);
+    formData.append('searchName', searchName);
+    formData.append('categoria', cb.dataset.cat);
+    formData.append('girone', cb.dataset.gir);
+
+    const resp = await fetch(`${API_BASE}/calendario/extract`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
+    });
+    const data = await resp.json();
+    if (!resp.ok) { resultDiv.innerHTML = `<div style="color:#c00;padding:12px;">❌ ${data.error}</div>`; return; }
+    allPartite = allPartite.concat(data.partite.map(p => ({ ...p, _cat: cb.dataset.cat + ' G.' + cb.dataset.gir })));
+  }
+
+  const rows = allPartite.map(p => {
+    const d = new Date(p.data);
+    const dateStr = d.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit' });
+    const timeStr = d.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' });
+    const icon = p.luogo === 'Casa' ? '🏠' : '✈️';
+    return `<tr><td style="padding:4px 8px;font-size:12px;">${p.giornata}</td><td style="padding:4px 8px;font-size:12px;">${dateStr} ${timeStr}</td><td style="padding:4px 8px;font-size:12px;">${icon} ${p.avversario}</td></tr>`;
+  }).join('');
+
+  resultDiv.innerHTML = `
+    <div style="background:#e8f5e9;padding:8px 12px;border-radius:8px;margin-bottom:12px;">✅ ${allPartite.length} partite estratte</div>
+    <div style="max-height:250px;overflow-y:auto;border:1px solid #eee;border-radius:8px;">
+      <table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f5f5f5;"><th style="padding:6px 8px;font-size:11px;text-align:left;">G</th><th style="padding:6px 8px;font-size:11px;text-align:left;">Data</th><th style="padding:6px 8px;font-size:11px;text-align:left;">Partita</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    <button class="btn btn-primary" id="pdfConfirm" style="margin-top:12px;width:100%;">✅ Conferma e Importa (${allPartite.length} partite)</button>`;
+
+  document.getElementById('pdfConfirm').addEventListener('click', async () => {
+    showLoading('Importazione...');
+    try {
+      const girone = checked[0]?.dataset?.gir || null;
+      const resp = await fetch(`${API_BASE}/calendario/import`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ squadraId: window.YFM.squadraId, partite: allPartite, girone })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error);
+      hideLoading();
+      modal.close();
+      alert(`✅ Importate ${data.inserite} partite!`);
+      loadImportCenter();
+    } catch (err) {
+      hideLoading();
+      alert('Errore: ' + err.message);
+    }
+  });
 }
 
 // === IMPORT TESTO CALENDARIO SGS ===
@@ -490,9 +621,11 @@ function openGrConfig() {
   document.getElementById('grSave').addEventListener('click', async () => {
     if (!selectedChamp || !selectedGroup) return;
     const url = '1/' + selectedChamp + '/' + selectedGroup;
+    const grGroupSel = document.getElementById('grGroup');
+    const gironeName = grGroupSel?.options[grGroupSel.selectedIndex]?.text?.replace('Girone ', '') || '';
     showLoading('Salvataggio...');
     try {
-      await apiFetch('/gr/configure', { method: 'POST', body: JSON.stringify({ teamId: window.YFM.squadraId, url }) });
+      await apiFetch('/gr/configure', { method: 'POST', body: JSON.stringify({ teamId: window.YFM.squadraId, url, girone: gironeName }) });
       // Aggiorna classifica_url in memoria
       const sq = window.YFM.allSquadre?.find(s => s.id === window.YFM.squadraId);
       if (sq) sq.classifica_url = `https://v2.apiweb.gazzettaregionale.it/classifiche/levels/1/${selectedChamp}/${selectedGroup}/classifica`;

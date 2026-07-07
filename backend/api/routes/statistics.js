@@ -6,17 +6,13 @@ const { coreTeamName } = require('../helpers/importUtils');
 function createStatisticsRouter({ supabase, authMiddleware }) {
   const router = express.Router();
 
-  // GET /api/squadre/:id/competitions — lista competizioni disponibili per il team
+  // GET /api/squadre/:id/competitions — DEPRECATED, returns fixed types
   router.get('/api/squadre/:id/competitions', authMiddleware, async (req, res) => {
-    try {
-      const { data: team } = await supabase.from('team').select('season:season_id(workspace_id)').eq('id', req.params.id).single();
-      if (!team) return res.status(404).json({ error: 'Team non trovato' });
-      const wsId = team.season.workspace_id;
-      const { data } = await supabase.from('competition').select('id, nome, tipo').or(`workspace_id.eq.${wsId},workspace_id.is.null`).order('tipo').order('nome');
-      res.json(data || []);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+    res.json([
+      { nome: 'Campionato', tipo: 'Campionato' },
+      { nome: 'Coppa', tipo: 'Coppa' },
+      { nome: 'Torneo', tipo: 'Torneo' }
+    ]);
   });
 
   // GET /api/squadre/:id/statistiche-complete
@@ -24,14 +20,14 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
     try {
       const { id } = req.params;
       const tipo = req.query.tipo || 'campionato'; // campionato|ufficiali|tutte|coppa|amichevoli
-      const { data: partiteRaw } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, competition:competition_id(nome, tipo), giornata').eq('team_id', id).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora', { ascending: false });
+      const { data: partiteRaw } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, tipo_competizione, giornata').eq('team_id', id).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora', { ascending: false });
 
       // Filter by tipo
       let partite = partiteRaw || [];
-      if (tipo === 'campionato') partite = partite.filter(p => p.competition?.tipo === 'Campionato');
-      else if (tipo === 'ufficiali') partite = partite.filter(p => p.competition?.tipo === 'Campionato' || p.competition?.tipo === 'Coppa');
-      else if (tipo === 'coppa') partite = partite.filter(p => p.competition?.tipo === 'Coppa');
-      else if (tipo === 'amichevoli') partite = partite.filter(p => p.competition?.tipo === 'Amichevole' || p.competition?.tipo === 'Torneo' || !p.competition);
+      if (tipo === 'campionato') partite = partite.filter(p => p.tipo_competizione === 'Campionato');
+      else if (tipo === 'ufficiali') partite = partite.filter(p => p.tipo_competizione === 'Campionato' || p.tipo_competizione === 'Coppa');
+      else if (tipo === 'coppa') partite = partite.filter(p => p.tipo_competizione === 'Coppa');
+      else if (tipo === 'amichevoli') partite = partite.filter(p => p.tipo_competizione === 'Amichevole' || p.tipo_competizione === 'Torneo' || !p.tipo_competizione);
 
       let vinte = 0, pareggiate = 0, perse = 0, golFatti = 0, golSubiti = 0;
       const risultati = [];
@@ -83,7 +79,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         const gc = p.gol_casa || 0, go = p.gol_ospite || 0;
         golFatti += gc; golSubiti += go;
         if (gc > go) vinte++; else if (gc === go) pareggiate++; else perse++;
-        risultati.push({ id: p.id, dataOra: p.data_ora, avversario: p.avversario, luogo: p.luogo, competizione: p.competition?.nome || null, tipoCompetizione: p.competition?.tipo || null, giornata: p.giornata || null, golFatti: gc, golSubiti: go, logo: findLogo(p.avversario) });
+        risultati.push({ id: p.id, dataOra: p.data_ora, avversario: p.avversario, luogo: p.luogo, competizione: p.tipo_competizione || null, tipoCompetizione: p.tipo_competizione || null, giornata: p.giornata || null, golFatti: gc, golSubiti: go, logo: findLogo(p.avversario) });
       });
 
       const partiteGiocate = partite.length;
@@ -101,12 +97,12 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const { data: players } = await supabase.from('team_player').select('id, player:player_id(id, nome, cognome), numero_maglia').eq('team_id', id);
       if (!players || players.length === 0) return res.json({ marcatori: [], assistmen: [], presenze: [] });
 
-      const { data: matchesRaw } = await supabase.from('match').select('id, competition:competition_id(tipo)').eq('team_id', id).eq('stato', 'Terminata');
+      const { data: matchesRaw } = await supabase.from('match').select('id, tipo_competizione').eq('team_id', id).eq('stato', 'Terminata');
       let matches = matchesRaw || [];
-      if (tipo === 'campionato') matches = matches.filter(m => m.competition?.tipo === 'Campionato');
-      else if (tipo === 'ufficiali') matches = matches.filter(m => m.competition?.tipo === 'Campionato' || m.competition?.tipo === 'Coppa');
-      else if (tipo === 'coppa') matches = matches.filter(m => m.competition?.tipo === 'Coppa');
-      else if (tipo === 'amichevoli') matches = matches.filter(m => m.competition?.tipo === 'Amichevole' || m.competition?.tipo === 'Torneo' || !m.competition);
+      if (tipo === 'campionato') matches = matches.filter(m => m.tipo_competizione === 'Campionato');
+      else if (tipo === 'ufficiali') matches = matches.filter(m => m.tipo_competizione === 'Campionato' || m.tipo_competizione === 'Coppa');
+      else if (tipo === 'coppa') matches = matches.filter(m => m.tipo_competizione === 'Coppa');
+      else if (tipo === 'amichevoli') matches = matches.filter(m => m.tipo_competizione === 'Amichevole' || m.tipo_competizione === 'Torneo' || !m.tipo_competizione);
       const matchIds = matches.map(m => m.id);
       if (matchIds.length === 0) return res.json({ marcatori: [], assistmen: [], presenze: [] });
 
@@ -175,15 +171,15 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const tipo = req.query.tipo || 'tutte'; // tutte|ufficiali|campionato|coppa|amichevoli
       const { data: tps } = await supabase.from('team_player').select('id, player_id, ruolo_preferito, player:player_id(id, nome, cognome)').eq('team_id', teamId).neq('stato', 'Svincolato');
 
-      // Fetch matches with competition info for filtering
-      let matchQuery = supabase.from('match').select('id, competition:competition_id(tipo)').eq('team_id', teamId).eq('stato', 'Terminata');
+      // Fetch matches with tipo_competizione for filtering
+      let matchQuery = supabase.from('match').select('id, tipo_competizione').eq('team_id', teamId).eq('stato', 'Terminata');
       const { data: matchesRaw } = await matchQuery;
       // Filter by tipo
       let matches = matchesRaw || [];
-      if (tipo === 'ufficiali') matches = matches.filter(m => m.competition?.tipo === 'Campionato' || m.competition?.tipo === 'Coppa');
-      else if (tipo === 'campionato') matches = matches.filter(m => m.competition?.tipo === 'Campionato');
-      else if (tipo === 'coppa') matches = matches.filter(m => m.competition?.tipo === 'Coppa');
-      else if (tipo === 'amichevoli') matches = matches.filter(m => m.competition?.tipo === 'Amichevole' || m.competition?.tipo === 'Torneo' || !m.competition);
+      if (tipo === 'ufficiali') matches = matches.filter(m => m.tipo_competizione === 'Campionato' || m.tipo_competizione === 'Coppa');
+      else if (tipo === 'campionato') matches = matches.filter(m => m.tipo_competizione === 'Campionato');
+      else if (tipo === 'coppa') matches = matches.filter(m => m.tipo_competizione === 'Coppa');
+      else if (tipo === 'amichevoli') matches = matches.filter(m => m.tipo_competizione === 'Amichevole' || m.tipo_competizione === 'Torneo' || !m.tipo_competizione);
       const matchIds = matches.map(m => m.id);
 
       let formazioni = [], eventi = [], statsRows = [];
@@ -252,13 +248,13 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const teamId = req.params.id;
       const tipo = req.query.tipo || 'tutte';
       const { data: matchesRaw } = await supabase.from('match')
-        .select('id, giornata, gol_casa, gol_ospite, data_ora, competition:competition_id(tipo)')
+        .select('id, giornata, gol_casa, gol_ospite, data_ora, tipo_competizione')
         .eq('team_id', teamId).eq('stato', 'Terminata').order('data_ora');
       let matches = matchesRaw || [];
-      if (tipo === 'ufficiali') matches = matches.filter(m => m.competition?.tipo === 'Campionato' || m.competition?.tipo === 'Coppa');
-      else if (tipo === 'campionato') matches = matches.filter(m => m.competition?.tipo === 'Campionato');
-      else if (tipo === 'coppa') matches = matches.filter(m => m.competition?.tipo === 'Coppa');
-      else if (tipo === 'amichevoli') matches = matches.filter(m => m.competition?.tipo === 'Amichevole' || m.competition?.tipo === 'Torneo' || !m.competition);
+      if (tipo === 'ufficiali') matches = matches.filter(m => m.tipo_competizione === 'Campionato' || m.tipo_competizione === 'Coppa');
+      else if (tipo === 'campionato') matches = matches.filter(m => m.tipo_competizione === 'Campionato');
+      else if (tipo === 'coppa') matches = matches.filter(m => m.tipo_competizione === 'Coppa');
+      else if (tipo === 'amichevoli') matches = matches.filter(m => m.tipo_competizione === 'Amichevole' || m.tipo_competizione === 'Torneo' || !m.tipo_competizione);
 
       let vittorie = 0, pareggi = 0, sconfitte = 0;
       const perGiornata = matches.map(m => {
@@ -277,7 +273,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
   router.get('/api/partite/:matchId/report', authMiddleware, async (req, res) => {
     try {
       const { matchId } = req.params;
-      const { data: match } = await supabase.from('match').select('*, competition:competition_id(nome), team:team_id(nome, season:season_id(workspace_id))').eq('id', matchId).single();
+      const { data: match } = await supabase.from('match').select('*, team:team_id(nome, season:season_id(workspace_id))').eq('id', matchId).single();
       if (!match) return res.status(404).json({ error: 'Partita non trovata' });
 
       // Workspace name
@@ -366,7 +362,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         partita: {
           avversario: match.avversario,
           dataOra: match.data_ora,
-          competizione: match.competition?.nome || '',
+          competizione: match.tipo_competizione || '',
           giornata: match.giornata,
           luogo: match.luogo,
           note: match.note
@@ -389,7 +385,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const { data: team } = await supabase.from('team').select('nome, category:category_id(nome), season:season_id(nome, workspace_id)').eq('id', teamId).single();
       const { data: ws } = await supabase.from('workspace').select('nome').eq('id', team?.season?.workspace_id).single();
 
-      const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, giornata, competition:competition_id(nome)').eq('team_id', teamId).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora');
+      const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, giornata, tipo_competizione').eq('team_id', teamId).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora');
 
       // Loghi avversari
       const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
@@ -417,7 +413,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         const gc = m.gol_casa || 0, go = m.gol_ospite || 0;
         gf += gc; gs += go;
         if (gc > go) v++; else if (gc === go) p++; else s++;
-        return { competizione: m.competition?.nome || 'Campionato', giornata: m.giornata, data: m.data_ora, avversario: m.avversario, luogo: m.luogo, golCasa: gc, golOspiti: go, logo: findLogo(m.avversario) };
+        return { competizione: m.tipo_competizione || 'Campionato', giornata: m.giornata, data: m.data_ora, avversario: m.avversario, luogo: m.luogo, golCasa: gc, golOspiti: go, logo: findLogo(m.avversario) };
       });
 
       // Top players
@@ -474,14 +470,14 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
 
       // All matches for those teams
       const { data: matches } = teamIds.length > 0
-        ? await supabase.from('match').select('id, data_ora, avversario, giornata, competition:competition_id(nome, tipo)').in('team_id', teamIds).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora')
+        ? await supabase.from('match').select('id, data_ora, avversario, giornata, tipo_competizione').in('team_id', teamIds).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora')
         : { data: [] };
 
       // Filter by competition types
       let filteredMatches = matches || [];
       if (filterComp && filterComp.length > 0) {
         filteredMatches = filteredMatches.filter(m => {
-          const tipo = m.competition?.tipo || 'Amichevole';
+          const tipo = m.tipo_competizione || 'Amichevole';
           return filterComp.includes(tipo);
         });
       }
@@ -512,8 +508,8 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
           return {
             tipo: e.tipo_evento,
             minuto: e.minuto,
-            competizione: m?.competition?.nome || '',
-            tipoCompetizione: m?.competition?.tipo || '',
+            competizione: m?.tipo_competizione || '',
+            tipoCompetizione: m?.tipo_competizione || '',
             giornata: m?.giornata || '',
             partita: m?.avversario || '',
             data: m?.data_ora || ''

@@ -337,6 +337,11 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | fix: notification trigger — workspace_id via category join (team non ha workspace_id), try/catch Supabase |
 | (pending) | fix: badge campanella segreteria — rimosso early return su squadraId mancante |
 | (pending) | style: wizard utenti — rimosso dot stagione attiva, bottone 💾 Salva |
+| (pending) | feat: tipo competizione semplificato — dropdown 4 opzioni fisse (Campionato/Coppa/Torneo/Amichevole), campo match.tipo_competizione TEXT, rimosso JOIN competition |
+| (pending) | feat: girone in category — colonna girone TEXT, auto-save da import PDF e config GR, distinta/convocazione mostrano "U15 Regionale - Girone E" |
+| (pending) | fix: distinta dinamica per tipo — "del campionato X", "del torneo X", "della coppa X", "Gara Amichevole" |
+| (pending) | fix: convocazione isAmichevole — variabile non definita causava crash "Vedi Convocazione" |
+| (pending) | fix: PDF parser girone regex — cattura solo lettera (es. B) ignorando suffissi (BIS) |
 
 ---
 

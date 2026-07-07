@@ -10,8 +10,8 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
   // ── PARTITE CRUD ──
   router.get('/api/squadre/:squadraId/partite', authMiddleware, async (req, res) => {
     try {
-      const { data } = await supabase.from('match').select('*, competition:competition_id(id, nome)').eq('team_id', req.params.squadraId).order('data_ora', { ascending: false });
-      const result = (data || []).map(m => ({ ...m, competizione: m.competition?.nome || null }));
+      const { data } = await supabase.from('match').select('*').eq('team_id', req.params.squadraId).order('data_ora', { ascending: false });
+      const result = (data || []).map(m => ({ ...m, competizione: m.tipo_competizione || null }));
       res.json(result);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -20,7 +20,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     try {
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const { data } = await supabase.from('match').select('*, competition:competition_id(id, nome, tipo)').eq('team_id', req.params.squadraId).gte('data_ora', todayStart).order('data_ora', { ascending: true }).limit(5);
+      const { data } = await supabase.from('match').select('*').eq('team_id', req.params.squadraId).gte('data_ora', todayStart).order('data_ora', { ascending: true }).limit(5);
       // Logo lookup for opponents
       const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
       const findLogo = (avv) => {
@@ -43,7 +43,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         }
         return best;
       };
-      const result = (data || []).map(m => ({ ...m, competizione: m.competition?.nome || null, tipoCompetizione: m.competition?.tipo || null, logo: findLogo(m.avversario) }));
+      const result = (data || []).map(m => ({ ...m, competizione: m.tipo_competizione || null, tipoCompetizione: m.tipo_competizione || null, logo: findLogo(m.avversario) }));
       res.json(result);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -51,12 +51,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
   router.post('/api/squadre/:squadraId/partite', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
     try {
       const p = req.body;
-      let competition_id = null;
-      if (p.competizione) {
-        const { data: comp } = await supabase.from('competition').select('id').ilike('nome', '%' + p.competizione + '%').limit(1).single();
-        if (comp) competition_id = comp.id;
-      }
-      const { data } = await supabase.from('match').insert({ team_id: req.params.squadraId, data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, competition_id, giornata: p.giornata }).select().single();
+      const { data } = await supabase.from('match').insert({ team_id: req.params.squadraId, data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, tipo_competizione: p.tipoCompetizione || null, giornata: p.giornata }).select().single();
       res.status(201).json(data);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -64,13 +59,8 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
   router.put('/api/partite/:id', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
     try {
       const p = req.body;
-      let competition_id = undefined;
-      if (p.competizione) {
-        const { data: comp } = await supabase.from('competition').select('id').ilike('nome', '%' + p.competizione + '%').limit(1).single();
-        competition_id = comp ? comp.id : null;
-      }
       const updateData = { data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, giornata: p.giornata };
-      if (competition_id !== undefined) updateData.competition_id = competition_id;
+      if (p.tipoCompetizione !== undefined) updateData.tipo_competizione = p.tipoCompetizione || null;
       if (p.noteAvversario !== undefined) updateData.note_avversario = p.noteAvversario;
       if (p.golCasa !== undefined) updateData.gol_casa = p.golCasa;
       if (p.golOspite !== undefined) updateData.gol_ospite = p.golOspite;
@@ -341,9 +331,9 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
 
   router.get('/api/partite/:matchId/dettaglio', authMiddleware, async (req, res) => {
     try {
-      const { data: match } = await supabase.from('match').select('*, competition:competition_id(nome)').eq('id', req.params.matchId).single();
+      const { data: match } = await supabase.from('match').select('*').eq('id', req.params.matchId).single();
       if (match) {
-        match.competizione = match.competition?.nome || null;
+        match.competizione = match.tipo_competizione || null;
         // Logo lookup
         const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
         if (logos && match.avversario) {
@@ -488,14 +478,9 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         if (row.length < 3) continue;
         const [data, ora, avversario, luogo, competizione, giornata] = row;
         const dataOra = new Date(`${data}T${ora || '15:00'}:00`).toISOString();
-        let comp_id = null;
-        if (competizione) {
-          const { data: comp } = await supabase.from('competition').select('id').ilike('nome', '%' + competizione + '%').limit(1).single();
-          if (comp) comp_id = comp.id;
-        }
         const { error } = await supabase.from('match').insert({
           team_id: req.params.squadraId, data_ora: dataOra, avversario: avversario || 'Avversario',
-          luogo: luogo || 'Casa', competition_id: comp_id, giornata: parseInt(giornata) || null
+          luogo: luogo || 'Casa', tipo_competizione: competizione || null, giornata: parseInt(giornata) || null
         });
         if (!error) inserite++;
       }

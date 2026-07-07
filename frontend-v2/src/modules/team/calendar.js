@@ -614,12 +614,13 @@ export async function openMatchForm(mid) {
   const m = mid ? allMatches.find(x => x.id === mid) : null;
   const editDate = m && m.data_ora ? m.data_ora.slice(0, 16) : '';
   
-  // Carica competitions del workspace
-  let competitions = [];
-  try { competitions = await apiFetch(`/squadre/${window.YFM.squadraId}/competitions`); } catch(e) {}
-  const compOptions = '<option value="">Amichevole</option>' + competitions.map(c => 
-    `<option value="${c.nome}" ${m && m.competizione === c.nome ? 'selected' : ''}>${c.nome}</option>`
-  ).join('');
+  // Dropdown 4 tipologie fisse
+  const editComp = m?.tipo_competizione || m?.competizione || '';
+  const selectedType = !editComp ? '' : editComp === 'Campionato' ? 'campionato' : editComp === 'Coppa' ? 'coppa' : editComp.toLowerCase().includes('torneo') ? 'torneo' : 'campionato';
+  const compOptions = `<option value="" ${selectedType === '' ? 'selected' : ''}>Amichevole</option>
+    <option value="campionato" ${selectedType === 'campionato' ? 'selected' : ''}>Campionato</option>
+    <option value="coppa" ${selectedType === 'coppa' ? 'selected' : ''}>Coppa</option>
+    <option value="torneo" ${selectedType === 'torneo' ? 'selected' : ''}>Torneo</option>`;
 
   // Carica squadre del girone se configurato
   let gironeTeams = [];
@@ -657,7 +658,7 @@ export async function openMatchForm(mid) {
   </div>
   <div class="form-group" style="margin-bottom:12px;"><label>Luogo</label><select id="mfL"><option ${m && m.luogo === 'Casa' ? 'selected' : ''}>Casa</option><option ${m && m.luogo === 'Trasferta' ? 'selected' : ''}>Trasferta</option></select></div>
   <div class="form-group" style="margin-bottom:12px;"><label>Competizione</label><select id="mfC">${compOptions}</select></div>
-  <div class="form-group" id="mfTorneoGroup" style="margin-bottom:12px;display:none;"><label>Nome torneo</label><input id="mfTorneo" placeholder="es. Torneo Città di Roma" value="${m && !m.competition_id && m.competizione ? m.competizione : ''}"></div>
+  <div class="form-group" id="mfTorneoGroup" style="margin-bottom:12px;display:none;"><label>Nome torneo</label><input id="mfTorneo" placeholder="es. Torneo Città di Roma" value="${selectedType === 'torneo' ? editComp : ''}"></div>
   <div class="form-group"><label>Giornata</label><input id="mfG" type="number" value="${m ? m.giornata || '' : ''}" style="width:80px;"></div>`;
   const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="saveBtn">Salva</button>';
   const modal = createModal(m ? 'Modifica' : 'Nuova Partita', content, footer, '500px');
@@ -710,21 +711,26 @@ export async function openMatchForm(mid) {
     if (!mfAInput.contains(e.target) && !mfAResults.contains(e.target)) mfAResults.style.display = 'none';
   }, { once: false });
 
-  // Mostra campo torneo se amichevole
+  // Mostra campo torneo solo se tipo = torneo
   const compSel = document.getElementById('mfC');
   const torneoGroup = document.getElementById('mfTorneoGroup');
-  const toggleTorneo = () => { torneoGroup.style.display = compSel.value === '' ? 'block' : 'none'; };
+  const toggleTorneo = () => { torneoGroup.style.display = compSel.value === 'torneo' ? 'block' : 'none'; };
   compSel.addEventListener('change', toggleTorneo);
   toggleTorneo();
   document.getElementById('saveBtn').addEventListener('click', async () => {
   const rawDate = document.getElementById('mfD').value;
-  const compValue = document.getElementById('mfC').value;
+  const compType = document.getElementById('mfC').value;
   const torneoValue = document.getElementById('mfTorneo')?.value?.trim() || '';
+  // Risolvi tipo → nome competizione
+  let tipoCompetizione = null;
+  if (compType === 'campionato') tipoCompetizione = 'Campionato';
+  else if (compType === 'coppa') tipoCompetizione = 'Coppa';
+  else if (compType === 'torneo') tipoCompetizione = torneoValue || 'Torneo';
   const d = {
     dataOra: rawDate ? rawDate + ':00' : null,
     avversario: document.getElementById('mfA').value,
     luogo: document.getElementById('mfL').value,
-    competizione: compValue || torneoValue || '',
+    tipoCompetizione,
     giornata: parseInt(document.getElementById('mfG').value) || null
   };
   showLoading();

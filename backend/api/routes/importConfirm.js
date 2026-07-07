@@ -15,11 +15,7 @@ function createImportConfirmRouter({ supabase, authMiddleware, requirePermission
       const { squadraId, partite, importResults, archiveCompleted, competizione, importEvents, importFormations, teamName } = req.body;
       if (!squadraId || !partite || !partite.length) return res.status(400).json({ error: 'Dati mancanti' });
 
-      let competition_id = null;
-      if (competizione) {
-        const { data: comp } = await supabase.from('competition').select('id').ilike('nome', '%' + competizione + '%').limit(1).single();
-        if (comp) competition_id = comp.id;
-      }
+      let tipoComp = competizione || null;
 
       let roster = [];
       if (importEvents) {
@@ -68,7 +64,7 @@ function createImportConfirmRouter({ supabase, authMiddleware, requirePermission
             if (archiveCompleted) updateData.archiviata = true;
           }
           if (p.detailLink) updateData.tc_match_url = p.detailLink;
-          if (competition_id) updateData.competition_id = competition_id;
+          if (tipoComp) updateData.tipo_competizione = tipoComp;
           if (Object.keys(updateData).length > 0) await supabase.from('match').update(updateData).eq('id', existMatch.id);
           aggiornate++;
 
@@ -96,7 +92,7 @@ function createImportConfirmRouter({ supabase, authMiddleware, requirePermission
         const insertData = {
           team_id: squadraId, data_ora: dataOra, avversario: p.avversario,
           luogo: p.luogo || 'Casa', giornata: p.giornata || null,
-          competition_id, tc_match_url: p.detailLink || null
+          tipo_competizione: tipoComp, tc_match_url: p.detailLink || null
         };
         if (importResults && p.golCasa !== null && p.golOspite !== null) {
           insertData.gol_casa = p.golCasa; insertData.gol_ospite = p.golOspite;

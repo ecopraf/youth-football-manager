@@ -2,6 +2,22 @@ import { apiFetch } from '../../services/api';
 import { formatDateShort } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 
+function buildCompLine(partita) {
+  const comp = partita.competizione || partita.tipo_competizione || '';
+  const squadra = window.YFM.getSquadra ? window.YFM.getSquadra() : {};
+  const tipoCamp = squadra.category?.tipo_campionato || '';
+  const catNome = squadra.category?.nome || '';
+  const girone = squadra.category?.girone || '';
+  if (comp === 'Campionato') {
+    let nome = (catNome ? catNome + ' ' : '') + (tipoCamp || 'Campionato');
+    if (girone) nome += ' - Girone ' + girone;
+    return 'del campionato <strong>' + nome + '</strong>';
+  }
+  if (comp === 'Coppa') return 'della coppa <strong>' + (catNome ? catNome + ' ' : '') + 'Coppa</strong>';
+  if (comp.toLowerCase().includes('torneo')) return 'del torneo <strong>' + comp + '</strong>';
+  return '<strong>Gara Amichevole</strong>';
+}
+
 export async function openDistinta(mid, staffOverrides) {
   const content = '<div id="distintaInner"><div class="loading"><div class="spinner"></div>Caricamento distinta...</div></div>';
   const footer = '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>' +
@@ -244,7 +260,7 @@ function renderDistinta(d, staff) {
   const logoSocieta = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : '';
   const logoSocietaHtml = logoSocieta ? '<img src="' + logoSocieta + '" alt="Logo" style="height:80px;">' : '<div style="width:80px;"></div>';
   const fac = window.YFM.facility;
-  const campoCasa = fac ? fac.nome + ' - ' + fac.indirizzo + ', ' + fac.citta : '';
+  const campoCasa = fac ? [fac.nome, fac.indirizzo, fac.citta].filter(Boolean).join(' - ') : '';
   const campoInfo = d.partita.luogo === 'Trasferta' ? (d.partita.indirizzo_campo || 'Trasferta') : (campoCasa || 'Casa');
   
   // Staff section - ordine ufficiale FIGC
@@ -284,7 +300,7 @@ function renderDistinta(d, staff) {
     // INFO GARA
     '<div style="border:1px solid #000;padding:8px 10px;margin:6px 0;text-align:left;font-size:10px;line-height:1.7;">' +
       'Distinta dei/delle giocatori/trici partecipanti alla gara <strong>' + societa + ' - ' + d.partita.avversario + '</strong><br>' +
-      'del campionato <strong>' + (d.partita.competizione || '________________') + '</strong><br>' +
+      buildCompLine(d.partita) + '<br>' +
       'da disputare il <strong>' + dt.toLocaleDateString('it-IT') + '</strong> ore <strong>' + dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + '</strong>' + (d.partita.giornata ? ' (Giornata ' + d.partita.giornata + ')' : '') + '<br>' +
       'presso <strong>' + campoInfo + '</strong>' +
     '</div>' +

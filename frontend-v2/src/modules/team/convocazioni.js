@@ -149,17 +149,23 @@ function showConvocationPreview(match, list, isArchiviata = false) {
   const catNome = squadra.category?.nome || squadra.categoria || 'U.15';
   const tipoCampionato = squadra.category?.tipo_campionato || '';
   
-  // Intestazione: per amichevoli solo "U.15 AMICHEVOLE", per campionato "U.15 Regionali"
-  const comp = match.competizione || '';
-  const isAmichevole = comp.toLowerCase().includes('amichevole') || comp === '';
+  // Intestazione per tipo competizione
+  const comp = match.competizione || match.tipo_competizione || '';
+  const girone = squadra.category?.girone || '';
   let titolo2 = '';
-  if (isAmichevole) {
-    titolo2 = catNome + ' AMICHEVOLE';
-  } else {
+  if (comp === 'Campionato') {
     titolo2 = catNome + (tipoCampionato ? ' ' + tipoCampionato : '');
+    if (girone) titolo2 += ' - Girone ' + girone;
+    if (match.giornata) titolo2 += ' — Giornata ' + match.giornata;
+  } else if (comp === 'Coppa') {
+    titolo2 = catNome + ' COPPA';
+  } else if (comp.toLowerCase().includes('torneo')) {
+    titolo2 = catNome + ' TORNEO';
+  } else {
+    titolo2 = catNome + ' AMICHEVOLE';
   }
   
-  const campoCasa = window.YFM.facility ? `${window.YFM.facility.nome} - ${window.YFM.facility.indirizzo}, ${window.YFM.facility.citta}` : '';
+  const campoCasa = window.YFM.facility ? [window.YFM.facility.nome, window.YFM.facility.indirizzo, window.YFM.facility.citta].filter(Boolean).join(' - ') : '';
   const campoInfo = match.luogo === 'Trasferta' ? (match.indirizzo_campo || 'Trasferta') : (campoCasa || 'Casa');
   
   const oraStr = isValidDate ? dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '--:--';
@@ -173,6 +179,7 @@ function showConvocationPreview(match, list, isArchiviata = false) {
   }
   
   const logoWs = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : '';
+  const isAmichevole = !comp || comp === 'Amichevole';
   const giornataStr = !isAmichevole && match.giornata ? ` (${match.giornata}a)` : '';
   const gironeStr = !isAmichevole && match.girone ? ` - Gir. ${match.girone}` : '';
   

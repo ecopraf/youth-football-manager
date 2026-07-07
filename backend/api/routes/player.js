@@ -201,23 +201,17 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const tpMap = {};
       tps.forEach(tp => { tpMap[tp.id] = { stagione: tp.team?.season?.nome || '-', squadra: tp.team?.nome || '-' }; });
 
-      // Fetch formations + match competition in one go
+      // Fetch formations + match tipo_competizione in one go
       const { data: formations } = await supabase.from('match_formation')
         .select('team_player_id, match_id').in('team_player_id', tpIds);
       const matchIds = [...new Set((formations || []).map(f => f.match_id))];
       
-      // Fetch match → competition type
+      // Fetch match → tipo_competizione
       let matchCompMap = {};
       if (matchIds.length > 0) {
         const { data: matches } = await supabase.from('match')
-          .select('id, competition_id').in('id', matchIds);
-        const compIds = [...new Set((matches || []).filter(m => m.competition_id).map(m => m.competition_id))];
-        let compMap = {};
-        if (compIds.length > 0) {
-          const { data: comps } = await supabase.from('competition').select('id, tipo').in('id', compIds);
-          (comps || []).forEach(c => { compMap[c.id] = c.tipo; });
-        }
-        (matches || []).forEach(m => { matchCompMap[m.id] = compMap[m.competition_id] || 'Altro'; });
+          .select('id, tipo_competizione').in('id', matchIds);
+        (matches || []).forEach(m => { matchCompMap[m.id] = m.tipo_competizione || 'Altro'; });
       }
 
       // Fetch stats
@@ -325,7 +319,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const matchIds = [...new Set(formations.map(f => f.match_id))];
 
       const { data: matches } = await supabase.from('match')
-        .select('id, avversario, data_ora, gol_casa, gol_ospite, luogo, competition:competition_id(nome)')
+        .select('id, avversario, data_ora, gol_casa, gol_ospite, luogo, tipo_competizione')
         .in('id', matchIds).order('data_ora', { ascending: false }).limit(limit);
 
       const { data: events } = await supabase.from('match_event')
@@ -362,7 +356,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
           data: m.data_ora,
           risultato: `${m.gol_casa}-${m.gol_ospite}`,
           luogo: m.luogo,
-          competizione: m.competition?.nome || null,
+          competizione: m.tipo_competizione || null,
           minuti: minutiMap[m.id] || 0,
           gol: mEvents.filter(e => e.tipo_evento === 'GOAL').length,
           assist: mEvents.filter(e => e.tipo_evento === 'ASSIST').length,

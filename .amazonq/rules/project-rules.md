@@ -121,12 +121,14 @@ Le tabelle reali nel DB Supabase sono:
 - `workspace`, `season`, `category`, `competition`, `facility`
 - `team`, `player`, `team_player`, `staff`, `team_staff`
 
+**Colonne notevoli `category`**: `tipo_campionato TEXT` (Regionale, Provinciale...), `girone TEXT` (lettera girone, es. "E" — auto-salvato da import PDF e config GR)
+
 **Colonne notevoli `player`**: `codice_fiscale TEXT` (UNIQUE partial, nullable — gold standard per matching import), `matricola_figc TEXT` (tessera FIGC)
 
 **Colonne notevoli `team_player`**: `stato TEXT` (Attivo, Infortunato, Svincolato), `aggregato BOOLEAN DEFAULT false` (true se giocatore aggregato da categoria inferiore)
 - `match`, `match_event`, `match_formation`, `match_statistics`, `convocation`
 
-**Colonne notevoli `match`**: `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS), `tc_match_url TEXT` (URL pagina partita Tuttocampo per import formazioni), `live_meta JSONB` (`{stato: '1t'|'intervallo'|'2t'|'fine', start_1t, end_1t, start_2t, end_match}` — lifecycle Live Match Mode), `formazione_meta JSONB` (`{modulo, positions, modulo_finale}` — modulo iniziale + posizioni custom + modulo finale se cambiato durante partita)
+**Colonne notevoli `match`**: `tipo_competizione TEXT` (Campionato, Coppa, Torneo [nome], null=Amichevole), `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS), `tc_match_url TEXT` (URL pagina partita Tuttocampo per import formazioni), `live_meta JSONB` (`{stato: '1t'|'intervallo'|'2t'|'fine', start_1t, end_1t, start_2t, end_match}` — lifecycle Live Match Mode), `formazione_meta JSONB` (`{modulo, positions, modulo_finale}` — modulo iniziale + posizioni custom + modulo finale se cambiato durante partita)
 - `training`, `training_attendance`, `training_config`, `training_template`
 - `valutazione_partita`, `document`
 - `users`, `guest_token`
