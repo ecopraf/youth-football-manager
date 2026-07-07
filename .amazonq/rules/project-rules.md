@@ -168,7 +168,7 @@ I workspace attivi nel DB sono:
 - `staff.qualifiche` JSONB contiene `{matricola, tessera_figc, tessera_lnd, tipo_tessera}`
 - `team_staff` collega staff a team (e quindi a categorie) con `ruolo_squadra`
 - `guest_token` ha colonne: `token, utente_id, tipo, squadre_accesso, scadenza`
-- `users.permessi` JSONB contiene permessi granulari per staff: `{rosa: "write", partite: "read", ...}`
+**Colonne notevoli `users`**: `permessi JSONB` (capabilities/profilo: `{rosa: "write", partite: "read", ...}`), `preferenze_ui JSONB` (`{dashboard_layout: {order: [...], hidden: [...]}}`), `squadre_accesso` array di category_id
 - `users.squadre_accesso` array di category_id (NON team_id) per limitare visibilità per categoria
 
 ## Sistema Autorizzazioni
@@ -295,6 +295,11 @@ overlay.innerHTML = `<div class="modal-card-class">
 - **No overflow nascosto**: verificare sempre che il contenuto non esca dal viewport su mobile
 - **Modali su mobile**: `width:95%; max-height:90vh; overflow-y:auto; margin:16px`
 - **Tabelle su mobile**: usare `overflow-x:auto` sul wrapper oppure layout card/stack verticale
+- **Tabelle dati numerici su mobile**: usare media query per ridurre padding (`3px 2px`), font (`10px`), e forzare `width` fissa sulle colonne numeriche (es. `22px`) per allineamento
+- **Tabelle con colonne miste (testo+numeri)**: numeri sempre `text-align:right` + `font-variant-numeric:tabular-nums` per incolonnamento perfetto
+- **Layout desktop vs mobile diverso**: usare `window.innerWidth >= 900` per rendering condizionale (non solo CSS) quando la struttura HTML deve cambiare radicalmente
+- **Sezioni GR (classifica/calendario/marcatori)**: su desktop card unica con `gr-grid` 2 colonne; su mobile card separate con sfondo sfumato individuale
+- **Sfondi sfumati sezioni**: usare gradienti pastello leggeri per distinguere visivamente le aree (es. blu `#f0f4ff→#e8eeff`, verde `#f0fdf4→#e6f9ed`, arancio `#fef7ed→#fdf2e4`)
 - **Font size minimo**: 12px su mobile per leggibilità
 - **Padding/gap ridotti**: su mobile usare gap/padding più compatti (8-12px vs 16-20px desktop)
 

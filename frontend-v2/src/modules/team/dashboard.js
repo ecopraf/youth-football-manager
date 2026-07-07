@@ -130,7 +130,7 @@ export default async function loadDashboard() {
       const bgGrad = isLive ? 'background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);' : isFinished ? 'background:linear-gradient(135deg,#1a1a2e 0%,#2d3748 100%);' : 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);';
       const headerLabel = isLive ? '⚽ IN CORSO' : isFinished ? '✅ PARTITA ODIERNA' : '⏱ PROSSIMA PARTITA';
       return '<style>@keyframes pulse-live{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}@keyframes blink-text{0%,100%{opacity:1}50%{opacity:.3}}</style>' +
-        '<div data-help="dashboard.prossimaPartita" style="' + bgGrad + 'padding:20px;margin-bottom:24px;color:white;border-radius:16px;box-shadow:0 8px 25px rgba(102,126,234,0.4);text-align:center;">' +
+        '<div data-help="dashboard.prossimaPartita" style="' + bgGrad + 'padding:20px;color:white;border-radius:16px;box-shadow:0 8px 25px rgba(102,126,234,0.4);text-align:center;">' +
         '<div style="font-size:11px;font-weight:600;opacity:0.8;text-transform:uppercase;margin-bottom:2px;">' + headerLabel + '</div>' +
         '<div style="font-size:11px;opacity:0.6;margin-bottom:16px;">🏆 ' + comp + ' · ' + luogoHtml + '</div>' +
         '<div style="display:flex;align-items:center;justify-content:center;">' +
@@ -143,7 +143,7 @@ export default async function loadDashboard() {
         '</div>';
     }
     const btnHtml = nuovaPartitaButton ? '<div style="margin-top:12px;">' + nuovaPartitaButton + '</div>' : '';
-    return '<div style="padding:16px;margin-bottom:24px;text-align:center;border:2px dashed #ddd;border-radius:12px;">' +
+    return '<div style="padding:16px;text-align:center;border:2px dashed #ddd;border-radius:12px;">' +
       '<p style="color:var(--gray);margin:0;">📅 Nessuna partita in programma</p>' + btnHtml + '</div>';
   };
 
@@ -165,7 +165,7 @@ export default async function loadDashboard() {
     } else {
       fasiHtml = '<div style="font-size:12px;color:#94a3b8;margin-top:6px;font-style:italic;">Programma non ancora definito</div>';
     }
-    return '<div style="background:white;border:1px solid #f1f5f9;border-radius:14px;padding:16px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
+    return '<div style="background:white;border:1px solid #f1f5f9;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
       '<div style="font-size:12px;font-weight:600;color:#667eea;text-transform:uppercase;">\uD83C\uDFCB\uFE0F Prossimo Allenamento</div>' +
       '<div style="display:flex;gap:6px;align-items:center;">' +
@@ -260,8 +260,8 @@ export default async function loadDashboard() {
       const scoreRight = isCasa ? r.golSubiti : r.golFatti;
       const noi = window.YFM.getSocietaName();
       const wsLogo = window.YFM.getWorkspaceLogo();
-      const noiLogoHtml = wsLogo ? '<img src="' + wsLogo + '" style="width:22px;height:22px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '';
-      const advLogoHtml = r.logo ? '<img src="' + r.logo + '" style="width:22px;height:22px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '';
+      const noiLogoHtml = wsLogo ? '<img src="' + wsLogo + '" style="width:28px;height:28px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '';
+      const advLogoHtml = r.logo ? '<img src="' + r.logo + '" style="width:28px;height:28px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '';
       const leftName = isCasa ? noi : r.avversario;
       const rightName = isCasa ? r.avversario : noi;
       const leftLogo = isCasa ? noiLogoHtml : advLogoHtml;
@@ -282,12 +282,12 @@ export default async function loadDashboard() {
         competitionBadgeHtml +
         '<span style="font-size:11px;color:#667eea;font-weight:700;">' + dettaglioComp + '</span></div>' +
         '<span style="font-size:11px;color:#666;font-weight:500;">' + formatDateShort(r.dataOra) + ' ' + icon + '</span></div>' +
-        '<div style="display:flex;align-items:center;justify-content:center;padding:14px 12px;gap:8px;">' +
-        '<div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;">' +
-        '<span style="font-size:13px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + leftName + '</span>' + leftLogo + '</div>' +
-        '<span style="font-size:16px;font-weight:800;color:' + resStyle.color + ';background:' + resStyle.bg + ';padding:6px 14px;border-radius:8px;flex-shrink:0;min-width:60px;text-align:center;">' + scoreLeft + ' - ' + scoreRight + '</span>' +
-        '<div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:6px;min-width:0;">' + rightLogo +
-        '<span style="font-size:13px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + rightName + '</span></div>' +
+        '<div style="display:flex;align-items:center;justify-content:center;padding:16px 14px;gap:10px;">' +
+        '<div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0;">' +
+        '<span style="font-size:14px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + leftName + '</span>' + leftLogo + '</div>' +
+        '<span style="font-size:18px;font-weight:800;color:' + resStyle.color + ';background:' + resStyle.bg + ';padding:8px 16px;border-radius:8px;flex-shrink:0;min-width:64px;text-align:center;">' + scoreLeft + ' - ' + scoreRight + '</span>' +
+        '<div style="flex:1;display:flex;align-items:center;justify-content:flex-start;gap:8px;min-width:0;">' + rightLogo +
+        '<span style="font-size:14px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + rightName + '</span></div>' +
         '</div></div>';
     }).join('');
     
@@ -326,8 +326,8 @@ export default async function loadDashboard() {
       const pen = r.penalita ? ' <span style="font-size:9px;color:#E74C3C;">(' + r.penalita + ')</span>' : '';
       return '<tr' + cls + '><td>' + r.pos + '</td><td><div class="cl-team">' + logo + '<span>' + r.nome + pen + '</span></div></td><td><b>' + r.punti + '</b></td><td>' + r.g + '</td><td>' + r.v + '</td><td>' + r.n + '</td><td>' + r.p + '</td><td>' + r.gf + '</td><td>' + r.gs + '</td></tr>';
     }).join('');
-    return '<div class="result-card" data-help="dashboard.classifica"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">🏆 ' + header + '</h3>' +
-      (info.aggiornamento ? '<div style="font-size:10px;color:#999;margin-bottom:8px;">Aggiornata al ' + info.aggiornamento + '</div>' : '') +
+    return '<div data-help="dashboard.classifica"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;text-align:center;">🏆 ' + header + '</h3>' +
+      (info.aggiornamento ? '<div style="font-size:10px;color:#999;margin-bottom:8px;text-align:center;">Aggiornata al ' + info.aggiornamento + '</div>' : '') +
       '<div style="overflow-x:auto;"><table class="classifica-table"><thead><tr><th>#</th><th>Squadra</th><th>Pt</th><th>G</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   };
 
@@ -348,9 +348,9 @@ export default async function loadDashboard() {
       const rows = ris.map(r => {
         const isUs = isOurTeam(r.home_club, teamName) || isOurTeam(r.away_club, teamName);
         const cls = isUs ? ' class="classifica-row-highlight"' : '';
-        return '<tr' + cls + '><td style="text-align:right;padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;">' + r.home_club + getLogo(r.home_club) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;">' + (r.home_points ?? '-') + ' - ' + (r.away_points ?? '-') + '</td><td style="padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;">' + getLogo(r.away_club) + r.away_club + '</span></td></tr>';
+        return '<tr' + cls + '><td style="text-align:right;padding:4px 0;width:40%;overflow:hidden;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + r.home_club + getLogo(r.home_club) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;width:20%;">' + (r.home_points ?? '-') + ' - ' + (r.away_points ?? '-') + '</td><td style="padding:4px 0;width:40%;overflow:hidden;"><span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + getLogo(r.away_club) + r.away_club + '</span></td></tr>';
       }).join('');
-      return '<div class="result-card" style="margin-top:20px;"><h3 style="margin:0 0 10px 0;font-size:15px;color:#333;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h3><table style="width:100%;border-collapse:collapse;font-size:12px;"><tbody>' + rows + '</tbody></table></div>';
+      return '<div><h3 style="margin:0 0 10px 0;font-size:15px;color:#333;text-align:center;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h3><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;"><tbody>' + rows + '</tbody></table></div>';
     }
     // Group by giornata
     const byRound = {};
@@ -362,7 +362,7 @@ export default async function loadDashboard() {
     for (let i = rounds.length - 1; i >= 0; i--) {
       if (byRound[rounds[i]].some(m => m.gol_casa !== null)) { defaultRound = rounds[i]; break; }
     }
-    return '<div class="result-card" style="margin-top:20px;"><div id="grCalNav" data-round="' + defaultRound + '"></div></div>';
+    return '<div id="grCalNav" data-round="' + defaultRound + '"></div>';
   };
 
   // Attach calendario navigation after render
@@ -389,13 +389,13 @@ export default async function loadDashboard() {
         const isUs = isOurTeam(r.casa, teamName) || isOurTeam(r.ospite, teamName);
         const cls = isUs ? ' class="classifica-row-highlight"' : '';
         const score = r.gol_casa !== null ? r.gol_casa + ' - ' + r.gol_ospite : '- - -';
-        return '<tr' + cls + '><td style="text-align:right;padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;">' + r.casa + getLogo(r.casa) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;">' + score + '</td><td style="padding:4px 0;"><span style="display:inline-flex;align-items:center;gap:4px;">' + getLogo(r.ospite) + r.ospite + '</span></td></tr>';
+        return '<tr' + cls + '><td style="text-align:right;padding:4px 0;width:40%;overflow:hidden;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + r.casa + getLogo(r.casa) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;width:20%;">' + score + '</td><td style="padding:4px 0;width:40%;overflow:hidden;"><span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + getLogo(r.ospite) + r.ospite + '</span></td></tr>';
       }).join('');
       nav.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
         '<button id="grCalPrev" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;opacity:' + (idx > 0 ? '1' : '0.3') + ';">◀</button>' +
         '<h3 style="margin:0;font-size:15px;color:#333;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h3>' +
         '<button id="grCalNext" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;opacity:' + (idx < rounds.length - 1 ? '1' : '0.3') + ';">▶</button></div>' +
-        '<table style="width:100%;border-collapse:collapse;font-size:12px;"><tbody>' + rows + '</tbody></table>';
+        '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;"><tbody>' + rows + '</tbody></table>';
       document.getElementById('grCalPrev').onclick = () => { if (idx > 0) { currentIdx = idx - 1; renderRound(currentIdx); } };
       document.getElementById('grCalNext').onclick = () => { if (idx < rounds.length - 1) { currentIdx = idx + 1; renderRound(currentIdx); } };
     }
@@ -417,42 +417,52 @@ export default async function loadDashboard() {
     const renderTable = (items) => items.map((m, i) => {
       const isOur = isOurTeam(m.squadra, teamName);
       const s = isOur ? ' style="background:#f0f4ff;font-weight:600;color:#667eea;"' : '';
-      return '<tr' + s + '><td style="padding:3px 4px;text-align:center;color:#999;font-size:10px;white-space:nowrap;">' + (i + 1) + '</td><td style="padding:3px 4px;white-space:nowrap;">' + m.nome + '</td><td style="padding:3px 4px;text-align:center;font-weight:700;white-space:nowrap;">' + m.gol + '</td><td style="padding:3px 4px;color:#888;font-size:10px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;">' + m.squadra + '</td></tr>';
+      return '<tr' + s + '><td>' + (i + 1) + '</td><td>' + m.nome + '</td><td>' + m.squadra + '</td><td>' + m.gol + '</td></tr>';
     }).join('');
-    return '<div class="result-card" data-help="dashboard.marcatori" style="margin-top:20px;"><h3 style="margin:0 0 12px 0;font-size:15px;color:#333;">⚽ Top Marcatori</h3>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
-      '<div><div style="font-size:11px;font-weight:700;color:#999;margin-bottom:6px;">GENERALE</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><tbody>' + renderTable(top10Reg) + '</tbody></table></div>' +
-      '<div><div style="font-size:11px;font-weight:700;color:#667eea;margin-bottom:6px;">GIRONE ' + (classificaData?.info?.group_name || '') + '</div><table style="width:100%;border-collapse:collapse;font-size:11px;"><tbody>' + renderTable(top10Gir) + '</tbody></table></div>' +
+    return '<div data-help="dashboard.marcatori"><h3 style="margin:0 0 8px 0;font-size:14px;color:#333;text-align:center;">⚽ Top Marcatori</h3>' +
+      '<div class="marcatori-grid">' +
+      '<div><div style="font-size:11px;font-weight:700;color:#999;margin-bottom:6px;text-align:center;">GENERALE</div><table class="marcatori-table"><tbody>' + renderTable(top10Reg) + '</tbody></table></div>' +
+      '<div><div style="font-size:11px;font-weight:700;color:#667eea;margin-bottom:6px;text-align:center;">GIRONE ' + (classificaData?.info?.group_name || '') + '</div><table class="marcatori-table"><tbody>' + renderTable(top10Gir) + '</tbody></table></div>' +
       '</div></div>';
   };
 
   // Build final HTML
   const styles = '<style>' +
-    '.dash-widgets { display:grid; grid-template-columns:repeat(8,1fr); gap:10px; margin-bottom:24px; }' +
+    '.dash-widgets { display:grid; grid-template-columns:repeat(8,1fr); gap:10px; }' +
     '@media (max-width: 900px) { .dash-widgets { grid-template-columns: repeat(4, 1fr) !important; } }' +
     '@media (max-width: 600px) { .dash-widgets { grid-template-columns: repeat(4, 1fr) !important; } }' +
     '@media (max-width: 400px) { .dash-widgets { grid-template-columns: repeat(2, 1fr) !important; } }' +
     '.dash-card { background:white; padding:12px 6px; text-align:center; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08); }' +
-    '.top-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }' +
+    '.top-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }' +
     '@media (max-width: 900px) { .top-grid { grid-template-columns: 1fr !important; } }' +
-    '.bottom-grid { display:grid; gap:20px; grid-template-columns:1fr; }' +
-    '@media (min-width: 900px) { .bottom-grid { grid-template-columns: 1.5fr 1fr !important; } }' +
-    '.result-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }' +
+    '.staff-card { padding:16px; border-radius:14px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); box-shadow:none; }' +
+    '.result-card { background:white; padding:16px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.08); overflow:hidden; }' +
     '.match-item { cursor:pointer; transition: all 0.2s ease; }' +
     '.match-item:hover { opacity:0.9; transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.1); }' +
-    '.staff-card { padding:16px; border-radius:14px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); box-shadow:none; }' +
-    '.staff-desktop { display:block; }' +
-    '.staff-mobile { display:none; }' +
-    '@media (max-width: 900px) { .staff-desktop { display:none !important; } .staff-mobile { display:block !important; } }' +
-    '.classifica-table { width:100%; border-collapse:collapse; font-size:12px; }' +
-    '.classifica-table th { text-align:center; font-size:10px; color:#999; padding:4px 6px; border-bottom:1px solid #eee; white-space:nowrap; }' +
+    '.classifica-table { width:100%; border-collapse:collapse; font-size:11px; }' +
+    '.classifica-table th { text-align:center; font-size:10px; color:#999; padding:3px 4px; border-bottom:1px solid #eee; white-space:nowrap; }' +
     '.classifica-table th:nth-child(2) { text-align:left; }' +
-    '.classifica-table td { text-align:center; padding:5px 6px; border-bottom:1px solid #f5f5f5; white-space:nowrap; }' +
-    '.classifica-table td:nth-child(2) { text-align:left; }' +
-    '.classifica-table .cl-team { display:flex; align-items:center; gap:6px; white-space:nowrap; }' +
-    '.classifica-table .cl-team img { width:20px; height:20px; border-radius:50%; object-fit:contain; flex-shrink:0; }' +
+    '.classifica-table td { text-align:center; padding:4px 3px; border-bottom:1px solid #f5f5f5; white-space:nowrap; font-variant-numeric:tabular-nums; }' +
+    '.classifica-table td:nth-child(2) { text-align:left; max-width:120px; overflow:hidden; text-overflow:ellipsis; }' +
+    '.classifica-table .cl-team { display:flex; align-items:center; gap:4px; white-space:nowrap; overflow:hidden; }' +
+    '.classifica-table .cl-team img { width:18px; height:18px; border-radius:50%; object-fit:contain; flex-shrink:0; }' +
+    '.classifica-table .cl-team span { overflow:hidden; text-overflow:ellipsis; }' +
+    '@media (max-width: 500px) { .classifica-table { font-size:10px; } .classifica-table th, .classifica-table td { padding:3px 2px; } .classifica-table .cl-team img { width:14px; height:14px; } .classifica-table td:first-child, .classifica-table th:first-child { width:20px; } .classifica-table td:nth-child(n+3), .classifica-table th:nth-child(n+3) { width:22px; padding:3px 1px; } }' +
     '.classifica-row-highlight { background:#f0f4ff !important; font-weight:700; }' +
     '.classifica-row-highlight td { color:#667eea; }' +
+    '.gr-grid { display:grid; grid-template-columns:1fr; gap:20px; }' +
+    '@media (min-width: 900px) { .gr-grid { grid-template-columns:1.5fr 1fr; } }' +
+    '.gr-card { overflow-x:auto; -webkit-overflow-scrolling:touch; }' +
+    '.gr-section-classifica { background:linear-gradient(135deg,#f0f4ff 0%,#e8eeff 100%); border-radius:14px; padding:14px; }' +
+    '.gr-section-calendario { background:linear-gradient(135deg,#f0fdf4 0%,#e6f9ed 100%); border-radius:14px; padding:14px; }' +
+    '.gr-section-marcatori { background:linear-gradient(135deg,#fef7ed 0%,#fdf2e4 100%); border-radius:14px; padding:14px; }' +
+    '.marcatori-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }' +
+    '.marcatori-table { width:100%; border-collapse:collapse; font-size:11px; }' +
+    '.marcatori-table td:first-child { width:18px; text-align:center; color:#999; font-size:10px; padding:4px 3px; }' +
+    '.marcatori-table td:nth-child(2) { padding:4px 5px; }' +
+    '.marcatori-table td:nth-child(3) { color:#888; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:4px 5px; text-align:right; }' +
+    '.marcatori-table td:nth-child(4) { width:28px; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; padding:4px 2px 4px 2px; }' +
+    '@media (max-width: 500px) { .marcatori-table { font-size:10px; } .marcatori-table td:first-child { width:14px; padding:3px 2px; } .marcatori-table td:nth-child(2) { padding:3px 2px; } .marcatori-table td:nth-child(3) { padding:3px 2px; max-width:60px; } .marcatori-table td:nth-child(4) { width:22px; padding:3px 2px; } }' +
     '@media (min-width: 640px) { .dash-match-logo { width:68px !important; height:68px !important; font-size:30px !important; } .dash-match-name { font-size:16px !important; max-width:150px !important; } }' +
     '</style>';
 
@@ -478,27 +488,24 @@ export default async function loadDashboard() {
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">' +
     '<div><h1 class="page-title">Dashboard</h1>' +
     '<p class="page-subtitle">Stagione ' + stagioneName + ' · ' + stats.partiteGiocate + ' partite</p></div>' +
-    '<div>' + dropdownHtml + '</div></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;">' + dropdownHtml + '<button id="dashOrganizeBtn" title="Organizza dashboard" style="background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:16px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;">⚙️</button></div></div>' +
     
-    renderProssimoAllenamento() +
-    renderProssimaPartitaSection() +
-    
-    '<div class="dash-widgets" data-help="dashboard.widgets">' +
+    '<div id="dashWidgetsContainer" style="display:flex;flex-direction:column;gap:20px;min-width:0;">' +
+    '<div data-widget="next_training">' + renderProssimoAllenamento() + '</div>' +
+    '<div data-widget="next_match">' + renderProssimaPartitaSection() + '</div>' +
+    '<div data-widget="stats_widgets"><div class="dash-widgets" data-help="dashboard.widgets">' +
     widgets.map(w => '<div class="dash-card"><div style="font-size:20px;font-weight:bold;color:' + (w.c || 'var(--text)') + ';">' + w.v + '</div><div style="font-size:10px;color:var(--gray);margin-top:4px;">' + w.l + '</div></div>').join('') +
-    '</div>' +
-    
-    '<div class="top-grid" data-help="dashboard.topPlayers">' +
+    '</div></div>' +
+    '<div data-widget="top_players"><div class="top-grid" data-help="dashboard.topPlayers">' +
     renderTopSectionGlass('⚽ Top 3 Marcatori', (top.marcatori || []).slice(0, 3), 'gol') +
     renderTopSectionGlass('🅰️ Top 3 Assist', (top.assistmen || []).slice(0, 3), 'assist') +
     renderTopSectionGlass('🏃 Top 3 Presenze (min.)', (top.presenze || []).slice(0, 3), 'presenze') +
-    '</div>' +
-    
-    '<div class="bottom-grid">' +
-    '<div><div class="result-card" data-help="dashboard.risultati"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>' +
-    '<div class="staff-card staff-desktop" data-help="dashboard.staff" style="margin-top:20px;"><h3 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
-    '<div id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
-    '</div>' +
-    '<div class="staff-card staff-mobile" style="margin-top:20px;"><h3 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h3><div>' + renderStaff() + '</div></div>';
+    '</div></div>' +
+    '<div data-widget="results"><div class="result-card" data-help="dashboard.risultati"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div></div>' +
+    '<div data-widget="injuries" id="dashInjuryWidget"></div>' +
+    '<div data-widget="classifica" id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
+    '<div data-widget="staff"><div class="staff-card" data-help="dashboard.staff"><h3 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
+    '</div>';
 
   // Attach dropdown change handler
   const filterEl = document.getElementById('dashTipoFilter');
@@ -552,8 +559,129 @@ export default async function loadDashboard() {
     calendarioGR = cal;
     const col = document.getElementById('dashLazyCol');
     if (col) {
-      col.innerHTML = renderClassifica() + renderCalendarioGR() + renderMarcatoriGR();
+      const classHtml = renderClassifica();
+      const calHtml = renderCalendarioGR();
+      const marcHtml = renderMarcatoriGR();
+      if (!classHtml && !calHtml && !marcHtml) { col.innerHTML = ''; }
+      else if (window.innerWidth >= 900) {
+        col.innerHTML = '<div class="result-card gr-card"><div class="gr-grid">' +
+          '<div class="gr-section-classifica">' + classHtml + '</div>' +
+          '<div><div class="gr-section-calendario">' + calHtml + '</div>' + (marcHtml ? '<div class="gr-section-marcatori" style="margin-top:12px;">' + marcHtml + '</div>' : '') + '</div>' +
+          '</div></div>';
+      } else {
+        col.innerHTML = (classHtml ? '<div class="gr-section-classifica" style="overflow-x:auto;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);">' + classHtml + '</div>' : '') +
+          (calHtml ? '<div class="gr-section-calendario" style="margin-top:20px;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);">' + calHtml + '</div>' : '') +
+          (marcHtml ? '<div class="gr-section-marcatori" style="margin-top:20px;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.08);">' + marcHtml + '</div>' : '');
+      }
       attachCalendarioNav();
     }
   });
+
+  // Lazy load: infortuni attivi
+  apiFetch('/squadre/' + squadraId + '/injuries').then(injuries => {
+    const active = (injuries || []).filter(i => !i.data_rientro_effettiva);
+    const widget = document.getElementById('dashInjuryWidget');
+    if (!widget || active.length === 0) return;
+    const today = new Date();
+    widget.innerHTML = '<div style="background:#FFF3F3;border:1px solid #FDCECE;border-radius:12px;padding:14px;">' +
+      '<h4 style="margin:0 0 10px 0;font-size:13px;color:#E74C3C;">🏥 Infortunati (' + active.length + ')</h4>' +
+      active.map(inj => {
+        const days = inj.data_rientro_prevista ? Math.ceil((new Date(inj.data_rientro_prevista) - today) / 86400000) : null;
+        const daysLabel = days !== null ? (days > 0 ? days + 'gg' : '⚠️ scaduto') : '';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;">' +
+          '<span><strong>' + (inj.player?.cognome || '') + '</strong> <span style="color:#888;">' + inj.tipo + '</span></span>' +
+          (daysLabel ? '<span style="color:#E74C3C;font-weight:600;">' + daysLabel + '</span>' : '') +
+          '</div>';
+      }).join('') + '</div>';
+  }).catch(() => {});
+
+  // --- Dashboard Organize ---
+  const WIDGET_LABELS = { next_training: '🏋️ Prossimo Allenamento', next_match: '⏱ Prossima Partita', stats_widgets: '📊 Statistiche', top_players: '🏆 Top Giocatori', results: '📋 Ultimi Risultati', injuries: '🏥 Infortuni', staff: '👥 Staff', classifica: '🏆 Classifica & GR' };
+  const DEFAULT_ORDER = ['next_training', 'next_match', 'stats_widgets', 'top_players', 'results', 'injuries', 'classifica', 'staff'];
+
+  function applyLayout(layout) {
+    const container = document.getElementById('dashWidgetsContainer');
+    if (!container) return;
+    const order = layout.order || DEFAULT_ORDER;
+    const hidden = layout.hidden || [];
+    // Append in order, hide hidden
+    order.forEach(id => {
+      const el = container.querySelector('[data-widget="' + id + '"]');
+      if (el) { el.style.display = hidden.includes(id) ? 'none' : ''; container.appendChild(el); }
+    });
+    // Any new widgets not in order go at end
+    container.querySelectorAll('[data-widget]').forEach(el => {
+      const id = el.dataset.widget;
+      if (!order.includes(id)) container.appendChild(el);
+    });
+  }
+
+  // Load and apply user preferences
+  apiFetch('/users/preferences').then(prefs => {
+    if (prefs && prefs.dashboard_layout) applyLayout(prefs.dashboard_layout);
+  }).catch(() => {});
+
+  // Organize button handler
+  const orgBtn = document.getElementById('dashOrganizeBtn');
+  if (orgBtn) orgBtn.onclick = () => {
+    const container = document.getElementById('dashWidgetsContainer');
+    if (!container) return;
+    // Get current order from DOM
+    const currentWidgets = [...container.querySelectorAll('[data-widget]')];
+    let order = currentWidgets.map(el => el.dataset.widget);
+    let hidden = order.filter(id => { const el = container.querySelector('[data-widget="' + id + '"]'); return el && el.style.display === 'none'; });
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+    function renderList() {
+      return order.map((id, i) => {
+        const isHidden = hidden.includes(id);
+        const label = WIDGET_LABELS[id] || id;
+        return '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;min-height:44px;background:' + (isHidden ? '#f9fafb' : '#fff') + ';border:1px solid #e5e7eb;border-radius:10px;margin-bottom:6px;opacity:' + (isHidden ? '0.5' : '1') + ';">' +
+          '<div style="display:flex;flex-direction:column;gap:2px;">' +
+          '<button data-move="up" data-idx="' + i + '" style="border:none;background:none;cursor:pointer;font-size:12px;padding:0;line-height:1;' + (i === 0 ? 'opacity:0.3;pointer-events:none;' : '') + '">▲</button>' +
+          '<button data-move="down" data-idx="' + i + '" style="border:none;background:none;cursor:pointer;font-size:12px;padding:0;line-height:1;' + (i === order.length - 1 ? 'opacity:0.3;pointer-events:none;' : '') + '">▼</button></div>' +
+          '<span style="flex:1;font-size:13px;font-weight:' + (isHidden ? '400' : '600') + ';color:' + (isHidden ? '#9ca3af' : '#1f2937') + ';">' + label + '</span>' +
+          '<button data-toggle="' + id + '" style="border:none;background:' + (isHidden ? '#e5e7eb' : '#667eea') + ';color:' + (isHidden ? '#6b7280' : 'white') + ';border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:600;">' + (isHidden ? 'Mostra' : 'Nascondi') + '</button></div>';
+      }).join('');
+    }
+
+    function renderModal() {
+      overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:scale-in 0.2s;">' +
+        '<h3 style="margin:0 0 4px 0;font-size:16px;">⚙️ Organizza Dashboard</h3>' +
+        '<p style="margin:0 0 16px 0;font-size:12px;color:#6b7280;">Riordina e nascondi le sezioni</p>' +
+        '<div id="orgList">' + renderList() + '</div>' +
+        '<div style="display:flex;gap:8px;margin-top:16px;">' +
+        '<button id="orgReset" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:10px;background:#f9fafb;cursor:pointer;font-size:13px;font-weight:600;">↺ Reset</button>' +
+        '<button id="orgSave" style="flex:1;padding:10px;border:none;border-radius:10px;background:#667eea;color:white;cursor:pointer;font-size:13px;font-weight:600;">✓ Salva</button></div></div>';
+
+      overlay.querySelector('#orgList').onclick = (e) => {
+        const moveBtn = e.target.closest('[data-move]');
+        const toggleBtn = e.target.closest('[data-toggle]');
+        if (moveBtn) {
+          const idx = +moveBtn.dataset.idx;
+          const dir = moveBtn.dataset.move === 'up' ? -1 : 1;
+          const newIdx = idx + dir;
+          if (newIdx >= 0 && newIdx < order.length) { [order[idx], order[newIdx]] = [order[newIdx], order[idx]]; renderModal(); }
+        } else if (toggleBtn) {
+          const id = toggleBtn.dataset.toggle;
+          hidden = hidden.includes(id) ? hidden.filter(h => h !== id) : [...hidden, id];
+          renderModal();
+        }
+      };
+      overlay.querySelector('#orgReset').onclick = () => { order = [...DEFAULT_ORDER]; hidden = []; renderModal(); };
+      overlay.querySelector('#orgSave').onclick = () => {
+        const layout = { order, hidden };
+        applyLayout(layout);
+        apiFetch('/users/preferences', { method: 'PUT', body: JSON.stringify({ dashboard_layout: layout }) }).catch(() => {});
+        overlay.remove();
+      };
+    }
+
+    renderModal();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', esc); } });
+    document.body.appendChild(overlay);
+  };
 }

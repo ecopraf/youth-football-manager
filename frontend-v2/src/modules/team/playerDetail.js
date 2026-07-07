@@ -52,8 +52,15 @@ export async function loadPlayerDetail(container, playerId) {
       allSquadre = [];
     }
 
+    let injuries = [];
+    try {
+      injuries = await apiFetch('/players/' + playerId + '/injuries');
+    } catch (e) {
+      injuries = [];
+    }
+
     hideLoading();
-    renderPlayerDetail(container, { player, currentSeasonStats, career, lastMatches, valutazioni, allSquadre });
+    renderPlayerDetail(container, { player, currentSeasonStats, career, lastMatches, valutazioni, allSquadre, injuries });
   } catch (e) {
     console.error(e);
     hideLoading();
@@ -62,7 +69,7 @@ export async function loadPlayerDetail(container, playerId) {
 }
 
 function renderPlayerDetail(container, data) {
-  const { player, currentSeasonStats, career, lastMatches, valutazioni, allSquadre } = data;
+  const { player, currentSeasonStats, career, lastMatches, valutazioni, allSquadre, injuries } = data;
 
   if (!player) {
     container.innerHTML = '<div class="error-box">Giocatore non trovato.</div>';
@@ -118,6 +125,40 @@ function renderPlayerDetail(container, data) {
     </div>` : '';
 
   // Sezione carriera
+  // Sezione infortuni
+  const injuriesSection = `
+    <div class="card" style="margin-top:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 class="section-title" style="margin:0;">🏥 Infortuni</h3>
+        ${isAdmin ? '<button class="btn btn-primary" id="btnAddInjury" style="font-size:12px;padding:6px 12px;">+ Aggiungi</button>' : ''}
+      </div>
+      ${(injuries || []).length > 0 ? `
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="background:#F8F9FA;">
+            <th style="padding:8px;text-align:left;">Tipo</th>
+            <th style="padding:8px;">Inizio</th>
+            <th style="padding:8px;">Rientro prev.</th>
+            <th style="padding:8px;">Rientro eff.</th>
+            <th style="padding:8px;">Gravità</th>
+            ${isAdmin ? '<th style="padding:8px;">Azioni</th>' : ''}
+          </tr></thead>
+          <tbody>${(injuries || []).map(inj => {
+            const isOpen = !inj.data_rientro_effettiva;
+            return `<tr style="${isOpen ? 'background:#FFF3F3;' : ''}">
+              <td style="padding:8px;font-weight:${isOpen ? '600' : '400'};">${inj.tipo}${isOpen ? ' <span style="color:#E74C3C;font-size:10px;">● ATTIVO</span>' : ''}</td>
+              <td style="padding:8px;text-align:center;">${safeFormatDate(inj.data_inizio)}</td>
+              <td style="padding:8px;text-align:center;">${inj.data_rientro_prevista ? safeFormatDate(inj.data_rientro_prevista) : '—'}</td>
+              <td style="padding:8px;text-align:center;">${inj.data_rientro_effettiva ? safeFormatDate(inj.data_rientro_effettiva) : '—'}</td>
+              <td style="padding:8px;text-align:center;"><span style="padding:2px 8px;border-radius:8px;font-size:11px;background:${inj.gravita === 'grave' ? '#FDEDEE' : inj.gravita === 'lieve' ? '#E8F8F0' : '#FFF8E1'};color:${inj.gravita === 'grave' ? '#E74C3C' : inj.gravita === 'lieve' ? '#27AE60' : '#F39C12'};">${inj.gravita || 'media'}</span></td>
+              ${isAdmin ? `<td style="padding:8px;text-align:center;">${isOpen ? '<button class="btn-close-injury" data-id="' + inj.id + '" style="font-size:11px;padding:4px 8px;background:#27AE60;color:white;border:none;border-radius:6px;cursor:pointer;">✅ Rientro</button>' : ''} <button class="btn-del-injury" data-id="${inj.id}" style="font-size:11px;padding:4px 8px;background:#eee;border:none;border-radius:6px;cursor:pointer;">🗑️</button></td>` : ''}
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>` : '<p style="color:var(--gray);font-size:13px;">Nessun infortunio registrato.</p>'}
+    </div>`;
+
+  // Sezione carriera (originale)
   const careerRows = (career || []).map(s => `
     <tr>
       <td style="padding:8px;">${s.stagione || '-'}</td>
@@ -299,6 +340,7 @@ function renderPlayerDetail(container, data) {
       </div>
     </div>
     ${valutazioniSection}
+    ${injuriesSection}
     ${careerSection}
     ${lastMatchesSection}
   `;
@@ -307,6 +349,58 @@ function renderPlayerDetail(container, data) {
   document.getElementById('btnBackRoster')?.addEventListener('click', () => {
     if (window.YFM?.navigateTo) window.YFM.navigateTo('roster');
     else if (window.navigateTo) window.navigateTo('roster');
+  });
+
+  // Injury handlers
+  document.getElementById('btnAddInjury')?.addEventListener('click', () => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:360px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="font-size:18px;font-weight:700;margin-bottom:16px;">🏥 Nuovo Infortunio</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <input id="injTipo" placeholder="Tipo (es. Distorsione caviglia)" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+        <input id="injInizio" type="date" value="${new Date().toISOString().split('T')[0]}" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+        <input id="injRientro" type="date" placeholder="Rientro previsto" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+        <select id="injGravita" style="padding:10px;border:1px solid #ddd;border-radius:8px;"><option value="lieve">Lieve</option><option value="media" selected>Media</option><option value="grave">Grave</option></select>
+        <input id="injNote" placeholder="Note (opzionale)" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button id="injCancel" class="btn btn-secondary" style="flex:1;">Annulla</button>
+        <button id="injConfirm" class="btn btn-primary" style="flex:1;background:#667eea;">Salva</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#injTipo').focus();
+    overlay.querySelector('#injCancel').onclick = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector('#injConfirm').onclick = async () => {
+      const tipo = overlay.querySelector('#injTipo').value.trim();
+      if (!tipo) return;
+      await apiFetch('/injuries', { method: 'POST', body: JSON.stringify({
+        player_id: player.id, team_id: window.YFM.squadraId,
+        tipo, data_inizio: overlay.querySelector('#injInizio').value,
+        data_rientro_prevista: overlay.querySelector('#injRientro').value || null,
+        gravita: overlay.querySelector('#injGravita').value,
+        note: overlay.querySelector('#injNote').value || null
+      })});
+      overlay.remove();
+      loadPlayerDetail(container, player.id);
+    };
+  });
+
+  document.querySelectorAll('.btn-close-injury').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const today = new Date().toISOString().split('T')[0];
+      await apiFetch('/injuries/' + btn.dataset.id, { method: 'PUT', body: JSON.stringify({ data_rientro_effettiva: today }) });
+      loadPlayerDetail(container, player.id);
+    });
+  });
+
+  document.querySelectorAll('.btn-del-injury').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await apiFetch('/injuries/' + btn.dataset.id, { method: 'DELETE' });
+      loadPlayerDetail(container, player.id);
+    });
   });
 
   // Attiva help contestuale per la scheda giocatore

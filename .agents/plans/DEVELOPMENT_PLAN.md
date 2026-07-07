@@ -23,7 +23,7 @@
 | Modulo | Stato | File principali |
 |--------|-------|-----------------|
 | Auth & Permessi | ✅ | routes/auth.js, modules/auth/, utils/sessionGuard.js |
-| Dashboard | ✅ | modules/team/dashboard.js |
+| Dashboard | ✅ | modules/team/dashboard.js (personalizzabile: riordino + show/hide widget con preferenze in users.preferenze_ui, GR card con sfondo sfumato, layout 2-col desktop / card separate mobile) |
 | Rosa (Roster) | ✅ | modules/team/roster.js, routes/player.js |
 | Calendario | ✅ | modules/team/calendar.js, routes/match.js |
 | Convocazioni | ✅ | modules/team/convocazioni.js |
@@ -42,7 +42,7 @@
 | Loghi Squadre | ✅ | 765 loghi, wizard GR, dedup hash MD5 |
 | Gazzetta Regionale | ✅ | routes/gazzettaRegionale.js |
 | Tornei | ⏸️ | modules/coach/tournaments.js (disabilitato) |
-| Infortuni | ⬜ | Non esiste |
+| Infortuni | ✅ | routes/player.js, modules/team/playerDetail.js, dashboard.js |
 | Visite Mediche | ⬜ | Non esiste (dati su player, no storico) |
 | Valutazioni | ⚠️ | Parziale (tabella esiste, UI incompleta) |
 
@@ -69,13 +69,14 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 2.1 | CREATE TABLE `injury` | ⬜ | — | migrazione SQL | ~3min |
-| 2.2 | Endpoint CRUD `/api/injuries` (GET team, POST, PUT, DELETE) | ⬜ | 2.1 | routes/player.js o nuovo | ~10min |
-| 2.3 | Auto-update `team_player.stato` → "Infortunato" on create | ⬜ | 2.2 | routes/player.js | ~5min |
-| 2.4 | Auto-update `team_player.stato` → "Attivo" on rientro | ⬜ | 2.3 | routes/player.js | ~3min |
-| 2.5 | Sezione infortuni in playerDetail (lista + form) | ⬜ | 2.2 | modules/team/playerDetail.js | ~10min |
-| 2.6 | Widget "Infortunati" in dashboard (nomi + giorni restanti) | ⬜ | 2.2 | modules/team/dashboard.js | ~10min |
-| 2.7 | Aggiornare docs | ⬜ | 2.6 | DEVELOPMENT_PLAN.md | ~2min |
+| 2.1 | CREATE TABLE `injury` | ✅ | — | migrazione SQL | ~3min |
+| 2.2 | Endpoint CRUD `/api/injuries` (GET team, POST, PUT, DELETE) | ✅ | 2.1 | routes/player.js o nuovo | ~10min |
+| 2.3 | Auto-update `team_player.stato` → "Infortunato" on create | ✅ | 2.2 | routes/player.js | ~5min |
+| 2.4 | Auto-update `team_player.stato` → "Attivo" on rientro | ✅ | 2.3 | routes/player.js | ~3min |
+| 2.5 | Sezione infortuni in playerDetail (lista + form) | ✅ | 2.2 | modules/team/playerDetail.js | ~10min |
+| 2.6 | Widget "Infortunati" in dashboard (nomi + giorni restanti) | ✅ | 2.2 | modules/team/dashboard.js | ~10min |
+| 2.7 | Convocazioni: badge 🏥 su giocatori infortunati | ✅ | 2.3 | modules/team/convocazioni.js | ~5min |
+| 2.8 | Aggiornare docs | ✅ | 2.7 | DEVELOPMENT_PLAN.md | ~2min |
 
 ---
 
@@ -161,6 +162,20 @@
 | 8.8 | Backend: endpoint /career e /last-matches cross-season | ✅ | — | routes/player.js | ~10min |
 | 8.9 | Test build completo | ✅ | 8.8 | — | ~2min |
 | 8.10 | Aggiornare docs | ✅ | 8.9 | DEVELOPMENT_PLAN.md | ~3min |
+
+---
+
+### EPIC 10: Dashboard Personalizzabile
+
+> Riordino e show/hide widget dashboard per utente. Preferenze salvate in DB.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 10.1 | ALTER TABLE `users` ADD `preferenze_ui` JSONB | ✅ | — | migrazione SQL | ~2min |
+| 10.2 | Endpoint GET/PUT `/api/users/preferences` | ✅ | 10.1 | routes/auth.js | ~5min |
+| 10.3 | Wrappare widget dashboard con `data-widget` ID | ✅ | — | modules/team/dashboard.js | ~5min |
+| 10.4 | UI modale "Organizza" (frecce ↑↓ + toggle visibilità + salva) | ✅ | 10.2, 10.3 | modules/team/dashboard.js | ~10min |
+| 10.5 | Caricamento preferenze al load + applyLayout | ✅ | 10.2, 10.3 | modules/team/dashboard.js | ~5min |
 
 ---
 
@@ -305,7 +320,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | 2bfb862 | feat: CF e Luogo Nascita nella pagina Nuovo Calciatore (playerDetail.js) |
 | 22d2b8e | style: upload XLS drag&drop + modal utenti responsive mobile |
 | d733428 | style: responsive globale mobile — griglie 1col @500px, tabelle scroll, modal compatti |
-| (pending) | fix: squadre_accesso confrontava team_id con category_id — requirePermission ora risolve team→category async (auth.middleware.js + index.js) |
+| (pending) | feat: dashboard personalizzabile — riordino + show/hide widget, preferenze utente in DB, GR card sfondo sfumato, layout responsive (2-col desktop / card separate mobile), fix calendario centrato, marcatori 2-col con gol allineati a dx |
 
 ---
 

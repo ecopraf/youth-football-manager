@@ -588,6 +588,135 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     }
   });
 
+  // ── INJURIES ──
+
+  // GET /api/squadre/:teamId/injuries — infortuni attivi + storico
+  router.get('/api/squadre/:teamId/injuries', authMiddleware, async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('injury')
+        .select('*, player:player_id(nome, cognome)')
+        .eq('team_id', req.params.teamId)
+        .order('data_inizio', { ascending: false });
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data || []);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/players/:playerId/injuries — storico infortuni giocatore
+  router.get('/api/players/:playerId/injuries', authMiddleware, async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('injury')
+        .select('*')
+        .eq('player_id', req.params.playerId)
+        .order('data_inizio', { ascending: false });
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data || []);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /api/injuries — crea infortunio + auto-update stato
+  router.post('/api/injuries', authMiddleware, async (req, res) => {
+    try {
+      const { player_id, team_id, tipo, data_inizio, data_rientro_prevista, gravita, note } = req.body;
+      if (!player_id || !team_id || !tipo) return res.status(400).json({ error: 'player_id, team_id e tipo richiesti' });
+
+      const { data, error } = await supabase.from('injury').insert({
+        player_id, team_id, tipo,
+        data_inizio: data_inizio || new Date().toISOString().split('T')[0],
+        data_rientro_prevista, gravita: gravita || 'media', note
+      }).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+
+      // Auto-update team_player.stato → Infortunato
+      await supabase.from('team_player')
+        .update({ stato: 'Infortunato' })
+        .eq('player_id', player_id)
+        .eq('team_id', team_id)
+        .neq('stato', 'Svincolato');
+
+      res.status(201).json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // PUT /api/injuries/:id — modifica infortunio + auto-update stato on rientro
+  router.put('/api/injuries/:id', authMiddleware, async (req, res) => {
+    try {
+      const { tipo, data_inizio, data_rientro_prevista, data_rientro_effettiva, gravita, note } = req.body;
+      const updateData = {};
+      if (tipo !== undefined) updateData.tipo = tipo;
+      if (data_inizio !== undefined) updateData.data_inizio = data_inizio;
+      if (data_rientro_prevista !== undefined) updateData.data_rientro_prevista = data_rientro_prevista;
+      if (data_rientro_effettiva !== undefined) updateData.data_rientro_effettiva = data_rientro_effettiva;
+      if (gravita !== undefined) updateData.gravita = gravita;
+      if (note !== undefined) updateData.note = note;
+
+      const { data, error } = await supabase.from('injury')
+        .update(updateData).eq('id', req.params.id).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+
+      // Se registrato rientro → check se ha altri infortuni aperti
+      if (data_rientro_effettiva && data.player_id && data.team_id) {
+        const { data: openInjuries } = await supabase.from('injury')
+          .select('id')
+          .eq('player_id', data.player_id)
+          .eq('team_id', data.team_id)
+          .is('data_rientro_effettiva', null)
+          .neq('id', req.params.id);
+        // Solo se non ha altri infortuni aperti → torna Attivo
+        if (!openInjuries || openInjuries.length === 0) {
+          await supabase.from('team_player')
+            .update({ stato: 'Attivo' })
+            .eq('player_id', data.player_id)
+            .eq('team_id', data.team_id)
+            .eq('stato', 'Infortunato');
+        }
+      }
+
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // DELETE /api/injuries/:id
+  router.delete('/api/injuries/:id', authMiddleware, async (req, res) => {
+    try {
+      // Fetch before delete per auto-update stato
+      const { data: injury } = await supabase.from('injury')
+        .select('player_id, team_id, data_rientro_effettiva')
+        .eq('id', req.params.id).single();
+
+      const { error } = await supabase.from('injury').delete().eq('id', req.params.id);
+      if (error) return res.status(400).json({ error: error.message });
+
+      // Se era un infortunio aperto, check se rimangono altri
+      if (injury && !injury.data_rientro_effettiva) {
+        const { data: openInjuries } = await supabase.from('injury')
+          .select('id')
+          .eq('player_id', injury.player_id)
+          .eq('team_id', injury.team_id)
+          .is('data_rientro_effettiva', null);
+        if (!openInjuries || openInjuries.length === 0) {
+          await supabase.from('team_player')
+            .update({ stato: 'Attivo' })
+            .eq('player_id', injury.player_id)
+            .eq('team_id', injury.team_id)
+            .eq('stato', 'Infortunato');
+        }
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 }
 

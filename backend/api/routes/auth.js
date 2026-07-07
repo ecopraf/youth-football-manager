@@ -419,5 +419,23 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
     }
   });
 
+  // --- Preferenze UI utente ---
+  router.get('/api/users/preferences', authMiddleware, async (req, res) => {
+    try {
+      const { data } = await supabase.from('users').select('preferenze_ui').eq('id', req.user.id).single();
+      res.json(data?.preferenze_ui || {});
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
+  router.put('/api/users/preferences', authMiddleware, async (req, res) => {
+    try {
+      const { dashboard_layout } = req.body;
+      const { data: current } = await supabase.from('users').select('preferenze_ui').eq('id', req.user.id).single();
+      const merged = { ...(current?.preferenze_ui || {}), dashboard_layout };
+      await supabase.from('users').update({ preferenze_ui: merged }).eq('id', req.user.id);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
   return router;
 };
