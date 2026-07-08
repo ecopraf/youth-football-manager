@@ -193,6 +193,77 @@
 
 ---
 
+### EPIC 11: Sistema Atleta & Genitore (evoluzione Guest)
+
+> Sostituire il concetto generico di "Guest" con due ruoli distinti (Atleta e Genitore) con capabilities, home e notifiche differenziate. Infrastruttura guest_token invariata (nessuna registrazione), ma UX e permessi specifici per tipo.
+
+#### Fase 1: Tipi e Capabilities (backend)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.1 | Definire capabilities Atleta vs Genitore in `capabilities.js` (frontend + backend mirror) | ⬜ | — | utils/capabilities.js, helpers/capabilities.js | ~5min |
+| 11.2 | Aggiornare `guest_token.tipo` per supportare valori `atleta` e `genitore` (retrocompat con esistenti) | ⬜ | 11.1 | routes/auth.js, routes/guestLinks.js | ~5min |
+| 11.3 | Differenziare JWT guest: includere `tipo` nelle capabilities check del middleware | ⬜ | 11.2 | middleware/auth.js, helpers/capabilities.js | ~5min |
+| 11.4 | Endpoint: atleta può POST su `/api/absence-notification` solo per il proprio player_id | ⬜ | 11.3 | routes/notification.js | ~5min |
+| 11.5 | Test funzionale capabilities atleta/genitore (permessi differenziati) | ⬜ | 11.4 | tmp_test.js | ~5min |
+
+#### Fase 2: Home Atleta (frontend)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.6 | Creare `modules/auth/guestAtleta.js` — Home atleta (notifiche, convocazioni, indisponibilità, allenamenti, partite, stats personali, classifica) | ⬜ | 11.3 | modules/auth/guestAtleta.js | ~15min |
+| 11.6a | — Widget notifiche + convocazione prossima | ⬜ | 11.6 | modules/auth/guestAtleta.js | ~5min |
+| 11.6b | — Form "Comunica indisponibilità" (data + motivo) | ⬜ | 11.4, 11.6 | modules/auth/guestAtleta.js | ~5min |
+| 11.6c | — Sezioni calendario allenamenti + partite + stats personali + classifica | ⬜ | 11.6 | modules/auth/guestAtleta.js | ~5min |
+
+#### Fase 3: Home Genitore (frontend)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.7 | Creare `modules/auth/guestGenitore.js` — Home genitore (comunicazioni, convocazioni figlio, calendario, risultati, classifica, stats squadra) | ⬜ | 11.3 | modules/auth/guestGenitore.js | ~15min |
+| 11.7a | — Widget comunicazioni con badge priorità | ⬜ | 11.7, 11.9 | modules/auth/guestGenitore.js | ~5min |
+| 11.7b | — Sezioni convocazioni figlio + calendario + risultati + classifica | ⬜ | 11.7 | modules/auth/guestGenitore.js | ~5min |
+
+#### Fase 4: Router guest differenziato
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.8 | Aggiornare router.js: guest `tipo=atleta` → guestAtleta, `tipo=genitore` → guestGenitore | ⬜ | 11.6, 11.7 | router.js, modules/auth/guest.js | ~5min |
+
+#### Fase 5: Priorità notifiche
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.9 | ALTER TABLE `notification` ADD `priorita` TEXT DEFAULT 'info' (info/importante/urgente) | ⬜ | — | migrazione SQL | ~3min |
+| 11.10 | Frontend: badge colorato priorità (🔵🟡🔴) nelle liste notifiche | ⬜ | 11.9 | modules/team/notifications.js, guestAtleta.js, guestGenitore.js | ~5min |
+
+#### Fase 6: Comunicazioni con destinatari (fase 1)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.11 | ALTER TABLE `notification` ADD `destinatario_tipo TEXT[]` (atleta/genitore/staff) | ⬜ | — | migrazione SQL | ~3min |
+| 11.12 | UI creazione comunicazione: selezione destinatari (tipo + categorie) | ⬜ | 11.11 | modules/team/notifications.js | ~10min |
+| 11.13 | Backend: filtro GET notifiche per `destinatario_tipo` in base al ruolo richiedente | ⬜ | 11.11 | routes/notification.js | ~5min |
+| 11.14 | Notifiche convocazione differenziate: testo diverso per atleta vs genitore | ⬜ | 11.11, 11.2 | routes/convocazioni.js | ~5min |
+
+#### Fase 7: UI generazione link (aggiornamento)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.15 | Aggiornare UI "Genera Link" — rinominare tipi in "Atleta" e "Genitore" (invece di guest generico) | ⬜ | 11.2 | modules/admin/guestLinks.js | ~5min |
+| 11.16 | Test build completo + aggiornare docs | ⬜ | 11.15 | DEVELOPMENT_PLAN.md, AGENTS.md | ~5min |
+
+**Effort totale stimato**: ~2h 10min (16 task + 3 sotto-task)
+
+**Note architetturali**:
+- L'infrastruttura `guest_token` resta invariata (link senza registrazione)
+- Il JWT guest contiene già `tipo` — basta usarlo per routing e capabilities
+- Le home atleta/genitore sono pagine standalone (non usano sidebar staff)
+- La priorità notifiche è un campo semplice, non un sistema di regole complesso
+- Le comunicazioni fase 1 usano la tabella `notification` esistente con filtro `destinatario_tipo`
+
+---
+
 ## 4. Dipendenze tra Epic
 
 ```
@@ -204,16 +275,18 @@ EPIC 5 (Import TC3) ──→ nessuna dipendenza
 EPIC 6 (Polish) ──→ nessuna dipendenza
 EPIC 7 (Tornei) ──→ nessuna dipendenza (codice già pronto)
 EPIC 9 (Workspace Hub) ──→ nessuna dipendenza
+EPIC 11 (Atleta/Genitore) ──→ nessuna dipendenza (usa infrastruttura guest_token esistente)
 ```
 
 Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
-1. **EPIC 1** (pulizia, 20min) → riduce debito tecnico
-2. **EPIC 2** (infortuni, 43min) → feature richiesta dai mister
-3. **EPIC 3** (visite, 35min) → scadenze mediche = obbligo FIGC
-4. **EPIC 5** (import, 22min) → qualità dati
-5. **EPIC 4** (opponent, 10min) → base per futuro
-6. **EPIC 6** (polish, 33min) → UX
-7. **EPIC 7** (tornei, 37min) → nice-to-have
+1. **EPIC 1** (pulizia, 20min) → riduce debito tecnico ✅
+2. **EPIC 2** (infortuni, 43min) → feature richiesta dai mister ✅
+3. **EPIC 11** (atleta/genitore, ~2h) → evoluzione accesso utenti, alto valore percepito
+4. **EPIC 3** (visite, 35min) → scadenze mediche = obbligo FIGC
+5. **EPIC 5** (import, 22min) → qualità dati
+6. **EPIC 4** (opponent, 10min) → base per futuro
+7. **EPIC 6** (polish, 33min) → UX
+8. **EPIC 7** (tornei, 37min) → nice-to-have
 
 ---
 
@@ -353,6 +426,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | fix: modali form — rimosso click-overlay-close su modali con dati (partita, calciatore, convocazioni, formazione, valutazioni, note, distinta staff, training config) |
 | (pending) | feat: offline buffer — banner globale connessione (solo quando offline), buffer localStorage per MC eventi/note e presenze allenamento, auto-sync al ritorno online |
 | (pending) | perf: dashboard cold start — eliminata await mePromise (-400ms), dedup /auth/workspaces (-300ms), certificati inclusi nel JOIN players (-200ms), rimossi 2 lazy fetch ridondanti (injuries+calciatori già nel dashboard aggregato, -600ms) |
+| (pending) | style: calendario — badge "📦 Archiviata" sostituito con icona 🔒 discreta (tooltip hover) |
+| (pending) | feat: logo ASD Aprilia C.S.P. aggiunto (file + record team_logo DB) |
 | (pending) | perf: v3.16 — indici DB (match_formation, training_attendance, match team+stato), VIEW v_player_season_stats + v_team_season_summary, endpoint aggregato /dashboard (1 call vs 5-6), frontend refactor cache |
 
 ---

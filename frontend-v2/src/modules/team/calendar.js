@@ -521,7 +521,7 @@ export function renderMatchCard(m, stats, isNext = false) {
     : '<span class="match-badge badge-trasferta">✈️ Trasferta</span>';
   const compBadge = m.competizione ? `<span class="match-badge badge-section">${m.competizione}</span>` : '<span class="match-badge badge-section">Amichevole</span>';
   const giornBadge = m.giornata ? `<span class="match-badge badge-section">⚽ G.${m.giornata}</span>` : '';
-  const archivedBadge = isArchiviata ? '<span class="match-badge" style="background:#8B7355;color:white;">📦 Archiviata</span>' : '';
+  const archivedBadge = isArchiviata ? '<span title="Archiviata" style="font-size:14px;">🔒</span>' : '';
 
   // === RISULTATO ===
   let resultHtml = '';
