@@ -42,10 +42,12 @@ export function selectTodayIfTraining(config, presenze) {
   return selectedDate;
 }
 
-export function renderCalendar(config, presenze, matches) {
+export function renderCalendar(config, presenze, matches, annullati) {
   const giorniConfigurati = (config || []).map(c => c.giorno_settimana);
   const oggi = new Date();
   const oggiStr = oggi.getFullYear() + '-' + String(oggi.getMonth()+1).padStart(2,'0') + '-' + String(oggi.getDate()).padStart(2,'0');
+
+  const cancelledDates = new Set(annullati || []);
 
   const dateConPresenze = new Set();
   (presenze || []).forEach(p => { if (p.data) dateConPresenze.add(p.data); });
@@ -76,6 +78,7 @@ export function renderCalendar(config, presenze, matches) {
     .cal-match-info{font-size:9px;color:#c2410c;line-height:1.2;margin-top:1px;max-width:100%;overflow:hidden;display:block;text-overflow:ellipsis;white-space:nowrap}
     .cal-day.is-holiday{background:#f3f4f6;color:#9ca3af;cursor:default}
     .cal-day.is-holiday .cal-holiday-icon{font-size:9px;line-height:1;margin-top:1px}
+    .cal-day.is-cancelled{background:#fee2e2;color:#991b1b;cursor:pointer}
     .cal-day.is-today{border:2px solid #667eea;font-weight:700;color:#667eea}
     .cal-day.is-selected{background:#667eea !important;color:white !important;border-radius:8px}
     .cal-day.is-selected .cal-dot{background:white !important}
@@ -104,17 +107,21 @@ export function renderCalendar(config, presenze, matches) {
     const isProgrammed = giorniConfigurati.includes(dayOfWeek);
     const hasPresenze = dateConPresenze.has(dateStr);
     const hasMatch = !!datePartite[dateStr];
+    const isCancelled = cancelledDates.has(dateStr);
 
     let classes = 'cal-day';
     if (isToday) classes += ' is-today';
     if (isSelected) classes += ' is-selected';
-    if (hasMatch) classes += ' has-match';
+    if (isCancelled) classes += ' is-cancelled';
+    else if (hasMatch) classes += ' has-match';
     else if (isHoliday && !hasPresenze) classes += ' is-holiday';
     else if (hasPresenze) classes += ' has-presenze';
     else if (isProgrammed) classes += ' has-training';
 
     let dotHtml = '';
-    if (hasMatch) {
+    if (isCancelled) {
+      dotHtml = '<span style="font-size:9px;color:#E74C3C;">\u274c</span>';
+    } else if (hasMatch) {
       const m = datePartite[dateStr];
       const luogoIcon = m.luogo === 'Casa' ? '🏠' : '✈️';
       dotHtml = `<span class="cal-match-info">${luogoIcon} ${m.avversario || 'Partita'}</span>`;
@@ -129,7 +136,7 @@ export function renderCalendar(config, presenze, matches) {
       dotHtml = '<span class="cal-dot programmed"></span>';
     }
 
-    const clickable = !hasMatch && !isHoliday && (isProgrammed || hasPresenze);
+    const clickable = !hasMatch && !isHoliday && (isProgrammed || hasPresenze || isCancelled);
     const dataAttr = clickable ? `data-date="${dateStr}"` : '';
     html += `<div class="${classes}" ${dataAttr}>${day}${dotHtml}</div>`;
   }

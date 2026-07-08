@@ -219,16 +219,34 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
             const wsId = team?.category?.workspace_id;
             if (wsId) {
               const dataStr = new Date(match.data_ora).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
-              await supabase.from('notification').insert({
-                workspace_id: wsId,
-                team_id: match.team_id,
-                tipo: 'convocazione',
-                titolo: '📋 Convocazione pronta',
-                messaggio: `${convocatiCount} convocati per ${match.avversario || 'partita'} (${dataStr})`,
-                riferimento_id: req.params.matchId,
-                destinatario_profilo: ['segreteria', 'dirigente', 'osservatore'],
-                created_by: req.user.id
-              });
+              const avv = match.avversario || 'partita';
+              await supabase.from('notification').insert([
+                {
+                  workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione',
+                  titolo: '📋 Convocazione pronta',
+                  messaggio: `${convocatiCount} convocati per ${avv} (${dataStr})`,
+                  riferimento_id: req.params.matchId,
+                  destinatario_profilo: ['segreteria', 'dirigente', 'osservatore'],
+                  destinatario_tipo: ['staff'],
+                  created_by: req.user.id
+                },
+                {
+                  workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione',
+                  titolo: '⚽ Convocazione pubblicata',
+                  messaggio: `Controlla se sei convocato per ${avv} (${dataStr})`,
+                  riferimento_id: req.params.matchId,
+                  destinatario_tipo: ['atleta'],
+                  created_by: req.user.id
+                },
+                {
+                  workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione',
+                  titolo: '📋 Convocazione vs ' + avv,
+                  messaggio: `${convocatiCount} convocati per ${dataStr}. Verifica la convocazione di tuo figlio.`,
+                  riferimento_id: req.params.matchId,
+                  destinatario_tipo: ['genitore'],
+                  created_by: req.user.id
+                }
+              ]);
             }
           }
         } catch(e) { /* silent */ }

@@ -227,7 +227,8 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       } else {
         scadenza = new Date(Date.now() + scadenza_giorni * 24 * 60 * 60 * 1000).toISOString();
       }
-      const insertData = { token, utente_id: req.user.id, tipo, squadre_accesso: categorie_accesso, scadenza };
+      const utenteId = (req.user.id && req.user.id !== 'superadmin') ? req.user.id : null;
+      const insertData = { token, utente_id: utenteId, tipo, squadre_accesso: categorie_accesso, scadenza };
       if (player_id) insertData.player_id = player_id;
       if (telefono) insertData.telefono = telefono;
       if (season_id) insertData.season_id = season_id;
@@ -285,7 +286,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         const p = r.player || {};
         const token = crypto.randomBytes(32).toString('hex');
         const { data, error } = await supabase.from('guest_token').insert({
-          token, utente_id: req.user.id, tipo: 'atleta',
+          token, utente_id: (req.user.id && req.user.id !== 'superadmin') ? req.user.id : null, tipo: 'atleta',
           squadre_accesso: categorie_accesso, scadenza,
           player_id: r.player_id, telefono: p.telefono || null,
           season_id: team.season_id

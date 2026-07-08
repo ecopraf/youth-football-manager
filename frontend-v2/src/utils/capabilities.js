@@ -54,6 +54,16 @@ export const PROFILI = {
     label: 'Personalizzato',
     icon: '⚙️',
     capabilities: {}
+  },
+  atleta: {
+    label: 'Atleta',
+    icon: '🏃',
+    capabilities: { rosa: '', partite: 'read', formazione: 'read', allenamenti: 'read', statistiche: 'read', guest_links: '', import: '', report: '' }
+  },
+  genitore: {
+    label: 'Genitore',
+    icon: '👨‍👩‍👦',
+    capabilities: { rosa: '', partite: 'read', formazione: 'read', allenamenti: '', statistiche: 'read', guest_links: '', import: '', report: '' }
   }
 };
 

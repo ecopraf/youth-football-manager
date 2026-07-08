@@ -16,6 +16,16 @@ module.exports = function createAbsenceRouter({ supabase, authMiddleware }) {
       // Verifica: deve essere guest atleta con player_id oppure utente autenticato
       const pid = player_id || req.user.player_id;
       if (!pid) return res.status(400).json({ error: 'player_id richiesto' });
+
+      // Guest atleta: può segnalare solo per il proprio player_id
+      if (req.user.isGuest && req.user.tipo === 'atleta') {
+        if (!req.user.player_id) return res.status(403).json({ error: 'Link non associato a un giocatore' });
+        if (pid !== req.user.player_id) return res.status(403).json({ error: 'Puoi segnalare assenza solo per te stesso' });
+      }
+      // Guest genitore: blocca (non può segnalare assenze)
+      if (req.user.isGuest && req.user.tipo === 'genitore') {
+        return res.status(403).json({ error: 'Permesso negato' });
+      }
       if (!team_id || !data_allenamento || !motivo) return res.status(400).json({ error: 'Campi obbligatori: team_id, data_allenamento, motivo' });
       if (!MOTIVI.includes(motivo)) return res.status(400).json({ error: 'Motivo non valido' });
 

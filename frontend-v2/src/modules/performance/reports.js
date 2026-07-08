@@ -156,11 +156,15 @@ async function loadMatchList() {
       return;
     }
 
+    const giocate = partite.filter(p => p.stato === 'Terminata');
+    if (!giocate.length) {
+      select.innerHTML = '<option value="">-- Nessuna partita giocata --</option>';
+      return;
+    }
     select.innerHTML = '<option value="">-- Seleziona una partita --</option>' +
-      partite.map(p => {
+      giocate.sort((a,b) => new Date(b.data_ora) - new Date(a.data_ora)).map(p => {
         const data = formatDateShort(p.data_ora);
-        const stato = new Date(p.data_ora) < new Date() ? '✅' : '📅';
-        return `<option value="${p.id}">${stato} ${data} - ${p.avversario} (${p.competizione})</option>`;
+        return `<option value="${p.id}">✅ ${data} - ${p.avversario} (${p.competizione})</option>`;
       }).join('');
     
     document.getElementById('btnGenerateReport').disabled = false;

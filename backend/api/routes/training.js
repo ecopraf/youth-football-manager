@@ -46,6 +46,20 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
   });
 
   // ── PRESENZE ──
+  // GET /api/squadre/:squadraId/allenamenti/annullati — date allenamenti annullati
+  router.get('/api/squadre/:squadraId/allenamenti/annullati', authMiddleware, async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('training')
+        .select('id, data_ora')
+        .eq('team_id', req.params.squadraId)
+        .eq('annullato', true);
+      if (error) return res.status(400).json({ error: error.message });
+      // Restituisci solo le date (YYYY-MM-DD)
+      const dates = (data || []).map(t => t.data_ora.substring(0, 10));
+      res.json(dates);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   router.get('/api/squadre/:squadraId/allenamenti/presenze', authMiddleware, async (req, res) => {
     try {
       const { mese } = req.query; // optional: YYYY-MM filter
@@ -354,7 +368,7 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
 
       // 1. Allenamenti reali già nel DB
       const { data: realTrainings, error } = await supabase.from('training')
-        .select('id, data_ora, durata_minuti, tipo, descrizione, note')
+        .select('id, data_ora, durata_minuti, tipo, descrizione, note, annullato')
         .eq('team_id', teamId)
         .gte('data_ora', now.toISOString())
         .order('data_ora', { ascending: true })
@@ -405,6 +419,89 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
 
       const all = [...result, ...virtual].sort((a, b) => new Date(a.data_ora) - new Date(b.data_ora));
       res.json(all.slice(0, 20));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // PUT /api/training/:id/annulla — annulla allenamento + notifica automatica
+  router.put('/api/training/:id/annulla', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Fetch training per data e team
+      const { data: training, error: fetchErr } = await supabase.from('training')
+        .select('id, team_id, data_ora, annullato').eq('id', id).single();
+      if (fetchErr || !training) return res.status(404).json({ error: 'Allenamento non trovato' });
+      if (training.annullato) return res.json({ success: true, already: true });
+
+      // Set annullato
+      const { error } = await supabase.from('training').update({ annullato: true }).eq('id', id);
+      if (error) return res.status(400).json({ error: error.message });
+
+      // Genera notifica automatica
+      const { data: team } = await supabase.from('team')
+        .select('id, category_id, season:season_id(workspace_id)').eq('id', training.team_id).single();
+      const workspace_id = team?.season?.workspace_id;
+
+      if (workspace_id) {
+        const dataAll = new Date(training.data_ora);
+        const oggi = new Date();
+        const isOggi = dataAll.toISOString().slice(0, 10) === oggi.toISOString().slice(0, 10);
+        const dataStr = dataAll.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+        const titolo = '⚠️ Allenamento annullato';
+        const messaggio = isOggi ? 'Allenamento odierno annullato' : `Allenamento del ${dataStr} annullato`;
+
+        await supabase.from('notification').insert({
+          workspace_id,
+          team_id: training.team_id,
+          tipo: 'avviso',
+          titolo,
+          messaggio,
+          priorita: 'urgente',
+          destinatario_tipo: ['atleta', 'genitore'],
+          destinatario_profilo: ['allenatore', 'admin'],
+          created_by: (req.user.id && req.user.id !== 'superadmin') ? req.user.id : null,
+          letto: false
+        });
+      }
+
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // PUT /api/training/:id/ripristina — ripristina allenamento annullato + notifica
+  router.put('/api/training/:id/ripristina', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { data: training } = await supabase.from('training').select('id, team_id, data_ora').eq('id', id).single();
+      if (!training) return res.status(404).json({ error: 'Allenamento non trovato' });
+
+      const { error } = await supabase.from('training').update({ annullato: false }).eq('id', id);
+      if (error) return res.status(400).json({ error: error.message });
+
+      // Notifica ripristino
+      const { data: team } = await supabase.from('team')
+        .select('id, season:season_id(workspace_id)').eq('id', training.team_id).single();
+      const workspace_id = team?.season?.workspace_id;
+      if (workspace_id) {
+        const dataAll = new Date(training.data_ora);
+        const oggi = new Date();
+        const isOggi = dataAll.toISOString().slice(0, 10) === oggi.toISOString().slice(0, 10);
+        const dataStr = dataAll.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+        await supabase.from('notification').insert({
+          workspace_id,
+          team_id: training.team_id,
+          tipo: 'avviso',
+          titolo: '✅ Allenamento confermato',
+          messaggio: isOggi ? 'Allenamento odierno confermato' : `Allenamento del ${dataStr} confermato`,
+          priorita: 'importante',
+          destinatario_tipo: ['atleta', 'genitore'],
+          destinatario_profilo: ['allenatore', 'admin'],
+          created_by: (req.user.id && req.user.id !== 'superadmin') ? req.user.id : null,
+          letto: false
+        });
+      }
+
+      res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

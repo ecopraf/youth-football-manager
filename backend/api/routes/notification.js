@@ -9,21 +9,33 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       const user = req.user;
       const wsId = user.workspace_id;
       if (!wsId) return res.json([]);
-      const profilo = user.permessi?.profilo || user.ruolo;
 
+      // Filtro temporale (default 7 giorni)
+      const days = parseInt(req.query.days) || 7;
       let query = supabase.from('notification').select('*')
         .eq('workspace_id', wsId)
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false });
 
-      // Filtra: destinate a questo utente specifico O al suo profilo
+      if (days > 0 && days < 9999) {
+        const since = new Date(Date.now() - days * 86400000).toISOString();
+        query = query.gte('created_at', since);
+      }
+      query = query.limit(100);
+
       const { data, error } = await query;
       if (error) return res.status(400).json({ error: error.message });
 
-      // Filtra in memoria per destinatario
+      // Admin e allenatore vedono tutte le notifiche del workspace
+      const ruolo = user.ruolo;
+      if (ruolo === 'admin' || ruolo === 'allenatore' || user.is_superadmin) {
+        return res.json(data || []);
+      }
+
+      // Staff: filtra per destinatario_user_id o destinatario_profilo
+      const profilo = user.permessi?.profilo || ruolo;
       const filtered = (data || []).filter(n => {
         if (n.destinatario_user_id === user.id) return true;
-        if (n.destinatario_profilo && n.destinatario_profilo.includes(profilo)) return true;
+        if (n.destinatario_profilo && (n.destinatario_profilo.includes(profilo) || n.destinatario_profilo.includes(ruolo))) return true;
         return false;
       });
 
@@ -37,16 +49,23 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       const user = req.user;
       const wsId = user.workspace_id;
       if (!wsId) return res.json({ unread: 0 });
-      const profilo = user.permessi?.profilo || user.ruolo;
 
       const { data, error } = await supabase.from('notification').select('id, destinatario_user_id, destinatario_profilo')
         .eq('workspace_id', wsId)
         .eq('letto', false);
       if (error) return res.status(400).json({ error: error.message });
 
+      const ruolo = user.ruolo;
+      // Admin/allenatore: conta tutte le non lette
+      if (ruolo === 'admin' || ruolo === 'allenatore' || user.is_superadmin) {
+        return res.json({ unread: (data || []).length });
+      }
+
+      // Staff: filtra per destinatario
+      const profilo = user.permessi?.profilo || ruolo;
       const count = (data || []).filter(n => {
         if (n.destinatario_user_id === user.id) return true;
-        if (n.destinatario_profilo && n.destinatario_profilo.includes(profilo)) return true;
+        if (n.destinatario_profilo && (n.destinatario_profilo.includes(profilo) || n.destinatario_profilo.includes(ruolo))) return true;
         return false;
       }).length;
 
@@ -54,12 +73,40 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  // PUT /api/notifications/:id/read — segna come letta
+  // PUT /api/notifications/:id/read — segna come letta (staff)
   router.put('/api/notifications/:id/read', authMiddleware, async (req, res) => {
     try {
       const { error } = await supabase.from('notification').update({ letto: true }).eq('id', req.params.id);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // PUT /api/notifications/guest-read — segna come lette per un guest token (batch)
+  router.put('/api/notifications/guest-read', authMiddleware, async (req, res) => {
+    try {
+      const { ids, guest_token } = req.body;
+      if (!ids || !ids.length || !guest_token) return res.status(400).json({ error: 'ids e guest_token richiesti' });
+
+      // Per ogni notifica, merge guest_token nel campo letto_da
+      const now = new Date().toISOString();
+      const { error } = await supabase.rpc('notification_mark_read_guest', {
+        p_ids: ids,
+        p_token: guest_token,
+        p_timestamp: now
+      });
+
+      // Fallback se la funzione RPC non esiste: update manuale
+      if (error) {
+        for (const id of ids.slice(0, 20)) {
+          const { data: notif } = await supabase.from('notification').select('letto_da').eq('id', id).single();
+          const lettoDa = notif?.letto_da || {};
+          lettoDa[guest_token] = now;
+          await supabase.from('notification').update({ letto_da: lettoDa }).eq('id', id);
+        }
+      }
+
+      res.json({ success: true, marked: ids.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
@@ -72,6 +119,141 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
         .eq('workspace_id', wsId).eq('letto', false);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // GET /api/notifications/:id/receipts — conferme di lettura atleti
+  router.get('/api/notifications/:id/receipts', authMiddleware, async (req, res) => {
+    try {
+      const { id } = req.params;
+      // Fetch notifica con letto_da e team_id
+      const { data: notif, error } = await supabase.from('notification')
+        .select('id, team_id, letto_da, destinatario_tipo').eq('id', id).single();
+      if (error || !notif) return res.status(404).json({ error: 'Notifica non trovata' });
+
+      // Solo se destinata ad atleti
+      if (!notif.destinatario_tipo || !notif.destinatario_tipo.includes('atleta')) {
+        return res.json({ receipts: [], total: 0, read: 0 });
+      }
+
+      // Fetch guest_token atleta per questo team (via squadre_accesso contiene category)
+      const { data: team } = await supabase.from('team').select('category_id').eq('id', notif.team_id).single();
+      const catId = team?.category_id;
+      if (!catId) return res.json({ receipts: [], total: 0, read: 0 });
+
+      const { data: tokens } = await supabase.from('guest_token')
+        .select('token, player_id, player:player_id(nome, cognome)')
+        .eq('tipo', 'atleta')
+        .contains('squadre_accesso', [catId]);
+
+      const lettoDa = notif.letto_da || {};
+      const receipts = (tokens || []).map(t => ({
+        player_id: t.player_id,
+        nome: t.player?.nome || '',
+        cognome: t.player?.cognome || '',
+        letto: !!lettoDa[t.token],
+        letto_at: lettoDa[t.token] || null
+      }));
+
+      // Ordina: non letti prima, poi per cognome
+      receipts.sort((a, b) => {
+        if (a.letto !== b.letto) return a.letto ? 1 : -1;
+        return a.cognome.localeCompare(b.cognome);
+      });
+
+      res.json({
+        receipts,
+        total: receipts.length,
+        read: receipts.filter(r => r.letto).length
+      });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // POST /api/notifications — crea comunicazione
+  router.post('/api/notifications', authMiddleware, async (req, res) => {
+    try {
+      const { team_id, titolo, messaggio, priorita, destinatario_tipo } = req.body;
+      if (!team_id || !titolo) return res.status(400).json({ error: 'team_id e titolo richiesti' });
+
+      // Resolve workspace_id from team
+      const { data: team } = await supabase.from('team').select('id, category_id, season:season_id(workspace_id)').eq('id', team_id).single();
+      if (!team) return res.status(404).json({ error: 'Team non trovato' });
+      const workspace_id = team.season?.workspace_id;
+
+      const { data, error } = await supabase.from('notification').insert({
+        workspace_id,
+        team_id,
+        tipo: 'avviso',
+        titolo,
+        messaggio: messaggio || null,
+        priorita: priorita || 'info',
+        destinatario_tipo: destinatario_tipo || [],
+        destinatario_profilo: ['allenatore', 'admin'],
+        created_by: (req.user.id && req.user.id !== 'superadmin') ? req.user.id : null,
+        letto: false
+      }).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.status(201).json({ success: true, notification: data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // GET /api/notifications/team/:teamId — notifiche per guest (filtrate per destinatario_tipo)
+  router.get('/api/notifications/team/:teamId', authMiddleware, async (req, res) => {
+    try {
+      const { teamId } = req.params;
+      const tipoFilter = req.query.destinatario_tipo; // 'atleta' o 'genitore'
+
+      const { data, error } = await supabase.from('notification').select('*')
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) return res.status(400).json({ error: error.message });
+
+      // Filtra per destinatario_tipo se specificato
+      let filtered = data || [];
+      if (tipoFilter) {
+        filtered = filtered.filter(n => {
+          if (!n.destinatario_tipo || n.destinatario_tipo.length === 0) return true; // nessun filtro = tutti
+          return n.destinatario_tipo.includes(tipoFilter);
+        });
+      }
+      res.json(filtered);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // PUT /api/notifications/:id — modifica comunicazione
+  router.put('/api/notifications/:id', authMiddleware, async (req, res) => {
+    try {
+      const { titolo, messaggio, priorita } = req.body;
+      const update = {};
+      if (titolo !== undefined) update.titolo = titolo;
+      if (messaggio !== undefined) update.messaggio = messaggio;
+      if (priorita !== undefined) update.priorita = priorita;
+      if (Object.keys(update).length === 0) return res.status(400).json({ error: 'Nessun campo da aggiornare' });
+
+      const { error } = await supabase.from('notification').update(update).eq('id', req.params.id);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // DELETE /api/notifications/:id — elimina singola comunicazione
+  router.delete('/api/notifications/:id', authMiddleware, async (req, res) => {
+    try {
+      const { error } = await supabase.from('notification').delete().eq('id', req.params.id);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // DELETE /api/notifications-batch — elimina multiple comunicazioni
+  router.delete('/api/notifications-batch', authMiddleware, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!ids || !ids.length) return res.status(400).json({ error: 'ids richiesti' });
+      const { error } = await supabase.from('notification').delete().in('id', ids);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, deleted: ids.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

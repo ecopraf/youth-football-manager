@@ -4,6 +4,7 @@
  */
 const jwt = require('jsonwebtoken');
 const supabase = require('../db/supabase');
+const { PROFILI } = require('../helpers/capabilities');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yfm-secret-key-change-in-production';
 
@@ -17,15 +18,17 @@ const authMiddleware = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    // JWT Guest: accesso solo in lettura
+    // JWT Guest: capabilities in base al tipo (atleta/genitore)
     if (decoded.isGuest) {
+      const guestProfile = PROFILI[decoded.tipo] || {};
       req.user = {
         isGuest: true,
         tipo: decoded.tipo,
+        player_id: decoded.player_id || null,
         squadre_accesso: decoded.squadre_accesso || [],
         ruolo: 'guest',
         is_superadmin: false,
-        permessi: {}
+        permessi: { profilo: decoded.tipo, capabilities: guestProfile.capabilities || {} }
       };
       return next();
     }
@@ -45,9 +48,11 @@ function hasPermission(user, modulo, livello = 'read') {
   if (user.is_superadmin) return true;
   if (user.ruolo === 'admin') return true;
   if (user.ruolo === 'allenatore') return true;
+  // Guest: controlla capabilities del profilo (atleta/genitore)
   // Staff: controlla permessi granulari
   const permessi = user.permessi || {};
-  const perm = permessi[modulo];
+  const caps = permessi.capabilities || permessi;
+  const perm = caps[modulo];
   if (!perm) return false;
   if (livello === 'read') return perm === 'read' || perm === 'write';
   return perm === 'write';

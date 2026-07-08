@@ -2,6 +2,8 @@ export function initRouter() {
   window.YFM.pages = {
     login: () => import('./modules/auth/login.js'),
     guest: () => import('./modules/auth/guest.js'),
+    guestAtleta: () => import('./modules/auth/guestAtleta.js'),
+    guestGenitore: () => import('./modules/auth/guestGenitore.js'),
     users: () => import('./modules/admin/users.js'),
     guestLinks: () => import('./modules/admin/guestLinks.js'),
     dashboard: () => import('./modules/team/dashboard.js'),
@@ -118,7 +120,7 @@ export function initRouter() {
     console.log('[ROUTER] navigateTo chiamato con:', page);
     
     const publicPages = ['login', 'guest'];
-    const guestAllowedPages = ['dashboard', 'calendar', 'stats', 'club', 'absence', 'matchCenter'];
+    const guestAllowedPages = ['dashboard', 'calendar', 'stats', 'club', 'absence', 'matchCenter', 'guestAtleta', 'guestGenitore'];
     
     if (!publicPages.includes(page)) {
       const isGuest = window.YFM.isGuest();
@@ -129,9 +131,15 @@ export function initRouter() {
         return;
       }
       
-      // Guest: blocca pagine non permesse
-      if (isGuest && !guestAllowedPages.includes(page)) {
-        page = 'dashboard';
+      // Guest: blocca pagine non permesse e redirect dashboard → home
+      if (isGuest) {
+        if (page === 'dashboard') {
+          const guestTipo = sessionStorage.getItem('guest_tipo');
+          page = guestTipo === 'genitore' ? 'guestGenitore' : 'guestAtleta';
+        } else if (!guestAllowedPages.includes(page)) {
+          const guestTipo = sessionStorage.getItem('guest_tipo');
+          page = guestTipo === 'genitore' ? 'guestGenitore' : 'guestAtleta';
+        }
       }
     }
 
@@ -157,6 +165,12 @@ export function initRouter() {
       }
       if (window.YFM.updateUserUI) {
         window.YFM.updateUserUI();
+      }
+      // Campanella notifiche guest
+      if (window.YFM.isGuest() && document.getElementById('guestBellWrap')) {
+        import('./modules/auth/guestAtleta.js').then(m => {
+          if (m.updateGuestBell) m.updateGuestBell();
+        }).catch(() => {});
       }
       // Help contestuale
       import('./components/PageHelp.js').then(m => m.injectPageHelp(page)).catch(() => {});

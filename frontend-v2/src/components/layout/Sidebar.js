@@ -120,10 +120,9 @@ export function setupGuestLayout(tipo, playerName) {
         <div class="sidebar-info-workspace" id="workspaceName">${label}</div>
       </div>
       <nav class="sidebar-nav">
-        <a href="#" class="active" data-page="dashboard">📊 Dashboard</a>
+        <a href="#" class="active" data-page="${isAtleta ? 'guestAtleta' : 'guestGenitore'}">🏠 Home</a>
         <a href="#" data-page="calendar">📅 Calendario</a>
         ${isAtleta ? '<a href="#" data-page="stats">📊 Statistiche</a>' : ''}
-        ${isAtleta ? '<a href="#" data-page="absence">⚠️ Segnala Assenza</a>' : ''}
         <a href="#" data-page="club">🏢 Società</a>
       </nav>
       <div class="sidebar-user" style="display:flex;">
@@ -141,7 +140,11 @@ export function setupGuestLayout(tipo, playerName) {
       <header class="header">
         <button id="menuBtn">☰</button>
         <span style="font-weight:600;color:var(--blue);font-size:15px;margin-right:auto;">${playerName || 'Youth Football Manager'}</span>
-        <div class="header-right">
+        <div class="header-right" style="display:flex;align-items:center;gap:12px;">
+          <div id="guestBellWrap" style="position:relative;cursor:pointer;display:none;">
+            <span style="font-size:20px;">🔔</span>
+            <span id="guestBellBadge" style="position:absolute;top:-4px;right:-6px;background:#E74C3C;color:white;font-size:10px;font-weight:700;border-radius:50%;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;"></span>
+          </div>
           <select class="header-select" id="squadraSelect"><option>Caricamento...</option></select>
         </div>
       </header>

@@ -48,10 +48,12 @@ export default async function loadGuest() {
           <h2 style="margin:12px 0 8px;">Ciao ${playerName.split(' ')[0]}!</h2>
           <p style="color:#666;">Benvenuto nel tuo spazio personale</p>
         </div>`;
-        setTimeout(() => window.YFM.navigateTo('dashboard'), 2000);
+        const targetPage = guestData.tipo === 'atleta' ? 'guestAtleta' : guestData.tipo === 'genitore' ? 'guestGenitore' : 'dashboard';
+        setTimeout(() => window.YFM.navigateTo(targetPage), 2000);
       }
     } else {
-      window.YFM.navigateTo('dashboard');
+      const targetPage = guestData.tipo === 'atleta' ? 'guestAtleta' : guestData.tipo === 'genitore' ? 'guestGenitore' : 'dashboard';
+      window.YFM.navigateTo(targetPage);
     }
   } catch (err) {
     hideLoading();

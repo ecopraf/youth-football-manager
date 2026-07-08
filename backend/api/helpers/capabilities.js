@@ -18,6 +18,14 @@ const PROFILI = {
   segreteria: {
     label: 'Segreteria',
     capabilities: { rosa: 'write', partite: 'read', formazione: 'write', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read' }
+  },
+  atleta: {
+    label: 'Atleta',
+    capabilities: { rosa: '', partite: 'read', formazione: 'read', allenamenti: 'read', statistiche: 'read', guest_links: '', import: '', report: '' }
+  },
+  genitore: {
+    label: 'Genitore',
+    capabilities: { rosa: '', partite: 'read', formazione: 'read', allenamenti: '', statistiche: 'read', guest_links: '', import: '', report: '' }
   }
 };
 
@@ -31,4 +39,4 @@ function getUserCapabilities(permessi) {
   return rest;
 }
 
-module.exports = { CAPABILITIES, getUserCapabilities };
+module.exports = { CAPABILITIES, PROFILI, getUserCapabilities };

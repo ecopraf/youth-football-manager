@@ -34,7 +34,7 @@ export default async function loadTrainingSessions() {
   trainingData = await loadTrainingData();
   if (!trainingData) return;
 
-  const { config, presenze, partite } = trainingData;
+  const { config, presenze, partite, annullati } = trainingData;
   selectTodayIfTraining(config, presenze);
 
   setOnDateSelect(async (date) => {
@@ -48,7 +48,7 @@ export default async function loadTrainingSessions() {
 
   window._trainingRefreshCalendar = () => {
     const calEl = document.getElementById('trainingCalendar');
-    if (calEl) { calEl.innerHTML = renderCalendar(config, presenze, partite); attachCalendarListeners(); }
+    if (calEl) { calEl.innerHTML = renderCalendar(config, presenze, partite, trainingData.annullati); attachCalendarListeners(); }
   };
 
   const initialDate = getSelectedDate();
@@ -58,7 +58,7 @@ export default async function loadTrainingSessions() {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <h1 class="page-title">📋 Sedute - ${window.YFM.getSquadraName()}</h1>
     </div>
-    <div class="card" style="margin-bottom:16px;"><div id="trainingCalendar">${renderCalendar(config, presenze, partite)}</div></div>
+    <div class="card" style="margin-bottom:16px;"><div id="trainingCalendar">${renderCalendar(config, presenze, partite, annullati)}</div></div>
     <div class="card" style="margin-bottom:16px;" id="sessionContainer">${renderSessionDetail(initialDate, initialProgramma)}</div>
   `;
 
@@ -68,6 +68,19 @@ export default async function loadTrainingSessions() {
 
 function renderSessionDetail(date, programma) {
   if (!date) return `<div style="text-align:center;padding:40px;color:#6c757d;"><p style="font-size:16px;">📅 Seleziona un giorno dal calendario</p></div>`;
+
+  // Se annullato, mostra stato con possibilità di ripristino
+  if (programma && programma._annullato) {
+    const giorni = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+    const d = new Date(date);
+    const dayLabel = giorni[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
+    return `<div style="text-align:center;padding:40px;">
+      <p style="font-size:32px;">❌</p>
+      <p style="font-weight:700;font-size:16px;color:#E74C3C;">Allenamento annullato</p>
+      <p style="color:#666;font-size:13px;">${dayLabel}</p>
+      <button class="btn btn-secondary" id="btnRipristinaTraining" data-training-id="${programma._trainingId}" style="margin-top:16px;">🔄 Ripristina</button>
+    </div>`;
+  }
 
   const giorni = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
   const d = new Date(date);
@@ -100,9 +113,12 @@ function renderSessionDetail(date, programma) {
     .fase-form{border:1px solid #667eea;border-radius:10px;padding:12px;margin-bottom:10px;background:#f8faff}
   </style>`;
 
-  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
     <div style="font-size:15px;font-weight:600;color:#1a1a2e;">🎯 ${dayLabel}</div>
-    <button class="btn btn-secondary btn-small" id="btnApplyTemplate" data-help="training.template">📋 Usa Template</button>
+    <div style="display:flex;gap:6px;">
+      <button class="btn btn-secondary btn-small" id="btnApplyTemplate" data-help="training.template">📋 Usa Template</button>
+      ${date >= new Date().toISOString().slice(0,10) ? '<button class="btn btn-small" id="btnAnnullaTraining" style="background:#E74C3C;color:white;font-size:11px;">❌ Annulla</button>' : ''}
+    </div>
   </div>`;
 
   html += `<div class="program-section">
@@ -147,6 +163,31 @@ function renderFaseCard(fase, index) {
 
 function attachSessionListeners(date) {
   if (!date) return;
+
+  // Ripristina allenamento annullato
+  const ripristinaBtn = document.getElementById('btnRipristinaTraining');
+  if (ripristinaBtn) {
+    ripristinaBtn.addEventListener('click', async () => {
+      const trainingId = ripristinaBtn.dataset.trainingId;
+      try {
+        await apiFetch(`/training/${trainingId}/ripristina`, { method: 'PUT' });
+        // Rimuovi data da annullati e aggiorna calendario
+        if (trainingData && trainingData.annullati) {
+          trainingData.annullati = trainingData.annullati.filter(d => d !== date);
+        }
+        if (window._trainingRefreshCalendar) window._trainingRefreshCalendar();
+        // Reload session detail
+        const container = document.getElementById('sessionContainer');
+        if (container) {
+          const programma = await loadProgrammaFromDB(date);
+          container.innerHTML = renderSessionDetail(date, programma);
+          attachSessionListeners(date);
+        }
+      } catch(e) { alert('Errore: ' + e.message); }
+    });
+    return;
+  }
+
   document.querySelectorAll('#materialeGrid .mat-chip').forEach(chip => { chip.addEventListener('click', () => chip.classList.toggle('active')); });
   document.getElementById('btnAddFase')?.addEventListener('click', () => openFaseForm(null));
   attachFasiListeners();
@@ -161,6 +202,39 @@ function attachSessionListeners(date) {
     } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
   });
   document.getElementById('btnApplyTemplate')?.addEventListener('click', () => applyTemplateUI(date));
+
+  // Annulla allenamento (two-step: primo click = conferma, secondo = esegui)
+  const annullaBtn = document.getElementById('btnAnnullaTraining');
+  if (annullaBtn) {
+    annullaBtn.addEventListener('click', async () => {
+      if (!annullaBtn.dataset.confirmed) {
+        annullaBtn.dataset.confirmed = '1';
+        annullaBtn.textContent = '⚠️ Conferma annullamento';
+        annullaBtn.style.background = '#c0392b';
+        setTimeout(() => { if (annullaBtn) { delete annullaBtn.dataset.confirmed; annullaBtn.textContent = '❌ Annulla'; annullaBtn.style.background = '#E74C3C'; } }, 4000);
+        return;
+      }
+      annullaBtn.disabled = true;
+      annullaBtn.textContent = '...';
+      const teamId = window.YFM.squadraId;
+      try {
+        const res = await apiFetch(`/squadre/${teamId}/training-by-date/${date}`);
+        let trainingId = res?.training?.id;
+        if (!trainingId) {
+          const created = await apiFetch(`/squadre/${teamId}/training-by-date`, { method: 'POST', body: JSON.stringify({ date }) });
+          trainingId = created?.training?.id || created?.id;
+        }
+        if (trainingId) await apiFetch(`/training/${trainingId}/annulla`, { method: 'PUT' });
+        // Aggiungi data ad annullati e aggiorna calendario
+        if (trainingData && trainingData.annullati && !trainingData.annullati.includes(date)) {
+          trainingData.annullati.push(date);
+        }
+        if (window._trainingRefreshCalendar) window._trainingRefreshCalendar();
+        const container = document.getElementById('sessionContainer');
+        if (container) container.innerHTML = '<div style="text-align:center;padding:40px;"><p style="font-size:32px;">❌</p><p style="color:#E74C3C;font-weight:600;">Allenamento annullato</p><p style="color:#666;font-size:12px;">Notifica inviata ad atleti e genitori</p></div>';
+      } catch(e) { annullaBtn.disabled = false; annullaBtn.textContent = '❌ Errore'; }
+    });
+  }
 }
 
 function attachFasiListeners() {
@@ -223,6 +297,7 @@ async function loadProgrammaFromDB(date) {
   if (!date || !window.YFM.squadraId) return null;
   try {
     const res = await apiFetch('/squadre/' + window.YFM.squadraId + '/training-by-date/' + date);
+    if (res.training?.annullato) return { _annullato: true, _trainingId: res.training.id };
     return res.programma || null;
   } catch(e) { return null; }
 }

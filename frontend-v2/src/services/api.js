@@ -120,6 +120,7 @@ export async function verifyGuestToken(token) {
 // Salva sessione guest (usa sessionStorage per non interferire con altre tab)
 export function setGuestSession(guestData) {
   sessionStorage.setItem('yfm_guest', JSON.stringify(guestData));
+  if (guestData.tipo) sessionStorage.setItem('guest_tipo', guestData.tipo);
 }
 
 // Ottieni sessione guest

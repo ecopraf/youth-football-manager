@@ -58,7 +58,7 @@ git status
 | **Backend** | Node.js/Express (18 router) + Supabase |
 | **Deploy** | Vercel (auto su push a main) |
 | **Auth** | JWT + permessi granulari JSONB |
-| **Guest** | JWT guest (24h, solo lettura). Login risolve team_id + player_name |
+| **Guest** | JWT guest (24h). Login risolve team_id + player_name. Tipo: `atleta` (home personale) o `genitore` (home squadra). Capabilities differenziate per tipo. |
 | **Notifiche** | Badge 🔔 aggiornato al login + polling 60s + cambio squadra. Centro Comunicazioni con tabs (Comunicazioni + Assenze). Trigger auto su convocazioni-batch. |
 | **Help** | Sistema help interattivo contestuale (PageHelp.js + helpData.js) |
 
@@ -149,7 +149,9 @@ frontend-v2/src/
 └── modules/
     ├── auth/
     │   ├── login.js           — Login page
-    │   ├── guest.js           — Guest view
+    │   ├── guest.js           — Guest view (routing differenziato per tipo)
+    │   ├── guestAtleta.js     — Home atleta (stats, allenamenti, partite, assenze)
+    │   ├── guestGenitore.js   — Home genitore (comunicazioni, partite, risultati)
     │   └── absence.js         — Segnalazione assenza (guest)
     ├── admin/
     │   ├── users.js           — Gestione utenti
