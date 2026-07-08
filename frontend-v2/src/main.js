@@ -155,13 +155,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Admin/staff: usa dati localStorage, refresh /auth/me in background
         window.YFM.activeWorkspaceId = user.workspace_id;
         saveCurrentWorkspace(user.workspace_id);
-        // Carica app subito, refresh profilo in background
-        const mePromise = apiFetch('/auth/me').then(freshUser => {
+        // Fetch workspace info una sola volta (evita doppia chiamata /auth/workspaces)
+        const workspaces = await apiFetch('/auth/workspaces').catch(() => []);
+        const ws = workspaces.find(w => w.id === user.workspace_id) || workspaces[0];
+        if (ws) {
+          window.YFM.workspaceInfo = ws;
+          window.YFM.activeWorkspaceId = ws.id;
+        }
+        // Refresh profilo in background (non bloccante)
+        apiFetch('/auth/me').then(freshUser => {
           if (freshUser?.id) window.YFM.setUser(freshUser);
         }).catch(() => {});
+        // loadWorkspaceInfo skipà la fetch (ws già settato), loadSquadre usa ws in memoria
         await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
-        // Attendi /auth/me solo se ancora in corso (non blocca il render)
-        await mePromise;
       }
       
       window.YFM.navigateTo('dashboard');

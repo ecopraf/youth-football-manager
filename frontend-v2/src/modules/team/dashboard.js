@@ -72,6 +72,9 @@ export default async function loadDashboard() {
     partiteFuture = dashData.prossimePartite;
     nextTrainings = dashData.allenamenti;
     topValutazioni = { topGiocatori: [] };
+    // Certificati e infortuni già inclusi nel dashboard aggregato
+    window._dashCertificati = dashData.certificati || null;
+    window._dashInfortunati = dashData.infortunati || [];
   } catch (err) {
     stats = { punti: 0, partiteGiocate: 0, vittorie: 0, pareggi: 0, sconfitte: 0, golFatti: 0, golSubiti: 0, differenzaReti: 0, risultati: [] };
     top = { marcatori: [], assistmen: [], presenze: [] };
@@ -601,33 +604,32 @@ export default async function loadDashboard() {
     }
   });
 
-  // Lazy load: infortuni attivi
-  apiFetch('/squadre/' + squadraId + '/injuries').then(injuries => {
-    const active = (injuries || []).filter(i => !i.data_rientro_effettiva);
-    const widget = document.getElementById('dashInjuryWidget');
-    if (!widget || active.length === 0) return;
+  // Render infortuni attivi (dati già dal dashboard aggregato)
+  const activeInjuries = (window._dashInfortunati || []).filter(i => !i.data_rientro_effettiva);
+  const injWidget = document.getElementById('dashInjuryWidget');
+  if (injWidget && activeInjuries.length > 0) {
     const today = new Date();
-    widget.innerHTML = '<div style="background:#FFF3F3;border:1px solid #FDCECE;border-radius:12px;padding:14px;">' +
-      '<h4 style="margin:0 0 10px 0;font-size:13px;color:#E74C3C;">🏥 Infortunati (' + active.length + ')</h4>' +
-      active.map(inj => {
-        const days = inj.data_rientro_prevista ? Math.ceil((new Date(inj.data_rientro_prevista) - today) / 86400000) : null;
+    injWidget.innerHTML = '<div style="background:#FFF3F3;border:1px solid #FDCECE;border-radius:12px;padding:14px;">' +
+      '<h4 style="margin:0 0 10px 0;font-size:13px;color:#E74C3C;">🏥 Infortunati (' + activeInjuries.length + ')</h4>' +
+      activeInjuries.map(inj => {
+        const days = inj.data_prevista_rientro ? Math.ceil((new Date(inj.data_prevista_rientro) - today) / 86400000) : null;
         const daysLabel = days !== null ? (days > 0 ? days + 'gg' : '⚠️ scaduto') : '';
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;">' +
-          '<span><strong>' + (inj.player?.cognome || '') + '</strong> <span style="color:#888;">' + inj.tipo + '</span></span>' +
+          '<span><strong>' + (inj.cognome || '') + '</strong> <span style="color:#888;">' + inj.tipo + '</span></span>' +
           (daysLabel ? '<span style="color:#E74C3C;font-weight:600;">' + daysLabel + '</span>' : '') +
           '</div>';
       }).join('') + '</div>';
-  }).catch(() => {});
+  }
 
-  // Lazy load: certificati medici
-  apiFetch('/squadre/' + squadraId + '/calciatori').then(players => {
-    const widget = document.getElementById('dashCertificatiWidget');
-    if (!widget || !players || players.length === 0) return;
-    const status = calcCertificatiStatus(players);
-    if (status.scaduti.length === 0 && status.inScadenza.length === 0 && status.mancanti.length === 0) return;
-    widget.innerHTML = '<div style="background:#FFF9F0;border:1px solid #FDE8C8;border-radius:12px;padding:14px;">' + renderCertificatiCard(status) + '</div>';
-    bindCertificatiToggle(widget);
-  }).catch(() => {});
+  // Render certificati medici (dati già dal dashboard aggregato)
+  const certData = window._dashCertificati;
+  const certWidget = document.getElementById('dashCertificatiWidget');
+  if (certWidget && certData && (certData.scaduti > 0 || certData.inScadenza > 0 || certData.mancanti > 0)) {
+    // Costruisci status compatibile con renderCertificatiCard
+    const status = { scaduti: certData.dettaglio?.filter(d => d.stato === 'scaduto') || [], inScadenza: certData.dettaglio?.filter(d => d.stato === 'in_scadenza') || [], validi: Array(certData.validi || 0).fill({}), mancanti: Array(certData.mancanti || 0).fill({}) };
+    certWidget.innerHTML = '<div style="background:#FFF9F0;border:1px solid #FDE8C8;border-radius:12px;padding:14px;">' + renderCertificatiCard(status) + '</div>';
+    bindCertificatiToggle(certWidget);
+  }
 
   // Lazy load: prossima convocazione (per segreteria)
   if (prossimaPartita) {

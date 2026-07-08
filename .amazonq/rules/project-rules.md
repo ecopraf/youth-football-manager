@@ -501,6 +501,37 @@ Supabase ha un hard limit di 1000 righe. Per tabelle grandi:
 - Batch per 20 IDs con `.in('campo', batch).range(0, 9999)`
 - Mai `.limit(N)` da solo (non supera il limite)
 
+### Regola #6: Endpoint aggregati per pagine complesse
+
+Se una pagina frontend fa 3+ chiamate API indipendenti, creare un **endpoint aggregato** backend che le unifica in una sola risposta.
+
+```javascript
+// ❌ VIETATO (frontend fa 5 chiamate parallele)
+const [stats, top, partite, allenamenti, injuries] = await Promise.all([
+  apiFetch('/stats'), apiFetch('/top'), apiFetch('/partite'), apiFetch('/allenamenti'), apiFetch('/injuries')
+]);
+
+// ✅ OBBLIGATORIO (1 sola chiamata, backend aggrega)
+const dashData = await apiFetch('/squadre/:id/dashboard');
+// Backend fa le 5 query in Promise.all e restituisce tutto insieme
+```
+
+### Regola #7: Includere dati correlati nel JOIN iniziale
+
+Se un endpoint fetcha una tabella e poi fa una query separata per dati correlati (es. player per certificati), includere quei campi nel JOIN iniziale.
+
+```javascript
+// ❌ VIETATO (query separata per dati già raggiungibili via JOIN)
+const { data: players } = await supabase.from('team_player').select('id, player:player_id(id, nome)')...;
+// ... poi più avanti:
+const { data: certs } = await supabase.from('player').select('id, scadenza_visita_medica').in('id', playerIds);
+
+// ✅ OBBLIGATORIO (includi nel JOIN iniziale)
+const { data: players } = await supabase.from('team_player')
+  .select('id, player:player_id(id, nome, cognome, scadenza_visita_medica)')...;
+// Usa players direttamente per i certificati, zero query extra
+```
+
 ### Benchmark di riferimento (Luglio 2025)
 
 | Endpoint | Target | Accettabile |
@@ -541,6 +572,75 @@ API esterne lente (>500ms) DEVONO essere caricate DOPO il render iniziale:
 ### Cosa NON cachare
 
 - Token/auth, dati in editing attivo, risposte di scrittura
+
+---
+
+## 🚀 Performance Frontend Init (OBBLIGATORIO)
+
+### Regola #1: Mai bloccare il render con chiamate non essenziali
+
+Chiamate come `/auth/me` (refresh profilo) devono essere **fire-and-forget** — non attendere il risultato prima di navigare alla dashboard.
+
+```javascript
+// ❌ VIETATO (blocca render per 400ms)
+const mePromise = apiFetch('/auth/me');
+await mePromise;
+navigateTo('dashboard');
+
+// ✅ OBBLIGATORIO (fire-and-forget)
+apiFetch('/auth/me').then(u => setUser(u)).catch(() => {});
+navigateTo('dashboard');
+```
+
+### Regola #2: Eliminare chiamate API duplicate
+
+Se due moduli chiamano lo stesso endpoint (es. `/auth/workspaces`), fetchare UNA volta e condividere il risultato.
+
+```javascript
+// ❌ VIETATO (stessa API chiamata 2 volte in parallelo)
+await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+// entrambi chiamano /auth/workspaces internamente!
+
+// ✅ OBBLIGATORIO (fetch una volta, condividi)
+const workspaces = await apiFetch('/auth/workspaces');
+window.YFM.workspaceInfo = workspaces[0];
+await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+// entrambi trovano workspaceInfo già settato, skip fetch
+```
+
+### Regola #3: Usare dati dall'endpoint aggregato
+
+Se il backend restituisce dati aggregati (es. `/dashboard` include certificati + infortuni), il frontend NON deve fare chiamate separate per gli stessi dati.
+
+```javascript
+// ❌ VIETATO (ri-fetcha dati già disponibili)
+const dashData = await apiFetch('/dashboard'); // include certificati
+apiFetch('/calciatori').then(p => renderCertificati(p)); // RIDONDANTE!
+
+// ✅ OBBLIGATORIO (usa dati già ricevuti)
+const dashData = await apiFetch('/dashboard');
+renderCertificati(dashData.certificati); // zero chiamate extra
+```
+
+### Regola #4: Sequenza init ottimale
+
+```
+1. DOMContentLoaded → setupLayout (sincrono)
+2. Fetch workspace info (1 chiamata)
+3. Promise.all([loadWorkspaceInfo, loadSquadre]) — workspace già in memoria
+4. navigateTo('dashboard') — render immediato
+5. Dashboard: 1 chiamata aggregata + lazy GR (sessionStorage cache)
+6. Background: /auth/me, preferences, notifiche (non bloccanti)
+```
+
+### Target tempi caricamento (cold start)
+
+| Fase | Target | Accettabile |
+|------|--------|-------------|
+| Init (fino a navigateTo) | <1s | <1.5s |
+| Dashboard render (dati core) | <1.5s | <2.5s |
+| Dashboard completa (lazy incluso) | <3s | <5s |
+| Totale percepito dall'utente | <3s | <5s |
 
 ## Convenzioni Commit
 

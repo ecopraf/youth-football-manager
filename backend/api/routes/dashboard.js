@@ -28,7 +28,7 @@ function createDashboardRouter({ supabase, authMiddleware }) {
       ] = await Promise.all([
         supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, tipo_competizione, giornata')
           .eq('team_id', teamId).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora', { ascending: false }),
-        supabase.from('team_player').select('id, player:player_id(id, nome, cognome), numero_maglia')
+        supabase.from('team_player').select('id, player_id, player:player_id(id, nome, cognome, scadenza_visita_medica), numero_maglia')
           .eq('team_id', teamId).eq('stato', 'Attivo'),
         supabase.from('match').select('id, data_ora, avversario, luogo, tipo_competizione, giornata')
           .eq('team_id', teamId).gte('data_ora', todayStart).order('data_ora', { ascending: true }).limit(5),
@@ -36,7 +36,7 @@ function createDashboardRouter({ supabase, authMiddleware }) {
           .eq('team_id', teamId).gte('data_ora', now.toISOString()).order('data_ora', { ascending: true }).limit(20),
         supabase.from('training_config').select('giorno_settimana, ora_inizio, ora_fine, luogo')
           .eq('team_id', teamId),
-        supabase.from('injury').select('*, player:player_id(nome, cognome)')
+        supabase.from('injury').select('id, player_id, tipo, data_inizio, data_prevista_rientro, note, player:player_id(nome, cognome)')
           .eq('team_id', teamId).is('data_fine', null),
         supabase.from('team_logo').select('nome, nome_normalizzato, logo_path')
       ]);
@@ -157,34 +157,29 @@ function createDashboardRouter({ supabase, authMiddleware }) {
         tipo: i.tipo, data_inizio: i.data_inizio, data_prevista_rientro: i.data_prevista_rientro, note: i.note
       }));
 
-      // ── 6. CERTIFICATI MEDICI (scaduti + in scadenza 30gg) ──
+      // ── 6. CERTIFICATI MEDICI (da dati già fetchati in players) ──
       const today = new Date();
       const in30gg = new Date(today);
       in30gg.setDate(in30gg.getDate() + 30);
       const todayStr = today.toISOString().substring(0, 10);
       const in30Str = in30gg.toISOString().substring(0, 10);
 
-      const allPlayers = players || [];
-      const playerIds = allPlayers.map(p => p.player?.id).filter(Boolean);
       let certificati = { scaduti: 0, inScadenza: 0, validi: 0, mancanti: 0, dettaglio: [] };
-      if (playerIds.length > 0) {
-        const { data: playersData } = await supabase.from('player')
-          .select('id, nome, cognome, scadenza_visita_medica')
-          .in('id', playerIds);
-        (playersData || []).forEach(p => {
-          if (!p.scadenza_visita_medica) {
-            certificati.mancanti++;
-          } else if (p.scadenza_visita_medica < todayStr) {
-            certificati.scaduti++;
-            certificati.dettaglio.push({ id: p.id, nome: p.nome, cognome: p.cognome, scadenza: p.scadenza_visita_medica, stato: 'scaduto' });
-          } else if (p.scadenza_visita_medica <= in30Str) {
-            certificati.inScadenza++;
-            certificati.dettaglio.push({ id: p.id, nome: p.nome, cognome: p.cognome, scadenza: p.scadenza_visita_medica, stato: 'in_scadenza' });
-          } else {
-            certificati.validi++;
-          }
-        });
-      }
+      (players || []).forEach(tp => {
+        const p = tp.player;
+        if (!p) return;
+        if (!p.scadenza_visita_medica) {
+          certificati.mancanti++;
+        } else if (p.scadenza_visita_medica < todayStr) {
+          certificati.scaduti++;
+          certificati.dettaglio.push({ id: p.id, nome: p.nome, cognome: p.cognome, scadenza: p.scadenza_visita_medica, stato: 'scaduto' });
+        } else if (p.scadenza_visita_medica <= in30Str) {
+          certificati.inScadenza++;
+          certificati.dettaglio.push({ id: p.id, nome: p.nome, cognome: p.cognome, scadenza: p.scadenza_visita_medica, stato: 'in_scadenza' });
+        } else {
+          certificati.validi++;
+        }
+      });
 
       // ── RISPOSTA AGGREGATA ──
       res.json({ stats, topPlayers, prossimePartite, allenamenti, infortunati, certificati });

@@ -352,6 +352,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | fix: diffidati modulo 5 — squalifica al 5°/10°/15° giallo (diffidato a 4/9/14 ammonizioni) |
 | (pending) | fix: modali form — rimosso click-overlay-close su modali con dati (partita, calciatore, convocazioni, formazione, valutazioni, note, distinta staff, training config) |
 | (pending) | feat: offline buffer — banner globale connessione (solo quando offline), buffer localStorage per MC eventi/note e presenze allenamento, auto-sync al ritorno online |
+| (pending) | perf: dashboard cold start — eliminata await mePromise (-400ms), dedup /auth/workspaces (-300ms), certificati inclusi nel JOIN players (-200ms), rimossi 2 lazy fetch ridondanti (injuries+calciatori già nel dashboard aggregato, -600ms) |
 | (pending) | perf: v3.16 — indici DB (match_formation, training_attendance, match team+stato), VIEW v_player_season_stats + v_team_season_summary, endpoint aggregato /dashboard (1 call vs 5-6), frontend refactor cache |
 
 ---
