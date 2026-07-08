@@ -149,15 +149,17 @@ function renderPlayerDetail(container, data) {
       t.ammonizioni += s.ammonizioni || 0; t.espulsioni += s.espulsioni || 0;
       return t;
     }, { partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 });
-    const mappedRows = rows.map(s => ({ stagione: s.stagione || '-', squadra: s.squadra || '-', team_id: s.team_id, partite: s.partite || 0, minuti: s.minuti || 0, gol: s.gol || 0, assist: s.assist || 0, ammonizioni: s.ammonizioni || 0, espulsioni: s.espulsioni || 0 }));
+    const mappedRows = rows.map(s => ({ stagione: s.stagione || '-', squadra: s.squadra || '-', team_id: s.team_id, logo: s.logo || null, partite: s.partite || 0, minuti: s.minuti || 0, gol: s.gol || 0, assist: s.assist || 0, ammonizioni: s.ammonizioni || 0, espulsioni: s.espulsioni || 0 }));
 
     // Desktop: DataGrid table
+    const wsLogo = window.YFM.getWorkspaceLogo();
+    const wsName = window.YFM.getSocietaName();
     const div = document.createElement('div');
     DataGrid({
       container: div,
       columns: [
         { key: 'stagione', label: 'Stagione', width: '2.2fr', align: 'left', secondary: true },
-        { key: 'squadra', label: 'Squadra', width: '2.5fr', align: 'left', primary: true },
+        { key: 'squadra', label: 'Squadra', width: '2.5fr', align: 'left', primary: true, render: (v, row) => { const logo = row.logo || (wsLogo && wsName && v.toLowerCase().includes(wsName.toLowerCase()) ? wsLogo : null); return `<span style="display:inline-flex;align-items:center;gap:6px;">${logo ? `<img src="${logo}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : ''}${v}</span>`; } },
         { key: 'partite', label: 'Partite', labelShort: 'PG', width: '1fr', meta: true, metaPrefix: 'PG', metaSuffix: '' },
         { key: 'minuti', label: 'Minuti', labelShort: 'Min', width: '1.3fr', mobileIcon: '🕐' },
         { key: 'gol', label: 'Gol', labelShort: 'G', width: '1fr', color: '#27AE60', bold: true, mobileIcon: '⚽' },
@@ -170,8 +172,6 @@ function renderPlayerDetail(container, data) {
     });
 
     // Mobile: raggruppato per squadra con logo
-    const wsLogo = window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : null;
-    const wsName = window.YFM.getSocietaName ? window.YFM.getSocietaName() : '';
     const grouped = [];
     mappedRows.forEach(r => {
       const last = grouped[grouped.length - 1];
@@ -396,10 +396,10 @@ function renderPlayerDetail(container, data) {
       container: dgDiv,
       columns: [
         { key: 'giornata', label: 'G.', width: '0.8fr', align: 'center' },
-        { key: 'avversario', label: 'Avversario', width: '3fr', align: 'left', primary: true, render: (v, row) => `<span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">${row.logo ? `<img src="${row.logo}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : ''}${v}</span>` },
+        { key: 'avversario', label: 'Avversario', width: '2.5fr', align: 'left', primary: true, render: (v, row) => `<span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">${row.logo ? `<img src="${row.logo}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : ''}${v}</span>` },
+        { key: 'data', label: 'Data', width: '1.4fr', align: 'left', secondary: true },
         { key: 'risultato', label: 'Ris.', width: '1fr', align: 'center', bold: true },
-        { key: 'data', label: 'Data', width: '1.5fr', align: 'left', secondary: true },
-        { key: 'minuti', label: 'Minuti', labelShort: 'Min', width: '1.2fr', meta: true },
+        { key: 'minuti', label: 'Minuti', labelShort: 'Min', width: '1.3fr', meta: true },
         { key: 'gol', label: 'Gol', labelShort: 'G', width: '1fr', color: '#27AE60', mobileIcon: '⚽' },
         { key: 'assist', label: 'Assist', labelShort: 'A', width: '1fr', color: '#2980B9', mobileIcon: '🅰️' },
         { key: 'gialli', label: '🟨', width: '1fr', color: '#F39C12', mobileIcon: '🟨' },

@@ -346,6 +346,42 @@ Per tabelle con **5+ colonne** o dati misti (testo + numeri), usare il component
 - **Font size minimo**: 12px su mobile per leggibilità
 - **Padding/gap ridotti**: su mobile usare gap/padding più compatti (8-12px vs 16-20px desktop)
 
+### Logo squadra (workspace) — Regole d'uso
+
+Il logo della squadra corrente è disponibile globalmente tramite:
+
+```javascript
+// Logo URL (es. "/logos/albalonga.png") — mai null dopo init
+window.YFM.getWorkspaceLogo()
+
+// Nome società (es. "Albalonga") — mai null dopo init
+window.YFM.getSocietaName()
+```
+
+**Regole:**
+
+| Regola | Dettaglio |
+|---|---|
+| Mai check ridondante | ❌ `window.YFM.getWorkspaceLogo ? window.YFM.getWorkspaceLogo() : null` → ✅ `window.YFM.getWorkspaceLogo()` (la funzione esiste sempre) |
+| Stile logo inline | `width:18px; height:18px; border-radius:50%; object-fit:contain;` + `onerror="this.style.display='none'"` |
+| Logo header | 40x40px, `border-radius:8px` |
+| Logo report/PDF | `height:60px; object-fit:contain` |
+| Matching nome squadra | `v.toLowerCase().includes(window.YFM.getSocietaName().toLowerCase())` per capire se una riga è "la nostra squadra" |
+| Fallback | Se logo non disponibile: nessun placeholder (nascondere con `display:none` via onerror) |
+| Avversari | Usare endpoint backend `findLogo()` da tabella `team_logo` — NON hardcodare path |
+| No variabili locali duplicate | Dichiarare `const wsLogo = window.YFM.getWorkspaceLogo()` UNA volta per funzione/scope |
+
+**Dove si usa il logo workspace:**
+- Header app (40x40)
+- Dashboard (prossima partita, ultime partite)
+- Match Center (header partita)
+- Carriera giocatore (tabella desktop + card mobile)
+- Convocazioni PDF
+- Report PDF
+- Tornei
+
+---
+
 ### Colori e stile card
 
 - Card: `background:white; border-radius:12px; padding:16px; border:1px solid #eee`
