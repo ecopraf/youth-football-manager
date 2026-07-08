@@ -119,6 +119,7 @@ window.YFM.openPlayerDetail = function(playerId) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   setupLayout();
+  initOfflineBanner();
   initRouter();
 
   const path = window.location.pathname;
@@ -185,3 +186,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.YFM.navigateTo('login');
   }
 });
+
+function initOfflineBanner() {
+  const banner = document.createElement('div');
+  banner.id = 'offlineBanner';
+  banner.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;z-index:9999;padding:6px 16px;font-size:12px;font-weight:600;text-align:center;transition:transform 0.3s,opacity 0.3s;';
+  document.body.prepend(banner);
+
+  const show = (msg, bg, color) => {
+    banner.textContent = msg;
+    banner.style.background = bg;
+    banner.style.color = color;
+    banner.style.display = 'block';
+    banner.style.opacity = '1';
+    banner.style.transform = 'translateY(0)';
+  };
+  const hide = () => {
+    banner.style.opacity = '0';
+    banner.style.transform = 'translateY(-100%)';
+    setTimeout(() => { banner.style.display = 'none'; }, 300);
+  };
+
+  window.addEventListener('offline', () => {
+    show('⚠️ Connessione assente — i dati vengono salvati localmente', '#fef3c7', '#92400e');
+  });
+  window.addEventListener('online', () => {
+    show('✅ Connessione ripristinata', '#d1fae5', '#065f46');
+    setTimeout(hide, 3000);
+  });
+
+  // Show immediately if already offline
+  if (!navigator.onLine) {
+    show('⚠️ Connessione assente — i dati vengono salvati localmente', '#fef3c7', '#92400e');
+  }
+}

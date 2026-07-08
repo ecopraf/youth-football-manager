@@ -4,6 +4,7 @@ import { showLoading, hideLoading } from '../../utils/ui.js';
 import { invalidateDashboardCache } from './dashboard.js';
 import { invalidateStatsCache } from '../performance/stats.js';
 import { PITCH_CSS, buildPitchSlots, convertApiFormation } from './formazione.js';
+import { initOfflineBuffer, destroyOfflineBuffer, isOnline, saveToBuffer, loadFromBuffer, loadMetaFromBuffer, clearBuffer, hasBufferedData } from '../../utils/offlineBuffer.js';
 
 let match = null;
 let eventi = [];
@@ -14,6 +15,7 @@ let formazioneIniziale = null;
 let moduloIniziale = null;
 let isReadOnly = false;
 let liveInterval = null;
+let currentMatchId = null;
 
 export default async function loadMatchCenter() {
   const c = document.getElementById('pageContent');
@@ -21,6 +23,11 @@ export default async function loadMatchCenter() {
   if (!mid) { c.innerHTML = '<div class="error-box">Partita non specificata</div>'; return; }
 
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento Match Center...</div>';
+
+  // Init offline buffer
+  currentMatchId = mid;
+  destroyOfflineBuffer();
+  initOfflineBuffer(syncBufferedMatch, () => {});
 
   try {
     // Load match data + events
@@ -86,6 +93,17 @@ export default async function loadMatchCenter() {
           match.live_meta = res.live_meta;
           match.stato = 'Terminata';
         } catch(e) {}
+      }
+    }
+
+    // Check if there's buffered data from a previous offline session
+    if (hasBufferedData(mid)) {
+      const buffered = loadFromBuffer(mid);
+      if (buffered && buffered.length > eventi.length) {
+        eventi = buffered;
+        showToast('📦 Recuperati eventi salvati offline');
+      } else {
+        clearBuffer(mid);
       }
     }
 
@@ -849,6 +867,7 @@ function bindEvents(mid) {
       const idx = parseInt(btn.dataset.del);
       if (!await confirm('Eliminare questo evento?')) return;
       eventi.splice(idx, 1);
+      bufferCurrentState();
       render(document.getElementById('pageContent'), mid);
       showToast('Evento rimosso — salva per confermare');
     });
@@ -1048,6 +1067,9 @@ function saveEventFromDrawer(mid) {
   if (editIdx >= 0) eventi[editIdx] = evento;
   else eventi.push(evento);
 
+  // Buffer to localStorage for offline safety
+  bufferCurrentState();
+
   // Sync formation on SUB
   if (evento.tipo === 'SUB' && evento.principale_id && evento.sub_in_id && editIdx < 0) {
     applySubToFormation(evento.principale_id, evento.sub_in_id);
@@ -1066,6 +1088,19 @@ function showToast(msg) {
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
 }
 
+// ── OFFLINE SUPPORT ──
+function bufferCurrentState() {
+  if (!currentMatchId || isReadOnly) return;
+  const scoreL = parseInt(document.getElementById('scoreLeft')?.textContent) || 0;
+  const scoreR = parseInt(document.getElementById('scoreRight')?.textContent) || 0;
+  saveToBuffer(currentMatchId, eventi, { scoreL, scoreR, live_meta: match?.live_meta });
+}
+
+async function syncBufferedMatch(matchId) {
+  if (matchId !== currentMatchId || !match) return;
+  await saveAll(matchId);
+}
+
 // ── SAVE ALL ──
 
 // ── LIVE FORMATION INTERACTIONS ──
@@ -1079,11 +1114,27 @@ function bindNotesPanel(mid) {
     clearTimeout(_notesTimer);
     _notesTimer = setTimeout(async () => {
       match.note = area.value;
-      await apiFetch('/partite/' + mid + '/note', { method: 'PUT', body: JSON.stringify({ note: area.value }) });
-      const saved = document.getElementById('mcNotesSaved');
-      if (saved) { saved.style.opacity = '1'; setTimeout(() => { saved.style.opacity = '0'; }, 2000); }
+      // Buffer note locally
+      try { localStorage.setItem('mc_note_' + mid, area.value); } catch(e) {}
+      if (!isOnline()) {
+        const saved = document.getElementById('mcNotesSaved');
+        if (saved) { saved.textContent = '🔴 Salvato offline'; saved.style.color = '#F39C12'; saved.style.opacity = '1'; setTimeout(() => { saved.style.opacity = '0'; }, 2000); }
+        return;
+      }
+      try {
+        await apiFetch('/partite/' + mid + '/note', { method: 'PUT', body: JSON.stringify({ note: area.value }) });
+        localStorage.removeItem('mc_note_' + mid);
+        const saved = document.getElementById('mcNotesSaved');
+        if (saved) { saved.textContent = '✓ Salvato'; saved.style.color = '#22c55e'; saved.style.opacity = '1'; setTimeout(() => { saved.style.opacity = '0'; }, 2000); }
+      } catch(e) {
+        const saved = document.getElementById('mcNotesSaved');
+        if (saved) { saved.textContent = '🔴 Salvato offline'; saved.style.color = '#F39C12'; saved.style.opacity = '1'; setTimeout(() => { saved.style.opacity = '0'; }, 2000); }
+      }
     }, 1500);
   });
+  // Recover buffered note
+  const bufferedNote = localStorage.getItem('mc_note_' + mid);
+  if (bufferedNote && !area.value) { area.value = bufferedNote; match.note = bufferedNote; }
   document.getElementById('mcNotesTimestamp')?.addEventListener('click', () => {
     const min = calcLiveMinute();
     const prefix = min ? `[${min}'] ` : `[${new Date().toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'})}] `;
@@ -1230,6 +1281,8 @@ function performLiveSub(mid, outPid, inPid, minuto) {
   });
   // Swap in formazioneData
   applySubToFormation(outPid, inPid);
+  // Buffer to localStorage
+  bufferCurrentState();
   // Re-render
   render(document.getElementById('pageContent'), mid);
   showToast(`🔄 ${gOut?.cognome || '?'} → ${gIn?.cognome || '?'} (${minuto}')`);
@@ -1613,6 +1666,11 @@ function matchPlayerByName(name) {
 }
 
 async function saveAll(mid) {
+  if (!isOnline()) {
+    bufferCurrentState();
+    showToast('🔴 Offline — dati salvati localmente, sync al ritorno online');
+    return;
+  }
   showLoading();
   try {
     // Save events
@@ -1652,6 +1710,7 @@ async function saveAll(mid) {
     match.gol_ospite = golOspite;
 
     hideLoading();
+    clearBuffer(mid);
     invalidateDashboardCache();
     invalidateStatsCache();
     showToast('✅ Risultato e eventi salvati!');

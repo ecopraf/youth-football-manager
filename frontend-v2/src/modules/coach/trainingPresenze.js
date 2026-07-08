@@ -8,6 +8,7 @@ import { showLoading, hideLoading } from '../../utils/ui';
 import { getAvatarColor, formatDateShort } from '../../utils/formatters';
 import { renderCalendar, attachCalendarListeners, setOnDateSelect, selectTodayIfTraining, getSelectedDate } from './trainingCalendar';
 import { loadTrainingData } from './trainingData';
+import { isOnline, saveToBuffer, loadFromBuffer, clearBuffer, onBackOnline } from '../../utils/offlineBuffer';
 
 const MOTIVI_ASSENZA = [
   { value: '', label: 'Nessun motivo' },
@@ -19,10 +20,16 @@ const MOTIVI_ASSENZA = [
 
 let _trainingData = null;
 let _absenceNotifications = [];
+let _unsubOnline = null;
 
 export default async function loadTrainingPresenze() {
   const c = document.getElementById('pageContent');
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
+
+  // Register online sync for buffered attendance
+  if (!_unsubOnline) {
+    _unsubOnline = onBackOnline(syncBufferedPresenze);
+  }
 
   _trainingData = await loadTrainingData();
   if (!_trainingData) return;
@@ -134,14 +141,31 @@ function attachPresenzeListeners(date) {
       presenzeList.push({ calciatoreId: cb.dataset.pid, presente: !isAssente, note: isAssente && select ? select.value : null });
     });
 
+    // Buffer to localStorage immediately
+    const bufferKey = 'presenze_' + window.YFM.squadraId + '_' + date;
+    saveToBuffer(bufferKey, presenzeList, { date, squadraId: window.YFM.squadraId });
+
+    if (!isOnline()) {
+      alert('🔴 Offline — presenze salvate localmente. Verranno sincronizzate al ritorno della connessione.');
+      return;
+    }
+
     showLoading();
     try {
       await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze-batch', {
         method: 'POST', body: JSON.stringify({ data: presenzeList, date })
       });
+      clearBuffer(bufferKey);
       hideLoading(); alert('✅ Presenze salvate!');
       loadTrainingPresenze();
-    } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
+    } catch(e) {
+      hideLoading();
+      if (e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed')) {
+        alert('🔴 Errore di rete — presenze salvate localmente. Verranno sincronizzate al ritorno della connessione.');
+      } else {
+        alert('Errore: ' + e.message);
+      }
+    }
   });
 }
 
@@ -208,4 +232,22 @@ function renderSummary(giocatori, summary, settimana) {
         </tr>`;
       }).join('')}</tbody></table></div></div>`;
   return html;
+}
+
+async function syncBufferedPresenze() {
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('mc_buffer_presenze_'));
+  for (const key of keys) {
+    try {
+      const raw = localStorage.getItem(key);
+      const metaRaw = localStorage.getItem(key.replace('mc_buffer_', 'mc_meta_'));
+      if (!raw || !metaRaw) continue;
+      const presenzeList = JSON.parse(raw);
+      const meta = JSON.parse(metaRaw);
+      await apiFetch('/squadre/' + meta.squadraId + '/allenamenti/presenze-batch', {
+        method: 'POST', body: JSON.stringify({ data: presenzeList, date: meta.date })
+      });
+      localStorage.removeItem(key);
+      localStorage.removeItem(key.replace('mc_buffer_', 'mc_meta_'));
+    } catch (e) { /* retry next time */ }
+  }
 }

@@ -135,6 +135,7 @@ frontend-v2/src/
 │   ├── ui.js                  — Loading spinner, toast
 │   ├── capabilities.js        — Profili, capabilities, getUserCapabilities()
 │   ├── sessionGuard.js        — Visibility check + inactivity timer
+│   ├── offlineBuffer.js       — Buffer localStorage offline + auto-sync online
 │   ├── codiceFiscale.js       — Calcolo CF + autocomplete comuni
 │   ├── charts.js              — Grafici canvas (trend, barre)
 │   └── teamMatch.js           — Utility partita (formazione, eventi)

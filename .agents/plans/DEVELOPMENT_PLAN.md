@@ -351,6 +351,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | fix: distinta — amichevole senza giornata, preview font 10px simulazione stampa, bottone 📄 Distinta in dashboard, assistente arbitro layout matr+tessera |
 | (pending) | fix: diffidati modulo 5 — squalifica al 5°/10°/15° giallo (diffidato a 4/9/14 ammonizioni) |
 | (pending) | fix: modali form — rimosso click-overlay-close su modali con dati (partita, calciatore, convocazioni, formazione, valutazioni, note, distinta staff, training config) |
+| (pending) | feat: offline buffer — banner globale connessione (solo quando offline), buffer localStorage per MC eventi/note e presenze allenamento, auto-sync al ritorno online |
 | (pending) | perf: v3.16 — indici DB (match_formation, training_attendance, match team+stato), VIEW v_player_season_stats + v_team_season_summary, endpoint aggregato /dashboard (1 call vs 5-6), frontend refactor cache |
 
 ---
