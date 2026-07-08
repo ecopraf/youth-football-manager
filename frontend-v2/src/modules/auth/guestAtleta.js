@@ -209,11 +209,28 @@ function render(c, { playerName, playerId, teamId, notifications, matches, train
 }
 
 function renderConvocationStatus(conv, match) {
+  const d = new Date(match.data_ora);
+  const dateStr = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const ritrovo = new Date(d.getTime() - 75 * 60000);
+  const ritrovoStr = ritrovo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const societa = window.YFM.getSocietaName ? window.YFM.getSocietaName() : '';
+  const campoCasa = window.YFM.facility ? [window.YFM.facility.nome, window.YFM.facility.indirizzo].filter(Boolean).join(' - ') : 'Campo di casa';
+  const campoInfo = match.luogo === 'Trasferta' ? (match.indirizzo_campo || 'Trasferta') : campoCasa;
+
+  const detailsHtml = `<div style="font-size:12px;color:#333;line-height:1.8;margin:10px 0;">
+    <div>⚽ <strong>${societa.toUpperCase()} - ${(match.avversario || 'TBD').toUpperCase()}</strong></div>
+    <div>🏟️ Campo: <strong>${campoInfo}</strong></div>
+    <div>🗓️ Alle ore <strong>${timeStr}</strong> del giorno <strong>${dateStr}</strong></div>
+    <div>🚌 Ritrovo alle ore <strong>${ritrovoStr}</strong> al Campo di Giuoco</div>
+  </div>`;
+
   const viewBtn = `<button class="btn btn-secondary" id="gaConvView" data-match-id="${match.id}" style="font-size:12px;padding:6px 12px;margin-top:8px;">📄 Vedi Convocazione</button>`;
 
   // Non convocato
   if (!conv) {
     return `<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#f8f9fa;border:1px solid #e5e7eb;">
+      ${detailsHtml}
       <div style="font-size:13px;color:#666;">📋 Non sei stato convocato per questa partita</div>
       ${viewBtn}
     </div>`;
@@ -222,6 +239,7 @@ function renderConvocationStatus(conv, match) {
   // Convocato ma ha segnalato indisponibilità
   if (conv.risposta === 'indisponibile') {
     return `<div style="margin-top:8px;padding:10px 12px;border-radius:8px;background:#fee2e2;">
+      ${detailsHtml}
       <div style="font-size:13px;">❌ Hai comunicato la tua indisponibilità${conv.risposta_motivo ? ' — ' + conv.risposta_motivo : ''}</div>
       ${viewBtn}
     </div>`;
@@ -229,6 +247,7 @@ function renderConvocationStatus(conv, match) {
 
   // Convocato e disponibile
   return `<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#d1fae5;border:1px solid #a7f3d0;">
+    ${detailsHtml}
     <div style="font-size:13px;font-weight:600;margin-bottom:8px;">📋 Sei convocato!</div>
     <button class="btn btn-secondary" id="gaConvDecline" data-conv-id="${conv.id}" data-match-id="${match.id}" style="font-size:12px;padding:6px 12px;background:#fee2e2;border-color:#fca5a5;color:#dc2626;">❌ Ho un imprevisto, non posso esserci</button>
     ${viewBtn}
