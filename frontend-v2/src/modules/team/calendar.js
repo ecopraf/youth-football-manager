@@ -240,7 +240,7 @@ function renderCalendarPage(c, matches, stats) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
       <div><h1 class="page-title">Calendario</h1></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        ${window.YFM.isAdmin() ? `<button class="btn btn-primary" id="btnAdd" data-help="calendar.btnNuova">+ Nuova</button>
+        ${window.YFM.canWrite('partite') ? `<button class="btn btn-primary" id="btnAdd" data-help="calendar.btnNuova">+ Nuova</button>
         <button class="btn btn-secondary" id="btnImportPdf" data-help="calendar.btnImporta" style="font-size:13px;">📄 PDF</button>
         <select id="calFilterStato" class="filter-select" style="font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid #ddd;">
           <option value="tutte">Tutte</option>
@@ -561,7 +561,7 @@ export function renderMatchCard(m, stats, isNext = false) {
 
   // === EDIT/DELETE/ARCHIVIA (solo admin) ===
   let editBtns = '';
-  const _isAdmin = window.YFM.isAdmin();
+  const _isAdmin = window.YFM.canWrite('partite');
   if (_isAdmin && !isArchiviata) {
     const archBtn = (isPast && hasResult) ? `<button class="btn btn-secondary btn-small" data-help="calendar.archivia" style="color:#856404;" onclick="event.stopPropagation();archiveMatch('${m.id}')" title="Archivia">📦</button>` : '';
     editBtns = `${archBtn}<button class="btn btn-secondary btn-small btn-editm" data-mid="${m.id}" title="Modifica">✏️</button><button class="btn btn-secondary btn-small btn-danger btn-del" data-mid="${m.id}" title="Elimina">🗑️</button>`;
@@ -966,7 +966,7 @@ function openImportPdf() {
       }
       
       // Mostra categorie trovate con checkbox
-      const isAdmin = window.YFM.isAdmin();
+      const isAdmin = window.YFM.canWrite('partite');
       const checkboxes = data.categorie.map((c, i) => `
         <label style="display:flex;align-items:center;gap:8px;padding:10px;background:#f8f9ff;border-radius:8px;margin-bottom:8px;cursor:pointer;">
           <input type="checkbox" name="pdfCat" value="${i}" data-cat="${c.categoria}" data-gir="${c.girone}" ${!isAdmin && i === 0 ? 'checked' : ''}>

@@ -16,7 +16,12 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
     if (!user) return false;
     if (isSuperadmin) return true;
     if (user.ruolo === 'admin') return true;
-    if (user.ruolo === 'allenatore') return true;
+    if (user.ruolo === 'allenatore') {
+      const permessi = user.permessi || {};
+      const caps = permessi.capabilities || permessi;
+      if (!caps || Object.keys(caps).length === 0) return true;
+      return !!caps[capId];
+    }
     const permessi = user.permessi || {};
     const caps = permessi.capabilities || permessi;
     return !!caps[capId];

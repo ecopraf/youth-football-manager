@@ -70,6 +70,7 @@ export async function openConvocation(mid, readOnly) {
   const footer = `
     <button class="btn btn-secondary" id="modalCancel">Chiudi</button>
     <button class="btn btn-primary" id="saveBtn" data-help="convocazioni.salva">💾 Salva</button>
+    <button class="btn btn-primary" id="publishBtn" style="background:#27AE60;" title="Salva e invia notifica ad atleti, genitori e staff">📢 Pubblica</button>
     <button class="btn btn-primary" id="previewBtn" style="background:#0A1C3A;" data-help="convocazioni.anteprima">📄 Vedi Convocazione</button>`;
 
   const modal = createModal('📋 Convocazioni - vs ' + (match.avversario || '...'), content, footer, '650px');
@@ -133,6 +134,24 @@ export async function openConvocation(mid, readOnly) {
     } catch (e) {
       hideLoading();
       alert('Errore: ' + e.message);
+    }
+  });
+
+  document.getElementById('publishBtn').addEventListener('click', async () => {
+    const checks = document.querySelectorAll('#currentModal .conv-check:checked');
+    if (checks.length < 11) { alert('⚠️ Minimo 11 calciatori!'); return; }
+    if (checks.length > 20) { alert('⚠️ Max 20 convocabili!'); return; }
+    const convocazioni = [];
+    document.querySelectorAll('#currentModal .conv-check').forEach(cb => {
+      convocazioni.push({ calciatoreId: cb.dataset.pid, presente: cb.checked });
+    });
+    showLoading();
+    try {
+      await apiFetch('/partite/' + mid + '/convocazioni-batch', { method: 'POST', body: JSON.stringify({ convocazioni }) });
+      await apiFetch('/partite/' + mid + '/convocazioni-pubblica', { method: 'POST' });
+      hideLoading(); modal.close(); alert('✅ Convocazione pubblicata! Notifica inviata ad atleti, genitori e staff.');
+    } catch (e) {
+      hideLoading(); alert('Errore: ' + e.message);
     }
   });
 }

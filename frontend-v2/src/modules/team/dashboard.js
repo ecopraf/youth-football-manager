@@ -102,7 +102,7 @@ export default async function loadDashboard() {
   const isMatchFinished = prossimaPartita && isMatchDone(prossimaPartita);
   
   const isGuest = !!(window.YFM.guestSquadreAccesso && window.YFM.guestSquadreAccesso.length > 0);
-  const hasEditAccess = !isGuest && (window.YFM.isAdmin() || window.YFM.hasRole('allenatore'));
+  const hasEditAccess = !isGuest && window.YFM.canWrite('partite');
   const matchCenterBtn = hasEditAccess && prossimaPartita
     ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;" onclick="window.YFM.openMatchCenter(\'' + prossimaPartita.id + '\')">⚽ Match Center</button>'
     : '';

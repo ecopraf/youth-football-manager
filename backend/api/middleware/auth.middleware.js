@@ -47,9 +47,17 @@ const authMiddleware = async (req, res, next) => {
 function hasPermission(user, modulo, livello = 'read') {
   if (user.is_superadmin) return true;
   if (user.ruolo === 'admin') return true;
-  if (user.ruolo === 'allenatore') return true;
-  // Guest: controlla capabilities del profilo (atleta/genitore)
-  // Staff: controlla permessi granulari
+  if (user.ruolo === 'allenatore') {
+    // Allenatore: controlla capabilities se presenti
+    const permessi = user.permessi || {};
+    const caps = permessi.capabilities || permessi;
+    if (!caps || Object.keys(caps).length === 0) return true; // legacy fallback
+    const perm = caps[modulo];
+    if (!perm) return false;
+    if (livello === 'read') return perm === 'read' || perm === 'write';
+    return perm === 'write';
+  }
+  // Guest/Staff: controlla permessi granulari
   const permessi = user.permessi || {};
   const caps = permessi.capabilities || permessi;
   const perm = caps[modulo];

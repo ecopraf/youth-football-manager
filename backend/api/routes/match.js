@@ -209,49 +209,34 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         const { error } = await supabase.from('convocation').insert(inserts);
         if (error) return res.status(400).json({ error: error.message });
       }
-      // Trigger notifica per segreteria (non-blocking)
-      const convocatiCount = inserts.filter(i => i.presente).length;
-      if (convocatiCount > 0) {
-        try {
-          const { data: match } = await supabase.from('match').select('avversario, data_ora, team_id').eq('id', req.params.matchId).single();
-          if (match) {
-            const { data: team } = await supabase.from('team').select('category_id, category:category_id(workspace_id)').eq('id', match.team_id).single();
-            const wsId = team?.category?.workspace_id;
-            if (wsId) {
-              const dataStr = new Date(match.data_ora).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
-              const avv = match.avversario || 'partita';
-              await supabase.from('notification').insert([
-                {
-                  workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione',
-                  titolo: '📋 Convocazione pronta',
-                  messaggio: `${convocatiCount} convocati per ${avv} (${dataStr})`,
-                  riferimento_id: req.params.matchId,
-                  destinatario_profilo: ['segreteria', 'dirigente', 'osservatore'],
-                  destinatario_tipo: ['staff'],
-                  created_by: req.user.id
-                },
-                {
-                  workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione',
-                  titolo: '⚽ Convocazione pubblicata',
-                  messaggio: `Controlla se sei convocato per ${avv} (${dataStr})`,
-                  riferimento_id: req.params.matchId,
-                  destinatario_tipo: ['atleta'],
-                  created_by: req.user.id
-                },
-                {
-                  workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione',
-                  titolo: '📋 Convocazione vs ' + avv,
-                  messaggio: `${convocatiCount} convocati per ${dataStr}. Verifica la convocazione di tuo figlio.`,
-                  riferimento_id: req.params.matchId,
-                  destinatario_tipo: ['genitore'],
-                  created_by: req.user.id
-                }
-              ]);
-            }
-          }
-        } catch(e) { /* silent */ }
-      }
       res.json({ success: true, saved: inserts.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── PUBBLICA CONVOCAZIONE (invia notifiche) ──
+  router.post('/api/partite/:matchId/convocazioni-pubblica', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
+    try {
+      const { data: convs } = await supabase.from('convocation').select('id').eq('match_id', req.params.matchId).eq('presente', true);
+      const convocatiCount = convs?.length || 0;
+      if (convocatiCount === 0) return res.status(400).json({ error: 'Nessun convocato salvato' });
+
+      const { data: match } = await supabase.from('match').select('avversario, data_ora, team_id').eq('id', req.params.matchId).single();
+      if (!match) return res.status(404).json({ error: 'Partita non trovata' });
+
+      const { data: team } = await supabase.from('team').select('category_id, category:category_id(workspace_id)').eq('id', match.team_id).single();
+      const wsId = team?.category?.workspace_id;
+      if (!wsId) return res.status(400).json({ error: 'Workspace non trovato' });
+
+      const dataStr = new Date(match.data_ora).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+      const avv = match.avversario || 'partita';
+
+      await supabase.from('notification').insert([
+        { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '📋 Convocazione pronta', messaggio: `${convocatiCount} convocati per ${avv} (${dataStr})`, riferimento_id: req.params.matchId, destinatario_profilo: ['segreteria', 'dirigente', 'osservatore'], destinatario_tipo: ['staff'], created_by: req.user.id },
+        { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '⚽ Convocazione pubblicata', messaggio: `Controlla se sei convocato per ${avv} (${dataStr})`, riferimento_id: req.params.matchId, destinatario_tipo: ['atleta'], created_by: req.user.id },
+        { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '📋 Convocazione vs ' + avv, messaggio: `${convocatiCount} convocati per ${dataStr}. Verifica la convocazione di tuo figlio.`, riferimento_id: req.params.matchId, destinatario_tipo: ['genitore'], created_by: req.user.id }
+      ]);
+
+      res.json({ success: true, convocati: convocatiCount });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

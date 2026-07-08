@@ -598,6 +598,9 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | perf: v3.16 — indici DB (match_formation, training_attendance, match team+stato), VIEW v_player_season_stats + v_team_season_summary, endpoint aggregato /dashboard (1 call vs 5-6), frontend refactor cache |
 | (pending) | fix: training calendar — ripristino/annullamento aggiorna colore giorno immediatamente (fix closure su annullati array) |
 | (pending) | fix: report partita — dropdown mostra solo partite con stato Terminata (escluse future e in corso) |
+| (pending) | refactor: sistema capabilities — migrazione da isAdmin() a canWrite()/canRead() per modulo, allenatore usa capabilities reali (non blanket true), guest_links rimosso da profilo allenatore, nuovo endpoint convocazioni-pubblica separato da salvataggio, pulizia notifiche DB |
+| (pending) | feat: indisponibilità inline — bottone ❌ su ogni allenamento/partita nella home atleta, modal con data pre-compilata, stato persistente in sessionStorage (fetch al login + persist dopo invio), fix backend accetta player_id da body per token legacy |
+| (pending) | feat: crea link singolo atleta — dropdown filtra solo giocatori senza link attivo, player_id obbligatorio per tipo atleta |
 
 ---
 

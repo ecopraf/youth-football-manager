@@ -56,7 +56,7 @@ function renderPlayerDetail(container, data) {
     return;
   }
 
-  const isAdmin = window.YFM?.isAdmin?.() || false;
+  const isAdmin = window.YFM.canWrite('rosa');
   const nome = player.nome || '';
   const cognome = player.cognome || '';
   const initials = (nome[0] || '') + (cognome[0] || '');
@@ -704,7 +704,7 @@ function safeFormatDate(value) {
 // Modalità creazione nuovo giocatore — stessa UI del dettaglio
 export function loadNewPlayerForm(container) {
   if (!container) return;
-  const isAdmin = window.YFM?.isAdmin?.() || false;
+  const isAdmin = window.YFM.canWrite('rosa');
   if (!isAdmin) return;
 
   const squadra = window.YFM.getSquadra();

@@ -16,7 +16,7 @@ let isAdminMode = false;
 export default async function loadRoster() {
   const c = document.getElementById('pageContent');
   const wasAdmin = isAdminMode;
-  isAdminMode = window.YFM.isAdmin && window.YFM.isAdmin();
+  isAdminMode = window.YFM.canWrite('rosa');
   
   if (wasAdmin !== isAdminMode) {
     selectedPlayers.clear();
@@ -677,7 +677,7 @@ window.YFM.openImportXlsModal = openImportXlsModal;
 
 // === IMPORT ROSA DA XLS ===
 async function openImportXlsModal() {
-  const isAdmin = window.YFM.isAdmin();
+  const isAdmin = window.YFM.canWrite('import');
   const allSquadre = window.YFM.allSquadre || [];
   
   // Build team selector (admin vede tutte, allenatore solo la sua)

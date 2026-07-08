@@ -15,9 +15,8 @@ function isSocietario(ruolo) {
 export default async function loadStaff() {
   const c = document.getElementById('pageContent');
   const user = window.YFM.getUser();
-  const isAdmin = window.YFM.isAdmin();
-  const isAllenatore = user?.ruolo === 'allenatore';
-  const canAccess = isAdmin || isAllenatore || (user?.permessi?.rosa === 'write');
+  const canAccess = window.YFM.canRead('rosa');
+  const isAdmin = window.YFM.canWrite('rosa');
 
   if (!canAccess) {
     c.innerHTML = '<div class="error-box">Accesso non autorizzato</div>';
@@ -97,7 +96,7 @@ async function loadData() {
 function renderSections() {
   const container = document.getElementById('staffSections');
   if (!container) return;
-  const isAdmin = window.YFM.isAdmin();
+  const isAdmin = window.YFM.isAdmin() || window.YFM.getUser()?.ruolo === 'allenatore';
 
   const user = window.YFM.getUser();
   const squadreAccesso = user?.categorie_accesso || user?.squadre_accesso || [];

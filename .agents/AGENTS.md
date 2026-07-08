@@ -57,9 +57,9 @@ git status
 | **Frontend** | Vite + JavaScript ES Modules |
 | **Backend** | Node.js/Express (18 router) + Supabase |
 | **Deploy** | Vercel (auto su push a main) |
-| **Auth** | JWT + permessi granulari JSONB |
+| **Auth** | JWT + capabilities granulari per modulo (rosa, partite, formazione, allenamenti, statistiche, guest_links, import, report). Livelli: `''` (nessuno), `'read'`, `'write'`. Admin/superadmin bypassano. Allenatore usa capabilities dal profilo (fallback legacy: tutto se nessun permesso). |
 | **Guest** | JWT guest (24h). Login risolve team_id + player_name. Tipo: `atleta` (home personale) o `genitore` (home squadra). Capabilities differenziate per tipo. |
-| **Notifiche** | Badge 🔔 aggiornato al login + polling 60s + cambio squadra. Centro Comunicazioni con tabs (Comunicazioni + Assenze). Trigger auto su convocazioni-batch. |
+| **Notifiche** | Badge 🔔 aggiornato al login + polling 60s + cambio squadra. Centro Comunicazioni con tabs (Comunicazioni + Assenze). Convocazioni: salva separato da pubblica (notifica solo su Pubblica). |
 | **Help** | Sistema help interattivo contestuale (PageHelp.js + helpData.js) |
 
 ### Backend Dependencies

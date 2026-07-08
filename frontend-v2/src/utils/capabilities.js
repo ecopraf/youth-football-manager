@@ -23,7 +23,7 @@ export const PROFILI = {
   allenatore: {
     label: 'Allenatore',
     icon: '⚽',
-    capabilities: { rosa: 'write', partite: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read' }
+    capabilities: { rosa: 'write', partite: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: 'write', report: 'read' }
   },
   vice_allenatore: {
     label: 'Vice Allenatore',

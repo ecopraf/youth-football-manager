@@ -205,12 +205,12 @@ I workspace attivi nel DB sono:
 
 | Profilo | rosa | partite | formazione | allenamenti | statistiche | guest_links | import | report |
 |---------|------|---------|------------|-------------|-------------|-------------|--------|--------|
-| allenatore | write | write | write | write | read | write | write | read |
+| allenatore | write | write | write | write | read | — | write | read |
 | vice_allenatore | read | read | write | write | read | — | — | read |
 | dirigente | read | read | read | — | read | write | — | read |
 | preparatore | read | — | — | write | read | — | — | — |
 | osservatore | read | read | — | — | read | — | — | read |
-| segreteria | write | read | — | — | — | — | — | read |
+| segreteria | write | read | write | read | read | write | write | read |
 | custom | (personalizzato dall'admin) |
 
 ### File di riferimento
@@ -221,14 +221,17 @@ I workspace attivi nel DB sono:
 ### Livelli capability: `""` (nessuno), `"read"`, `"write"`
 
 ### Logica hasPermission (backend)
-- superadmin/admin/allenatore → sempre `true`
+- superadmin/admin → sempre `true`
+- allenatore → controlla `getUserCapabilities(permessi)[modulo]` (fallback `true` se nessun permesso salvato — legacy)
 - staff → controlla `getUserCapabilities(permessi)[modulo]`
-- guest → sempre bloccato (403)
+- guest → capabilities dal profilo (atleta/genitore)
 
 ### Sidebar filtrata
 - Ogni voce sidebar richiede una capability specifica (vedi `sidebarNav.js`)
-- Admin/Allenatore/Superadmin vedono tutto
+- Admin/Superadmin vedono tutto
+- Allenatore vede solo le voci per cui ha almeno `read` nel proprio profilo capabilities (fallback: tutto se nessun permesso)
 - Staff vede solo le voci per cui ha almeno `read`
+- Guest link: visibile solo per chi ha `guest_links` capability (admin, segreteria, dirigente)
 
 ### Guest JWT
 - Generato da `/api/guest/:token` con validità 24h

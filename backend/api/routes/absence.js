@@ -19,8 +19,11 @@ module.exports = function createAbsenceRouter({ supabase, authMiddleware }) {
 
       // Guest atleta: può segnalare solo per il proprio player_id
       if (req.user.isGuest && req.user.tipo === 'atleta') {
-        if (!req.user.player_id) return res.status(403).json({ error: 'Link non associato a un giocatore' });
-        if (pid !== req.user.player_id) return res.status(403).json({ error: 'Puoi segnalare assenza solo per te stesso' });
+        const guestPid = req.user.player_id || player_id;
+        if (!guestPid) return res.status(403).json({ error: 'Link non associato a un giocatore' });
+        if (player_id && req.user.player_id && player_id !== req.user.player_id) {
+          return res.status(403).json({ error: 'Puoi segnalare assenza solo per te stesso' });
+        }
       }
       // Guest genitore: blocca (non può segnalare assenze)
       if (req.user.isGuest && req.user.tipo === 'genitore') {

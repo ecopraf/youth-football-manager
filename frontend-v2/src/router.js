@@ -57,6 +57,46 @@ export function initRouter() {
     return user.is_superadmin === true || user.ruolo === 'admin';
   };
 
+  window.YFM.isSuperAdmin = function() {
+    const user = window.YFM.getUser();
+    return !!(user && user.is_superadmin === true);
+  };
+
+  window.YFM.canWrite = function(modulo) {
+    const user = window.YFM.getUser();
+    if (!user) return false;
+    if (user.is_superadmin === true || user.ruolo === 'admin') return true;
+    if (user.ruolo === 'allenatore') {
+      // Allenatore: usa capabilities del profilo (non tutto write)
+      const p = user.permessi;
+      if (!p) return true; // fallback legacy: allenatore senza permessi = tutto
+      const caps = p.capabilities || p;
+      if (!caps || Object.keys(caps).length === 0) return true;
+      return caps[modulo] === 'write';
+    }
+    const p = user.permessi;
+    if (!p) return false;
+    const caps = p.capabilities || p;
+    return caps[modulo] === 'write';
+  };
+
+  window.YFM.canRead = function(modulo) {
+    const user = window.YFM.getUser();
+    if (!user) return false;
+    if (user.is_superadmin === true || user.ruolo === 'admin') return true;
+    if (user.ruolo === 'allenatore') {
+      const p = user.permessi;
+      if (!p) return true;
+      const caps = p.capabilities || p;
+      if (!caps || Object.keys(caps).length === 0) return true;
+      return caps[modulo] === 'read' || caps[modulo] === 'write';
+    }
+    const p = user.permessi;
+    if (!p) return false;
+    const caps = p.capabilities || p;
+    return caps[modulo] === 'read' || caps[modulo] === 'write';
+  };
+
   window.YFM.hasRole = function(role) {
     const user = window.YFM.getUser();
     if (!user) return false;

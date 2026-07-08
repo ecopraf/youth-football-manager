@@ -13,9 +13,8 @@ export default async function loadGuestLinks() {
   const user = window.YFM.getUser() || {};
   const isSuperadmin = user.is_superadmin;
   const isAdmin = user.ruolo === 'admin';
-  const isAllenatore = user.ruolo === 'allenatore';
 
-  if (!isSuperadmin && !isAdmin && !isAllenatore) {
+  if (!isSuperadmin && !isAdmin && !window.YFM.canWrite('guest_links')) {
     c.innerHTML = '<div class="error-box">Accesso riservato</div>';
     return;
   }
@@ -432,11 +431,13 @@ async function handleCreate(e) {
 
   if (tipo === 'atleta') {
     const playerId = document.getElementById('linkPlayer').value;
-    if (playerId) {
-      body.player_id = playerId;
-      const p = rosterPlayers.find(r => r.id === playerId);
-      if (p?.telefono) body.telefono = p.telefono;
+    if (!playerId) {
+      alert('Seleziona un giocatore da associare al link');
+      return;
     }
+    body.player_id = playerId;
+    const p = rosterPlayers.find(r => r.id === playerId);
+    if (p?.telefono) body.telefono = p.telefono;
   }
 
   showLoading('Creazione link...');
@@ -464,9 +465,13 @@ function onTipoChange() {
   const playerGroup = document.getElementById('playerGroup');
   playerGroup.style.display = tipo === 'atleta' ? 'block' : 'none';
   if (tipo === 'atleta' && rosterPlayers.length > 0) {
+    // Filtra: mostra solo giocatori senza link atleta attivo
+    const linkedPlayerIds = new Set(tokens.filter(t => t.tipo === 'atleta' && t.player_id && new Date(t.scadenza) > new Date()).map(t => t.player_id));
+    const available = rosterPlayers.filter(p => !linkedPlayerIds.has(p.id));
     const sel = document.getElementById('linkPlayer');
-    sel.innerHTML = '<option value="">-- Opzionale: associa giocatore --</option>' +
-      rosterPlayers.map(p => `<option value="${p.id}">${p.cognome} ${p.nome}${p.telefono ? ' 📱' : ''}</option>`).join('');
+    sel.innerHTML = available.length > 0
+      ? '<option value="">-- Seleziona giocatore --</option>' + available.map(p => `<option value="${p.id}">${p.cognome} ${p.nome}${p.telefono ? ' 📱' : ''}</option>`).join('')
+      : '<option value="">-- Tutti i giocatori hanno già un link --</option>';
   }
 }
 

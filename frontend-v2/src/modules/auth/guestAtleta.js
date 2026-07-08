@@ -20,13 +20,18 @@ export default async function loadGuestAtleta() {
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
 
   try {
-    const [notifications, matches, trainings, stats, motivi] = await Promise.all([
+    const [notifications, matches, trainings, stats, motivi, absences] = await Promise.all([
       apiFetch(`/notifications/team/${teamId}?destinatario_tipo=atleta`).catch(() => []),
       apiFetch(`/squadre/${teamId}/partite`).catch(() => []),
       apiFetch(`/squadre/${teamId}/allenamenti-futuri`).catch(() => []),
       apiFetch(`/statistiche/giocatore/${playerId}?team_id=${teamId}`).catch(() => null),
-      apiFetch('/absence/motivi').catch(() => ['Infortunio', 'Malattia', 'Impegni scolastici', 'Motivi familiari', 'Altro'])
+      apiFetch('/absence/motivi').catch(() => ['Infortunio', 'Malattia', 'Impegni scolastici', 'Motivi familiari', 'Altro']),
+      apiFetch(`/absence/player/${playerId}`).catch(() => [])
     ]);
+
+    // Salva date assenze in sessionStorage
+    const absDates = (absences || []).map(a => a.data_allenamento).filter(Boolean);
+    sessionStorage.setItem('yfm_abs_dates', JSON.stringify(absDates));
 
     render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi });
   } catch (e) {
@@ -37,6 +42,7 @@ export default async function loadGuestAtleta() {
 function render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi }) {
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
+  const absDates = new Set(JSON.parse(sessionStorage.getItem('yfm_abs_dates') || '[]'));
 
   // Prossima partita
   const upcoming = (matches || [])
@@ -69,13 +75,13 @@ function render(c, { playerName, playerId, teamId, notifications, matches, train
     .ga-match-team { font-weight:600; font-size:13px; }
     .ga-match-meta { font-size:11px; color:#888; }
     .ga-match-result { font-weight:700; font-size:14px; }
-    .ga-train-item { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:8px; background:#f0fdf4; margin-bottom:6px; }
-    .ga-train-date { font-weight:600; font-size:13px; }
+    .ga-train-item { display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; background:#f0fdf4; margin-bottom:6px; }
+    .ga-train-date { font-weight:600; font-size:13px; flex:1; }
     .ga-train-time { font-size:12px; color:#666; }
     .ga-stat { display:inline-flex; align-items:center; gap:4px; padding:6px 12px; border-radius:8px; background:#f8f9fa; margin:4px; font-size:13px; }
     .ga-stat-val { font-weight:700; }
-    .ga-absence-btn { width:100%; padding:12px; border:none; border-radius:10px; background:linear-gradient(135deg,#E74C3C,#c0392b); color:white; font-size:14px; font-weight:600; cursor:pointer; }
-    .ga-absence-btn:active { transform:scale(0.97); }
+    .ga-abs-inline { background:none; border:none; font-size:16px; cursor:pointer; padding:4px 8px; border-radius:6px; opacity:0.6; transition:all 0.15s; }
+    .ga-abs-inline:hover { opacity:1; background:#fee2e2; }
   </style>`;
 
   html += `<div class="ga-container">`;
@@ -105,20 +111,15 @@ function render(c, { playerName, playerId, teamId, notifications, matches, train
     html += `<div class="ga-section" style="border-left:3px solid #667eea;">
       <div class="ga-section-title">⚽ Prossima Partita</div>
       <div class="ga-match-card" style="background:#eef2ff;">
-        <div>
+        <div style="flex:1;">
           <div class="ga-match-team">${nextMatch.avversario || 'Da definire'}</div>
           <div class="ga-match-meta">${dateStr} • ${timeStr}${nextMatch.luogo ? ' • ' + nextMatch.luogo : ''}</div>
         </div>
         <span style="font-size:20px;">${nextMatch.casa ? '🏠' : '✈️'}</span>
+        <button class="ga-abs-inline" data-date="${nextMatch.data_ora.slice(0,10)}" data-tipo="partita" data-extra="${nextMatch.avversario || ''}" ${absDates.has(nextMatch.data_ora.slice(0,10)) ? 'disabled style="opacity:1;"' : ''} title="Segnala indisponibilità">${absDates.has(nextMatch.data_ora.slice(0,10)) ? '✅' : '❌'}</button>
       </div>
     </div>`;
   }
-
-  // Comunica indisponibilità
-  html += `<div class="ga-section">
-    <div class="ga-section-title">📋 Comunica Indisponibilità</div>
-    <button class="ga-absence-btn" id="gaAbsenceBtn">❌ Non posso esserci</button>
-  </div>`;
 
   // Prossimi allenamenti
   if (nextTrainings.length > 0) {
@@ -132,6 +133,7 @@ function render(c, { playerName, playerId, teamId, notifications, matches, train
         return `<div class="ga-train-item" style="${cancelled ? 'background:#fee2e2;text-decoration:line-through;opacity:0.7;' : ''}">
           <span class="ga-train-date">${cancelled ? '❌ ' : ''}${dateStr}</span>
           <span class="ga-train-time">${cancelled ? 'Annullato' : `⏰ ${timeStr}${t.luogo ? ' • ' + t.luogo : ''}`}</span>
+          ${!cancelled ? `<button class="ga-abs-inline" data-date="${t.data_ora.slice(0,10)}" data-tipo="allenamento" ${absDates.has(t.data_ora.slice(0,10)) ? 'disabled style="opacity:1;"' : ''} title="Segnala indisponibilità">${absDates.has(t.data_ora.slice(0,10)) ? '✅' : '❌'}</button>` : ''}
         </div>`;
       }).join('')}
     </div>`;
@@ -190,15 +192,13 @@ function priorityBadge(priorita) {
   return `<span style="margin-right:4px;">${map[priorita] || ''}</span>`;
 }
 
-function absenceModal(motivi) {
-  return `<div id="gaAbsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:none;align-items:center;justify-content:center;">
+function absenceModal(motivi, nextTrainings, upcomingMatches) {
+  return `<div id="gaAbsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;">
     <div style="background:white;border-radius:16px;padding:24px;max-width:360px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:scale-in 0.2s;">
       <div style="text-align:center;font-size:32px;margin-bottom:8px;">📋</div>
-      <div style="text-align:center;font-weight:700;font-size:16px;margin-bottom:16px;">Comunica Indisponibilità</div>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Data *</label>
-        <input type="date" id="gaAbsDate" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;" />
-      </div>
+      <div style="text-align:center;font-weight:700;font-size:16px;margin-bottom:4px;">Segnala Indisponibilità</div>
+      <div id="gaAbsDateLabel" style="text-align:center;font-size:13px;color:#667eea;font-weight:600;margin-bottom:16px;"></div>
+      <input type="hidden" id="gaAbsDate" />
       <div style="margin-bottom:12px;">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Motivo *</label>
         <select id="gaAbsMotivo" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;">
@@ -220,11 +220,7 @@ function absenceModal(motivi) {
 function bindEvents(c, playerId, teamId, motivi) {
   const modal = document.getElementById('gaAbsModal');
   const dateInput = document.getElementById('gaAbsDate');
-
-  // Set default date to tomorrow
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (dateInput) dateInput.value = tomorrow.toISOString().slice(0, 10);
+  const dateLabel = document.getElementById('gaAbsDateLabel');
 
   // Click-to-expand notifiche
   c.querySelectorAll('[data-notif-id]').forEach(el => {
@@ -237,8 +233,20 @@ function bindEvents(c, playerId, teamId, motivi) {
   // Aggiorna campanella nel header
   updateGuestBell(teamId);
 
-  c.querySelector('#gaAbsenceBtn')?.addEventListener('click', () => {
-    modal.style.display = 'flex';
+  // Inline absence buttons (su allenamenti e partita)
+  c.querySelectorAll('.ga-abs-inline').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const date = btn.dataset.date;
+      const tipo = btn.dataset.tipo;
+      const extra = btn.dataset.extra || '';
+      const d = new Date(date + 'T12:00:00');
+      const label = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+      const tipoLabel = tipo === 'partita' ? `⚽ Partita vs ${extra}` : '🏋️ Allenamento';
+      if (dateInput) dateInput.value = date;
+      if (dateLabel) dateLabel.textContent = `${tipoLabel} — ${label}`;
+      modal.style.display = 'flex';
+    });
   });
 
   document.getElementById('gaAbsCancel')?.addEventListener('click', () => {
@@ -264,17 +272,22 @@ function bindEvents(c, playerId, teamId, motivi) {
       });
       hideLoading();
       modal.style.display = 'none';
-      // Feedback
-      const btn = c.querySelector('#gaAbsenceBtn');
-      if (btn) {
-        btn.textContent = '✅ Segnalazione inviata!';
-        btn.style.background = '#27AE60';
-        setTimeout(() => { btn.textContent = '❌ Non posso esserci'; btn.style.background = ''; }, 3000);
+      // Reset form
+      document.getElementById('gaAbsMotivo').selectedIndex = 0;
+      document.getElementById('gaAbsMsg').value = '';
+      // Persist in sessionStorage
+      const stored = JSON.parse(sessionStorage.getItem('yfm_abs_dates') || '[]');
+      if (!stored.includes(data_allenamento)) { stored.push(data_allenamento); sessionStorage.setItem('yfm_abs_dates', JSON.stringify(stored)); }
+      // Feedback: disabilita il bottone cliccato
+      const clickedBtn = c.querySelector(`.ga-abs-inline[data-date="${data_allenamento}"]`);
+      if (clickedBtn) {
+        clickedBtn.textContent = '✅';
+        clickedBtn.disabled = true;
+        clickedBtn.style.opacity = '1';
       }
     } catch (err) {
       hideLoading();
-      const btn = c.querySelector('#gaAbsenceBtn');
-      if (btn) { btn.textContent = '❌ ' + err.message; setTimeout(() => { btn.textContent = '❌ Non posso esserci'; }, 3000); }
+      alert('Errore: ' + err.message);
     }
   });
 }
