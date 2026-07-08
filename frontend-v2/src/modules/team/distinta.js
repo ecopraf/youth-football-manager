@@ -61,6 +61,7 @@ export async function openDistinta(mid, staffOverrides) {
           id: g.id,
           nome: g.nome,
           cognome: g.cognome,
+          ruolo_principale: g.ruolo,
           numeroMaglia: g.numero_maglia,
           dataNascita: g.data_nascita,
           matricolaFigc: g.matricola_figc,
@@ -242,7 +243,7 @@ function renderDistinta(d, staff) {
       const ruoloTag = f.ruolo_principale === 'Portiere' ? ' (P)' : '';
       righe.push('<tr class="' + (f.capitano ? 'capitano' : f.viceCapitano ? 'vice' : '') + '">' +
         '<td style="border:none;font-size:9px;">' + (i + 1) + '</td>' +
-        '<td>' + (f.numeroMaglia || '-') + '</td>' +
+        '<td></td>' +
         '<td>' + (f.dataNascita ? formatDateShort(f.dataNascita) : '-') + '</td>' +
         '<td style="text-align:left;">' + (f.cognome || '').toUpperCase() + ' ' + (f.nome || '').toUpperCase() + ruoloTag + '</td>' +
         '<td>' + (f.capitano ? 'C' : f.viceCapitano ? 'V' : '') + '</td>' +

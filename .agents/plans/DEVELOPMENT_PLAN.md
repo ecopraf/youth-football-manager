@@ -342,6 +342,9 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | fix: distinta dinamica per tipo — "del campionato X", "del torneo X", "della coppa X", "Gara Amichevole" |
 | (pending) | fix: convocazione isAmichevole — variabile non definita causava crash "Vedi Convocazione" |
 | (pending) | fix: PDF parser girone regex — cattura solo lettera (es. B) ignorando suffissi (BIS) |
+| (pending) | feat: email atleta + email genitore in scheda giocatore (view/edit/insert) |
+| (pending) | fix: distinta — colonna numero maglia vuota per compilazione manuale, (P) per portieri con ruolo_principale dal backend |
+| (pending) | style: ultime partite — logo avversario su desktop (inline-flex), data dd/mm/yy, rimossa icona calendario su mobile |
 | (pending) | perf: v3.16 — indici DB (match_formation, training_attendance, match team+stato), VIEW v_player_season_stats + v_team_season_summary, endpoint aggregato /dashboard (1 call vs 5-6), frontend refactor cache |
 
 ---

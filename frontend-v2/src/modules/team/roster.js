@@ -600,6 +600,7 @@ function openPlayerForm(pid) {
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Data Nascita</label><input id="pfD" type="date" value="' + (p && p.data_nascita ? p.data_nascita.split('T')[0] : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Luogo Nascita</label><div style="position:relative;"><input id="pfLN" value="' + (p ? p.luogo_nascita || '' : '') + '" placeholder="Digita comune..." autocomplete="off" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><div id="pfLNList" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:0 0 6px 6px;max-height:150px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div></div></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="pfTel" value="' + (p ? p.telefono || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Email Atleta</label><input id="pfEmail" type="email" value="' + (p ? p.email || '' : '') + '" placeholder="email@esempio.it" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Data Visita Medica</label><input id="pfVM" type="date" value="' + (p && p.data_visita_medica ? p.data_visita_medica.split('T')[0] : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Matricola FIGC</label><input id="pfFigc" value="' + (p ? p.matricola_figc || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
     '<div style="grid-column:1/-1;"><label style="font-size:12px;font-weight:600;color:#666;">Codice Fiscale</label><div style="display:flex;gap:8px;"><input id="pfCF" value="' + (p ? p.codice_fiscale || '' : '') + '" maxlength="16" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;text-transform:uppercase;font-family:monospace;"><button type="button" id="pfCalcCF" style="padding:8px 12px;background:#667eea;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;">Calcola</button></div></div></div>' +
@@ -619,8 +620,8 @@ function openPlayerForm(pid) {
   const existingContatti = (p && p.contatti_genitori) || [];
   function addContattoRow(c = {}) {
     const row = document.createElement('div');
-    row.style = 'display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;';
-    row.innerHTML = `<select class="cg-tipo" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;"><option value="Padre" ${c.tipo === 'Padre' ? 'selected' : ''}>Padre</option><option value="Madre" ${c.tipo === 'Madre' ? 'selected' : ''}>Madre</option><option value="Tutore" ${c.tipo === 'Tutore' ? 'selected' : ''}>Tutore</option></select><input class="cg-nome" placeholder="Nome" value="${c.nome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><input class="cg-tel" placeholder="Cellulare" value="${c.telefono || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><button type="button" style="background:none;border:none;color:#E74C3C;font-size:18px;cursor:pointer;">×</button>`;
+    row.style = 'display:grid;grid-template-columns:auto 1fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;';
+    row.innerHTML = `<select class="cg-tipo" style="padding:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;"><option value="Padre" ${c.tipo === 'Padre' ? 'selected' : ''}>Padre</option><option value="Madre" ${c.tipo === 'Madre' ? 'selected' : ''}>Madre</option><option value="Tutore" ${c.tipo === 'Tutore' ? 'selected' : ''}>Tutore</option></select><input class="cg-nome" placeholder="Nome" value="${c.nome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><input class="cg-tel" placeholder="Cellulare" value="${c.telefono || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><input class="cg-email" placeholder="Email" value="${c.email || ''}" type="email" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><button type="button" style="background:none;border:none;color:#E74C3C;font-size:18px;cursor:pointer;">×</button>`;
     row.querySelector('button').onclick = () => row.remove();
     contattiContainer.appendChild(row);
   }
@@ -631,7 +632,8 @@ function openPlayerForm(pid) {
       const tipo = row.querySelector('.cg-tipo')?.value;
       const nome = row.querySelector('.cg-nome')?.value?.trim();
       const telefono = row.querySelector('.cg-tel')?.value?.trim();
-      return (nome || telefono) ? { tipo, nome, telefono } : null;
+      const email = row.querySelector('.cg-email')?.value?.trim();
+      return (nome || telefono || email) ? { tipo, nome, telefono, email } : null;
     }).filter(Boolean);
   }
   // --- Fine contatti genitori ---
@@ -705,6 +707,7 @@ function openPlayerForm(pid) {
       luogo_nascita: document.getElementById('pfLN').value || null,
       codice_fiscale: document.getElementById('pfCF').value.toUpperCase() || null,
       telefono: document.getElementById('pfTel').value || null,
+      email: document.getElementById('pfEmail').value || null,
       data_visita_medica: document.getElementById('pfVM').value || null,
       ruolo: document.getElementById('pfR').value || null,
       numero_maglia: document.getElementById('pfM').value ? parseInt(document.getElementById('pfM').value) : null,

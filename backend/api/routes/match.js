@@ -443,7 +443,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
   router.get('/api/squadre/:squadraId/partite/:matchId/distinta', authMiddleware, async (req, res) => {
     try {
       const { data: formazione } = await supabase.from('match_formation')
-        .select('*, team_player:team_player_id(player_id, player:player_id(nome, cognome, data_nascita, matricola_figc, tipo_documento, numero_documento, rilasciato_da))')
+        .select('*, team_player:team_player_id(player_id, player:player_id(nome, cognome, data_nascita, ruolo_principale, matricola_figc, tipo_documento, numero_documento, rilasciato_da))')
         .eq('match_id', req.params.matchId)
         .order('is_starter', { ascending: false })
         .order('ordine');
@@ -453,6 +453,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
           calciatoreId: f.team_player?.player_id || f.team_player_id,
           nome: f.team_player?.player?.nome || '',
           cognome: f.team_player?.player?.cognome || '',
+          ruolo_principale: f.team_player?.player?.ruolo_principale || null,
           dataNascita: f.team_player?.player?.data_nascita || null,
           matricolaFigc: f.team_player?.player?.matricola_figc || null,
           tipoDocumento: f.team_player?.player?.tipo_documento || null,

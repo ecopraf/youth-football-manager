@@ -83,6 +83,7 @@ function renderPlayerDetail(container, data) {
   const peso = player.peso || '-';
   const altezza = player.altezza || '-';
   const telefono = player.telefono || '-';
+  const emailAtleta = player.email || '-';
   const tipoDoc = player.tipo_documento || '-';
   const numDoc = player.numero_documento || '-';
   const rilasciatoDa = player.rilasciato_da || '-';
@@ -232,7 +233,7 @@ function renderPlayerDetail(container, data) {
   }
 
   // Sezione ultime partite
-  const shortDate = (d) => { if (!d) return '-'; try { const dt = new Date(d); return (dt.getDate()+'').padStart(2,'0')+'/'+(dt.getMonth()+1+'').padStart(2,'0'); } catch(e) { return '-'; } };
+  const shortDate = (d) => { if (!d) return '-'; try { const dt = new Date(d); return (dt.getDate()+'').padStart(2,'0')+'/'+(dt.getMonth()+1+'').padStart(2,'0')+'/'+String(dt.getFullYear()).slice(2); } catch(e) { return '-'; } };
   let lastMatchesSection = '';
   if (lastMatches && lastMatches.length) {
     const mappedMatches = lastMatches.map(m => ({ data: shortDate(m.data), avversario: m.avversario || '-', logo: m.logo || null, minuti: m.minuti || 0, gol: m.gol || 0, assist: m.assist || 0, gialli: m.cartellini_gialli || 0, rossi: m.cartellini_rossi || 0 }));
@@ -240,7 +241,7 @@ function renderPlayerDetail(container, data) {
     DataGrid({
       container: matchDiv,
       columns: [
-        { key: 'avversario', label: 'Avversario', width: '3fr', align: 'left', primary: true },
+        { key: 'avversario', label: 'Avversario', width: '3fr', align: 'left', primary: true, render: (v, row) => `<span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">${row.logo ? `<img src="${row.logo}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : ''}${v}</span>` },
         { key: 'data', label: 'Data', width: '1.5fr', align: 'left', secondary: true },
         { key: 'minuti', label: 'Minuti', labelShort: 'Min', width: '1.2fr', meta: true },
         { key: 'gol', label: 'Gol', labelShort: 'G', width: '1fr', color: '#27AE60', mobileIcon: '⚽' },
@@ -253,7 +254,7 @@ function renderPlayerDetail(container, data) {
     // Mobile: layout compatto - tutto su una riga: logo+nome a sx, stats+data+min a dx
     const mobileMatchHtml = mappedMatches.map(m => {
       const logoHtml = m.logo ? `<img src="${m.logo}" style="width:16px;height:16px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : '';
-      return `<div class="dg-card" style="padding:8px 14px;display:flex;align-items:center;justify-content:space-between;"><span style="font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:4px;">${logoHtml}${m.avversario}</span><span class="dg-card-stats" style="gap:6px;flex-shrink:0;"><span class="dg-card-stat" style="color:#666;">📅${m.data}</span><span class="dg-card-stat" style="color:#666;">🕐${m.minuti}'</span><span class="dg-card-stat" style="color:#27AE60;">⚽<strong>${m.gol}</strong></span><span class="dg-card-stat" style="color:#2980B9;">🅰️<strong>${m.assist}</strong></span><span class="dg-card-stat" style="color:#F39C12;">🟨<strong>${m.gialli}</strong></span><span class="dg-card-stat" style="color:#E74C3C;">🟥<strong>${m.rossi}</strong></span></span></div>`;
+      return `<div class="dg-card" style="padding:8px 14px;display:flex;align-items:center;justify-content:space-between;"><span style="font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:4px;">${logoHtml}${m.avversario}</span><span class="dg-card-stats" style="gap:6px;flex-shrink:0;"><span class="dg-card-stat" style="color:#666;">${m.data}</span><span class="dg-card-stat" style="color:#666;">🕐${m.minuti}'</span><span class="dg-card-stat" style="color:#27AE60;">⚽<strong>${m.gol}</strong></span><span class="dg-card-stat" style="color:#2980B9;">🅰️<strong>${m.assist}</strong></span><span class="dg-card-stat" style="color:#F39C12;">🟨<strong>${m.gialli}</strong></span><span class="dg-card-stat" style="color:#E74C3C;">🟥<strong>${m.rossi}</strong></span></span></div>`;
     }).join('');
     const wrapper = matchDiv.querySelector('.dg-wrap');
     wrapper.querySelector('.dg-cards').innerHTML = mobileMatchHtml;
@@ -292,6 +293,7 @@ function renderPlayerDetail(container, data) {
             <div><span style="font-size:12px;color:#888;">Data di Nascita</span><div style="font-size:14px;">${dataMorte}</div></div>
             <div><span style="font-size:12px;color:#888;">Luogo di Nascita</span><div style="font-size:14px;">${luogoNascita}</div></div>
             <div><span style="font-size:12px;color:#888;">Telefono</span><div style="font-size:14px;">${telefono}</div></div>
+            <div><span style="font-size:12px;color:#888;">Email Atleta</span><div style="font-size:14px;">${emailAtleta !== '-' ? '<a href="mailto:' + emailAtleta + '" style="color:#667eea;text-decoration:none;">✉️ ' + emailAtleta + '</a>' : '-'}</div></div>
             <div><span style="font-size:12px;color:#888;">Codice Fiscale</span><div style="font-size:14px;font-family:monospace;">${codiceFiscale}</div></div>
           </div>
         </div>
@@ -323,7 +325,7 @@ function renderPlayerDetail(container, data) {
       <div style="margin-top:16px;">
         <span style="font-size:12px;font-weight:700;color:#667eea;">👨‍👩‍👦 CONTATTI GENITORI</span>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:8px;">
-          ${player.contatti_genitori.map(c => `<div style="padding:8px 12px;background:#f8f9fa;border-radius:6px;"><span style="font-size:11px;color:#888;">${c.tipo || ''}</span><div style="font-size:14px;font-weight:500;">${c.nome || ''}</div><div style="font-size:13px;color:#667eea;">${c.telefono ? '<a href="tel:' + c.telefono + '" style="color:#667eea;text-decoration:none;">📞 ' + c.telefono + '</a>' : ''}</div></div>`).join('')}
+          ${player.contatti_genitori.map(c => `<div style="padding:8px 12px;background:#f8f9fa;border-radius:6px;"><span style="font-size:11px;color:#888;">${c.tipo || ''}</span><div style="font-size:14px;font-weight:500;">${c.nome || ''}</div><div style="font-size:13px;color:#667eea;">${c.telefono ? '<a href="tel:' + c.telefono + '" style="color:#667eea;text-decoration:none;">📞 ' + c.telefono + '</a>' : ''}${c.email ? '<br><a href="mailto:' + c.email + '" style="color:#667eea;text-decoration:none;">✉️ ' + c.email + '</a>' : ''}</div></div>`).join('')}
         </div>
       </div>` : ''}
       <div id="playerDataEdit" style="display:none;">
@@ -336,6 +338,7 @@ function renderPlayerDetail(container, data) {
             <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Data Nascita</label><input id="editDataNas" type="date" value="${player.data_nascita ? player.data_nascita.split('T')[0] : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
             <div class="form-group" style="position:relative;"><label style="font-size:12px;font-weight:600;color:#666;">Luogo Nascita</label><input id="editLuogoNascita" value="${luogoNascita !== '-' ? luogoNascita : ''}" placeholder="Digita comune..." autocomplete="off" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><div id="editLNList" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #ddd;border-radius:0 0 6px 6px;max-height:150px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div></div>
             <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Telefono</label><input id="editTelefono" value="${telefono !== '-' ? telefono : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Email Atleta</label><input id="editEmail" type="email" value="${emailAtleta !== '-' ? emailAtleta : ''}" placeholder="email@esempio.it" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
             <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Codice Fiscale</label><div style="position:relative;"><input id="editCF" value="${codiceFiscale !== '-' ? codiceFiscale : ''}" maxlength="16" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;text-transform:uppercase;font-family:monospace;"><div id="cfStatusEdit" style="font-size:11px;margin-top:4px;color:#888;display:none;"></div></div></div>
           </div>
         </div>
@@ -458,8 +461,8 @@ function renderPlayerDetail(container, data) {
     // Contatti genitori - helper
     function addContattoRowDetail(container, c = {}) {
       const row = document.createElement('div');
-      row.style = 'display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;';
-      row.innerHTML = `<select class="cg-tipo" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:12px;"><option value="Padre" ${c.tipo === 'Padre' ? 'selected' : ''}>Padre</option><option value="Madre" ${c.tipo === 'Madre' ? 'selected' : ''}>Madre</option><option value="Tutore" ${c.tipo === 'Tutore' ? 'selected' : ''}>Tutore</option></select><input class="cg-nome" placeholder="Nome" value="${c.nome || ''}" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;"><input class="cg-tel" placeholder="Cellulare" value="${c.telefono || ''}" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;"><button type="button" style="background:none;border:none;color:#E74C3C;font-size:18px;cursor:pointer;">×</button>`;
+      row.style = 'display:grid;grid-template-columns:auto 1fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;';
+      row.innerHTML = `<select class="cg-tipo" style="padding:6px;border:1px solid #ddd;border-radius:6px;font-size:12px;"><option value="Padre" ${c.tipo === 'Padre' ? 'selected' : ''}>Padre</option><option value="Madre" ${c.tipo === 'Madre' ? 'selected' : ''}>Madre</option><option value="Tutore" ${c.tipo === 'Tutore' ? 'selected' : ''}>Tutore</option></select><input class="cg-nome" placeholder="Nome" value="${c.nome || ''}" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;"><input class="cg-tel" placeholder="Cellulare" value="${c.telefono || ''}" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;"><input class="cg-email" placeholder="Email" value="${c.email || ''}" type="email" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;"><button type="button" style="background:none;border:none;color:#E74C3C;font-size:18px;cursor:pointer;">×</button>`;
       row.querySelector('button').onclick = () => row.remove();
       container.appendChild(row);
     }
@@ -563,6 +566,7 @@ function renderPlayerDetail(container, data) {
         peso: document.getElementById('editPeso').value ? parseFloat(document.getElementById('editPeso').value) : null,
         altezza: document.getElementById('editAltezza').value ? parseInt(document.getElementById('editAltezza').value) : null,
         telefono: document.getElementById('editTelefono').value,
+        email: document.getElementById('editEmail').value || null,
         stato: document.getElementById('editStato').value,
         data_visita_medica: document.getElementById('editCertificato').value,
         matricola_figc: document.getElementById('editMatricola').value,
@@ -575,7 +579,8 @@ function renderPlayerDetail(container, data) {
           const tipo = row.querySelector('.cg-tipo')?.value;
           const nome = row.querySelector('.cg-nome')?.value?.trim();
           const telefono = row.querySelector('.cg-tel')?.value?.trim();
-          return (nome || telefono) ? { tipo, nome, telefono } : null;
+          const email = row.querySelector('.cg-email')?.value?.trim();
+          return (nome || telefono || email) ? { tipo, nome, telefono, email } : null;
         }).filter(Boolean)
       };
       showLoading('Salvataggio...');
