@@ -7,13 +7,14 @@ import { apiFetch } from '../../services/api';
 export async function loadTrainingData() {
   try {
     const ts = Date.now();
-    const [config, presenze, giocatori, sumData, partite, annullati] = await Promise.all([
+    const [config, presenze, giocatori, sumData, partite, annullati, futuri] = await Promise.all([
       apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/config?_=' + ts).catch(() => []),
       apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/presenze?_=' + ts).catch(() => []),
       apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori?_=' + ts).catch(() => []),
       apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/summary?_=' + ts).catch(() => ({ summary: {}, settimana: {} })),
       apiFetch('/squadre/' + window.YFM.squadraId + '/partite').catch(() => []),
-      apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/annullati').catch(() => [])
+      apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/annullati').catch(() => []),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti-futuri').catch(() => [])
     ]);
 
     window.YFM.allPlayers = giocatori;
@@ -25,6 +26,7 @@ export async function loadTrainingData() {
       presenze,
       partite,
       annullati,
+      futuri,
       summary: sumData.summary || {},
       settimana: sumData.settimana || {},
       motiviTotali: sumData.motiviTotali || {}

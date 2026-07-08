@@ -340,19 +340,21 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
 
   router.post('/api/squadre/:squadraId/training-by-date', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
     try {
-      const { date, programma } = req.body;
+      const { date, programma, ora_inizio, ora_fine, luogo } = req.body;
       const noteValue = programma ? 'JSON::' + JSON.stringify(programma) : null;
       const durata = programma?.fasi ? programma.fasi.reduce((s, f) => s + (f.durata || 0), 0) : 90;
+      const timeStr = ora_inizio || '17:00';
       // Check if training already exists for this date
       const { data: existing } = await supabase.from('training').select('id').eq('team_id', req.params.squadraId).gte('data_ora', date + 'T00:00:00').lte('data_ora', date + 'T23:59:59').limit(1).single();
       let data, error;
       if (existing) {
-        ({ data, error } = await supabase.from('training').update({
-          durata_minuti: durata, tipo: programma?.tipo || 'Allenamento', note: noteValue
-        }).eq('id', existing.id).select().single());
+        const upd = { durata_minuti: durata, tipo: programma?.tipo || 'Allenamento', note: noteValue };
+        if (ora_inizio) upd.data_ora = date + 'T' + timeStr + ':00';
+        if (luogo) upd.descrizione = luogo;
+        ({ data, error } = await supabase.from('training').update(upd).eq('id', existing.id).select().single());
       } else {
         ({ data, error } = await supabase.from('training').insert({
-          team_id: req.params.squadraId, data_ora: date + 'T17:00:00', durata_minuti: durata, tipo: programma?.tipo || 'Allenamento', note: noteValue
+          team_id: req.params.squadraId, data_ora: date + 'T' + timeStr + ':00', durata_minuti: durata, tipo: programma?.tipo || 'Allenamento', note: noteValue, descrizione: luogo || null
         }).select().single());
       }
       if (error) return res.status(400).json({ error: error.message });

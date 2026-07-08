@@ -34,7 +34,7 @@ export default async function loadTrainingSessions() {
   trainingData = await loadTrainingData();
   if (!trainingData) return;
 
-  const { config, presenze, partite, annullati } = trainingData;
+  const { config, presenze, partite, annullati, futuri } = trainingData;
   selectTodayIfTraining(config, presenze);
 
   setOnDateSelect(async (date) => {
@@ -48,7 +48,7 @@ export default async function loadTrainingSessions() {
 
   window._trainingRefreshCalendar = () => {
     const calEl = document.getElementById('trainingCalendar');
-    if (calEl) { calEl.innerHTML = renderCalendar(config, presenze, partite, trainingData.annullati); attachCalendarListeners(); }
+    if (calEl) { calEl.innerHTML = renderCalendar(config, presenze, partite, trainingData.annullati, trainingData.futuri); attachCalendarListeners(); }
   };
 
   const initialDate = getSelectedDate();
@@ -58,7 +58,7 @@ export default async function loadTrainingSessions() {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <h1 class="page-title">📋 Sedute - ${window.YFM.getSquadraName()}</h1>
     </div>
-    <div class="card" style="margin-bottom:16px;"><div id="trainingCalendar">${renderCalendar(config, presenze, partite, annullati)}</div></div>
+    <div class="card" style="margin-bottom:16px;"><div id="trainingCalendar">${renderCalendar(config, presenze, partite, annullati, futuri)}</div></div>
     <div class="card" style="margin-bottom:16px;" id="sessionContainer">${renderSessionDetail(initialDate, initialProgramma)}</div>
   `;
 

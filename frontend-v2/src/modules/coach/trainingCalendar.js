@@ -42,12 +42,15 @@ export function selectTodayIfTraining(config, presenze) {
   return selectedDate;
 }
 
-export function renderCalendar(config, presenze, matches, annullati) {
+export function renderCalendar(config, presenze, matches, annullati, futuri) {
   const giorniConfigurati = (config || []).map(c => c.giorno_settimana);
   const oggi = new Date();
   const oggiStr = oggi.getFullYear() + '-' + String(oggi.getMonth()+1).padStart(2,'0') + '-' + String(oggi.getDate()).padStart(2,'0');
 
   const cancelledDates = new Set(annullati || []);
+
+  // Date con sessioni reali (da allenamenti-futuri, non virtuali)
+  const realSessionDates = new Set((futuri || []).filter(f => !f.virtuale).map(f => f.data_ora?.substring(0, 10)).filter(Boolean));
 
   const dateConPresenze = new Set();
   (presenze || []).forEach(p => { if (p.data) dateConPresenze.add(p.data); });
@@ -104,7 +107,7 @@ export function renderCalendar(config, presenze, matches, annullati) {
     const isToday = dateStr === oggiStr;
     const isSelected = dateStr === selectedDate;
     const isHoliday = holidays.has(dateStr);
-    const isProgrammed = giorniConfigurati.includes(dayOfWeek);
+    const isProgrammed = giorniConfigurati.includes(dayOfWeek) || realSessionDates.has(dateStr);
     const hasPresenze = dateConPresenze.has(dateStr);
     const hasMatch = !!datePartite[dateStr];
     const isCancelled = cancelledDates.has(dateStr);

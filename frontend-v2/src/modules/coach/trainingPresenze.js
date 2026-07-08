@@ -39,7 +39,7 @@ export default async function loadTrainingPresenze() {
     _absenceNotifications = await apiFetch('/absence/team/' + window.YFM.squadraId);
   } catch(e) { _absenceNotifications = []; }
 
-  const { config, presenze, partite, giocatori, summary, settimana, motiviTotali } = _trainingData;
+  const { config, presenze, partite, giocatori, summary, settimana, motiviTotali, futuri } = _trainingData;
   selectTodayIfTraining(config, presenze);
 
   setOnDateSelect((date) => {
@@ -51,14 +51,14 @@ export default async function loadTrainingPresenze() {
 
   window._trainingRefreshCalendar = () => {
     const calEl = document.getElementById('trainingCalendar');
-    if (calEl) { calEl.innerHTML = renderCalendar(config, presenze, partite); attachCalendarListeners(); }
+    if (calEl) { calEl.innerHTML = renderCalendar(config, presenze, partite, null, _trainingData.futuri); attachCalendarListeners(); }
   };
 
   c.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <h1 class="page-title">🙋 Presenze - ${window.YFM.getSquadraName()}</h1>
     </div>
-    <div class="card" style="margin-bottom:16px;"><div id="trainingCalendar">${renderCalendar(config, presenze, partite)}</div></div>
+    <div class="card" style="margin-bottom:16px;"><div id="trainingCalendar">${renderCalendar(config, presenze, partite, null, futuri)}</div></div>
     <div class="card" style="margin-bottom:16px;" id="presenzeDetail">${renderPresenzeDetail(getSelectedDate())}</div>
     ${renderSummary(giocatori, summary, settimana)}
     ${renderMotiviBreakdown(motiviTotali, summary)}

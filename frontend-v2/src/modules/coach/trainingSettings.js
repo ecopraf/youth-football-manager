@@ -33,7 +33,10 @@ export default async function loadTrainingSettings() {
 function renderConfig(config) {
   const giorni = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
   let html = `<div class="card" data-help="settings.settimana" style="margin-bottom:16px;">
-    <h3 class="section-title">📅 Settimana Tipo</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h3 class="section-title" style="margin:0;">📅 Settimana Tipo</h3>
+      <button class="btn btn-secondary btn-small" id="btnAddSingle" style="font-size:12px;">📅 Singolo</button>
+    </div>
     ${config.length === 0
       ? '<p style="color:var(--gray);">Nessun allenamento configurato.</p>'
       : config.map(c => `
@@ -103,6 +106,7 @@ function renderTemplates(templates) {
 
 function attachConfigListeners(config) {
   document.getElementById('btnAddConfig')?.addEventListener('click', () => openConfigForm(null, null, null, null, null));
+  document.getElementById('btnAddSingle')?.addEventListener('click', () => openSingleTrainingForm());
   document.querySelectorAll('.btn-edit-config').forEach(b => {
     b.addEventListener('click', () => openConfigForm(b.dataset.tid, b.dataset.g, b.dataset.i, b.dataset.f, b.dataset.l));
   });
@@ -291,6 +295,51 @@ function openTplFaseForm(editIdx) {
     if (isEdit) modalFasi[editIdx] = newFase; else modalFasi.push(newFase);
     document.getElementById('tplFaseForm')?.remove();
     refreshTplFasi();
+  });
+}
+
+function openSingleTrainingForm() {
+  const existing = document.getElementById('currentModal');
+  if (existing) existing.remove();
+
+  const today = new Date().toISOString().slice(0, 10);
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay'; modal.id = 'currentModal';
+  modal.innerHTML = `<div class="modal-content" style="max-width:420px;">
+    <div class="modal-header"><h2>📅 Allenamento Singolo</h2><button class="modal-close-btn" id="modalCloseX">×</button></div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:#666;margin-bottom:12px;">Crea un allenamento per una data specifica (open day, recupero, extra).</p>
+      <div class="form-group" style="margin-bottom:12px;"><label>Data *</label><input id="stDate" type="date" value="${today}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;"></div>
+      <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div class="form-group" style="margin:0;"><label>Ora inizio</label><input id="stInizio" type="time" value="17:00" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;"></div>
+        <div class="form-group" style="margin:0;"><label>Ora fine</label><input id="stFine" type="time" value="18:30" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;"></div>
+      </div>
+      <div class="form-group"><label>Luogo</label><input id="stLuogo" placeholder="es. Campo sintetico" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" id="modalCancelBtn">Annulla</button><button class="btn btn-primary" id="saveSingleBtn">✅ Crea</button></div>
+  </div>`;
+  document.body.appendChild(modal);
+
+  const close = () => document.getElementById('currentModal')?.remove();
+  document.getElementById('modalCloseX').addEventListener('click', close);
+  document.getElementById('modalCancelBtn').addEventListener('click', close);
+
+  document.getElementById('saveSingleBtn').addEventListener('click', async () => {
+    const date = document.getElementById('stDate').value;
+    if (!date) return;
+    const ora_inizio = document.getElementById('stInizio').value || '17:00';
+    const ora_fine = document.getElementById('stFine').value || '';
+    const luogo = document.getElementById('stLuogo').value.trim();
+
+    showLoading();
+    try {
+      await apiFetch('/squadre/' + window.YFM.squadraId + '/training-by-date', {
+        method: 'POST',
+        body: JSON.stringify({ date, ora_inizio, ora_fine, luogo })
+      });
+      hideLoading(); close();
+      loadTrainingSettings();
+    } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
   });
 }
 
