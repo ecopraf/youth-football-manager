@@ -23,12 +23,21 @@ export async function openConvocation(mid, readOnly) {
     absCountByPlayer[pid] = (absCountByPlayer[pid] || 0) + 1;
   });
 
-  const ids = conv.filter(c => c.presente === true).map(c => c.calciatoreId);
+  // Giocatori con assenza segnalata per la data esatta della partita → congelati
+  const matchDate = match.data_ora ? match.data_ora.substring(0, 10) : '';
+  const absentForMatchIds = new Set(
+    (weekAbsences || []).filter(a => a.data_allenamento === matchDate).map(a => a.player_id)
+  );
+
   // Mappa risposte convocazione per giocatore
   const rispostaMap = {};
-  conv.filter(c => c.presente && c.risposta).forEach(c => {
+  conv.filter(c => c.risposta).forEach(c => {
     rispostaMap[c.calciatoreId] = { risposta: c.risposta, motivo: c.risposta_motivo };
   });
+  // IDs congelati: indisponibili post-convocazione + assenti pre-convocazione
+  const indisponibiliIds = new Set(Object.entries(rispostaMap).filter(([,v]) => v.risposta === 'indisponibile').map(([k]) => k));
+  const frozenIds = new Set([...indisponibiliIds, ...absentForMatchIds]);
+  const ids = conv.filter(c => c.presente === true && !frozenIds.has(c.calciatoreId)).map(c => c.calciatoreId);
   const sorted = [...gioc].sort((a, b) => {
     const o = ['Portiere', 'Difensore', 'Centrocampista', 'Attaccante'];
     const ra = o.indexOf(a.ruolo), rb = o.indexOf(b.ruolo);
@@ -54,7 +63,7 @@ export async function openConvocation(mid, readOnly) {
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;" data-help="convocazioni.selezione">
       <button class="btn btn-secondary btn-small" id="btnSelAll">✅ Tutti</button>
       <button class="btn btn-secondary btn-small" id="btnDeselAll">❌ Nessuno</button>
-      <span style="font-size:12px;color:var(--gray);" id="convCount">${ids.length} convocati</span>
+      <span style="font-size:12px;color:var(--gray);" id="convCount">${ids.length} convocati</span>${frozenIds.size > 0 ? `<span style="font-size:11px;color:#dc2626;font-weight:600;">❌ ${frozenIds.size} non disponibil${frozenIds.size === 1 ? 'e' : 'i'}</span>` : ''}
       <span id="convWarning" style="color:#E74C3C;font-weight:600;font-size:12px;display:none;"></span>
     </div>
     ${sorted.map(g => {
@@ -64,10 +73,14 @@ export async function openConvocation(mid, readOnly) {
       if (isInj) badges.push('<span style="background:#FDEDEE;color:#E74C3C;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">🤕 Infortunato</span>');
       if (abs > 0) badges.push(`<span style="background:#FFF3E0;color:#E65100;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">⚠️ ${abs} assenz${abs > 1 ? 'e' : 'a'} sett.</span>`);
       const risp = rispostaMap[g.id];
-      if (risp?.risposta === 'indisponibile') badges.push(`<span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;" title="${risp.motivo || ''}">❌ Indisponibile</span>`);
+      const isIndisponibile = risp?.risposta === 'indisponibile';
+      const isAbsentForMatch = absentForMatchIds.has(g.id);
+      const isFrozen = isIndisponibile || isAbsentForMatch;
+      if (isIndisponibile) badges.push(`<span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;" title="${risp.motivo || ''}">❌ Indisponibile</span>`);
+      else if (isAbsentForMatch) badges.push('<span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">🚫 Assente</span>');
       return `
-      <div class="convocation-item">
-        <input type="checkbox" ${ids.includes(g.id) ? 'checked' : ''} data-pid="${g.id}" class="conv-check" style="width:20px;height:20px;cursor:pointer;accent-color:var(--green);">
+      <div class="convocation-item" style="${isFrozen ? 'opacity:0.5;text-decoration:line-through;' : ''}">
+        <input type="checkbox" ${ids.includes(g.id) ? 'checked' : ''} data-pid="${g.id}" class="conv-check" ${isFrozen ? 'disabled' : ''} style="width:20px;height:20px;cursor:${isFrozen ? 'not-allowed' : 'pointer'};accent-color:${isFrozen ? '#999' : 'var(--green)'};">
         <div class="player-avatar" style="width:32px;height:32px;font-size:12px;background:${getAvatarColor(g.nome)};">${g.nome[0]}${g.cognome[0]}</div>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.nome} ${g.cognome}${badges.length ? ' ' + badges.join(' ') : ''}</span>
         <span style="color:var(--gray);font-size:13px;white-space:nowrap;">${g.ruolo}${g.numeroMaglia ? ' · #' + g.numeroMaglia : ''}</span>
@@ -102,7 +115,7 @@ export async function openConvocation(mid, readOnly) {
   });
 
   function upd() {
-    const checks = document.querySelectorAll('#currentModal .conv-check:checked');
+    const checks = document.querySelectorAll('#currentModal .conv-check:checked:not(:disabled)');
     const c = checks.length;
     document.getElementById('convCount').textContent = c + ' convocati';
     const w = document.getElementById('convWarning'), s = document.getElementById('saveBtn');
@@ -111,24 +124,24 @@ export async function openConvocation(mid, readOnly) {
     else if (c < 11) { w.textContent = '⚠️ Minimo 11!'; w.style.display = 'inline'; s.disabled = true; s.style.opacity = '0.5'; }
     else if (c < 16) { w.textContent = '⚠️ Solo ' + c; w.style.display = 'inline'; }
   }
-  document.querySelectorAll('#currentModal .conv-check').forEach(cb => cb.addEventListener('change', upd));
+  document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => cb.addEventListener('change', upd));
   document.getElementById('btnSelAll').addEventListener('click', () => {
-    document.querySelectorAll('#currentModal .conv-check').forEach(cb => cb.checked = true); upd();
+    document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => cb.checked = true); upd();
   });
   document.getElementById('btnDeselAll').addEventListener('click', () => {
-    document.querySelectorAll('#currentModal .conv-check').forEach(cb => cb.checked = false); upd();
+    document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => cb.checked = false); upd();
   });
   upd();
 
   document.getElementById('saveBtn').addEventListener('click', async () => {
-    const checks = document.querySelectorAll('#currentModal .conv-check:checked');
+    const checks = document.querySelectorAll('#currentModal .conv-check:checked:not(:disabled)');
     if (checks.length > 20) { alert('⚠️ Max 20 convocabili!'); return; }
     if (checks.length < 11) { alert('⚠️ Minimo 11 calciatori!'); return; }
     if (checks.length < 16 && !await confirm('Solo ' + checks.length + ' convocati. Procedere?')) return;
     
-    // Raccogli tutte le convocazioni in un array
+    // Raccogli tutte le convocazioni (esclusi indisponibili congelati)
     const convocazioni = [];
-    document.querySelectorAll('#currentModal .conv-check').forEach(cb => {
+    document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => {
       convocazioni.push({ calciatoreId: cb.dataset.pid, presente: cb.checked });
     });
     
@@ -145,11 +158,11 @@ export async function openConvocation(mid, readOnly) {
   });
 
   document.getElementById('publishBtn').addEventListener('click', async () => {
-    const checks = document.querySelectorAll('#currentModal .conv-check:checked');
+    const checks = document.querySelectorAll('#currentModal .conv-check:checked:not(:disabled)');
     if (checks.length < 11) { alert('⚠️ Minimo 11 calciatori!'); return; }
     if (checks.length > 20) { alert('⚠️ Max 20 convocabili!'); return; }
     const convocazioni = [];
-    document.querySelectorAll('#currentModal .conv-check').forEach(cb => {
+    document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => {
       convocazioni.push({ calciatoreId: cb.dataset.pid, presente: cb.checked });
     });
     showLoading();

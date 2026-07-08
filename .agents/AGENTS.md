@@ -231,6 +231,11 @@ frontend-v2/src/
 | `convocation` | Convocazioni | match_id, team_player_id, risposta TEXT, risposta_motivo TEXT, risposta_at TIMESTAMPTZ |
 
 **Colonne notevoli `convocation`**: `risposta TEXT` (null=disponibile, 'indisponibile'), `risposta_motivo TEXT`, `risposta_at TIMESTAMPTZ`. Auto-impostato a 'indisponibile' alla pubblicazione se atleta ha già segnalato assenza per la data.
+- Alla pubblicazione: se atleta ha già assenza per la data → auto `risposta='indisponibile'`
+- Batch save: record con `risposta='indisponibile'` sono congelati (non eliminati/ri-inseriti)
+- Endpoint `/convocati`: esclude `risposta='indisponibile'` dalla lista effettiva (distinta, PDF, formazione)
+- Frontend convocazioni: checkbox disabled per giocatori con assenza pre-convocazione o indisponibilità post-convocazione
+- Home atleta: bottone ❌ inline partita visibile solo PRIMA della pubblicazione; dopo mostra card stato (convocato/non convocato) + Vedi Convocazione
 | `training` | Sessioni allenamento | team_id |
 | `training_attendance` | Presenze allenamenti | training_id, team_player_id |
 | `training_config` | Settimana tipo (giorni/orari) | team_id |

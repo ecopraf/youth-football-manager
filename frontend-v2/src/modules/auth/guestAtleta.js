@@ -35,11 +35,13 @@ export default async function loadGuestAtleta() {
       .filter(m => m.data_ora && m.data_ora.slice(0, 10) >= todayStr && m.stato !== 'Archiviata')
       .sort((a, b) => a.data_ora.localeCompare(b.data_ora))[0] || null;
     let myConvocation = null;
+    let convocationPublished = false;
     if (nextMatch) {
       try {
         const convs = await apiFetch(`/partite/${nextMatch.id}/convocazioni`);
-        // Trova la convocazione di questo giocatore (via team_player → player_id)
         myConvocation = (convs || []).find(c => c.calciatoreId === playerId && c.presente);
+        // Verifica se la convocazione è stata pubblicata (esiste notifica convocazione per questa partita)
+        convocationPublished = (notifications || []).some(n => n.tipo === 'convocazione' && n.riferimento_id === nextMatch.id);
       } catch(e) { /* silent */ }
     }
 
@@ -47,13 +49,13 @@ export default async function loadGuestAtleta() {
     const absDates = (absences || []).map(a => a.data_allenamento).filter(Boolean);
     sessionStorage.setItem('yfm_abs_dates', JSON.stringify(absDates));
 
-    render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi, myConvocation, nextMatch });
+    render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished });
   } catch (e) {
     c.innerHTML = `<div class="error-box">Errore: ${e.message}</div>`;
   }
 }
 
-function render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi, myConvocation, nextMatch }) {
+function render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished }) {
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
   const absDates = new Set(JSON.parse(sessionStorage.getItem('yfm_abs_dates') || '[]'));
@@ -124,9 +126,9 @@ function render(c, { playerName, playerId, teamId, notifications, matches, train
           <div class="ga-match-meta">${dateStr} • ${timeStr}${nextMatch.luogo ? ' • ' + nextMatch.luogo : ''}</div>
         </div>
         <span style="font-size:20px;">${nextMatch.luogo === 'Casa' ? '🏠' : '✈️'}</span>
-        <button class="ga-abs-inline" data-date="${nextMatch.data_ora.slice(0,10)}" data-tipo="partita" data-extra="${nextMatch.avversario || ''}" ${absDates.has(nextMatch.data_ora.slice(0,10)) ? 'disabled style="opacity:1;"' : ''} title="Segnala indisponibilità">${absDates.has(nextMatch.data_ora.slice(0,10)) ? '✅' : '❌'}</button>
+        ${!convocationPublished ? `<button class="ga-abs-inline" data-date="${nextMatch.data_ora.slice(0,10)}" data-tipo="partita" data-extra="${nextMatch.avversario || ''}" ${absDates.has(nextMatch.data_ora.slice(0,10)) ? 'disabled style="opacity:1;"' : ''} title="Segnala indisponibilità">${absDates.has(nextMatch.data_ora.slice(0,10)) ? '✅' : '❌'}</button>` : ''}
       </div>
-      ${myConvocation ? renderConvocationResponse(myConvocation, nextMatch) : ''}
+      ${convocationPublished ? renderConvocationStatus(myConvocation, nextMatch) : ''}
     </div>`;
   }
 
@@ -206,16 +208,30 @@ function render(c, { playerName, playerId, teamId, notifications, matches, train
   bindEvents(c, playerId, teamId, motivi);
 }
 
-function renderConvocationResponse(conv, match) {
-  if (conv.risposta === 'indisponibile') {
-    return `<div style="margin-top:8px;padding:8px 12px;border-radius:8px;background:#fee2e2;font-size:13px;">
-      ❌ Hai comunicato la tua indisponibilità${conv.risposta_motivo ? ' — ' + conv.risposta_motivo : ''}
+function renderConvocationStatus(conv, match) {
+  const viewBtn = `<button class="btn btn-secondary" id="gaConvView" data-match-id="${match.id}" style="font-size:12px;padding:6px 12px;margin-top:8px;">📄 Vedi Convocazione</button>`;
+
+  // Non convocato
+  if (!conv) {
+    return `<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#f8f9fa;border:1px solid #e5e7eb;">
+      <div style="font-size:13px;color:#666;">📋 Non sei stato convocato per questa partita</div>
+      ${viewBtn}
     </div>`;
   }
-  // Convocato, disponibile (default) — mostra solo opzione per segnalare imprevisto
+
+  // Convocato ma ha segnalato indisponibilità
+  if (conv.risposta === 'indisponibile') {
+    return `<div style="margin-top:8px;padding:10px 12px;border-radius:8px;background:#fee2e2;">
+      <div style="font-size:13px;">❌ Hai comunicato la tua indisponibilità${conv.risposta_motivo ? ' — ' + conv.risposta_motivo : ''}</div>
+      ${viewBtn}
+    </div>`;
+  }
+
+  // Convocato e disponibile
   return `<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#d1fae5;border:1px solid #a7f3d0;">
     <div style="font-size:13px;font-weight:600;margin-bottom:8px;">📋 Sei convocato!</div>
     <button class="btn btn-secondary" id="gaConvDecline" data-conv-id="${conv.id}" data-match-id="${match.id}" style="font-size:12px;padding:6px 12px;background:#fee2e2;border-color:#fca5a5;color:#dc2626;">❌ Ho un imprevisto, non posso esserci</button>
+    ${viewBtn}
   </div>`;
 }
 
@@ -269,6 +285,34 @@ function bindEvents(c, playerId, teamId, motivi) {
 
   // Aggiorna campanella nel header
   updateGuestBell(teamId);
+
+  // Vedi Convocazione button
+  document.getElementById('gaConvView')?.addEventListener('click', async (e) => {
+    const matchId = e.target.dataset.matchId;
+    showLoading('Caricamento...');
+    try {
+      const convs = await apiFetch(`/squadre/${teamId}/partite/${matchId}/convocati`);
+      const players = await apiFetch(`/squadre/${teamId}/calciatori`);
+      hideLoading();
+      const list = (convs || []).map(c => {
+        const p = (players || []).find(pl => pl.id === c.calciatoreId);
+        return p ? `${p.cognome} ${p.nome}` : '?';
+      }).sort();
+      // Modal lista convocati
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+      overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:360px;width:95%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+        <div style="text-align:center;font-weight:700;font-size:16px;margin-bottom:16px;">📋 Convocati (${list.length})</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${list.map((name, i) => `<div style="padding:6px 10px;border-radius:8px;background:#f8f9fa;font-size:13px;">${i + 1}. ${name}</div>`).join('')}
+        </div>
+        <button class="btn btn-secondary" style="width:100%;margin-top:16px;" id="gaConvViewClose">Chiudi</button>
+      </div>`;
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.remove(); });
+      overlay.querySelector('#gaConvViewClose').addEventListener('click', () => overlay.remove());
+    } catch(err) { hideLoading(); }
+  });
 
   // Convocation decline button
   document.getElementById('gaConvDecline')?.addEventListener('click', async (e) => {

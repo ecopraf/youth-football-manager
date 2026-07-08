@@ -603,6 +603,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: crea link singolo atleta — dropdown filtra solo giocatori senza link attivo, player_id obbligatorio per tipo atleta |
 | (pending) | feat: risposta convocazione — atleta può segnalare indisponibilità post-convocazione (colonne risposta/risposta_motivo/risposta_at su convocation, endpoint POST risposta, notifica allenatore, badge ❌ in UI convocazioni, counter indisponibili in dashboard) |
 | (pending) | fix: congruenza flusso — assenza pre-convocazione auto-imposta indisponibile alla pubblicazione, batch convocazioni preserva risposte esistenti, DELETE config cascade allenamenti futuri senza presenze |
+| (pending) | fix: convocazione congelata — giocatore indisponibile/assente non rimovibile (checkbox disabled, barrato, non conta nel totale, escluso da distinta/PDF), assenza pre-convocazione congela checkbox, bottone ❌ inline sparisce dopo pubblicazione, card stato convocazione (convocato/non convocato/indisponibile) + Vedi Convocazione con lista |
 
 ---
 

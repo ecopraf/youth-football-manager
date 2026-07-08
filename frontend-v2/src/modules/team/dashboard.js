@@ -661,11 +661,12 @@ export default async function loadDashboard() {
     const convStatusEl = document.getElementById('dashConvStatus');
     if (convStatusEl && hasEditAccess) {
       apiFetch('/partite/' + prossimaPartita.id + '/convocazioni').then(convAll => {
-        const convocati = (convAll || []).filter(c => c.presente);
-        if (convocati.length === 0) return;
-        const indisponibili = convocati.filter(c => c.risposta === 'indisponibile');
+        const tutti = (convAll || []).filter(c => c.presente);
+        if (tutti.length === 0) return;
+        const indisponibili = tutti.filter(c => c.risposta === 'indisponibile');
+        const effettivi = tutti.length - indisponibili.length;
         let statusHtml = '<div style="font-size:11px;opacity:0.9;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">';
-        statusHtml += '<span>👥 ' + convocati.length + ' convocati</span>';
+        statusHtml += '<span>👥 ' + effettivi + ' convocati</span>';
         if (indisponibili.length > 0) statusHtml += '<span style="color:#fca5a5;font-weight:700;">⚠️ ' + indisponibili.length + ' indisponibil' + (indisponibili.length === 1 ? 'e' : 'i') + '</span>';
         statusHtml += '</div>';
         convStatusEl.innerHTML = statusHtml;

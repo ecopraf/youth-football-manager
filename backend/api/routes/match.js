@@ -170,7 +170,8 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     try {
       const { data, error } = await supabase.from('convocation').select('*, team_player:team_player_id(player_id)').eq('match_id', req.params.matchId).eq('presente', true);
       if (error) return res.status(400).json({ error: error.message });
-      const result = (data || []).map(c => ({ ...c, calciatoreId: c.team_player?.player_id || c.team_player_id }));
+      // Escludi indisponibili dalla lista convocati effettivi
+      const result = (data || []).filter(c => c.risposta !== 'indisponibile').map(c => ({ ...c, calciatoreId: c.team_player?.player_id || c.team_player_id }));
       res.json(result);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -204,22 +205,25 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
 
       // Preserva risposte esistenti prima del DELETE
       const { data: existing } = await supabase.from('convocation')
-        .select('team_player_id, risposta, risposta_motivo, risposta_at')
+        .select('id, team_player_id, risposta, risposta_motivo, risposta_at, presente')
         .eq('match_id', req.params.matchId);
-      const risposteMap = {};
-      (existing || []).forEach(c => {
-        if (c.risposta) risposteMap[c.team_player_id] = { risposta: c.risposta, risposta_motivo: c.risposta_motivo, risposta_at: c.risposta_at };
-      });
+      
+      // Non toccare i record con risposta=indisponibile (congelati)
+      const frozen = (existing || []).filter(c => c.risposta === 'indisponibile');
+      const frozenTpIds = new Set(frozen.map(c => c.team_player_id));
+      
+      // Elimina solo i record NON congelati
+      const toDeleteIds = (existing || []).filter(c => c.risposta !== 'indisponibile').map(c => c.id);
+      if (toDeleteIds.length > 0) {
+        await supabase.from('convocation').delete().in('id', toDeleteIds);
+      }
 
-      await supabase.from('convocation').delete().eq('match_id', req.params.matchId);
-      const inserts = convocazioni.filter(c => playerToTp[c.calciatoreId]).map(c => {
-        const tpId = playerToTp[c.calciatoreId];
-        const prev = risposteMap[tpId];
-        return {
-          match_id: req.params.matchId, team_player_id: tpId, presente: c.presente,
-          ...(prev && c.presente ? prev : {})
-        };
-      });
+      // Inserisci solo i giocatori non congelati
+      const inserts = convocazioni
+        .filter(c => playerToTp[c.calciatoreId] && !frozenTpIds.has(playerToTp[c.calciatoreId]))
+        .map(c => ({
+          match_id: req.params.matchId, team_player_id: playerToTp[c.calciatoreId], presente: c.presente
+        }));
       if (inserts.length > 0) {
         const { error } = await supabase.from('convocation').insert(inserts);
         if (error) return res.status(400).json({ error: error.message });
