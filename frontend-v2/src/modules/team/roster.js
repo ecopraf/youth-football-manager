@@ -38,7 +38,6 @@ export default async function loadRoster() {
     svincolati = svincolatiData.filter(p => p.stato === 'Svincolato');
     allPlayers = players;
     window.YFM.allPlayers = players;
-    window.YFM.allSquadreForMove = allSquadre;
     renderRoster(c, players, scadenze);
   } catch (e) {
     c.innerHTML = '<div class="error-box">' + e.message + '</div>';
@@ -64,7 +63,6 @@ function renderRoster(c, players, scadenze) {
       toolbarHtml += '<button class="btn btn-secondary" id="btnCancelSelect">Annulla</button>';
       toolbarHtml += '<button class="btn btn-danger" id="btnDeleteSelected" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>🗑️ Elimina (' + selectedPlayers.size + ')</button>';
       toolbarHtml += '<button class="btn btn-secondary" id="btnSvincolaSelected" style="background:#F39C12;color:white;border:none;" data-help="roster.btnSvincola" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>📋 Svincola (' + selectedPlayers.size + ')</button>';
-      toolbarHtml += '<button class="btn btn-primary" id="btnMoveSelected" ' + (selectedPlayers.size === 0 ? 'disabled' : '') + '>↗️ Sposta (' + selectedPlayers.size + ')</button>';
     }
   }
   
@@ -105,7 +103,6 @@ function renderRoster(c, players, scadenze) {
     document.getElementById('btnSelectAll')?.addEventListener('click', selectAllPlayers);
     document.getElementById('btnCancelSelect')?.addEventListener('click', cancelSelection);
     document.getElementById('btnDeleteSelected')?.addEventListener('click', deleteSelectedPlayers);
-    document.getElementById('btnMoveSelected')?.addEventListener('click', moveSelectedPlayers);
     document.getElementById('btnSvincolaSelected')?.addEventListener('click', svincolaSelectedPlayers);
     document.getElementById('btnToggleSvincolati')?.addEventListener('click', () => {
       const sec = document.getElementById('svincolatiContent');
@@ -238,15 +235,10 @@ function togglePlayerSelection(pid, card) {
 
 function updateBulkButtons() {
   const deleteBtn = document.getElementById('btnDeleteSelected');
-  const moveBtn = document.getElementById('btnMoveSelected');
   const svincolaBtn = document.getElementById('btnSvincolaSelected');
   if (deleteBtn) {
     deleteBtn.innerHTML = '🗑️ Elimina (' + selectedPlayers.size + ')';
     deleteBtn.disabled = selectedPlayers.size === 0;
-  }
-  if (moveBtn) {
-    moveBtn.innerHTML = '↗️ Sposta (' + selectedPlayers.size + ')';
-    moveBtn.disabled = selectedPlayers.size === 0;
   }
   if (svincolaBtn) {
     svincolaBtn.innerHTML = '📋 Svincola (' + selectedPlayers.size + ')';
@@ -391,7 +383,6 @@ async function openAggregaModal() {
   };
   renderAggList();
 
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   document.getElementById('aggCancel').addEventListener('click', () => modal.remove());
 
   // Sort toggle
@@ -468,7 +459,6 @@ async function openRecuperaModal() {
     '<button id="recConfirm" class="btn btn-primary" style="padding:10px 16px;background:#667eea;color:white;border:none;" disabled>Recupera</button></div></div>';
   document.body.appendChild(modal);
 
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
   document.getElementById('recCancel').addEventListener('click', () => modal.remove());
 
   modal.querySelectorAll('.recCheck').forEach(cb => {
@@ -494,58 +484,6 @@ async function openRecuperaModal() {
       hideLoading();
     }
   });
-}
-
-function openMoveModal(pids) {
-  const playerIds = Array.isArray(pids) ? pids : [pids];
-  const squadre = window.YFM.allSquadreForMove || [];
-  const currentSquadraId = window.YFM.squadraId;
-  const otherSquadre = squadre.filter(s => s.id !== currentSquadraId);
-  
-  if (otherSquadre.length === 0) {
-    alert('Non ci sono altre categorie disponibili');
-    return;
-  }
-  
-  const playerNames = playerIds.map(pid => {
-    const p = allPlayers.find(x => x.id === pid);
-    return p ? p.nome + ' ' + p.cognome : pid;
-  }).join(', ');
-  
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
-  modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:400px;width:90%;"><div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">↗️ Sposta Giocatori</h2><button id="moveModalClose" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button></div><div style="padding:20px;"><p style="margin-bottom:12px;"><strong>' + playerIds.length + ' giocatore(i):</strong></p><p style="color:#666;font-size:12px;margin-bottom:16px;">' + playerNames + '</p><div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:12px;font-weight:600;color:#666;">Sposta nella categoria:</label><select id="targetSquadra" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;">' + otherSquadre.map(s => '<option value="' + s.id + '">' + (s.category?.nome || s.nome) + (s._stagione ? ' (' + s._stagione + ')' : '') + '</option>').join('') + '</select></div></div><div style="padding:16px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:12px;"><button id="moveModalCancel" class="btn btn-secondary" style="padding:10px 16px;border-radius:8px;cursor:pointer;">Annulla</button><button id="confirmMoveBtn" class="btn btn-primary" style="padding:10px 16px;border-radius:8px;cursor:pointer;background:var(--primary,#667eea);color:white;border:none;">Sposta</button></div></div>';
-  document.body.appendChild(modal);
-  
-  document.getElementById('moveModalClose').addEventListener('click', () => modal.remove());
-  document.getElementById('moveModalCancel').addEventListener('click', () => modal.remove());
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-  
-  document.getElementById('confirmMoveBtn').addEventListener('click', async () => {
-    const targetSquadraId = document.getElementById('targetSquadra').value;
-    showLoading();
-    try {
-      for (const pid of playerIds) {
-        await apiFetch('/calciatori/' + pid + '/move', {
-          method: 'POST',
-          body: JSON.stringify({ fromSquadraId: currentSquadraId, toSquadraId: targetSquadraId })
-        });
-      }
-      modal.remove();
-      if (Array.isArray(pids) && pids.length > 1) cancelSelection();
-      loadRoster();
-    } catch (e) {
-      alert('Errore: ' + e.message);
-    } finally {
-      hideLoading();
-    }
-  });
-}
-
-async function moveSelectedPlayers() {
-  if (selectedPlayers.size === 0) return;
-  openMoveModal(Array.from(selectedPlayers));
 }
 
 function filterRoster() {
@@ -680,8 +618,6 @@ function openPlayerForm(pid) {
   
   document.getElementById('modalCloseX').addEventListener('click', closeModal);
   document.getElementById('btnCancelForm').addEventListener('click', closeModal);
-  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-  
   document.getElementById('saveBtn').addEventListener('click', async () => {
     let nome = document.getElementById('pfN').value.trim().replace(/\s+/g, ' ');
     let cognome = document.getElementById('pfC').value.trim().replace(/\s+/g, ' ');
@@ -779,8 +715,6 @@ async function openImportXlsModal() {
   document.body.appendChild(modal);
 
   document.getElementById('closeImportXls').onclick = () => modal.remove();
-  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
-
   const fileInput = document.getElementById('xlsFileInput');
   const btnParse = document.getElementById('btnParseXls');
   const dropZone = document.getElementById('xlsDropZone');

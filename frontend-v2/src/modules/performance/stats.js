@@ -27,7 +27,7 @@ export default async function loadStats(filterTipo) {
     const totGol = statsArr.reduce((s, p) => s + (p.gol || 0), 0);
     const totAmm = statsArr.reduce((s, p) => s + (p.ammonizioni || 0), 0);
     const totEsp = statsArr.reduce((s, p) => s + (p.espulsioni || 0), 0);
-    const diffidati = statsArr.filter(p => p.ammonizioni >= 4);
+    const diffidati = statsArr.filter(p => p.ammonizioni > 0 && p.ammonizioni % 5 === 4);
 
     let html = `<style>
       .stats-table { width:100%; border-collapse:collapse; font-size:13px; }
@@ -63,7 +63,7 @@ export default async function loadStats(filterTipo) {
       <div class="card widget"><div class="widget-value" style="color:#E74C3C;">${totEsp}</div><div class="widget-label">🟥 Esp.</div></div>
     </div>
     ${diffidati.length > 0 ? `<div class="card" data-help="stats.diffidati" style="margin-bottom:16px;border-left:4px solid #F39C12;padding:14px 16px;">
-      <h3 style="margin:0 0 8px 0;font-size:14px;color:#F39C12;">⚠️ Diffidati (4 ammonizioni)</h3>
+      <h3 style="margin:0 0 8px 0;font-size:14px;color:#F39C12;">⚠️ Diffidati</h3>
       ${diffidati.map(p => `<div style="font-size:13px;margin-bottom:4px;">• <strong>${p.cognome} ${p.nome}</strong> — ${p.ammonizioni} 🟨 (prossimo giallo = squalifica)</div>`).join('')}
     </div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px;">

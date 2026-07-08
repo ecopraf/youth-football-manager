@@ -225,7 +225,6 @@ function createModal(title, content, footer, maxW = '600px') {
   document.body.appendChild(modal);
   const close = () => { const m = document.getElementById('currentModal'); if (m) m.remove(); };
   document.getElementById('modalCloseX').addEventListener('click', close);
-  modal.addEventListener('click', e => { if (e.target === modal) close(); });
   const cancelBtn = document.getElementById('modalCancel');
   if (cancelBtn) cancelBtn.addEventListener('click', close);
   return { modal, closeModal: close, close };

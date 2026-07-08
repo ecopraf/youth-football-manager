@@ -346,6 +346,11 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | fix: distinta — colonna numero maglia vuota per compilazione manuale, (P) per portieri con ruolo_principale dal backend |
 | (pending) | style: ultime partite — logo avversario su desktop (inline-flex), data dd/mm/yy, rimossa icona calendario su mobile |
 | (pending) | feat: carriera espandibile — click su stagione espande lista partite (DataGrid desktop / cards mobile), mutuamente esclusivo, endpoint career-matches, giornata+risultato su desktop, risultato+ellipsis avversario su mobile |
+| (pending) | fix: certificati badge click — toggle apri/chiudi dettaglio su click badge |
+| (pending) | refactor: rimossa funzionalità "Sposta Giocatore" (ridondante con wizard migrazione) da roster.js, playerDetail.js, backend player.js |
+| (pending) | fix: distinta — amichevole senza giornata, preview font 10px simulazione stampa, bottone 📄 Distinta in dashboard, assistente arbitro layout matr+tessera |
+| (pending) | fix: diffidati modulo 5 — squalifica al 5°/10°/15° giallo (diffidato a 4/9/14 ammonizioni) |
+| (pending) | fix: modali form — rimosso click-overlay-close su modali con dati (partita, calciatore, convocazioni, formazione, valutazioni, note, distinta staff, training config) |
 | (pending) | perf: v3.16 — indici DB (match_formation, training_attendance, match team+stato), VIEW v_player_season_stats + v_team_season_summary, endpoint aggregato /dashboard (1 call vs 5-6), frontend refactor cache |
 
 ---

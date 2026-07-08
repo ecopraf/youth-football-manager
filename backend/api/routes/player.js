@@ -698,24 +698,6 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     }
   });
 
-  // POST /api/calciatori/:id/move
-  router.post('/api/calciatori/:id/move', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
-    try {
-      const { fromSquadraId, toSquadraId } = req.body;
-      // Validazione anno nascita rispetto alla categoria di destinazione
-      const { data: player } = await supabase.from('player').select('data_nascita').eq('id', req.params.id).single();
-      if (player?.data_nascita) {
-        const birthErr = await validateBirthYear(player.data_nascita, toSquadraId);
-        if (birthErr) return res.status(400).json({ error: birthErr });
-      }
-      const { error } = await supabase.from('team_player').update({ team_id: toSquadraId }).eq('player_id', req.params.id).eq('team_id', fromSquadraId);
-      if (error) return res.status(400).json({ error: error.message });
-      res.json({ success: true });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
   // ── INJURIES ──
 
   // GET /api/squadre/:teamId/injuries — infortuni attivi + storico

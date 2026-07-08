@@ -98,9 +98,13 @@ export function bindCertificatiToggle(container) {
   const btn = container.querySelector('.cert-toggle-btn');
   const detail = container.querySelector('.cert-detail');
   if (!btn || !detail) return;
-  btn.addEventListener('click', () => {
+  const toggle = () => {
     const open = detail.style.display !== 'none';
     detail.style.display = open ? 'none' : 'block';
     btn.textContent = open ? '▼ Dettaglio' : '▲ Nascondi';
+  };
+  btn.addEventListener('click', toggle);
+  container.querySelectorAll('.cert-card > div:nth-child(2) > span').forEach(badge => {
+    badge.addEventListener('click', toggle);
   });
 }

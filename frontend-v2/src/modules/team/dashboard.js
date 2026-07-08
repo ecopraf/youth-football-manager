@@ -101,10 +101,13 @@ export default async function loadDashboard() {
   const isGuest = !!(window.YFM.guestSquadreAccesso && window.YFM.guestSquadreAccesso.length > 0);
   const hasEditAccess = !isGuest && (window.YFM.isAdmin() || window.YFM.hasRole('allenatore'));
   const matchCenterBtn = hasEditAccess && prossimaPartita
-    ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600;margin-left:8px;" onclick="window.YFM.openMatchCenter(\'' + prossimaPartita.id + '\')">⚽ Match Center</button>'
+    ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;" onclick="window.YFM.openMatchCenter(\'' + prossimaPartita.id + '\')">⚽ Match Center</button>'
+    : '';
+  const distintaBtn = hasEditAccess && prossimaPartita
+    ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;" onclick="window.YFM.openDistinta(\'' + prossimaPartita.id + '\')">📄 Distinta</button>'
     : '';
   const convButton = hasEditAccess && prossimaPartita 
-    ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600;" onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')">👥 Convocazioni</button>'
+    ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;" onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')">👥 Convoca</button>'
     : '';
   
   const nuovaPartitaButton = hasEditAccess 
@@ -127,7 +130,7 @@ export default async function loadDashboard() {
     if (prossimaPartita) {
       const luogoHtml = prossimaPartita.luogo === 'Casa' ? '🏠 Casa' : '✈️ Trasferta';
       const comp = prossimaPartita.competizione || 'Amichevole';
-      const btnHtml = (convButton || matchCenterBtn) ? '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">' + convButton + matchCenterBtn + '</div>' : '';
+      const btnHtml = (convButton || distintaBtn || matchCenterBtn) ? '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">' + convButton + distintaBtn + matchCenterBtn + '</div>' : '';
       const isLive = !!(prossimaPartita.live_meta && ['1t','2t','intervallo'].includes(prossimaPartita.live_meta.stato));
       const isFinished = isMatchFinished && isMatchToday;
       const wsLogo = window.YFM.getWorkspaceLogo();

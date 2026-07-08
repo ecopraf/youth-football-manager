@@ -661,7 +661,7 @@ export async function openMatchForm(mid) {
   <div class="form-group" id="mfTorneoGroup" style="margin-bottom:12px;display:none;"><label>Nome torneo</label><input id="mfTorneo" placeholder="es. Torneo Città di Roma" value="${selectedType === 'torneo' ? editComp : ''}"></div>
   <div class="form-group"><label>Giornata</label><input id="mfG" type="number" value="${m ? m.giornata || '' : ''}" style="width:80px;"></div>`;
   const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="saveBtn">Salva</button>';
-  const modal = createModal(m ? 'Modifica' : 'Nuova Partita', content, footer, '500px');
+  const modal = createModal(m ? 'Modifica' : 'Nuova Partita', content, footer, '500px', { closeOnOverlay: false });
   
   // --- Chiudi picker data/ora dopo selezione ---
   document.getElementById('mfD').addEventListener('change', (e) => { e.target.blur(); });
@@ -1048,7 +1048,7 @@ async function extractAndPreview(file, searchName, modal) {
   });
 }
 
-function createModal(title, content, footer, maxW = '600px') {
+function createModal(title, content, footer, maxW = '600px', { closeOnOverlay = true } = {}) {
   const existing = document.getElementById('currentModal');
   if (existing) existing.remove();
   const modal = document.createElement('div');
@@ -1058,7 +1058,7 @@ function createModal(title, content, footer, maxW = '600px') {
   document.body.appendChild(modal);
   const close = () => { const m = document.getElementById('currentModal'); if (m) m.remove(); };
   document.getElementById('modalCloseX').addEventListener('click', close);
-  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  if (closeOnOverlay) modal.addEventListener('click', e => { if (e.target === modal) close(); });
   const cancelBtn = document.getElementById('modalCancel');
   if (cancelBtn) cancelBtn.addEventListener('click', close);
   return { modal, closeModal: close, close };

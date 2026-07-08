@@ -288,6 +288,7 @@ function renderDistinta(d, staff) {
   const timestampStampa = now.toLocaleDateString('it-IT') + ' ' + now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   
   c.innerHTML = 
+    '<div style="font-size:10px;line-height:1.4;max-width:700px;margin:0 auto;">' +
     // HEADER: Logo LND | Testo centrale | Logo società
     '<div style="display:flex;align-items:center;margin-bottom:6px;">' +
       '<img src="/img/logo-lnd.png" alt="FIGC LND" style="height:80px;">' +
@@ -302,7 +303,7 @@ function renderDistinta(d, staff) {
     '<div style="border:1px solid #000;padding:8px 10px;margin:6px 0;text-align:left;font-size:10px;line-height:1.7;">' +
       'Distinta dei/delle giocatori/trici partecipanti alla gara <strong>' + societa + ' - ' + d.partita.avversario + '</strong><br>' +
       buildCompLine(d.partita) + '<br>' +
-      'da disputare il <strong>' + dt.toLocaleDateString('it-IT') + '</strong> ore <strong>' + dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + '</strong>' + (d.partita.giornata ? ' (Giornata ' + d.partita.giornata + ')' : '') + '<br>' +
+      'da disputare il <strong>' + dt.toLocaleDateString('it-IT') + '</strong> ore <strong>' + dt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + '</strong>' + (d.partita.giornata && d.partita.competizione !== 'Amichevole' && d.partita.competizione ? ' (Giornata ' + d.partita.giornata + ')' : '') + '<br>' +
       'presso <strong>' + campoInfo + '</strong>' +
     '</div>' +
     // TABELLA GIOCATORI
@@ -317,7 +318,7 @@ function renderDistinta(d, staff) {
     '</div>' +
     // ASSISTENTE ARBITRO + STAFF (tabella a 2 colonne)
     '<table class="staff-table"><tbody>' +
-      '<tr><td style="text-align:left;">Assistente dell\'Arbitro: ________________________</td><td style="text-align:right;white-space:nowrap;">Matr. N° ____________ Tessera LND N° ____________</td></tr>' +
+      '<tr><td style="text-align:left;">Assistente dell\'Arbitro: ________________________</td><td style="text-align:left;white-space:nowrap;"><span>Matr. N° ____________</span><span style="float:right;">Tessera LND N° ____________</span></td></tr>' +
     staffHtml +
     '</tbody></table>' +
     // NOTE LEGALI
@@ -332,7 +333,8 @@ function renderDistinta(d, staff) {
       '<div style="text-align:right;">IL DIRIGENTE ACCOMPAGNATORE UFFICIALE<br><br>___________________</div>' +
     '</div>' +
     // TIMESTAMP STAMPA
-    '<div style="font-size:7px;margin-top:8px;color:#666;">' + timestampStampa + '</div>';
+    '<div style="font-size:7px;margin-top:8px;color:#666;">' + timestampStampa + '</div>' +
+    '</div>';
 }
 
 function openStaffForm(mid, cur) {
@@ -487,7 +489,6 @@ function createModal(title, content, footer, maxW = '600px') {
   document.body.appendChild(modal);
   const close = () => { const m = document.getElementById('currentModal'); if (m) m.remove(); };
   document.getElementById('modalCloseX').addEventListener('click', close);
-  modal.addEventListener('click', e => { if (e.target === modal) close(); });
   const cancelBtn = document.getElementById('modalCancel');
   if (cancelBtn) cancelBtn.addEventListener('click', close);
   return { modal, closeModal: close, close };

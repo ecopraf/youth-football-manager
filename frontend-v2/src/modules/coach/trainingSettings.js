@@ -184,7 +184,6 @@ function openTemplateModal(template, allTemplates) {
   const close = () => document.getElementById('currentModal')?.remove();
   document.getElementById('tplCloseX').addEventListener('click', close);
   document.getElementById('tplCancel').addEventListener('click', close);
-  modal.addEventListener('click', e => { if (e.target === modal) close(); });
 
   // Materiale chips toggle
   document.querySelectorAll('.tpl-mat-chip').forEach(chip => {
@@ -318,7 +317,6 @@ function openConfigForm(tid, g, i, f, l) {
   const close = () => document.getElementById('currentModal')?.remove();
   document.getElementById('modalCloseX').addEventListener('click', close);
   document.getElementById('modalCancelBtn').addEventListener('click', close);
-  modal.addEventListener('click', e => { if (e.target === modal) close(); });
 
   document.getElementById('saveConfigBtn').addEventListener('click', async () => {
     const data = { giorno_settimana: parseInt(document.getElementById('tfG').value), ora_inizio: document.getElementById('tfI').value, ora_fine: document.getElementById('tfF').value, luogo: document.getElementById('tfL').value };

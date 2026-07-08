@@ -16,7 +16,6 @@ export async function loadPlayerDetail(container, playerId) {
     let player;
     let career = [];
     let valutazioni = null;
-    let allSquadre = [];
 
     // Carica dati dal backend
     player = await apiFetch('/calciatori/' + playerId + '?squadraId=' + window.YFM.squadraId);
@@ -33,12 +32,6 @@ export async function loadPlayerDetail(container, playerId) {
       valutazioni = null;
     }
 
-    try {
-      allSquadre = await apiFetch('/squadre');
-    } catch (e) {
-      allSquadre = [];
-    }
-
     let injuries = [];
     try {
       injuries = await apiFetch('/players/' + playerId + '/injuries');
@@ -47,7 +40,7 @@ export async function loadPlayerDetail(container, playerId) {
     }
 
     hideLoading();
-    renderPlayerDetail(container, { player, career, valutazioni, allSquadre, injuries });
+    renderPlayerDetail(container, { player, career, valutazioni, injuries });
   } catch (e) {
     console.error(e);
     hideLoading();
@@ -56,7 +49,7 @@ export async function loadPlayerDetail(container, playerId) {
 }
 
 function renderPlayerDetail(container, data) {
-  const { player, career, valutazioni, allSquadre, injuries } = data;
+  const { player, career, valutazioni, injuries } = data;
 
   if (!player) {
     container.innerHTML = '<div class="error-box">Giocatore non trovato.</div>';
@@ -264,9 +257,6 @@ function renderPlayerDetail(container, data) {
       <div style="display:flex;flex-wrap:wrap;gap:10px;">
         <button class="btn btn-primary" id="btnEditInline" style="background:#667eea;">
           ✏️ Modifica Dati
-        </button>
-        <button class="btn btn-secondary" id="btnMovePlayer" style="border-color:#667eea;color:#667eea;">
-          ↗️ Sposta Categoria
         </button>
         <button class="btn btn-danger" id="btnDeletePlayer" style="background:#E74C3C;">
           🗑️ Elimina
@@ -679,11 +669,6 @@ function renderPlayerDetail(container, data) {
       }
     });
 
-    // Sposta
-    document.getElementById('btnMovePlayer')?.addEventListener('click', () => {
-      openMoveModalPlayer(player.id, player.nome + ' ' + player.cognome, allSquadre);
-    });
-
     // Elimina
     document.getElementById('btnDeletePlayer')?.addEventListener('click', async () => {
       if (await confirm('Eliminare questo giocatore dalla rosa?')) {
@@ -705,43 +690,6 @@ async function deletePlayer(playerId) {
   } finally {
     hideLoading();
   }
-}
-
-function openMoveModalPlayer(playerId, playerName, squadre) {
-  const currentSquadraId = window.YFM.squadraId;
-  const otherSquadre = (squadre || []).filter(s => s.id !== currentSquadraId);
-  
-  if (otherSquadre.length === 0) {
-    alert('Non ci sono altre categorie disponibili');
-    return;
-  }
-  
-  const modal = document.createElement('div');
-  modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
-  modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:400px;width:90%;"><div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">↗️ Sposta Giocatore</h2><button id="moveModalClose" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button></div><div style="padding:20px;"><p style="margin-bottom:12px;"><strong>' + playerName + '</strong></p><div style="display:flex;flex-direction:column;gap:4px;"><label style="font-size:12px;font-weight:600;color:#666;">Sposta nella categoria:</label><select id="targetSquadra" style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:100%;">' + otherSquadre.map(s => '<option value="' + s.id + '">' + (s.category?.nome || s.nome) + (s._stagione ? ' (' + s._stagione + ')' : '') + '</option>').join('') + '</select></div></div><div style="padding:16px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:12px;"><button id="moveModalCancel" class="btn btn-secondary" style="padding:10px 16px;">Annulla</button><button id="confirmMoveBtn" class="btn btn-primary" style="padding:10px 16px;background:#667eea;color:white;border:none;">Sposta</button></div></div>';
-  document.body.appendChild(modal);
-  
-  document.getElementById('moveModalClose').addEventListener('click', () => modal.remove());
-  document.getElementById('moveModalCancel').addEventListener('click', () => modal.remove());
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-  
-  document.getElementById('confirmMoveBtn').addEventListener('click', async () => {
-    const targetSquadraId = document.getElementById('targetSquadra').value;
-    showLoading();
-    try {
-      await apiFetch('/calciatori/' + playerId + '/move', {
-        method: 'POST',
-        body: JSON.stringify({ fromSquadraId: currentSquadraId, toSquadraId: targetSquadraId })
-      });
-      modal.remove();
-      if (window.YFM?.navigateTo) window.YFM.navigateTo('roster');
-      else if (window.navigateTo) window.navigateTo('roster');
-    } catch (e) {
-      alert('Errore: ' + e.message);
-    } finally {
-      hideLoading();
-    }
-  });
 }
 
 function safeFormatDate(value) {
