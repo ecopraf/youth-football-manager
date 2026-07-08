@@ -345,6 +345,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: email atleta + email genitore in scheda giocatore (view/edit/insert) |
 | (pending) | fix: distinta — colonna numero maglia vuota per compilazione manuale, (P) per portieri con ruolo_principale dal backend |
 | (pending) | style: ultime partite — logo avversario su desktop (inline-flex), data dd/mm/yy, rimossa icona calendario su mobile |
+| (pending) | feat: carriera espandibile — click su stagione espande lista partite (DataGrid desktop / cards mobile), mutuamente esclusivo, endpoint career-matches, giornata+risultato su desktop, risultato+ellipsis avversario su mobile |
 | (pending) | perf: v3.16 — indici DB (match_formation, training_attendance, match team+stato), VIEW v_player_season_stats + v_team_season_summary, endpoint aggregato /dashboard (1 call vs 5-6), frontend refactor cache |
 
 ---

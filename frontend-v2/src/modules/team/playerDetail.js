@@ -15,7 +15,6 @@ export async function loadPlayerDetail(container, playerId) {
   try {
     let player;
     let career = [];
-    let lastMatches = [];
     let valutazioni = null;
     let allSquadre = [];
 
@@ -26,12 +25,6 @@ export async function loadPlayerDetail(container, playerId) {
       career = await apiFetch('/calciatori/' + playerId + '/career');
     } catch (e) {
       career = [];
-    }
-
-    try {
-      lastMatches = await apiFetch('/calciatori/' + playerId + '/last-matches?limit=10&squadraId=' + window.YFM.squadraId);
-    } catch (e) {
-      lastMatches = [];
     }
 
     try {
@@ -54,7 +47,7 @@ export async function loadPlayerDetail(container, playerId) {
     }
 
     hideLoading();
-    renderPlayerDetail(container, { player, career, lastMatches, valutazioni, allSquadre, injuries });
+    renderPlayerDetail(container, { player, career, valutazioni, allSquadre, injuries });
   } catch (e) {
     console.error(e);
     hideLoading();
@@ -63,7 +56,7 @@ export async function loadPlayerDetail(container, playerId) {
 }
 
 function renderPlayerDetail(container, data) {
-  const { player, career, lastMatches, valutazioni, allSquadre, injuries } = data;
+  const { player, career, valutazioni, allSquadre, injuries } = data;
 
   if (!player) {
     container.innerHTML = '<div class="error-box">Giocatore non trovato.</div>';
@@ -163,7 +156,7 @@ function renderPlayerDetail(container, data) {
       t.ammonizioni += s.ammonizioni || 0; t.espulsioni += s.espulsioni || 0;
       return t;
     }, { partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 });
-    const mappedRows = rows.map(s => ({ stagione: s.stagione || '-', squadra: s.squadra || '-', partite: s.partite || 0, minuti: s.minuti || 0, gol: s.gol || 0, assist: s.assist || 0, ammonizioni: s.ammonizioni || 0, espulsioni: s.espulsioni || 0 }));
+    const mappedRows = rows.map(s => ({ stagione: s.stagione || '-', squadra: s.squadra || '-', team_id: s.team_id, partite: s.partite || 0, minuti: s.minuti || 0, gol: s.gol || 0, assist: s.assist || 0, ammonizioni: s.ammonizioni || 0, espulsioni: s.espulsioni || 0 }));
 
     // Desktop: DataGrid table
     const div = document.createElement('div');
@@ -201,7 +194,7 @@ function renderPlayerDetail(container, data) {
     const statLine = (r) => `<div class="dg-card-stats" style="margin-top:2px;"><span class="dg-card-stat">PG <strong>${r.partite}</strong></span><span class="dg-card-stat">🕐 <strong>${r.minuti}</strong></span><span class="dg-card-stat" style="color:#27AE60;">⚽ <strong>${r.gol}</strong></span><span class="dg-card-stat" style="color:#2980B9;">🅰️ <strong>${r.assist}</strong></span><span class="dg-card-stat" style="color:#F39C12;">🟨 <strong>${r.ammonizioni}</strong></span><span class="dg-card-stat" style="color:#E74C3C;">🟥 <strong>${r.espulsioni}</strong></span></div>`;
     const mobileHtml = grouped.map(g => {
       const header = `<div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;padding:8px 14px 4px;">${logoImg(g)} ${g.squadra}</div>`;
-      const seasonRows = g.rows.map(r => `<div class="dg-card" style="padding:4px 14px 8px;"><div style="font-size:11px;color:#666;margin-bottom:2px;">📅 ${r.stagione}</div>${statLine(r)}</div>`).join('');
+      const seasonRows = g.rows.map((r, ri) => `<div class="dg-card career-season-row" data-team-id="${r.team_id}" data-player-id="${player.id}" style="padding:4px 14px 8px;cursor:pointer;"><div style="font-size:11px;color:#666;margin-bottom:2px;">📅 ${r.stagione} <span style="font-size:10px;color:#667eea;">▶</span></div>${statLine(r)}<div class="career-expand-mobile" style="display:none;margin-top:8px;"></div></div>`).join('');
       return header + seasonRows;
     }).join('');
     const footerMobile = `<div class="dg-card dg-card-footer"><div style="font-weight:700;font-size:12px;color:#667eea;margin-bottom:4px;">TOTALE</div>${statLine(totals)}</div>`;
@@ -210,6 +203,36 @@ function renderPlayerDetail(container, data) {
     const wrapper = div.querySelector('.dg-wrap');
     const cardsDiv = wrapper.querySelector('.dg-cards');
     cardsDiv.innerHTML = mobileHtml + footerMobile;
+
+    // Desktop: make tbody rows clickable
+    const tableEl = wrapper.querySelector('.dg-table');
+    if (tableEl) {
+      tableEl.classList.add('career-table-expandable');
+      const tbody = tableEl.querySelector('tbody');
+      const trs = tbody ? [...tbody.querySelectorAll('tr')] : [];
+      trs.forEach((tr, i) => {
+        tr.style.cursor = 'pointer';
+        tr.dataset.teamId = mappedRows[i].team_id;
+        tr.dataset.playerId = player.id;
+        tr.dataset.idx = i;
+        // Add expand arrow to first cell
+        const firstTd = tr.querySelector('td');
+        if (firstTd) firstTd.innerHTML = `<span class="career-arrow" style="color:#667eea;font-size:10px;margin-right:4px;">▶</span>` + firstTd.innerHTML;
+      });
+      // Add expand container after table
+      const expandContainer = document.createElement('div');
+      expandContainer.className = 'career-desktop-expands';
+      trs.forEach((tr, i) => {
+        const expandDiv = document.createElement('div');
+        expandDiv.className = 'career-expand-desktop';
+        expandDiv.dataset.idx = i;
+        expandDiv.dataset.teamId = mappedRows[i].team_id;
+        expandDiv.dataset.playerId = player.id;
+        expandDiv.style.cssText = 'display:none;';
+        expandContainer.appendChild(expandDiv);
+      });
+      tableEl.after(expandContainer);
+    }
 
     return div.innerHTML;
   }
@@ -232,34 +255,7 @@ function renderPlayerDetail(container, data) {
     careerSection = '<div class="card"><h3 class="section-title">Carriera</h3><p style="color:var(--gray);">Nessun dato carriera disponibile.</p></div>';
   }
 
-  // Sezione ultime partite
   const shortDate = (d) => { if (!d) return '-'; try { const dt = new Date(d); return (dt.getDate()+'').padStart(2,'0')+'/'+(dt.getMonth()+1+'').padStart(2,'0')+'/'+String(dt.getFullYear()).slice(2); } catch(e) { return '-'; } };
-  let lastMatchesSection = '';
-  if (lastMatches && lastMatches.length) {
-    const mappedMatches = lastMatches.map(m => ({ data: shortDate(m.data), avversario: m.avversario || '-', logo: m.logo || null, minuti: m.minuti || 0, gol: m.gol || 0, assist: m.assist || 0, gialli: m.cartellini_gialli || 0, rossi: m.cartellini_rossi || 0 }));
-    const matchDiv = document.createElement('div');
-    DataGrid({
-      container: matchDiv,
-      columns: [
-        { key: 'avversario', label: 'Avversario', width: '3fr', align: 'left', primary: true, render: (v, row) => `<span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">${row.logo ? `<img src="${row.logo}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : ''}${v}</span>` },
-        { key: 'data', label: 'Data', width: '1.5fr', align: 'left', secondary: true },
-        { key: 'minuti', label: 'Minuti', labelShort: 'Min', width: '1.2fr', meta: true },
-        { key: 'gol', label: 'Gol', labelShort: 'G', width: '1fr', color: '#27AE60', mobileIcon: '⚽' },
-        { key: 'assist', label: 'Assist', labelShort: 'A', width: '1fr', color: '#2980B9', mobileIcon: '🅰️' },
-        { key: 'gialli', label: '🟨', width: '1fr', color: '#F39C12', mobileIcon: '🟨' },
-        { key: 'rossi', label: '🟥', width: '1fr', color: '#E74C3C', mobileIcon: '🟥' }
-      ],
-      rows: mappedMatches
-    });
-    // Mobile: layout compatto - tutto su una riga: logo+nome a sx, stats+data+min a dx
-    const mobileMatchHtml = mappedMatches.map(m => {
-      const logoHtml = m.logo ? `<img src="${m.logo}" style="width:16px;height:16px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : '';
-      return `<div class="dg-card" style="padding:8px 14px;display:flex;align-items:center;justify-content:space-between;"><span style="font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:4px;">${logoHtml}${m.avversario}</span><span class="dg-card-stats" style="gap:6px;flex-shrink:0;"><span class="dg-card-stat" style="color:#666;">${m.data}</span><span class="dg-card-stat" style="color:#666;">🕐${m.minuti}'</span><span class="dg-card-stat" style="color:#27AE60;">⚽<strong>${m.gol}</strong></span><span class="dg-card-stat" style="color:#2980B9;">🅰️<strong>${m.assist}</strong></span><span class="dg-card-stat" style="color:#F39C12;">🟨<strong>${m.gialli}</strong></span><span class="dg-card-stat" style="color:#E74C3C;">🟥<strong>${m.rossi}</strong></span></span></div>`;
-    }).join('');
-    const wrapper = matchDiv.querySelector('.dg-wrap');
-    wrapper.querySelector('.dg-cards').innerHTML = mobileMatchHtml;
-    lastMatchesSection = `<div class="card" data-help="player.ultimePartite" style="margin-top:20px;"><h3 class="section-title">Ultime partite</h3>${matchDiv.innerHTML}</div>`;
-  }
 
   // Costruisci i pulsanti azione per Admin
   const adminActions = isAdmin ? `
@@ -392,13 +388,101 @@ function renderPlayerDetail(container, data) {
     ${valutazioniSection}
     ${injuriesSection}
     ${careerSection}
-    ${lastMatchesSection}
   `;
 
   // Event Listeners
   document.getElementById('btnBackRoster')?.addEventListener('click', () => {
     if (window.YFM?.navigateTo) window.YFM.navigateTo('roster');
     else if (window.navigateTo) window.navigateTo('roster');
+  });
+
+  // Career expand — helper to build DataGrid for matches
+  function buildMatchesExpand(matches, containerEl) {
+    if (!matches?.length) { containerEl.innerHTML = '<div style="padding:8px;color:#888;font-size:12px;">Nessuna partita trovata.</div>'; return; }
+    const mapped = matches.map(m => ({ giornata: m.giornata ? 'G.' + String(m.giornata).padStart(2,'0') : '', data: shortDate(m.data), avversario: m.avversario || '-', risultato: m.risultato || '', logo: m.logo || null, minuti: m.minuti || 0, gol: m.gol || 0, assist: m.assist || 0, gialli: m.cartellini_gialli || 0, rossi: m.cartellini_rossi || 0 }));
+    // Desktop DataGrid
+    const dgDiv = document.createElement('div');
+    DataGrid({
+      container: dgDiv,
+      columns: [
+        { key: 'giornata', label: 'G.', width: '0.8fr', align: 'center' },
+        { key: 'avversario', label: 'Avversario', width: '3fr', align: 'left', primary: true, render: (v, row) => `<span style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">${row.logo ? `<img src="${row.logo}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : ''}${v}</span>` },
+        { key: 'risultato', label: 'Ris.', width: '1fr', align: 'center', bold: true },
+        { key: 'data', label: 'Data', width: '1.5fr', align: 'left', secondary: true },
+        { key: 'minuti', label: 'Minuti', labelShort: 'Min', width: '1.2fr', meta: true },
+        { key: 'gol', label: 'Gol', labelShort: 'G', width: '1fr', color: '#27AE60', mobileIcon: '⚽' },
+        { key: 'assist', label: 'Assist', labelShort: 'A', width: '1fr', color: '#2980B9', mobileIcon: '🅰️' },
+        { key: 'gialli', label: '🟨', width: '1fr', color: '#F39C12', mobileIcon: '🟨' },
+        { key: 'rossi', label: '🟥', width: '1fr', color: '#E74C3C', mobileIcon: '🟥' }
+      ],
+      rows: mapped
+    });
+    // Mobile override — data dd/mm per risparmiare spazio
+    const shortDateMobile = (d) => { if (!d) return '-'; try { const dt = new Date(d); return (dt.getDate()+'').padStart(2,'0')+'/'+(dt.getMonth()+1+'').padStart(2,'0'); } catch(e) { return '-'; } };
+    const mobileHtml = matches.map((m, i) => {
+      const row = mapped[i];
+      const logoHtml = row.logo ? `<img src="${row.logo}" style="width:16px;height:16px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : '';
+      const mDate = shortDateMobile(m.data);
+      return `<div class="dg-card" style="padding:8px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;"><span style="font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:4px;min-width:0;overflow:hidden;"><span style="flex-shrink:0;display:inline-flex;">${logoHtml}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${row.avversario}</span>${row.risultato ? '<span style="font-size:11px;color:#333;font-weight:800;flex-shrink:0;">' + row.risultato + '</span>' : ''}</span><span class="dg-card-stats" style="gap:6px;flex-shrink:0;"><span class="dg-card-stat" style="color:#666;">${mDate}</span><span class="dg-card-stat" style="color:#666;">🕐${row.minuti}'</span><span class="dg-card-stat" style="color:#27AE60;">⚽<strong>${row.gol}</strong></span><span class="dg-card-stat" style="color:#2980B9;">🅰️<strong>${row.assist}</strong></span><span class="dg-card-stat" style="color:#F39C12;">🟨<strong>${row.gialli}</strong></span><span class="dg-card-stat" style="color:#E74C3C;">🟥<strong>${row.rossi}</strong></span></span></div>`;
+    }).join('');
+    const wrap = dgDiv.querySelector('.dg-wrap');
+    wrap.querySelector('.dg-cards').innerHTML = mobileHtml;
+    containerEl.innerHTML = dgDiv.innerHTML;
+  }
+
+  async function toggleCareerExpand(teamId, playerId, detailEl) {
+    if (detailEl.style.display !== 'none') { detailEl.style.display = 'none'; return false; }
+    detailEl.style.display = 'block';
+    if (detailEl.dataset.loaded) return true;
+    detailEl.innerHTML = '<div style="padding:10px;text-align:center;color:#888;font-size:12px;">Caricamento partite...</div>';
+    try {
+      const matches = await apiFetch('/calciatori/' + playerId + '/career-matches?teamId=' + teamId);
+      detailEl.dataset.loaded = '1';
+      buildMatchesExpand(matches, detailEl);
+    } catch (err) {
+      detailEl.innerHTML = '<div style="padding:8px;color:#c00;font-size:12px;">Errore: ' + err.message + '</div>';
+    }
+    return true;
+  }
+
+  // Desktop: click on career table rows (mutually exclusive)
+  document.querySelectorAll('.career-table-expandable tbody').forEach(tbody => {
+    tbody.addEventListener('click', (e) => {
+      const tr = e.target.closest('tr');
+      if (!tr || !tr.dataset.teamId) return;
+      const wrap = tr.closest('.dg-wrap');
+      const expandDiv = wrap.querySelector(`.career-expand-desktop[data-idx="${tr.dataset.idx}"]`);
+      if (!expandDiv) return;
+      const isClosing = expandDiv.style.display !== 'none';
+      // Close all
+      wrap.querySelectorAll('.career-expand-desktop').forEach(d => { d.style.display = 'none'; });
+      tbody.querySelectorAll('tr').forEach(r => { r.style.background = ''; const a = r.querySelector('.career-arrow'); if (a) a.textContent = '▶'; });
+      if (isClosing) return;
+      // Open this one
+      const arrow = tr.querySelector('.career-arrow');
+      toggleCareerExpand(tr.dataset.teamId, tr.dataset.playerId, expandDiv).then(() => {
+        tr.style.background = '#f0f4ff';
+        if (arrow) arrow.textContent = '▼';
+      });
+    });
+  });
+
+  // Mobile: click on career season rows (mutually exclusive)
+  document.querySelectorAll('.career-season-row').forEach(card => {
+    card.addEventListener('click', () => {
+      const detailEl = card.querySelector('.career-expand-mobile');
+      if (!detailEl) return;
+      const isClosing = detailEl.style.display !== 'none';
+      // Close all
+      document.querySelectorAll('.career-expand-mobile').forEach(d => { d.style.display = 'none'; });
+      document.querySelectorAll('.career-season-row span[style*="color:#667eea"]').forEach(a => { a.textContent = '▶'; });
+      if (isClosing) return;
+      // Open this one
+      const arrow = card.querySelector('span[style*="color:#667eea"]');
+      toggleCareerExpand(card.dataset.teamId, card.dataset.playerId, detailEl).then(() => {
+        if (arrow) arrow.textContent = '▼';
+      });
+    });
   });
 
   // Injury handlers

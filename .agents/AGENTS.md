@@ -97,7 +97,7 @@ api/
     ├── staff.js                — Staff completo per distinta
     ├── admin.js                — Migrazioni schema DB
     ├── statistics.js           — Statistiche complete, top players, report partita/stagionale/giocatore
-    ├── player.js               — Calciatori CRUD, scadenze, career, last-matches, injuries, move
+    ├── player.js               — Calciatori CRUD, scadenze, career, career-matches, last-matches, injuries, move
     ├── roster.js               — Import rosa XLS/Tuttocampo
     ├── importCalendario.js     — PDF, testo SGS, import-log
     ├── importTuttocampo.js     — Scraping calendario TC, eventi, loghi automatici

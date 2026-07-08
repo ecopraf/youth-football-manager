@@ -199,7 +199,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
 
       const tpIds = tps.map(t => t.id);
       const tpMap = {};
-      tps.forEach(tp => { tpMap[tp.id] = { stagione: tp.team?.season?.nome || '-', squadra: tp.team?.nome || '-' }; });
+      tps.forEach(tp => { tpMap[tp.id] = { stagione: tp.team?.season?.nome || '-', squadra: tp.team?.nome || '-', team_id: tp.team_id }; });
 
       // Fetch formations + match tipo_competizione in one go
       const { data: formations } = await supabase.from('match_formation')
@@ -243,7 +243,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         const info = tpMap[f.team_player_id];
         const tipo = matchCompMap[f.match_id] || 'Altro';
         const key = `${info.stagione}|${info.squadra}|${tipo}`;
-        if (!agg[key]) agg[key] = { stagione: info.stagione, squadra: info.squadra, tipo_competizione: tipo, partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
+        if (!agg[key]) agg[key] = { stagione: info.stagione, squadra: info.squadra, team_id: info.team_id, tipo_competizione: tipo, partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
         agg[key].partite++;
       });
 
@@ -252,7 +252,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         const info = tpMap[s.team_player_id];
         const tipo = matchCompMap[s.match_id] || 'Altro';
         const key = `${info.stagione}|${info.squadra}|${tipo}`;
-        if (!agg[key]) agg[key] = { stagione: info.stagione, squadra: info.squadra, tipo_competizione: tipo, partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
+        if (!agg[key]) agg[key] = { stagione: info.stagione, squadra: info.squadra, team_id: info.team_id, tipo_competizione: tipo, partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
         agg[key].minuti += s.minuti_giocati || 0;
         agg[key].gol += s.gol || 0;
         agg[key].assist += s.assist || 0;
@@ -294,6 +294,66 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const results = Object.values(agg);
       results.forEach(r => { r.logo = findLogo(r.squadra); });
       res.json(results);
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // GET /api/calciatori/:id/career-matches?teamId=X — tutte le partite per un team
+  router.get('/api/calciatori/:id/career-matches', authMiddleware, async (req, res) => {
+    try {
+      const playerId = req.params.id;
+      const teamId = req.query.teamId;
+      if (!teamId) return res.status(400).json({ error: 'teamId richiesto' });
+
+      const { data: tps } = await supabase.from('team_player').select('id').eq('player_id', playerId).eq('team_id', teamId);
+      if (!tps?.length) return res.json([]);
+      const tpIds = tps.map(t => t.id);
+
+      const { data: formations } = await supabase.from('match_formation')
+        .select('match_id, team_player_id').in('team_player_id', tpIds);
+      if (!formations?.length) return res.json([]);
+      const matchIds = [...new Set(formations.map(f => f.match_id))];
+
+      const [{ data: matches }, { data: events }, { data: statsRows }, { data: logos }] = await Promise.all([
+        supabase.from('match').select('id, avversario, data_ora, gol_casa, gol_ospite, luogo, tipo_competizione, giornata').in('id', matchIds).order('data_ora', { ascending: false }),
+        supabase.from('match_event').select('match_id, tipo_evento').eq('player_id', playerId).in('match_id', matchIds),
+        supabase.from('match_statistics').select('match_id, minuti_giocati').in('team_player_id', tpIds).in('match_id', matchIds),
+        supabase.from('team_logo').select('nome, nome_normalizzato, logo_path')
+      ]);
+
+      const minutiMap = {};
+      (statsRows || []).forEach(s => { minutiMap[s.match_id] = (minutiMap[s.match_id] || 0) + (s.minuti_giocati || 0); });
+
+      const findLogo = (avv) => {
+        if (!avv || !logos) return null;
+        const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const compact = stripAccents(avv.toLowerCase().trim()).replace(/[^a-z0-9]/g, '');
+        for (const l of logos) {
+          const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
+          if (l.nome.toLowerCase() === avv.toLowerCase().trim() || compact === lCompact) return l.logo_path;
+        }
+        for (const l of logos) {
+          const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
+          if (compact.includes(lCompact) || lCompact.includes(compact)) return l.logo_path;
+        }
+        return null;
+      };
+
+      const result = (matches || []).map(m => {
+        const mEvents = (events || []).filter(e => e.match_id === m.id);
+        return {
+          avversario: m.avversario, logo: findLogo(m.avversario), data: m.data_ora,
+          risultato: m.gol_casa != null ? `${m.gol_casa}-${m.gol_ospite}` : null,
+          luogo: m.luogo, competizione: m.tipo_competizione || null, giornata: m.giornata || null,
+          minuti: minutiMap[m.id] || 0,
+          gol: mEvents.filter(e => e.tipo_evento === 'GOAL').length,
+          assist: mEvents.filter(e => e.tipo_evento === 'ASSIST').length,
+          cartellini_gialli: mEvents.filter(e => e.tipo_evento === 'AMMONIZIONE' || e.tipo_evento === 'YELLOW').length,
+          cartellini_rossi: mEvents.filter(e => e.tipo_evento === 'ESPULSIONE' || e.tipo_evento === 'RED').length
+        };
+      });
+      res.json(result);
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }
