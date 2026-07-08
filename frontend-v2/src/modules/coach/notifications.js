@@ -56,12 +56,14 @@ function renderPage(c, absences, comms, teamId) {
   </div>`;
 
   html += `<div class="notif-tabs">
-    <div class="notif-tab active" data-tab="comms">📋 Comunicazioni${unreadComms > 0 ? `<span class="tab-badge">${unreadComms}</span>` : ''}</div>
-    <div class="notif-tab" data-tab="absences">🏋️ Assenze${unreadAbs > 0 ? `<span class="tab-badge">${unreadAbs}</span>` : ''}</div>
+    <div class="notif-tab active" data-tab="comms">📤 Inviate${unreadComms > 0 ? `<span class="tab-badge">${unreadComms}</span>` : ''}</div>
+    <div class="notif-tab" data-tab="absences">📥 Ricevute${unreadAbs > 0 ? `<span class="tab-badge">${unreadAbs}</span>` : ''}</div>
   </div>`;
 
-  html += `<div id="tabComms">${renderCommsTab(comms)}</div>`;
-  html += `<div id="tabAbsences" style="display:none;">${renderAbsencesTab(absences)}</div>`;
+  html += `<div id="tabComms">${renderCommsTab(comms.filter(n => n.titolo !== '⚠️ Convocato indisponibile'))}</div>`;
+  // Ricevute: unisci assenze + indisponibilità convocati
+  const indisponibili = comms.filter(n => n.titolo === '⚠️ Convocato indisponibile');
+  html += `<div id="tabAbsences" style="display:none;">${renderRicevuteTab(absences, indisponibili)}</div>`;
 
   c.innerHTML = html;
 
@@ -130,6 +132,13 @@ function renderPage(c, absences, comms, teamId) {
     });
   });
 
+  // Reply to absence
+  c.querySelectorAll('.notif-reply').forEach(btn => {
+    btn.addEventListener('click', () => {
+      showReplyModal(btn.dataset.replyPlayer, btn.dataset.replyName, teamId);
+    });
+  });
+
   // Mark all absences read
   document.getElementById('markAllAbsRead')?.addEventListener('click', async () => {
     await apiFetch('/absence/read-all/' + teamId, { method: 'PUT' });
@@ -191,41 +200,68 @@ function renderCommCard(n, isRead) {
   </div>`;
 }
 
-function renderAbsencesTab(absences) {
-  const unread = absences.filter(n => !n.letto);
-  const read = absences.filter(n => n.letto);
-  if (absences.length === 0) return '<div style="text-align:center;padding:24px;color:#999;">✅ Nessuna segnalazione assenza</div>';
+function renderRicevuteTab(absences, indisponibili) {
+  // Unifica in lista cronologica
+  const items = [];
+  (absences || []).forEach(a => items.push({ type: 'absence', data: a, date: a.created_at }));
+  (indisponibili || []).forEach(n => items.push({ type: 'indisponibile', data: n, date: n.created_at }));
+  items.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (items.length === 0) return '<div style="text-align:center;padding:24px;color:#999;">✅ Nessuna segnalazione ricevuta</div>';
+
+  const unread = items.filter(i => !i.data.letto);
+  const read = items.filter(i => i.data.letto);
 
   let html = '';
   if (unread.length > 0) {
     html += `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="btn btn-secondary btn-small" id="markAllAbsRead">✓ Segna tutte lette</button></div>`;
     html += '<div class="notif-grid">';
-    unread.forEach(n => { html += renderAbsCard(n, false); });
+    unread.forEach(i => { html += renderRicevutaCard(i, false); });
     html += '</div>';
   }
   if (read.length > 0) {
     html += `<details style="margin-top:16px;"><summary style="cursor:pointer;font-size:12px;color:#888;">📜 Già lette (${read.length})</summary><div class="notif-grid" style="margin-top:8px;">`;
-    read.forEach(n => { html += renderAbsCard(n, true); });
+    read.forEach(i => { html += renderRicevutaCard(i, true); });
     html += '</div></details>';
   }
   return html;
 }
 
-function renderAbsCard(n, isRead) {
-  const player = n.player || {};
-  const initials = ((player.nome?.[0] || '') + (player.cognome?.[0] || '')).toUpperCase();
-  const name = `${player.cognome || ''} ${player.nome || ''}`.trim() || 'Giocatore';
-  const date = new Date(n.data_allenamento).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+function renderRicevutaCard(item, isRead) {
+  if (item.type === 'absence') {
+    const n = item.data;
+    const player = n.player || {};
+    const initials = ((player.nome?.[0] || '') + (player.cognome?.[0] || '')).toUpperCase();
+    const name = `${player.cognome || ''} ${player.nome || ''}`.trim() || 'Giocatore';
+    const date = new Date(n.data_allenamento).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+    const markBtn = isRead
+      ? '<div class="notif-done">✓</div>'
+      : `<button class="notif-mark" data-mark-abs="${n.id}" title="Segna come letta">○</button>`;
+    const replyBtn = n.player_id ? `<button class="notif-action notif-reply" data-reply-player="${n.player_id}" data-reply-name="${name}" title="Rispondi" style="font-size:11px;">💬</button>` : '';
+
+    return `<div class="notif-card absence ${isRead ? 'read' : ''}">
+      <div class="notif-avatar">${initials}</div>
+      <div class="notif-body">
+        <div class="notif-name">🏋️ ${name}</div>
+        <div class="notif-meta">${date} • ${n.motivo || ''} • ${timeAgo(n.created_at)}</div>
+        ${n.messaggio ? `<div class="notif-msg">"${n.messaggio}"</div>` : ''}
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0;align-items:center;">${replyBtn}${markBtn}</div>
+    </div>`;
+  }
+
+  // Indisponibilità convocazione
+  const n = item.data;
   const markBtn = isRead
     ? '<div class="notif-done">✓</div>'
-    : `<button class="notif-mark" data-mark-abs="${n.id}" title="Segna come letta">○</button>`;
-
+    : `<button class="notif-mark" data-mark-comm="${n.id}" title="Segna come letta">○</button>`;
+  // Estrai player_id dal messaggio (non disponibile direttamente, usiamo riferimento_id come match_id)
   return `<div class="notif-card absence ${isRead ? 'read' : ''}">
-    <div class="notif-avatar">${initials}</div>
+    <div class="notif-avatar">❌</div>
     <div class="notif-body">
-      <div class="notif-name">${name}</div>
-      <div class="notif-meta">🏋️ ${date} • ${n.motivo || ''} • ${timeAgo(n.created_at)}</div>
-      ${n.messaggio ? `<div class="notif-msg">"${n.messaggio}"</div>` : ''}
+      <div class="notif-name">⚠️ Convocato indisponibile</div>
+      <div class="notif-meta">${timeAgo(n.created_at)}</div>
+      ${n.messaggio ? `<div class="notif-msg">${n.messaggio}</div>` : ''}
     </div>
     ${markBtn}
   </div>`;
@@ -381,6 +417,44 @@ async function showReceiptsPanel(notifId) {
   } catch (err) {
     overlay.querySelector('div > div').innerHTML = `<p style="color:#E74C3C;text-align:center;">Errore: ${err.message}</p>`;
   }
+}
+
+function showReplyModal(playerId, playerName, teamId) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="text-align:center;font-size:28px;margin-bottom:8px;">💬</div>
+    <div style="text-align:center;font-weight:700;font-size:15px;margin-bottom:4px;">Rispondi a ${playerName}</div>
+    <div style="text-align:center;font-size:12px;color:#666;margin-bottom:16px;">Il messaggio sarà visibile all'atleta nella sua home</div>
+    <textarea id="replyMsg" rows="3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;resize:none;box-sizing:border-box;" placeholder="es. OK ricevuto, guarisci presto!"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn btn-secondary" id="replyCancel" style="flex:1;">Annulla</button>
+      <button class="btn btn-primary" id="replyConfirm" style="flex:1;">📤 Invia</button>
+    </div>
+  </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#replyCancel').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#replyMsg').focus();
+
+  overlay.querySelector('#replyConfirm').addEventListener('click', async () => {
+    const messaggio = overlay.querySelector('#replyMsg').value.trim();
+    if (!messaggio) { overlay.querySelector('#replyMsg').style.borderColor = '#E74C3C'; return; }
+    const btn = overlay.querySelector('#replyConfirm');
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      await apiFetch('/notifications/reply', {
+        method: 'POST',
+        body: JSON.stringify({ player_id: playerId, team_id: teamId, messaggio })
+      });
+      overlay.remove();
+    } catch (err) {
+      btn.textContent = '❌ ' + err.message;
+      btn.disabled = false;
+    }
+  });
 }
 
 function showEditCommModal(id, titolo, messaggio, priorita) {

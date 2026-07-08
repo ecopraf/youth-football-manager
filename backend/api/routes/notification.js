@@ -246,6 +246,39 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  // POST /api/notifications/reply — rispondi a un'assenza/indisponibilità (messaggio diretto all'atleta)
+  router.post('/api/notifications/reply', authMiddleware, async (req, res) => {
+    try {
+      const { player_id, team_id, messaggio } = req.body;
+      if (!player_id || !team_id || !messaggio) return res.status(400).json({ error: 'player_id, team_id e messaggio richiesti' });
+
+      // Resolve workspace_id
+      const { data: team } = await supabase.from('team').select('category_id, season:season_id(workspace_id)').eq('id', team_id).single();
+      if (!team) return res.status(404).json({ error: 'Team non trovato' });
+      const workspace_id = team.season?.workspace_id;
+
+      // Nome mittente
+      const user = req.user;
+      const mittente = user.nome ? `${user.nome} ${user.cognome || ''}`.trim() : 'Staff';
+
+      const { data, error } = await supabase.from('notification').insert({
+        workspace_id,
+        team_id,
+        tipo: 'avviso',
+        titolo: `💬 Messaggio da ${mittente}`,
+        messaggio,
+        priorita: 'info',
+        destinatario_tipo: ['atleta'],
+        destinatario_profilo: null,
+        riferimento_id: player_id,
+        created_by: (user.id && user.id !== 'superadmin') ? user.id : null,
+        letto: false
+      }).select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.status(201).json({ success: true, notification: data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   // DELETE /api/notifications-batch — elimina multiple comunicazioni
   router.delete('/api/notifications-batch', authMiddleware, async (req, res) => {
     try {
