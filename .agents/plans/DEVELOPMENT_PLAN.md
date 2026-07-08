@@ -601,6 +601,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | refactor: sistema capabilities — migrazione da isAdmin() a canWrite()/canRead() per modulo, allenatore usa capabilities reali (non blanket true), guest_links rimosso da profilo allenatore, nuovo endpoint convocazioni-pubblica separato da salvataggio, pulizia notifiche DB |
 | (pending) | feat: indisponibilità inline — bottone ❌ su ogni allenamento/partita nella home atleta, modal con data pre-compilata, stato persistente in sessionStorage (fetch al login + persist dopo invio), fix backend accetta player_id da body per token legacy |
 | (pending) | feat: crea link singolo atleta — dropdown filtra solo giocatori senza link attivo, player_id obbligatorio per tipo atleta |
+| (pending) | feat: risposta convocazione — atleta può segnalare indisponibilità post-convocazione (colonne risposta/risposta_motivo/risposta_at su convocation, endpoint POST risposta, notifica allenatore, badge ❌ in UI convocazioni, counter indisponibili in dashboard) |
+| (pending) | fix: congruenza flusso — assenza pre-convocazione auto-imposta indisponibile alla pubblicazione, batch convocazioni preserva risposte esistenti, DELETE config cascade allenamenti futuri senza presenze |
 
 ---
 

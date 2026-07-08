@@ -39,9 +39,38 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
 
   router.delete('/api/allenamenti/config/:id', authMiddleware, requirePermission('allenamenti', 'write'), async (req, res) => {
     try {
+      // Fetch config prima di eliminarla (per sapere team_id e giorno)
+      const { data: config } = await supabase.from('training_config').select('team_id, giorno_settimana').eq('id', req.params.id).single();
+      
       const { error } = await supabase.from('training_config').delete().eq('id', req.params.id);
       if (error) return res.status(400).json({ error: error.message });
-      res.json({ success: true });
+
+      // Elimina allenamenti futuri di quel giorno che non hanno presenze registrate
+      let deleted = 0;
+      if (config) {
+        const now = new Date().toISOString();
+        const { data: futureTrainings } = await supabase.from('training')
+          .select('id, data_ora')
+          .eq('team_id', config.team_id)
+          .gte('data_ora', now);
+        
+        // Filtra solo quelli del giorno della settimana rimosso
+        const toCheck = (futureTrainings || []).filter(t => new Date(t.data_ora).getDay() === config.giorno_settimana);
+        if (toCheck.length > 0) {
+          const ids = toCheck.map(t => t.id);
+          // Verifica quali hanno presenze registrate
+          const { data: withAttendance } = await supabase.from('training_attendance')
+            .select('training_id').in('training_id', ids);
+          const hasAttendance = new Set((withAttendance || []).map(a => a.training_id));
+          const toDelete = ids.filter(id => !hasAttendance.has(id));
+          if (toDelete.length > 0) {
+            await supabase.from('training').delete().in('id', toDelete);
+            deleted = toDelete.length;
+          }
+        }
+      }
+
+      res.json({ success: true, deleted_trainings: deleted });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

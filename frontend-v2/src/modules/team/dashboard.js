@@ -165,6 +165,7 @@ export default async function loadDashboard() {
         '</div>' +
         '<div style="font-size:11px;opacity:0.6;margin-top:12px;">📅 ' + formatDate(prossimaPartita.data_ora) + ' · 🕐 ' + formatTime(prossimaPartita.data_ora) + '</div>' +
         btnHtml +
+        '<div id="dashConvStatus" style="margin-top:10px;"></div>' +
         '</div>';
     }
     const btnHtml = nuovaPartitaButton ? '<div style="margin-top:12px;">' + nuovaPartitaButton + '</div>' : '';
@@ -653,6 +654,21 @@ export default async function loadDashboard() {
           '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')" style="background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📋 ' + (convocati.length > 0 ? 'Vedi / Modifica' : 'Convoca') + '</button>' +
           (convocati.length > 0 ? '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\',true)" style="background:#27AE60;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📄 PDF</button>' : '') +
           '</div></div>';
+      }).catch(() => {});
+    }
+
+    // Lazy: counter indisponibili nella card prossima partita
+    const convStatusEl = document.getElementById('dashConvStatus');
+    if (convStatusEl && hasEditAccess) {
+      apiFetch('/partite/' + prossimaPartita.id + '/convocazioni').then(convAll => {
+        const convocati = (convAll || []).filter(c => c.presente);
+        if (convocati.length === 0) return;
+        const indisponibili = convocati.filter(c => c.risposta === 'indisponibile');
+        let statusHtml = '<div style="font-size:11px;opacity:0.9;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">';
+        statusHtml += '<span>👥 ' + convocati.length + ' convocati</span>';
+        if (indisponibili.length > 0) statusHtml += '<span style="color:#fca5a5;font-weight:700;">⚠️ ' + indisponibili.length + ' indisponibil' + (indisponibili.length === 1 ? 'e' : 'i') + '</span>';
+        statusHtml += '</div>';
+        convStatusEl.innerHTML = statusHtml;
       }).catch(() => {});
     }
   }

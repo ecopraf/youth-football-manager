@@ -128,6 +128,11 @@ Le tabelle reali nel DB Supabase sono:
 **Colonne notevoli `team_player`**: `stato TEXT` (Attivo, Infortunato, Svincolato), `aggregato BOOLEAN DEFAULT false` (true se giocatore aggregato da categoria inferiore)
 - `match`, `match_event`, `match_formation`, `match_statistics`, `convocation`
 
+**Colonne notevoli `convocation`**: `risposta TEXT` (null=disponibile, 'indisponibile'), `risposta_motivo TEXT`, `risposta_at TIMESTAMPTZ`
+- Alla pubblicazione: se atleta ha già assenza per la data → auto `risposta='indisponibile'`
+- Batch save (convocazioni-batch): preserva risposte esistenti sui giocatori che restano convocati
+- DELETE training_config: cascade elimina allenamenti futuri del giorno rimosso (solo se senza presenze)
+
 **Colonne notevoli `match`**: `tipo_competizione TEXT` (Campionato, Coppa, Torneo [nome], null=Amichevole), `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS), `tc_match_url TEXT` (URL pagina partita Tuttocampo per import formazioni), `live_meta JSONB` (`{stato: '1t'|'intervallo'|'2t'|'fine', start_1t, end_1t, start_2t, end_match}` — lifecycle Live Match Mode), `formazione_meta JSONB` (`{modulo, positions, modulo_finale}` — modulo iniziale + posizioni custom + modulo finale se cambiato durante partita)
 - `training`, `training_attendance`, `training_config`, `training_template`
 - `valutazione_partita`, `document`

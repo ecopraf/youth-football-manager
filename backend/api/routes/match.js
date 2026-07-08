@@ -201,10 +201,25 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       const { data: tps } = await supabase.from('team_player').select('id, player_id').in('player_id', playerIds);
       const playerToTp = {};
       (tps || []).forEach(tp => { playerToTp[tp.player_id] = tp.id; });
+
+      // Preserva risposte esistenti prima del DELETE
+      const { data: existing } = await supabase.from('convocation')
+        .select('team_player_id, risposta, risposta_motivo, risposta_at')
+        .eq('match_id', req.params.matchId);
+      const risposteMap = {};
+      (existing || []).forEach(c => {
+        if (c.risposta) risposteMap[c.team_player_id] = { risposta: c.risposta, risposta_motivo: c.risposta_motivo, risposta_at: c.risposta_at };
+      });
+
       await supabase.from('convocation').delete().eq('match_id', req.params.matchId);
-      const inserts = convocazioni.filter(c => playerToTp[c.calciatoreId]).map(c => ({
-        match_id: req.params.matchId, team_player_id: playerToTp[c.calciatoreId], presente: c.presente
-      }));
+      const inserts = convocazioni.filter(c => playerToTp[c.calciatoreId]).map(c => {
+        const tpId = playerToTp[c.calciatoreId];
+        const prev = risposteMap[tpId];
+        return {
+          match_id: req.params.matchId, team_player_id: tpId, presente: c.presente,
+          ...(prev && c.presente ? prev : {})
+        };
+      });
       if (inserts.length > 0) {
         const { error } = await supabase.from('convocation').insert(inserts);
         if (error) return res.status(400).json({ error: error.message });
@@ -216,7 +231,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
   // ── PUBBLICA CONVOCAZIONE (invia notifiche) ──
   router.post('/api/partite/:matchId/convocazioni-pubblica', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
     try {
-      const { data: convs } = await supabase.from('convocation').select('id').eq('match_id', req.params.matchId).eq('presente', true);
+      const { data: convs } = await supabase.from('convocation').select('id, team_player_id').eq('match_id', req.params.matchId).eq('presente', true);
       const convocatiCount = convs?.length || 0;
       if (convocatiCount === 0) return res.status(400).json({ error: 'Nessun convocato salvato' });
 
@@ -227,16 +242,90 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       const wsId = team?.category?.workspace_id;
       if (!wsId) return res.status(400).json({ error: 'Workspace non trovato' });
 
+      // Check assenze già segnalate per la data della partita
+      const matchDate = match.data_ora.substring(0, 10);
+      const { data: absences } = await supabase.from('absence_notification')
+        .select('player_id, motivo')
+        .eq('team_id', match.team_id)
+        .eq('data_allenamento', matchDate);
+
+      // Auto-imposta indisponibile sui convocati che hanno già segnalato assenza
+      let autoIndisponibili = 0;
+      if (absences && absences.length > 0) {
+        const absentPlayerIds = new Set(absences.map(a => a.player_id));
+        // Risolvi player_id dai team_player_id dei convocati
+        const tpIds = convs.map(c => c.team_player_id);
+        const { data: tpData } = await supabase.from('team_player').select('id, player_id').in('id', tpIds);
+        const tpToPlayer = {};
+        (tpData || []).forEach(tp => { tpToPlayer[tp.id] = tp.player_id; });
+
+        for (const c of convs) {
+          const pid = tpToPlayer[c.team_player_id];
+          if (pid && absentPlayerIds.has(pid)) {
+            const abs = absences.find(a => a.player_id === pid);
+            await supabase.from('convocation').update({
+              risposta: 'indisponibile',
+              risposta_motivo: abs?.motivo || 'Assenza già segnalata',
+              risposta_at: new Date().toISOString()
+            }).eq('id', c.id);
+            autoIndisponibili++;
+          }
+        }
+      }
+
       const dataStr = new Date(match.data_ora).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
       const avv = match.avversario || 'partita';
 
       await supabase.from('notification').insert([
-        { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '📋 Convocazione pronta', messaggio: `${convocatiCount} convocati per ${avv} (${dataStr})`, riferimento_id: req.params.matchId, destinatario_profilo: ['segreteria', 'dirigente', 'osservatore'], destinatario_tipo: ['staff'], created_by: req.user.id },
+        { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '📋 Convocazione pronta', messaggio: `${convocatiCount} convocati per ${avv} (${dataStr})${autoIndisponibili > 0 ? ' — ⚠️ ' + autoIndisponibili + ' già indisponibil' + (autoIndisponibili === 1 ? 'e' : 'i') : ''}`, riferimento_id: req.params.matchId, destinatario_profilo: ['segreteria', 'dirigente', 'osservatore'], destinatario_tipo: ['staff'], created_by: req.user.id },
         { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '⚽ Convocazione pubblicata', messaggio: `Controlla se sei convocato per ${avv} (${dataStr})`, riferimento_id: req.params.matchId, destinatario_tipo: ['atleta'], created_by: req.user.id },
         { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '📋 Convocazione vs ' + avv, messaggio: `${convocatiCount} convocati per ${dataStr}. Verifica la convocazione di tuo figlio.`, riferimento_id: req.params.matchId, destinatario_tipo: ['genitore'], created_by: req.user.id }
       ]);
 
-      res.json({ success: true, convocati: convocatiCount });
+      res.json({ success: true, convocati: convocatiCount, autoIndisponibili });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── RISPOSTA CONVOCAZIONE (guest atleta/genitore) ──
+  router.post('/api/partite/:matchId/convocazioni/:convId/risposta', authMiddleware, async (req, res) => {
+    try {
+      const { risposta, motivo } = req.body;
+      if (!risposta || !['confermato', 'indisponibile'].includes(risposta)) {
+        return res.status(400).json({ error: 'Risposta non valida' });
+      }
+      const { data: conv } = await supabase.from('convocation').select('id, match_id, team_player_id').eq('id', req.params.convId).eq('match_id', req.params.matchId).single();
+      if (!conv) return res.status(404).json({ error: 'Convocazione non trovata' });
+
+      const { error } = await supabase.from('convocation').update({
+        risposta, risposta_motivo: risposta === 'indisponibile' ? (motivo || null) : null, risposta_at: new Date().toISOString()
+      }).eq('id', conv.id);
+      if (error) return res.status(400).json({ error: error.message });
+
+      // Se indisponibile → notifica all'allenatore
+      if (risposta === 'indisponibile') {
+        try {
+          const { data: tp } = await supabase.from('team_player').select('player:player_id(nome, cognome)').eq('id', conv.team_player_id).single();
+          const { data: match } = await supabase.from('match').select('avversario, data_ora, team_id').eq('id', req.params.matchId).single();
+          if (match && tp?.player) {
+            const { data: team } = await supabase.from('team').select('category_id, category:category_id(workspace_id)').eq('id', match.team_id).single();
+            const wsId = team?.category?.workspace_id;
+            if (wsId) {
+              const nome = `${tp.player.cognome} ${tp.player.nome}`;
+              const avv = match.avversario || 'partita';
+              const dataStr = new Date(match.data_ora).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+              await supabase.from('notification').insert({
+                workspace_id: wsId, team_id: match.team_id, tipo: 'avviso',
+                titolo: '⚠️ Convocato indisponibile',
+                messaggio: `${nome} non disponibile per ${avv} (${dataStr})${motivo ? ' — ' + motivo : ''}`,
+                riferimento_id: req.params.matchId,
+                destinatario_tipo: ['staff'], destinatario_profilo: ['allenatore', 'vice_allenatore', 'segreteria']
+              });
+            }
+          }
+        } catch (e) { /* non-blocking */ }
+      }
+
+      res.json({ success: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

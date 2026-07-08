@@ -24,6 +24,11 @@ export async function openConvocation(mid, readOnly) {
   });
 
   const ids = conv.filter(c => c.presente === true).map(c => c.calciatoreId);
+  // Mappa risposte convocazione per giocatore
+  const rispostaMap = {};
+  conv.filter(c => c.presente && c.risposta).forEach(c => {
+    rispostaMap[c.calciatoreId] = { risposta: c.risposta, motivo: c.risposta_motivo };
+  });
   const sorted = [...gioc].sort((a, b) => {
     const o = ['Portiere', 'Difensore', 'Centrocampista', 'Attaccante'];
     const ra = o.indexOf(a.ruolo), rb = o.indexOf(b.ruolo);
@@ -58,6 +63,8 @@ export async function openConvocation(mid, readOnly) {
       const badges = [];
       if (isInj) badges.push('<span style="background:#FDEDEE;color:#E74C3C;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">🤕 Infortunato</span>');
       if (abs > 0) badges.push(`<span style="background:#FFF3E0;color:#E65100;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">⚠️ ${abs} assenz${abs > 1 ? 'e' : 'a'} sett.</span>`);
+      const risp = rispostaMap[g.id];
+      if (risp?.risposta === 'indisponibile') badges.push(`<span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;" title="${risp.motivo || ''}">❌ Indisponibile</span>`);
       return `
       <div class="convocation-item">
         <input type="checkbox" ${ids.includes(g.id) ? 'checked' : ''} data-pid="${g.id}" class="conv-check" style="width:20px;height:20px;cursor:pointer;accent-color:var(--green);">

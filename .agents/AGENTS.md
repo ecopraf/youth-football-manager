@@ -228,7 +228,9 @@ frontend-v2/src/
 | `match_event` | Eventi (GOAL, ASSIST, YELLOW...) | match_id, player_id, player_id_secondario |
 | `match_formation` | Formazione (is_starter = fonte verità) | match_id, team_player_id, ordine |
 | `match_statistics` | Statistiche dettagliate | match_id, team_player_id |
-| `convocation` | Convocazioni | match_id, team_player_id |
+| `convocation` | Convocazioni | match_id, team_player_id, risposta TEXT, risposta_motivo TEXT, risposta_at TIMESTAMPTZ |
+
+**Colonne notevoli `convocation`**: `risposta TEXT` (null=disponibile, 'indisponibile'), `risposta_motivo TEXT`, `risposta_at TIMESTAMPTZ`. Auto-impostato a 'indisponibile' alla pubblicazione se atleta ha già segnalato assenza per la data.
 | `training` | Sessioni allenamento | team_id |
 | `training_attendance` | Presenze allenamenti | training_id, team_player_id |
 | `training_config` | Settimana tipo (giorni/orari) | team_id |
