@@ -29,6 +29,10 @@ function cachedFetch(key, fetcher, ttl = CACHE_TTL_LAZY) {
 
 export function invalidateDashboardCache() {
   Object.keys(memCache).forEach(k => { if (k.startsWith('dash_')) delete memCache[k]; });
+  // Pulisci anche sessionStorage per le chiavi dashboard
+  try {
+    Object.keys(sessionStorage).forEach(k => { if (k.startsWith('dash_')) sessionStorage.removeItem(k); });
+  } catch(e) {}
 }
 
 export default async function loadDashboard() {
@@ -41,23 +45,33 @@ export default async function loadDashboard() {
   let marcatoriGR = { marcatori: [] };
   let calendarioGR = { matches: [] };
 
+  // Fetch aggregato: 1 sola chiamata al backend per tutti i dati core
+  async function fetchDashboardData(tipo) {
+    const data = await cachedFetch('dash_agg_' + squadraId + '_' + tipo, () =>
+      apiFetch('/squadre/' + squadraId + '/dashboard?tipo=' + tipo).catch(() => ({
+        stats: { punti:0, partiteGiocate:0, vittorie:0, pareggi:0, sconfitte:0, golFatti:0, golSubiti:0, differenzaReti:0, risultati:[] },
+        topPlayers: { marcatori:[], assistmen:[], presenze:[] },
+        prossimePartite: [],
+        allenamenti: [],
+        infortunati: [],
+        certificati: { scaduti:0, inScadenza:0, validi:0, mancanti:0, dettaglio:[] }
+      })), CACHE_TTL_FAST);
+    return data;
+  }
+
+  // Retrocompatibilità: fetchFiltered per il dropdown tipo (riusa cache aggregata)
   async function fetchFiltered(tipo) {
-    const [s, t] = await Promise.all([
-      cachedFetch('dash_stats_' + squadraId + '_' + tipo, () => apiFetch('/squadre/' + squadraId + '/statistiche-complete?tipo=' + tipo).catch(() => ({ punti:0, partiteGiocate:0, vittorie:0, pareggi:0, sconfitte:0, golFatti:0, golSubiti:0, differenzaReti:0, risultati:[] })), CACHE_TTL_FAST),
-      cachedFetch('dash_top_' + squadraId + '_' + tipo, () => apiFetch('/squadre/' + squadraId + '/top-players?tipo=' + tipo).catch(() => ({ marcatori:[], assistmen:[], presenze:[] })), CACHE_TTL_FAST)
-    ]);
-    return { stats: s, top: t };
+    const data = await fetchDashboardData(tipo);
+    return { stats: data.stats, top: data.topPlayers };
   }
   
   try {
-    const filtered = await fetchFiltered(currentTipo);
-    stats = filtered.stats;
-    top = filtered.top;
-    [topValutazioni, partiteFuture, nextTrainings] = await Promise.all([
-      cachedFetch('dash_val_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/valutazioni-top').catch(() => ({ topGiocatori:[] })), CACHE_TTL_FAST),
-      cachedFetch('dash_future_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/partite-future').catch(() => []), CACHE_TTL_FAST),
-      cachedFetch('dash_training_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/allenamenti-futuri').catch(() => []), CACHE_TTL_FAST)
-    ]);
+    const dashData = await fetchDashboardData(currentTipo);
+    stats = dashData.stats;
+    top = dashData.topPlayers;
+    partiteFuture = dashData.prossimePartite;
+    nextTrainings = dashData.allenamenti;
+    topValutazioni = { topGiocatori: [] };
   } catch (err) {
     stats = { punti: 0, partiteGiocate: 0, vittorie: 0, pareggi: 0, sconfitte: 0, golFatti: 0, golSubiti: 0, differenzaReti: 0, risultati: [] };
     top = { marcatori: [], assistmen: [], presenze: [] };

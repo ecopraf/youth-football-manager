@@ -753,6 +753,46 @@ users.id
 
 ---
 
+## 📊 VIEW (Read Model)
+
+### v_player_season_stats — Statistiche giocatore per stagione
+
+| Colonna | Tipo | Note |
+|---------|------|------|
+| team_player_id | uuid | PK logica |
+| team_id | uuid | |
+| player_id | uuid | |
+| season_id | uuid | Filtrare per stagione |
+| presenze | bigint | Partite con match_statistics |
+| minuti | bigint | Somma minuti_giocati |
+| gol | bigint | |
+| assist | bigint | |
+| ammonizioni | bigint | |
+| espulsioni | bigint | |
+
+**Source**: `team_player` JOIN `team` LEFT JOIN `match_statistics`
+
+---
+
+### v_team_season_summary — Riepilogo squadra per stagione
+
+| Colonna | Tipo | Note |
+|---------|------|------|
+| team_id | uuid | PK logica |
+| season_id | uuid | |
+| partite_giocate | bigint | |
+| vittorie | bigint | |
+| pareggi | bigint | |
+| sconfitte | bigint | |
+| gol_fatti | bigint | |
+| gol_subiti | bigint | |
+| differenza_reti | bigint | |
+| punti | bigint | 3V + 1P |
+
+**Source**: `match` JOIN `team` WHERE stato='Terminata' OR archiviata=true
+
+---
+
 ## 📊 Diagramma ER Semplificato
 
 ```

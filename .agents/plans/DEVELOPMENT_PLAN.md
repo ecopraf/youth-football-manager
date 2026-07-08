@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 7 Luglio 2025 | Versione: v3.15 | Commit: 22d2b8e
+> Ultimo aggiornamento: 18 Luglio 2025 | Versione: v3.16 | Commit: pending
 
 ---
 
@@ -9,7 +9,7 @@
 
 | Campo | Valore |
 |-------|--------|
-| Versione | v3.15 |
+| Versione | v3.16 |
 | Target MVP | 15 Settembre 2026 |
 | Frontend | Vite + JS ES Modules → Vercel |
 | Backend | Node.js/Express (17 router) → Vercel |
@@ -342,6 +342,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | fix: distinta dinamica per tipo — "del campionato X", "del torneo X", "della coppa X", "Gara Amichevole" |
 | (pending) | fix: convocazione isAmichevole — variabile non definita causava crash "Vedi Convocazione" |
 | (pending) | fix: PDF parser girone regex — cattura solo lettera (es. B) ignorando suffissi (BIS) |
+| (pending) | perf: v3.16 — indici DB (match_formation, training_attendance, match team+stato), VIEW v_player_season_stats + v_team_season_summary, endpoint aggregato /dashboard (1 call vs 5-6), frontend refactor cache |
 
 ---
 

@@ -52,10 +52,10 @@ git status
 
 | Info | Valore |
 |------|--------|
-| **Versione** | v3.15 |
+| **Versione** | v3.16 |
 | **Build ID** | `v3.15.<git-hash>` |
 | **Frontend** | Vite + JavaScript ES Modules |
-| **Backend** | Node.js/Express (17 router) + Supabase |
+| **Backend** | Node.js/Express (18 router) + Supabase |
 | **Deploy** | Vercel (auto su push a main) |
 | **Auth** | JWT + permessi granulari JSONB |
 | **Guest** | JWT guest (24h, solo lettura). Login risolve team_id + player_name |
@@ -105,6 +105,7 @@ api/
     ├── gazzettaRegionale.js    — Classifica, calendario, marcatori, loghi da GR API, wizard loghi
     ├── absence.js              — Segnalazione assenze atleti (notifiche, storico, motivi)
     ├── notification.js         — Comunicazioni in-app (convocazioni, avvisi) per profili destinatari
+    ├── dashboard.js            — Endpoint aggregato dashboard (stats+top+partite+allenamenti+injuries+certificati)
     └── tournament.js           — Tornei CRUD (disabilitato in sidebar)
 ```
 

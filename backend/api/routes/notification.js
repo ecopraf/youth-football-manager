@@ -8,6 +8,7 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
     try {
       const user = req.user;
       const wsId = user.workspace_id;
+      if (!wsId) return res.json([]);
       const profilo = user.permessi?.profilo || user.ruolo;
 
       let query = supabase.from('notification').select('*')
@@ -35,6 +36,7 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
     try {
       const user = req.user;
       const wsId = user.workspace_id;
+      if (!wsId) return res.json({ unread: 0 });
       const profilo = user.permessi?.profilo || user.ruolo;
 
       const { data, error } = await supabase.from('notification').select('id, destinatario_user_id, destinatario_profilo')

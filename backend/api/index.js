@@ -31,7 +31,7 @@ app.use(express.json({ limit: '5mb' }));
 // Health con warmup
 app.get('/api/health', async (req, res) => {
   try { await supabase.from('team').select('id').limit(1); } catch(e) {}
-  res.json({ status: 'ok', version: '3.15', modular: true, warm: true, proxy: !!process.env.PROXY_TC_URL });
+  res.json({ status: 'ok', version: '3.16', modular: true, warm: true, proxy: !!process.env.PROXY_TC_URL });
 });
 
 // Test proxy connectivity
@@ -215,6 +215,9 @@ app.use(createAbsenceRouter({ supabase, authMiddleware }));
 
 const createNotificationRouter = require('./routes/notification');
 app.use(createNotificationRouter({ supabase, authMiddleware }));
+
+const createDashboardRouter = require('./routes/dashboard');
+app.use(createDashboardRouter({ supabase, authMiddleware }));
 
 module.exports = app;
 
