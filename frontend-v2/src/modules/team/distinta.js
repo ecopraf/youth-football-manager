@@ -285,7 +285,8 @@ function renderDistinta(d, staff) {
   const timestampStampa = now.toLocaleDateString('it-IT') + ' ' + now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   
   c.innerHTML = 
-    '<div style="font-size:10px;line-height:1.4;max-width:700px;margin:0 auto;">' +
+    '<style>@media(max-width:600px){.distinta-wrap{font-size:9px!important}.distinta-table th,.distinta-table td{padding:2px 3px!important;font-size:8px!important}.staff-table td{font-size:8px!important;padding:2px 4px!important}}</style>' +
+    '<div class="distinta-wrap" style="font-size:10px;line-height:1.4;max-width:700px;margin:0 auto;">' +
     // HEADER: Logo LND | Testo centrale | Logo società
     '<div style="display:flex;align-items:center;margin-bottom:6px;">' +
       '<img src="/img/logo-lnd.png" alt="FIGC LND" style="height:80px;">' +
@@ -304,8 +305,8 @@ function renderDistinta(d, staff) {
       'presso <strong>' + campoInfo + '</strong>' +
     '</div>' +
     // TABELLA GIOCATORI
-    '<div style="position:relative;">' +
-      '<table class="distinta-table"><thead><tr>' +
+    '<div style="position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch;">' +
+      '<table class="distinta-table" style="min-width:600px;"><thead><tr>' +
         '<th></th><th>N°<br>Ruolo</th><th>Data di nascita</th><th>Cognome e nome</th><th>Capitano<br>V. Cap.</th><th>N. Matricola<br>F.I.G.C.</th><th colspan="3">Documento di identificazione</th><th>Espulsi</th><th>Ammoniti</th>' +
       '</tr><tr><th></th><th></th><th></th><th></th><th></th><th></th><th>Tipo</th><th>Numero</th><th>Rilasciato</th><th></th><th></th></tr></thead><tbody>' +
       righe.join('') +

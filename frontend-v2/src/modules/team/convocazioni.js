@@ -265,18 +265,28 @@ function showConvocationPreview(match, list, isArchiviata = false) {
       <div style="width:80px;text-align:right;"><img src="/img/logo-lnd.png" style="height:70px;object-fit:contain;" onerror="this.style.display='none'"></div>
     </div>
     <div class="info">Partita: <strong>${(window.YFM.getSocietaName ? window.YFM.getSocietaName() : '').toUpperCase()} - ${match.avversario || 'TBD'}</strong><br>Campo: <strong>${campoInfo}</strong><br>Alle ore: <strong>${oraStr}</strong> del giorno: <strong>${giornoStr}</strong><br>Ritrovo alle ore: <strong>${ritrovoStr}</strong> al Campo di Giuoco</div>
-    <table class="list-table" style="border:2px solid #000;border-collapse:collapse;width:100%;"><thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000;padding:5px 8px;">N.</th><th style="border:1px solid #000;padding:5px 8px;">Cognome</th><th style="border:1px solid #000;padding:5px 8px;">Nome</th><th style="border:1px solid #000;padding:5px 8px;">P</th></tr></thead><tbody>`;
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <table class="list-table" style="border:2px solid #000;border-collapse:collapse;width:100%;table-layout:fixed;"><colgroup><col style="width:8%"><col style="width:42%"><col style="width:40%"><col style="width:10%"></colgroup><thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000;padding:5px 8px;">N.</th><th style="border:1px solid #000;padding:5px 8px;">Cognome</th><th style="border:1px solid #000;padding:5px 8px;">Nome</th><th style="border:1px solid #000;padding:5px 8px;">P</th></tr></thead><tbody>`;
   for (let i = 0; i < 25; i++) {
     if (i < list.length) {
-      html += `<tr><td style="border:1px solid #000;padding:4px 6px;text-align:center;">${i + 1}</td><td style="border:1px solid #000;padding:4px 6px;">${list[i].cognome.toUpperCase()}</td><td style="border:1px solid #000;padding:4px 6px;">${list[i].nome}</td><td style="border:1px solid #000;padding:4px 6px;text-align:center;">${list[i].ruolo === 'Portiere' ? 'P' : ''}</td></tr>`;
+      html += `<tr><td style="border:1px solid #000;padding:4px 6px;text-align:center;">${i + 1}</td><td style="border:1px solid #000;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${list[i].cognome.toUpperCase()}</td><td style="border:1px solid #000;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${list[i].nome}</td><td style="border:1px solid #000;padding:4px 6px;text-align:center;">${list[i].ruolo === 'Portiere' ? 'P' : ''}</td></tr>`;
     } else {
       html += `<tr><td style="border:1px solid #000;padding:4px 6px;text-align:center;">${i + 1}</td><td style="border:1px solid #000;padding:4px 6px;"></td><td style="border:1px solid #000;padding:4px 6px;"></td><td style="border:1px solid #000;padding:4px 6px;"></td></tr>`;
     }
   }
-  html += '</tbody></table><div class="note">Eventuali assenze vanno comunicate tempestivamente. Si raccomanda il rispetto dell\'orario di convocazione.</div><div class="firma">Il Mister</div>';
+  html += '</tbody></table></div><div class="note">Eventuali assenze vanno comunicate tempestivamente. Si raccomanda il rispetto dell\'orario di convocazione.</div><div class="firma">Il Mister</div>';
 
   const footer = '<button class="btn btn-secondary" id="modalCancel">Chiudi</button><button class="btn btn-primary" id="printFromPreview">🖨️ Stampa</button>';
-  const modal = createModal('📄 Convocazione', '<div id="convPreviewInner">' + html + '</div>', footer, '900px');
+  const mobileStyles = `<style>
+    @media (max-width:600px) {
+      #convPreviewInner .list-table td, #convPreviewInner .list-table th { padding:3px 4px; font-size:12px; }
+      #convPreviewInner .info { font-size:12px; }
+      #convPreviewInner .t1 { font-size:18px; }
+      #convPreviewInner .t2 { font-size:13px; }
+      #convPreviewInner img { height:50px !important; }
+    }
+  </style>`;
+  const modal = createModal('📄 Convocazione', mobileStyles + '<div id="convPreviewInner">' + html + '</div>', footer, '900px');
   document.getElementById('printFromPreview').addEventListener('click', () => {
     const el = document.getElementById('convPreviewInner');
     if (el) {

@@ -703,6 +703,10 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | fix: report giocatore — eventi ordinati per minuto (backend .order + frontend sort safety net) |
 | (pending) | fix: sidebar landscape mobile — nascosta di default con toggle hamburger, chiusura su tap fuori/click nav, layout compatto |
 | (pending) | style: ordine cognome-nome — tutte le schede giocatori mostrano sempre cognome prima del nome (roster, playerDetail, convocazioni, presenze) |
+| (pending) | fix: calendario logo avversario — aggiunto findLogo a endpoint principale /partite + cache in-memory TTL 2min (shared tra tutti gli endpoint match) |
+| (pending) | feat: calendario badge "⚠️ Inserisci risultato" — partite Terminate senza gol_casa mostrano warning arancione cliccabile (apre MC) invece di falso 0-0 |
+| (pending) | feat: Match Center register_past — partite passate senza live_meta mostrano bottone "⏩ Registra Partita" (setta stato=Terminata senza flusso live) |
+| (pending) | fix: convocazione/distinta mobile — rimossa regola CSS globale display:block su table (rompeva allineamento colonne), aggiunto table-layout:fixed + colgroup su convocazione, overflow-x:auto + min-width su distinta, font ridotti su mobile |
 
 ---
 

@@ -493,9 +493,12 @@ export function renderMatchCard(m, stats, isNext = false) {
   const hasResult = !!(r || (m.gol_casa != null && m.gol_ospite != null) || m.stato === 'Terminata' || isLive);
   const isPast = new Date(m.data_ora) < new Date();
   const isArchiviata = m.archiviata === true || m.archiviata === 'true';
+  const missingResult = !isLive && !isArchiviata && m.gol_casa == null && !r && !m.live_meta && (
+    m.stato === 'Terminata' || (isPast && (Date.now() - new Date(m.data_ora).getTime()) > 12 * 3600000)
+  );
 
-  const golFatti = r?.golFatti ?? ((m.stato === 'Terminata' || isLive) ? (m.gol_casa ?? 0) : null);
-  const golSubiti = r?.golSubiti ?? ((m.stato === 'Terminata' || isLive) ? (m.gol_ospite ?? 0) : null);
+  const golFatti = r?.golFatti ?? ((!missingResult && (m.stato === 'Terminata' || isLive)) ? (m.gol_casa ?? 0) : null);
+  const golSubiti = r?.golSubiti ?? ((!missingResult && (m.stato === 'Terminata' || isLive)) ? (m.gol_ospite ?? 0) : null);
 
   // === BORDO SINISTRO COLORATO PER ESITO ===
   let borderColor = '#dee2e6';
@@ -503,6 +506,8 @@ export function renderMatchCard(m, stats, isNext = false) {
     borderColor = '#E74C3C'; // rosso pulsante per live
   } else if (isArchiviata) {
     borderColor = '#8B7355';
+  } else if (missingResult) {
+    borderColor = '#F39C12';
   } else if (isPast && hasResult && golFatti !== null && golSubiti !== null) {
     if (golFatti > golSubiti) borderColor = '#28a745';
     else if (golFatti < golSubiti) borderColor = '#dc3545';
@@ -532,6 +537,8 @@ export function renderMatchCard(m, stats, isNext = false) {
       + `<span class="live-text" style="color:#E74C3C;font-size:10px;font-weight:bold;">LIVE</span>`
       + `<span style="font-size:20px;font-weight:bold;color:${color};">${golFatti} - ${golSubiti}</span>`
       + `</span>`;
+  } else if (missingResult) {
+    resultHtml = `<span class="result-badge" style="background:#FFF3CD;color:#856404;border:1px solid #F39C12;cursor:pointer;font-size:12px;" onclick="event.stopPropagation();window.YFM.openMatchCenter('${m.id}')">⚠️ Inserisci risultato</span>`;
   } else if (hasResult && golFatti !== null && golSubiti !== null) {
     let cls, icon;
     if (golFatti > golSubiti) { cls = 'result-victory'; icon = '✅'; }

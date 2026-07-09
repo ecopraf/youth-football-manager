@@ -570,16 +570,12 @@ body.sidebar-open::before {
   [style*="grid-template-columns:1fr 1fr"] {
     grid-template-columns: 1fr !important;
   }
-  /* Tables: horizontal scroll on mobile */
-  table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  /* Tables: horizontal scroll on mobile via wrapper */
+  .card table, .modal-body table {
+    max-width: 100%;
   }
-  thead, tbody, tr {
-    display: table;
-    width: 100%;
-    table-layout: auto;
+  .card, .modal-body {
+    overflow-x: auto;
   }
   /* Modal body padding compact */
   .modal-body {
