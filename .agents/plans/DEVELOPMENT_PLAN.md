@@ -604,6 +604,10 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: risposta convocazione — atleta può segnalare indisponibilità post-convocazione (colonne risposta/risposta_motivo/risposta_at su convocation, endpoint POST risposta, notifica allenatore, badge ❌ in UI convocazioni, counter indisponibili in dashboard) |
 | (pending) | fix: congruenza flusso — assenza pre-convocazione auto-imposta indisponibile alla pubblicazione, batch convocazioni preserva risposte esistenti, DELETE config cascade allenamenti futuri senza presenze |
 | (pending) | feat: ristrutturazione Centro Comunicazioni — tabs Inviate/Ricevute, assenze+indisponibilità unificate, bottone Rispondi atleta, endpoint POST /notifications/reply |
+| (pending) | fix: certificati medici dashboard — eliminata colonna scadenza_visita_medica (ridondante), migrati dati a data_visita_medica, dashboard usa stessa logica rosa (data+1anno), cache invalidation su cambio team/stagione/salvataggio |
+| (pending) | fix: distinta non aggiornata dopo modifica convocazioni — filtro solo convocati (non tutta la rosa) |
+| (pending) | feat: flusso convocazioni Salva/Modifica/Pubblica — bottone Salva→Modifica dopo primo save, pallino stato pubblicazione (🔵 lampeggiante=da pubblicare, 🟢 fisso=pubblicata), endpoint GET /convocazioni-stato |
+| (pending) | style: ordine cognome-nome — tutte le schede giocatori mostrano sempre cognome prima del nome (roster, playerDetail, convocazioni, presenze) |
 
 ---
 

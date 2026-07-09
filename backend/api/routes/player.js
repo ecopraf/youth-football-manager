@@ -45,7 +45,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       res.json((data || []).map(r => ({
         id: r.calciatore.id, nome: r.calciatore.nome, cognome: r.calciatore.cognome,
         data_nascita: r.calciatore.data_nascita, telefono: r.calciatore.telefono,
-        data_visita_medica: r.calciatore.data_visita_medica, scadenza_visita_medica: r.calciatore.scadenza_visita_medica,
+        data_visita_medica: r.calciatore.data_visita_medica,
         matricola_figc: r.calciatore.matricola_figc, tipo_documento: r.calciatore.tipo_documento,
         numero_documento: r.calciatore.numero_documento, rilasciato_da: r.calciatore.rilasciato_da,
         contatti_genitori: r.calciatore.contatti_genitori || [],
@@ -79,7 +79,6 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         codice_fiscale: c.codice_fiscale || null,
         tipo_documento: c.tipo_documento || null, numero_documento: c.numero_documento || null,
         rilasciato_da: c.rilasciato_da || null, data_visita_medica: toDate(c.data_visita_medica),
-        scadenza_visita_medica: toDate(c.scadenza_visita_medica),
         tesserato_dal: toDate(c.tesserato_dal), tesserato_fino_al: toDate(c.tesserato_fino_al),
         contatti_genitori: c.contatti_genitori || []
       }).select().single();
@@ -101,16 +100,17 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
   router.get('/api/squadre/:squadraId/scadenze-mediche', authMiddleware, async (req, res) => {
     try {
       const { data: rosa } = await supabase.from('team_player')
-        .select('calciatore:player_id(id, nome, cognome, scadenza_visita_medica)')
+        .select('calciatore:player_id(id, nome, cognome, data_visita_medica)')
         .eq('team_id', req.params.squadraId).eq('stato', 'Attivo');
 
       const oggi = new Date();
       const scadenze = (rosa || [])
-        .filter(r => r.calciatore?.scadenza_visita_medica)
+        .filter(r => r.calciatore?.data_visita_medica)
         .map(r => {
-          const scadenza = new Date(r.calciatore.scadenza_visita_medica);
+          const scadenza = new Date(r.calciatore.data_visita_medica);
+          scadenza.setFullYear(scadenza.getFullYear() + 1);
           const giorni_rimanenti = Math.ceil((scadenza - oggi) / (1000 * 60 * 60 * 24));
-          return { id: r.calciatore.id, nome: r.calciatore.nome, cognome: r.calciatore.cognome, scadenza: r.calciatore.scadenza_visita_medica, giorni_rimanenti };
+          return { id: r.calciatore.id, nome: r.calciatore.nome, cognome: r.calciatore.cognome, scadenza: scadenza.toISOString().substring(0, 10), giorni_rimanenti };
         })
         .filter(s => s.giorni_rimanenti <= 30)
         .sort((a, b) => a.giorni_rimanenti - b.giorni_rimanenti);
@@ -166,7 +166,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         matricola_figc: c.matricola_figc || null, codice_fiscale: c.codice_fiscale || null,
         tipo_documento: c.tipo_documento || null,
         numero_documento: c.numero_documento || null, rilasciato_da: c.rilasciato_da || null,
-        data_visita_medica: toDate(c.data_visita_medica), scadenza_visita_medica: toDate(c.scadenza_visita_medica),
+        data_visita_medica: toDate(c.data_visita_medica),
         luogo_nascita: c.luogo_nascita || null, nazionalita: c.nazionalita || null,
         residenza: c.residenza || null, note: c.note || null
       };

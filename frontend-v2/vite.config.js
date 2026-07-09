@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import fs from 'fs';
 import path from 'path';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // Versione software (allineata con backend)
 const SW_VERSION = 'v3.15';
@@ -62,6 +63,45 @@ export default defineConfig({
       }
     }
   ],
+VitePWA({
+    registerType: 'autoUpdate',
+
+    includeAssets: [
+      'favicon.ico'
+    ],
+
+    manifest: {
+      name: 'Youth Football Manager',
+      short_name: 'YFM',
+      description: 'Gestione società e squadre di calcio giovanile',
+      theme_color: '#0F172A',
+      background_color: '#ffffff',
+      display: 'standalone',
+      orientation: 'portrait',
+      scope: '/',
+      start_url: '/',
+
+      icons: [
+        {
+          src: '/icon-192.png',
+          sizes: '192x192',
+          type: 'image/png'
+        },
+        {
+          src: '/icon-512.png',
+          sizes: '512x512',
+          type: 'image/png'
+        },
+        {
+          src: '/maskable-icon.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable'
+        }
+      ]
+    }
+  })
+],
   build: {
     outDir: 'dist',
     rollupOptions: {

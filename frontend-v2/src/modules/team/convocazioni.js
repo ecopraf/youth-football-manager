@@ -58,6 +58,13 @@ export async function openConvocation(mid, readOnly) {
     return;
   }
 
+  // Determina stato: esistono convocazioni salvate? È stata pubblicata?
+  const hasSavedConv = conv.length > 0;
+  const isPublished = hasSavedConv ? await apiFetch('/partite/' + mid + '/convocazioni-stato').catch(() => ({ published: false })) : { published: false };
+  const published = isPublished.published === true;
+  // Traccia se ci sono modifiche non pubblicate
+  let hasUnsavedChanges = false;
+
   const content = `
     <p style="margin-bottom:8px;color:var(--gray);">${formatDate(match.data_ora)}</p>
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;" data-help="convocazioni.selezione">
@@ -82,15 +89,21 @@ export async function openConvocation(mid, readOnly) {
       <div class="convocation-item" style="${isFrozen ? 'opacity:0.5;text-decoration:line-through;' : ''}">
         <input type="checkbox" ${ids.includes(g.id) ? 'checked' : ''} data-pid="${g.id}" class="conv-check" ${isFrozen ? 'disabled' : ''} style="width:20px;height:20px;cursor:${isFrozen ? 'not-allowed' : 'pointer'};accent-color:${isFrozen ? '#999' : 'var(--green)'};">
         <div class="player-avatar" style="width:32px;height:32px;font-size:12px;background:${getAvatarColor(g.nome)};">${g.nome[0]}${g.cognome[0]}</div>
-        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.nome} ${g.cognome}${badges.length ? ' ' + badges.join(' ') : ''}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.cognome} ${g.nome}${badges.length ? ' ' + badges.join(' ') : ''}</span>
         <span style="color:var(--gray);font-size:13px;white-space:nowrap;">${g.ruolo}${g.numeroMaglia ? ' · #' + g.numeroMaglia : ''}</span>
       </div>
     `}).join('')}`;
 
+  // Bottone salva/modifica + pubblica con stati visivi
+  const saveBtnLabel = hasSavedConv ? '✏️ Modifica' : '💾 Salva';
+  const dotColor = published ? '#27AE60' : '#667eea';
+  const dotAnim = published ? 'none' : 'pulse-dot 1.2s infinite';
+
   const footer = `
+    <style>@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(1.3)}}</style>
     <button class="btn btn-secondary" id="modalCancel">Chiudi</button>
-    <button class="btn btn-primary" id="saveBtn" data-help="convocazioni.salva">💾 Salva</button>
-    <button class="btn btn-primary" id="publishBtn" style="background:#27AE60;" title="Salva e invia notifica ad atleti, genitori e staff">📢 Pubblica</button>
+    <button class="btn btn-primary" id="saveBtn" data-help="convocazioni.salva">${saveBtnLabel}</button>
+    <button class="btn btn-primary" id="publishBtn" style="display:flex;align-items:center;" title="Salva e invia notifica ad atleti, genitori e staff"><span id="pubDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotColor};margin-right:6px;animation:${dotAnim};"></span>📢 Pubblica</button>
     <button class="btn btn-primary" id="previewBtn" style="background:#0A1C3A;" data-help="convocazioni.anteprima">📄 Vedi Convocazione</button>`;
 
   const modal = createModal('📋 Convocazioni - vs ' + (match.avversario || '...'), content, footer, '650px');
@@ -124,14 +137,22 @@ export async function openConvocation(mid, readOnly) {
     else if (c < 11) { w.textContent = '⚠️ Minimo 11!'; w.style.display = 'inline'; s.disabled = true; s.style.opacity = '0.5'; }
     else if (c < 16) { w.textContent = '⚠️ Solo ' + c; w.style.display = 'inline'; }
   }
-  document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => cb.addEventListener('change', upd));
+  document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => cb.addEventListener('change', () => { upd(); markChanged(); }));
   document.getElementById('btnSelAll').addEventListener('click', () => {
-    document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => cb.checked = true); upd();
+    document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => cb.checked = true); upd(); markChanged();
   });
   document.getElementById('btnDeselAll').addEventListener('click', () => {
-    document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => cb.checked = false); upd();
+    document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => cb.checked = false); upd(); markChanged();
   });
   upd();
+
+  // Marca che ci sono modifiche non pubblicate
+  function markChanged() {
+    if (!hasSavedConv) return;
+    hasUnsavedChanges = true;
+    const dot = document.getElementById('pubDot');
+    if (dot) { dot.style.background = '#667eea'; dot.style.animation = 'pulse-dot 1.2s infinite'; }
+  }
 
   document.getElementById('saveBtn').addEventListener('click', async () => {
     const checks = document.querySelectorAll('#currentModal .conv-check:checked:not(:disabled)');
@@ -139,7 +160,6 @@ export async function openConvocation(mid, readOnly) {
     if (checks.length < 11) { alert('⚠️ Minimo 11 calciatori!'); return; }
     if (checks.length < 16 && !await confirm('Solo ' + checks.length + ' convocati. Procedere?')) return;
     
-    // Raccogli tutte le convocazioni (esclusi indisponibili congelati)
     const convocazioni = [];
     document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => {
       convocazioni.push({ calciatoreId: cb.dataset.pid, presente: cb.checked });
@@ -150,7 +170,14 @@ export async function openConvocation(mid, readOnly) {
       await apiFetch('/partite/' + mid + '/convocazioni-batch', {
         method: 'POST', body: JSON.stringify({ convocazioni })
       });
-      hideLoading(); modal.close(); alert('✅ Convocazioni salvate!');
+      hideLoading();
+      // Aggiorna stato bottoni
+      const saveBtn = document.getElementById('saveBtn');
+      if (saveBtn) saveBtn.innerHTML = '✏️ Modifica';
+      // Segna che pubblica è necessario
+      const dot = document.getElementById('pubDot');
+      if (dot) { dot.style.background = '#667eea'; dot.style.animation = 'pulse-dot 1.2s infinite'; }
+      alert('✅ Convocazioni salvate! Ricorda di pubblicare per notificare.');
     } catch (e) {
       hideLoading();
       alert('Errore: ' + e.message);
@@ -169,7 +196,12 @@ export async function openConvocation(mid, readOnly) {
     try {
       await apiFetch('/partite/' + mid + '/convocazioni-batch', { method: 'POST', body: JSON.stringify({ convocazioni }) });
       await apiFetch('/partite/' + mid + '/convocazioni-pubblica', { method: 'POST' });
-      hideLoading(); modal.close(); alert('✅ Convocazione pubblicata! Notifica inviata ad atleti, genitori e staff.');
+      hideLoading();
+      // Pallino verde fisso
+      const dot = document.getElementById('pubDot');
+      if (dot) { dot.style.background = '#27AE60'; dot.style.animation = 'none'; }
+      hasUnsavedChanges = false;
+      alert('✅ Convocazione pubblicata! Notifica inviata.');
     } catch (e) {
       hideLoading(); alert('Errore: ' + e.message);
     }

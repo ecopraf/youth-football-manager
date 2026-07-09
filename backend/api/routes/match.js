@@ -232,6 +232,15 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  // ── STATO CONVOCAZIONE (pubblicata o no) ──
+  router.get('/api/partite/:matchId/convocazioni-stato', authMiddleware, async (req, res) => {
+    try {
+      const { data } = await supabase.from('notification')
+        .select('id').eq('tipo', 'convocazione').eq('riferimento_id', req.params.matchId).limit(1);
+      res.json({ published: !!(data && data.length > 0) });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   // ── PUBBLICA CONVOCAZIONE (invia notifiche) ──
   router.post('/api/partite/:matchId/convocazioni-pubblica', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
     try {
@@ -560,6 +569,12 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
           capitano: f.is_captain, viceCapitano: f.is_vice_captain
         }));
         return res.json(result);
+      }
+      // No formazione: verifica se convocazione è stata pubblicata
+      const { data: pubNotif } = await supabase.from('notification')
+        .select('id').eq('tipo', 'convocazione').eq('riferimento_id', req.params.matchId).limit(1);
+      if (!pubNotif || pubNotif.length === 0) {
+        return res.status(403).json({ error: 'NOT_PUBLISHED', message: 'Convocazione non ancora pubblicata' });
       }
       res.json([]);
     } catch (err) { res.status(500).json({ error: err.message }); }

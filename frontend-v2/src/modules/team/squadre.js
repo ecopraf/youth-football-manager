@@ -1,5 +1,6 @@
 import { apiFetch } from '../../services/api';
 import { getSavedWorkspaceId, saveCurrentWorkspace } from '../club/workspaceSwitcher';
+import { invalidateDashboardCache } from './dashboard.js';
 
 const STORAGE_KEY = 'yfm_squadra_id';
 const SEASON_STORAGE_KEY = 'yfm_stagione_id';
@@ -134,6 +135,7 @@ export async function loadSquadre(stagioneId) {
         localStorage.setItem(STORAGE_KEY, e.target.value);
         window.YFM.allPlayers = [];
         window.YFM.allMatches = [];
+        invalidateDashboardCache();
         const sq = allSquadre.find(s => s.id === e.target.value);
         const wsId = sq?.category?.workspace_id;
         if (wsId && wsId !== window.YFM.activeWorkspaceId) {
@@ -184,6 +186,7 @@ function renderSeasonSelector(seasons, selected) {
     // Ricarica squadre per la nuova stagione
     localStorage.removeItem(STORAGE_KEY);
     window.YFM.squadraId = null;
+    invalidateDashboardCache();
     await loadSquadre(sel.value);
     window.YFM.navigateTo(window.YFM.currentPage);
     import('../coach/notifications.js').then(m => m.updateNotifBadge()).catch(() => {});

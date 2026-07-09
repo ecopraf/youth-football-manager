@@ -144,7 +144,7 @@ function renderPlayerCards(players) {
     
     // Info giocatore
     card += '<div class="player-info" style="flex:1;min-width:0;">';
-    card += '<div class="player-name" style="font-weight:600;font-size:15px;">' + p.nome + ' ' + p.cognome + '</div>';
+    card += '<div class="player-name" style="font-weight:600;font-size:15px;">' + p.cognome + ' ' + p.nome + '</div>';
     card += '<div class="player-role" style="color:#666;font-size:13px;margin-top:2px;">' + (p.ruolo || '-') + ' · #' + (p.numero_maglia || '-') + '</div>';
     card += '</div>';
     
@@ -183,7 +183,7 @@ function attachCardListeners() {
       e.stopPropagation();
       const pid = btn.dataset.pid;
       const p = allPlayers.find(x => x.id === pid);
-      if (!await confirm('Rimandare ' + (p ? p.nome + ' ' + p.cognome : '') + ' alla categoria originale?')) return;
+      if (!await confirm('Rimandare ' + (p ? p.cognome + ' ' + p.nome : '') + ' alla categoria originale?')) return;
       showLoading();
       try {
         await apiFetch('/squadre/' + window.YFM.squadraId + '/disaggrega', { method: 'POST', body: JSON.stringify({ playerIds: [pid] }) });
@@ -300,7 +300,7 @@ function renderSvincolatiSection() {
   const cards = svincolati.sort((a, b) => a.cognome.localeCompare(b.cognome)).map(p => {
     return '<div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px;opacity:0.7;">' +
       '<div style="background:#999;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:white;">' + (p.nome || '')[0] + (p.cognome || '')[0] + '</div>' +
-      '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;">' + p.nome + ' ' + p.cognome + '</div><div style="font-size:12px;color:#888;">' + (p.ruolo || '-') + '</div></div>' +
+      '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;">' + p.cognome + ' ' + p.nome + '</div><div style="font-size:12px;color:#888;">' + (p.ruolo || '-') + '</div></div>' +
       '<button class="btn btn-secondary btn-riattiva" data-pid="' + p.id + '" style="font-size:11px;padding:6px 12px;">\u21A9 Riattiva</button>' +
       '</div>';
   }).join('');

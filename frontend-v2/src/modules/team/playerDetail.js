@@ -3,6 +3,7 @@ import { formatDateShort } from '../../utils/formatters.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
 import { calcolaCodiceFiscale, cercaComune } from '../../utils/codiceFiscale.js';
 import { DataGrid } from '../../components/DataGrid.js';
+import { invalidateDashboardCache } from './dashboard.js';
 
 export async function loadPlayerDetail(container, playerId) {
   if (!container) {
@@ -370,7 +371,7 @@ function renderPlayerDetail(container, data) {
         <button class="btn btn-secondary btn-small" id="btnBackRoster">← Torna alla rosa</button>
       </div>
     </div>
-    <h1 class="page-title" style="margin-top:12px;">${nome} ${cognome}</h1>
+    <h1 class="page-title" style="margin-top:12px;">${cognome} ${nome}</h1>
     <p class="page-subtitle">${ruolo} • N° ${numero} • ${dataMorte} • piede ${piede}</p>
     ${adminActions}
     ${datiAnagrafici}
@@ -660,6 +661,7 @@ function renderPlayerDetail(container, data) {
       showLoading('Salvataggio...');
       try {
         await apiFetch('/calciatori/' + player.id, { method: 'PUT', body: JSON.stringify(d) });
+        invalidateDashboardCache();
         // Ricarica la scheda
         loadPlayerDetail(container, player.id);
       } catch (e) {

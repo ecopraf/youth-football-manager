@@ -28,8 +28,8 @@ function createDashboardRouter({ supabase, authMiddleware }) {
       ] = await Promise.all([
         supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, tipo_competizione, giornata')
           .eq('team_id', teamId).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora', { ascending: false }),
-        supabase.from('team_player').select('id, player_id, player:player_id(id, nome, cognome, scadenza_visita_medica), numero_maglia')
-          .eq('team_id', teamId).eq('stato', 'Attivo'),
+        supabase.from('team_player').select('id, player_id, player:player_id(id, nome, cognome, data_visita_medica), numero_maglia, stato')
+          .eq('team_id', teamId).neq('stato', 'Svincolato'),
         supabase.from('match').select('id, data_ora, avversario, luogo, tipo_competizione, giornata')
           .eq('team_id', teamId).gte('data_ora', todayStart).order('data_ora', { ascending: true }).limit(5),
         supabase.from('training').select('id, data_ora, durata_minuti, tipo, descrizione, note')
@@ -168,16 +168,23 @@ function createDashboardRouter({ supabase, authMiddleware }) {
       (players || []).forEach(tp => {
         const p = tp.player;
         if (!p) return;
-        if (!p.scadenza_visita_medica) {
+        if (!p.data_visita_medica) {
           certificati.mancanti++;
-        } else if (p.scadenza_visita_medica < todayStr) {
-          certificati.scaduti++;
-          certificati.dettaglio.push({ id: p.id, nome: p.nome, cognome: p.cognome, scadenza: p.scadenza_visita_medica, stato: 'scaduto' });
-        } else if (p.scadenza_visita_medica <= in30Str) {
-          certificati.inScadenza++;
-          certificati.dettaglio.push({ id: p.id, nome: p.nome, cognome: p.cognome, scadenza: p.scadenza_visita_medica, stato: 'in_scadenza' });
+          certificati.dettaglio.push({ id: p.id, nome: p.nome, cognome: p.cognome, scadenza: null, stato: 'mancante' });
         } else {
-          certificati.validi++;
+          const scad = new Date(p.data_visita_medica);
+          scad.setFullYear(scad.getFullYear() + 1);
+          const scadStr = scad.toISOString().substring(0, 10);
+          if (scadStr < todayStr) {
+            certificati.scaduti++;
+            certificati.dettaglio.push({ id: p.id, nome: p.nome, cognome: p.cognome, scadenza: scadStr, stato: 'scaduto' });
+          } else if (scadStr <= in30Str) {
+            certificati.inScadenza++;
+            certificati.dettaglio.push({ id: p.id, nome: p.nome, cognome: p.cognome, scadenza: scadStr, stato: 'in_scadenza' });
+          } else {
+            certificati.validi++;
+            certificati.dettaglio.push({ id: p.id, nome: p.nome, cognome: p.cognome, scadenza: scadStr, stato: 'valido' });
+          }
         }
       });
 

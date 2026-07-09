@@ -30,32 +30,25 @@ export async function openDistinta(mid, staffOverrides) {
   try {
     let data = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + mid + '/distinta');
     
-    // Se non c'è formazione, usa i convocati
+    // Se non c'è formazione, usa i convocati (solo se pubblicati)
     if (!data || !Array.isArray(data) || data.length === 0) {
-      // Prova a caricare i convocati
-      const convResp = await apiFetch('/partite/' + mid + '/convocazioni').catch(() => []);
-      const convocati = (Array.isArray(convResp) ? convResp : []).filter(c => c.presente === true || c.presente === null);
+      // Carica convocati e rosa in parallelo
+      const [convResp, rosa] = await Promise.all([
+        apiFetch('/partite/' + mid + '/convocazioni').catch(() => []),
+        apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => [])
+      ]);
+      const convocatiIds = new Set(
+        (Array.isArray(convResp) ? convResp : []).filter(c => c.presente === true).map(c => c.calciatoreId)
+      );
       
-      if (convocati.length === 0) {
+      if (convocatiIds.size === 0) {
         document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Nessun convocato per questa partita. Salva prima le convocazioni.</div>';
         return;
       }
       
-      // Carica rosa per avere i dati anagrafici
-      const rosa = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
-      const rosaMap = {};
-      rosa.forEach(g => { rosaMap[g.id] = g; });
-      
-      // Risolvi team_player_id → player data
-      const tpIds = convocati.map(c => c.team_player_id).filter(Boolean);
-      let tpMap = {};
-      if (tpIds.length > 0) {
-        const tpResp = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
-        tpResp.forEach(g => { tpMap[g.id] = g; });
-      }
-      
-      // Costruisci formazione dai convocati in ordine alfabetico
+      // Filtra solo i convocati dalla rosa
       const formazioneDaConvocati = rosa
+        .filter(g => convocatiIds.has(g.id))
         .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''))
         .map(g => ({
           id: g.id,
@@ -96,7 +89,11 @@ export async function openDistinta(mid, staffOverrides) {
     curStaff = staffOverrides || data.staff || {};
     renderDistinta(data, curStaff);
   } catch (e) {
-    document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Nessun convocato per questa partita. Salva prima le convocazioni.</div>';
+    if (e.message === 'NOT_PUBLISHED') {
+      document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Pubblica prima le convocazioni per generare la distinta.<br><small style="color:#666;">Vai su Convocazioni → Pubblica, poi torna qui.</small></div>';
+    } else {
+      document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Nessun convocato per questa partita. Salva prima le convocazioni.</div>';
+    }
   }
   
   document.getElementById('printBtn').addEventListener('click', async () => {

@@ -111,7 +111,7 @@ function renderPresenzeDetail(date) {
       <div style="display:flex;align-items:center;gap:8px;min-width:200px;">
         <input type="checkbox" ${isAssente ? 'checked' : ''} data-pid="${g.id}" class="pres-check" style="width:20px;height:20px;cursor:pointer;accent-color:#E74C3C;">
         <div class="player-avatar" style="width:28px;height:28px;font-size:11px;background:${getAvatarColor(g.nome)};">${g.nome[0]}${g.cognome[0]}</div>
-        <span style="font-size:13px;">${g.nome} ${g.cognome}</span>
+        <span style="font-size:13px;">${g.cognome} ${g.nome}</span>
         ${absNotif ? `<span title="${absNotif.motivo}${absNotif.messaggio ? ': ' + absNotif.messaggio : ''}" style="font-size:11px;color:#F39C12;font-weight:600;cursor:help;">⚠️ Assenza segnalata</span>` : ''}
       </div>
       <select data-pid="${g.id}" class="pres-motivo" style="padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0;font-size:11px;${isAssente ? '' : 'opacity:0.4;'}" ${isAssente ? '' : 'disabled'}>
@@ -223,7 +223,7 @@ function renderSummary(giocatori, summary, settimana) {
         const percColor = perc >= 80 ? '#22c55e' : perc >= 60 ? '#f59e0b' : '#ef4444';
         return `<tr style="border-bottom:1px solid #f8f8f8;">
           <td style="padding:8px;text-align:center;color:var(--gray);">${i+1}</td>
-          <td style="padding:8px;">${g.nome} ${g.cognome}</td>
+          <td style="padding:8px;">${g.cognome} ${g.nome}</td>
           <td style="padding:8px;text-align:center;">${s.totali}</td>
           <td style="padding:8px;text-align:center;color:#27AE60;font-weight:600;">${s.presenti}</td>
           <td style="padding:8px;text-align:center;color:#E74C3C;font-weight:600;">${s.assenti}</td>

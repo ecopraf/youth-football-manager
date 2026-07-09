@@ -568,11 +568,11 @@ Se un endpoint fetcha una tabella e poi fa una query separata per dati correlati
 // ❌ VIETATO (query separata per dati già raggiungibili via JOIN)
 const { data: players } = await supabase.from('team_player').select('id, player:player_id(id, nome)')...;
 // ... poi più avanti:
-const { data: certs } = await supabase.from('player').select('id, scadenza_visita_medica').in('id', playerIds);
+const { data: certs } = await supabase.from('player').select('id, data_visita_medica').in('id', playerIds);
 
 // ✅ OBBLIGATORIO (includi nel JOIN iniziale)
 const { data: players } = await supabase.from('team_player')
-  .select('id, player:player_id(id, nome, cognome, scadenza_visita_medica)')...;
+  .select('id, player:player_id(id, nome, cognome, data_visita_medica)')...;
 // Usa players direttamente per i certificati, zero query extra
 ```
 

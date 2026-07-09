@@ -626,8 +626,9 @@ export default async function loadDashboard() {
   const certData = window._dashCertificati;
   const certWidget = document.getElementById('dashCertificatiWidget');
   if (certWidget && certData && (certData.scaduti > 0 || certData.inScadenza > 0 || certData.mancanti > 0)) {
-    // Costruisci status compatibile con renderCertificatiCard
-    const status = { scaduti: certData.dettaglio?.filter(d => d.stato === 'scaduto') || [], inScadenza: certData.dettaglio?.filter(d => d.stato === 'in_scadenza') || [], validi: Array(certData.validi || 0).fill({}), mancanti: Array(certData.mancanti || 0).fill({}) };
+    // Costruisci status compatibile con renderCertificatiCard (mappa scadenza → _scadenza)
+    const mapDetail = (arr) => (arr || []).map(d => ({ ...d, _scadenza: d.scadenza ? new Date(d.scadenza) : null }));
+    const status = { scaduti: mapDetail(certData.dettaglio?.filter(d => d.stato === 'scaduto')), inScadenza: mapDetail(certData.dettaglio?.filter(d => d.stato === 'in_scadenza')), validi: mapDetail(certData.dettaglio?.filter(d => d.stato === 'valido')), mancanti: mapDetail(certData.dettaglio?.filter(d => d.stato === 'mancante')) };
     certWidget.innerHTML = '<div style="background:#FFF9F0;border:1px solid #FDE8C8;border-radius:12px;padding:14px;">' + renderCertificatiCard(status) + '</div>';
     bindCertificatiToggle(certWidget);
   }

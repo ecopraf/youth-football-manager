@@ -185,8 +185,7 @@ WORKSPACE (società sportiva)
 | tipo_documento | text | SI | | |
 | numero_documento | text | SI | | |
 | rilasciato_da | date | SI | | |
-| data_visita_medica | date | SI | | |
-| scadenza_visita_medica | date | SI | | |
+| data_visita_medica | date | SI | | Data visita medica (scadenza = +1 anno) |
 | tesserato_dal | date | SI | | |
 | tesserato_fino_al | date | SI | | |
 | note | text | SI | | |
