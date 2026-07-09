@@ -574,7 +574,7 @@ export function renderMatchCard(m, stats, isNext = false) {
       <div style="flex:1;min-width:0;">
         <div class="match-badges" style="margin-bottom:6px;">${luogoBadge}${compBadge}${giornBadge}${archivedBadge}</div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          ${r && r.logo ? `<img src="${r.logo}" style="width:20px;height:20px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : ''}<span class="match-opponent">${m.avversario}</span>
+          ${m.logo ? `<img src="${m.logo}" alt="${m.avversario}" style="width:24px;height:24px;border-radius:50%;object-fit:contain;" onerror="this.style.display='none'">` : ''}<span class="match-opponent">${m.avversario}</span>
           ${resultHtml}
         </div>
         <div class="match-date-compact">📅 ${formatDateCompact(m.data_ora)}</div>

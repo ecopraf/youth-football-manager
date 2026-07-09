@@ -7,11 +7,48 @@ const { coreTeamName } = require('../helpers/importUtils');
 module.exports = function createMatchRouter({ supabase, authMiddleware, requirePermission }) {
   const router = express.Router();
 
+  // ── LOGO CACHE (TTL 2min) ──
+  let _logosCache = null;
+  let _logosCacheTs = 0;
+  const LOGOS_TTL = 120000;
+
+  async function getLogos() {
+    const now = Date.now();
+    if (_logosCache && (now - _logosCacheTs) < LOGOS_TTL) return _logosCache;
+    const { data } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
+    _logosCache = data || [];
+    _logosCacheTs = now;
+    return _logosCache;
+  }
+
+  const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  function findLogo(avv, logos) {
+    if (!avv || !logos || logos.length === 0) return null;
+    const lower = avv.toLowerCase().trim();
+    const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
+    for (const l of logos) {
+      const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
+      if (l.nome.toLowerCase() === lower || compact === lCompact) return l.logo_path;
+    }
+    let best = null, bestLen = 0;
+    for (const l of logos) {
+      const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
+      if (compact.includes(lCompact) || lCompact.includes(compact)) {
+        if (lCompact.length > bestLen) { best = l.logo_path; bestLen = lCompact.length; }
+      }
+    }
+    return best;
+  }
+
   // ── PARTITE CRUD ──
   router.get('/api/squadre/:squadraId/partite', authMiddleware, async (req, res) => {
     try {
-      const { data } = await supabase.from('match').select('*').eq('team_id', req.params.squadraId).order('data_ora', { ascending: false });
-      const result = (data || []).map(m => ({ ...m, competizione: m.tipo_competizione || null }));
+      const [{ data }, logos] = await Promise.all([
+        supabase.from('match').select('*').eq('team_id', req.params.squadraId).order('data_ora', { ascending: false }),
+        getLogos()
+      ]);
+      const result = (data || []).map(m => ({ ...m, competizione: m.tipo_competizione || null, logo: findLogo(m.avversario, logos) }));
       res.json(result);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -20,30 +57,11 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     try {
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const { data } = await supabase.from('match').select('*').eq('team_id', req.params.squadraId).gte('data_ora', todayStart).order('data_ora', { ascending: true }).limit(5);
-      // Logo lookup for opponents
-      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
-      const findLogo = (avv) => {
-        if (!avv || !logos) return null;
-        const lower = avv.toLowerCase().trim();
-        const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
-        // Pass 1: exact match
-        for (const l of logos) {
-          const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
-          if (l.nome.toLowerCase() === lower || compact === lCompact) return l.logo_path;
-        }
-        // Pass 2: substring match — prefer longest (most specific)
-        let best = null, bestLen = 0;
-        for (const l of logos) {
-          const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
-          if (compact.includes(lCompact) || lCompact.includes(compact)) {
-            if (lCompact.length > bestLen) { best = l.logo_path; bestLen = lCompact.length; }
-          }
-        }
-        return best;
-      };
-      const result = (data || []).map(m => ({ ...m, competizione: m.tipo_competizione || null, tipoCompetizione: m.tipo_competizione || null, logo: findLogo(m.avversario) }));
+      const [{ data }, logos] = await Promise.all([
+        supabase.from('match').select('*').eq('team_id', req.params.squadraId).gte('data_ora', todayStart).order('data_ora', { ascending: true }).limit(5),
+        getLogos()
+      ]);
+      const result = (data || []).map(m => ({ ...m, competizione: m.tipo_competizione || null, tipoCompetizione: m.tipo_competizione || null, logo: findLogo(m.avversario, logos) }));
       res.json(result);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -138,19 +156,24 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
   // ── LIVE MATCH ──
   router.put('/api/partite/:id/live-action', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
     try {
-      const { action } = req.body; // start_1t, end_1t, start_2t, end_match
-      const valid = ['start_1t', 'end_1t', 'start_2t', 'end_match'];
+      const { action } = req.body; // start_1t, end_1t, start_2t, end_match, register_past
+      const valid = ['start_1t', 'end_1t', 'start_2t', 'end_match', 'register_past'];
       if (!valid.includes(action)) return res.status(400).json({ error: 'Azione non valida' });
       const { data: m } = await supabase.from('match').select('live_meta').eq('id', req.params.id).single();
       const meta = m?.live_meta || {};
       const now = new Date().toISOString();
-      meta[action] = now;
-      if (action === 'start_1t') meta.stato = '1t';
-      else if (action === 'end_1t') meta.stato = 'intervallo';
-      else if (action === 'start_2t') meta.stato = '2t';
-      else if (action === 'end_match') meta.stato = 'fine';
+      if (action === 'register_past') {
+        meta.stato = 'fine';
+        meta.end_match = now;
+      } else {
+        meta[action] = now;
+        if (action === 'start_1t') meta.stato = '1t';
+        else if (action === 'end_1t') meta.stato = 'intervallo';
+        else if (action === 'start_2t') meta.stato = '2t';
+        else if (action === 'end_match') meta.stato = 'fine';
+      }
       const updateData = { live_meta: meta };
-      if (action === 'end_match') updateData.stato = 'Terminata';
+      if (action === 'end_match' || action === 'register_past') updateData.stato = 'Terminata';
       await supabase.from('match').update(updateData).eq('id', req.params.id);
       res.json({ success: true, live_meta: meta });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -436,46 +459,19 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
 
   router.get('/api/partite/:matchId/dettaglio', authMiddleware, async (req, res) => {
     try {
-      const { data: match } = await supabase.from('match').select('*').eq('id', req.params.matchId).single();
+      const [{ data: match }, logos] = await Promise.all([
+        supabase.from('match').select('*').eq('id', req.params.matchId).single(),
+        getLogos()
+      ]);
       if (match) {
         match.competizione = match.tipo_competizione || null;
-        // Logo lookup
-        const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
-        if (logos && match.avversario) {
-          const lower = match.avversario.toLowerCase().trim();
-          const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-          const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
-          const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        match.logo = findLogo(match.avversario, logos);
+        // Pass 3: core name fallback
+        if (!match.logo && match.avversario) {
           const coreAvv = coreTeamName(match.avversario);
-          match.logo = null;
-          // Pass 1: exact/compact match (high confidence)
           for (const l of logos) {
-            const lLower = l.nome.toLowerCase();
-            const lCompact = stripAccents(l.nome_normalizzato).replace(/[^a-z0-9]/g, '');
-            if (lLower === lower || l.nome_normalizzato === norm || compact === lCompact) {
-              match.logo = l.logo_path; break;
-            }
-          }
-          // Pass 2: partial includes (medium confidence) — prefer longest match
-          if (!match.logo) {
-            let best = null, bestLen = 0;
-            for (const l of logos) {
-              const lLower = l.nome.toLowerCase();
-              const lCompact = stripAccents(l.nome_normalizzato).replace(/[^a-z0-9]/g, '');
-              if (compact.includes(lCompact) || lCompact.includes(compact) || lower.includes(lLower) || lLower.includes(lower)) {
-                if (lCompact.length > bestLen) { best = l.logo_path; bestLen = lCompact.length; }
-              }
-            }
-            if (best) match.logo = best;
-          }
-          // Pass 3: core name fallback (low confidence, only if no ambiguity)
-          if (!match.logo) {
-            for (const l of logos) {
-              const coreLogo = coreTeamName(l.nome);
-              if (coreAvv && coreLogo && coreAvv === coreLogo) {
-                match.logo = l.logo_path; break;
-              }
-            }
+            const coreLogo = coreTeamName(l.nome);
+            if (coreAvv && coreLogo && coreAvv === coreLogo) { match.logo = l.logo_path; break; }
           }
         }
       }

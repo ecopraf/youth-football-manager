@@ -231,7 +231,12 @@ function calcLiveMinute() {
 
 function getLiveStateLabel() {
   const meta = match?.live_meta;
-  if (!meta?.stato) return { label: '▶️ Inizio 1°T', action: 'start_1t' };
+  if (!meta?.stato) {
+    // Partita passata senza live_meta → registrazione post-partita
+    const isPast = match?.data_ora && new Date(match.data_ora).getTime() < Date.now() - 60 * 60 * 1000;
+    if (isPast) return { label: '⏩ Registra Partita', action: 'register_past' };
+    return { label: '▶️ Inizio 1°T', action: 'start_1t' };
+  }
   if (meta.stato === '1t') return { label: '⏸️ Fine 1°T', action: 'end_1t' };
   if (meta.stato === 'intervallo') return { label: '▶️ Inizio 2°T', action: 'start_2t' };
   if (meta.stato === '2t') return { label: '🏁 Fine Partita', action: 'end_match' };
@@ -614,6 +619,11 @@ function getLiveButton() {
     }
   }
 
+  // register_past: nessun blocco, colore diverso
+  if (action === 'register_past') {
+    return `<div style="margin-top:12px;"><button class="mc-live-btn" id="mcLiveBtn" data-action="${action}" style="background:#27AE60;">${label}</button><div id="mcLiveCountdown" class="mc-live-countdown" style="display:none;"></div></div>`;
+  }
+
   const colors = { start_1t: '#667eea', end_1t: '#F39C12', start_2t: '#667eea', end_match: '#E74C3C' };
   const { allowed, remaining } = getTransitionInfo();
   const meta = match?.live_meta;
@@ -885,14 +895,16 @@ function bindEvents(mid) {
     const executeLiveAction = async (forced) => {
       const action = liveBtn.dataset.action;
       if (!forced && liveBtn.disabled) return;
-      const confirmMsg = action === 'end_match' ? 'Confermi Fine Partita?' : (forced ? 'Forzare transizione? (tempo minimo non raggiunto)' : null);
+      const confirmMsg = action === 'end_match' ? 'Confermi Fine Partita?'
+        : action === 'register_past' ? 'Registrare questa partita come terminata? Potrai inserire formazione, eventi e risultato.'
+        : (forced ? 'Forzare transizione? (tempo minimo non raggiunto)' : null);
       if (confirmMsg && !await confirm(confirmMsg)) return;
       try {
         const res = await apiFetch('/partite/' + mid + '/live-action', { method: 'PUT', body: JSON.stringify({ action }) });
         match.live_meta = res.live_meta;
-        if (action === 'end_match') match.stato = 'Terminata';
+        if (action === 'end_match' || action === 'register_past') match.stato = 'Terminata';
         const amIdx = (window.YFM.allMatches||[]).findIndex(m => m.id === mid);
-        if (amIdx >= 0) { window.YFM.allMatches[amIdx].live_meta = res.live_meta; if (action === 'end_match') window.YFM.allMatches[amIdx].stato = 'Terminata'; }
+        if (amIdx >= 0) { window.YFM.allMatches[amIdx].live_meta = res.live_meta; if (action === 'end_match' || action === 'register_past') window.YFM.allMatches[amIdx].stato = 'Terminata'; }
         render(document.getElementById('pageContent'), mid);
       } catch (err) { alert('Errore: ' + err.message); }
     };
