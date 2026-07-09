@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 18 Luglio 2025 | Versione: v3.16 | Commit: pending
+> Ultimo aggiornamento: 9 Luglio 2026 | Versione: v3.16 | Build: v3.16.2
 
 ---
 
@@ -575,142 +575,34 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
-| 088d446 | feat: cleanup UI — rimuovi brand, redesign calendar toolbar, import tab Match Center (rimossi card TC, XLS modal diretto, tab Import in MC, countdown fix, filtro+selezione calendario, selector categorie ordinato, rename GR→Portale Regionale) |
-| b887482 | feat: team access validation middleware — verifica workspace (utenti) e categoria (guest) su ogni richiesta con team_id |
-| 4adc933 | feat: import XLS matching a cascata (CF → matricola → nome+DN) + colonna codice_fiscale su player + preview migliorata |
-| 7649ccc | fix: dashboard DR +0 → mostra "0" neutro grigio |
-| 0afd4fe | feat: Match Center — blocco avvio 5min, auto-expire, incolla tabellino TC |
-| 43134b5 | fix: dashboard stagione dinamica |
-| a209b32 | fix: import XLS categoria suggerita dinamica da stagione |
-| 8c0ba27 | feat: validazione formato file import (XLS/PDF) |
-| 7c70cb4 | fix: report giocatore filtro stagione/competizione + searchbox + fix nomi troncati |
-| 17f6fbf | feat: MC single entry point + formazione sub-tabs Iniziale/Finale + protezione temporale live (countdown + long-press override) |
-| (pending) | feat: training calendar — holidays italiane (Pasqua dinamica), mini counters presenti/assenti, auto-navigate ultimo mese con dati per stagioni passate |
-| (pending) | fix: Supabase 1000-row limit — batch fetch (20 IDs + .range(0,9999)) su /presenze e /summary |
-| (pending) | feat: summary season-aware — rileva stagione passata (>30gg da ultimo allenamento), nasconde Ass.Sett., mostra range stagione completo |
-| (pending) | feat: indicatori motivi assenza nel riepilogo presenze (cards + barra distribuzione) |
-| (pending) | perf: ottimizzazione endpoint — Promise.all su top-players/stats-giocatori (-79%/-50%), rimozione JOIN su presenze (-75%), unificazione batch su summary (-47%) |
-| (pending) | style: redesign top players + staff cards — glassmorphism con medaglie, progress bar, avatar iniziali |
-| (pending) | feat: card prossimo allenamento in dashboard (sopra partita) con shortcut Programma/Presenze |
-| (pending) | feat: tab Note in Match Center con auto-save debounce + timestamp live |
-| (pending) | fix: timezone allenamenti-futuri — usare data locale invece di toISOString() per evitare duplicati virtuali |
-| ba51bee | feat: Live Match Mode — bottone stato, minuto live, pre-fill drawer, durata per categoria |
-| 856acd8 | feat: Match Center hub + CORS fix + assist/rigore/autogol support |
-| 7c5b3a6 | feat: unified Match Center button in calendar + dashboard |
-| (pending) | feat: Match Center UX — autogol logic fix, SUB persistence, gol subito text field, live button blink, dashboard partita odierna, matchDetail SUB display fix |
-| (pending) | fix: statistiche filtrate per tipo competizione (solo campionato+coppa per stats ufficiali) |
-| fa94529 | feat: multi-session improvements — stats, calendar fix, dashboard, match events, assist fix, convocazioni fix |
-| d7119aa | feat: formazione live interattiva in Match Center con sostituzioni drag/tap |
-| 96609e7 | feat: Match Center formazione live + modulo_finale tracking + mobile fix + timeline 2 colonne + modal custom sostituzione |
-| (pending) | fix: WhatsApp link aggiunge +39 a numeri senza prefisso internazionale + template picker con modale card + fix salvataggio/caricamento programma seduta (upsert backend + load da DB) |
-| (pending) | feat: redesign stagioni — wizard con promozione categoria (U14→U15), tipo campionato, delete cascade, stagioni espandibili con card team |
-| (pending) | feat: workspace.nome_breve — nome compatto per sidebar/dashboard (DB + backend + frontend) |
-| (pending) | fix: GR matching usa team.nome (non workspace.nome) + wizard mostra nome team con categoria e warning mismatch |
-| 6f7eda4 | fix: matching fuzzy nomi squadre GR con abbreviazioni (Pol., C., Atl., ecc.) |
-| c810571 | fix: logout accessibile da sidebar (mobile+desktop) + chiusura sidebar immediata su tap |
-| fee70e9 | fix: tasto modifica/elimina calendario non funzionava (selettore CSS errato) |
-| 3cb48a5 | fix: orario partite — risolto timezone shift e display ridondante |
-| 841531e | fix: import center + dashboard GR usano matching fuzzy abbreviazioni |
-| (pending) | feat: redesign stagioni & categorie — wizard creazione con anno, auto-team, migrazione rosa/staff/config, dropdown solo stagione attiva, endpoint career/last-matches cross-season |
-| (pending) | fix: badge notifiche immediato al login + polling 60s + aggiornamento cambio squadra |
-| (pending) | fix: guest links filtrati per categoria squadra selezionata |
-| (pending) | fix: pagina Società accessibile ai guest (usa dati in memoria) |
-| (pending) | feat: guest UX — auto-redirect squadra stagione corrente, benvenuto personalizzato, nome atleta in header |
-| (pending) | feat: notifiche assenze — campanella sempre visibile, badge nuove/totali settimana, auto-cleanup settimanale |
-| (pending) | style: notifiche — layout griglia compatto, animazione segna-letta, spunta verde |
-| (pending) | fix: guest logout mostra "Sessione terminata" invece di redirect a login |
-| (pending) | style: nasconde avatar utente su mobile per liberare spazio header |
-| (pending) | feat: superadmin login con selezione workspace, workspace_id=NULL |
-| (pending) | feat: creazione categoria con dropdown (U14-U19 + tipo campionato) e auto-creazione team |
-| (pending) | refactor: rimosse colonne staff ridondanti da team, report usa team_staff |
-| 9be406a | feat: allenamenti-futuri virtuali da config + indicatore ⚠️ assenza segnalata in presenze |
-| 612882a | perf: cache intelligente dashboard+stats (memory 2min, sessionStorage 10min, lazy load GR) |
-| — | perf: skip loadAvailableWorkspaces per non-superadmin (-250ms init) |
-| — | feat: custom alert/confirm dialogs (no URL nel titolo, async confirm) |
-| — | feat: guest links — multi-select delete/renew batch, badge stato, colonna attivo dal |
-| — | feat: help interattivo contestuale (popover + modalità interattiva con overlay) |
-| — | fix: 401 handling su endpoint /auth/* (token scaduto non triggerava logout) |
-| — | feat: scadenza guest links allineata a stagione calcistica (30/06) |
-| d517f09 | fix: endpoint GET /api/giocatori/:id/valutazioni |
-| 279c95c | feat: contatti genitori in scheda dettaglio |
-| ab137a2 | feat: contatti genitori (padre/madre/tutore) nel form |
-| ff6fcff | fix: persist squadraId in localStorage |
-| 448882a | style: rimuove nome categoria dai titoli |
-| dbc0b9b | feat: guest token season_id — legame stagione, blocco creazione post-31/07, nome giocatore da DB |
-| e715772 | style: sidebar Coach sopra Performance, rinomina 'Genera Link Atleti' |
-| 36c1276 | feat: workspace social (facebook/instagram) + import GR unificato con checkbox + fix classifica_url in memoria |
-| c624f55 | feat: minuti reali da match_statistics nel report giocatore, fix calendario isPlayed, autocomplete avversario |
-| (pending) | feat: session guard — visibility check (5min) + inactivity timer (30min) con banner + auto-reload pagina |
-| (pending) | feat: import manuale rosa — fix parsing tab-separated (nome duplicato), legenda formato, preview tabella con numero maglia |
-| (pending) | fix: Match Center import tabellino — salvataggio reale DB, blocco su partite Da disputare, dedup eventi, verifica avversario, preview formazione |
-| (pending) | feat: codice fiscale nel form giocatore — campo CF + luogo nascita con autocomplete comuni + calcolo automatico CF |
-| 0972348 | fix: import XLS — omonimi con CF diversi trattati come giocatori distinti (step 3 nome+DN solo se no CF/matricola, protezione sovrascrittura) |
-| 73f6557 | fix: pulizia loghi duplicati (776→765) + dedup hash MD5 in import + normalizeLogoName unificato |
-| 2bfb862 | feat: CF e Luogo Nascita nella pagina Nuovo Calciatore (playerDetail.js) |
-| 22d2b8e | style: upload XLS drag&drop + modal utenti responsive mobile |
-| (pending) | feat: CF e Luogo Nascita visibili e modificabili nella scheda giocatore (playerDetail view+edit) |
-| (pending) | refactor: redesign form Nuovo Calciatore e Modifica — 3 sezioni card (Anagrafica/Sportivi/Documenti), griglia 2 colonne, CF auto-calcolato, header contestuale categoria+stagione, feedback visivo modalità edit (banner + bordo brand) |
-| (pending) | feat: card certificati medici compatta con 4 badge (Scaduti/In Scadenza/Validi/Mancanti) + espansione dettaglio — in Rosa e Dashboard (nascosta di default, visibile per segreteria) |
-| (pending) | feat: redesign pagina Gestione Utenti — filtri (cerca/ruolo/stato), azione Sospendi/Attiva toggle, badge stato, endpoint toggle-active, caricamento utenti inattivi |
-| d733428 | style: responsive globale mobile — griglie 1col @500px, tabelle scroll, modal compatti |
-| (pending) | feat: dashboard personalizzabile — riordino + show/hide widget, preferenze utente in DB, GR card sfondo sfumato, layout responsive (2-col desktop / card separate mobile), fix calendario centrato, marcatori 2-col con gol allineati a dx |
-| (pending) | fix: scheda giocatore — rimossa card summary rotta (stats-current eliminato), carriera raggruppata per tipo competizione (Campionato/Coppa/Amichevole), endpoint ottimizzato (batch fetch) |
-| (pending) | fix: gestione errori DB — helper centralizzato dbErrors.js traduce duplicate key in messaggi IT user-friendly (CF giocatore, email utente, ecc.) |
-| (pending) | feat: profilo segreteria + widget certificati medici in dashboard (nascosto di default per altri profili, visibile per segreteria) |
-| (pending) | fix: preferenze dashboard superadmin — risolto id hardcoded 'superadmin' su GET/PUT /users/preferences |
-| (pending) | feat: DataGrid component — tabella responsive riutilizzabile (table desktop / card mobile), playerDetail carriera raggruppata per squadra con logo, ultime partite compatte con logo avversario, endpoint career+last-matches con logo da team_logo |
-| (pending) | feat: Centro Comunicazioni — tabella notification DB, router notification.js (GET/PUT), trigger auto su convocazioni-batch, frontend notifications.js con tabs Comunicazioni+Assenze, badge campanella combinato |
-| (pending) | feat: segreteria capabilities — formazione:write, import:write, sidebar Import Center per non-admin con capability |
-| (pending) | feat: widget Prossima Convocazione in dashboard segreteria (stato convocati, bottoni Convoca/Vedi/PDF) |
-| (pending) | fix: convocazione PDF header — NaN anno, undefined avversario, Invalid Date, formato amichevole vs campionato |
-| (pending) | fix: notification trigger — workspace_id via category join (team non ha workspace_id), try/catch Supabase |
-| (pending) | fix: badge campanella segreteria — rimosso early return su squadraId mancante |
-| (pending) | style: wizard utenti — rimosso dot stagione attiva, bottone 💾 Salva |
-| (pending) | feat: tipo competizione semplificato — dropdown 4 opzioni fisse (Campionato/Coppa/Torneo/Amichevole), campo match.tipo_competizione TEXT, rimosso JOIN competition |
-| (pending) | feat: girone in category — colonna girone TEXT, auto-save da import PDF e config GR, distinta/convocazione mostrano "U15 Regionale - Girone E" |
-| (pending) | fix: distinta dinamica per tipo — "del campionato X", "del torneo X", "della coppa X", "Gara Amichevole" |
-| (pending) | fix: convocazione isAmichevole — variabile non definita causava crash "Vedi Convocazione" |
-| (pending) | fix: PDF parser girone regex — cattura solo lettera (es. B) ignorando suffissi (BIS) |
-| (pending) | feat: email atleta + email genitore in scheda giocatore (view/edit/insert) |
-| (pending) | fix: distinta — colonna numero maglia vuota per compilazione manuale, (P) per portieri con ruolo_principale dal backend |
-| (pending) | style: ultime partite — logo avversario su desktop (inline-flex), data dd/mm/yy, rimossa icona calendario su mobile |
-| (pending) | feat: carriera espandibile — click su stagione espande lista partite (DataGrid desktop / cards mobile), mutuamente esclusivo, endpoint career-matches, giornata+risultato su desktop, risultato+ellipsis avversario su mobile |
-| (pending) | fix: certificati badge click — toggle apri/chiudi dettaglio su click badge |
-| (pending) | refactor: rimossa funzionalità "Sposta Giocatore" (ridondante con wizard migrazione) da roster.js, playerDetail.js, backend player.js |
-| (pending) | fix: distinta — amichevole senza giornata, preview font 10px simulazione stampa, bottone 📄 Distinta in dashboard, assistente arbitro layout matr+tessera |
-| (pending) | fix: diffidati modulo 5 — squalifica al 5°/10°/15° giallo (diffidato a 4/9/14 ammonizioni) |
-| (pending) | fix: modali form — rimosso click-overlay-close su modali con dati (partita, calciatore, convocazioni, formazione, valutazioni, note, distinta staff, training config) |
-| (pending) | feat: offline buffer — banner globale connessione (solo quando offline), buffer localStorage per MC eventi/note e presenze allenamento, auto-sync al ritorno online |
-| (pending) | perf: dashboard cold start — eliminata await mePromise (-400ms), dedup /auth/workspaces (-300ms), certificati inclusi nel JOIN players (-200ms), rimossi 2 lazy fetch ridondanti (injuries+calciatori già nel dashboard aggregato, -600ms) |
-| (pending) | style: calendario — badge "📦 Archiviata" sostituito con icona 🔒 discreta (tooltip hover) |
-| (pending) | feat: logo ASD Aprilia C.S.P. aggiunto (file + record team_logo DB) |
-| (pending) | feat: EPIC 11 Sistema Atleta & Genitore — capabilities differenziate (atleta/genitore), home atleta (stats+allenamenti+assenze), home genitore (comunicazioni+risultati), routing guest differenziato, priorità notifiche (info/importante/urgente), destinatario_tipo su notification, UI creazione comunicazione con destinatari, notifiche convocazione differenziate per tipo |
-| (pending) | perf: v3.16 — indici DB (match_formation, training_attendance, match team+stato), VIEW v_player_season_stats + v_team_season_summary, endpoint aggregato /dashboard (1 call vs 5-6), frontend refactor cache |
-| (pending) | fix: training calendar — ripristino/annullamento aggiorna colore giorno immediatamente (fix closure su annullati array) |
-| (pending) | fix: report partita — dropdown mostra solo partite con stato Terminata (escluse future e in corso) |
-| (pending) | refactor: sistema capabilities — migrazione da isAdmin() a canWrite()/canRead() per modulo, allenatore usa capabilities reali (non blanket true), guest_links rimosso da profilo allenatore, nuovo endpoint convocazioni-pubblica separato da salvataggio, pulizia notifiche DB |
-| (pending) | feat: indisponibilità inline — bottone ❌ su ogni allenamento/partita nella home atleta, modal con data pre-compilata, stato persistente in sessionStorage (fetch al login + persist dopo invio), fix backend accetta player_id da body per token legacy |
-| (pending) | feat: crea link singolo atleta — dropdown filtra solo giocatori senza link attivo, player_id obbligatorio per tipo atleta |
-| (pending) | feat: risposta convocazione — atleta può segnalare indisponibilità post-convocazione (colonne risposta/risposta_motivo/risposta_at su convocation, endpoint POST risposta, notifica allenatore, badge ❌ in UI convocazioni, counter indisponibili in dashboard) |
-| (pending) | fix: congruenza flusso — assenza pre-convocazione auto-imposta indisponibile alla pubblicazione, batch convocazioni preserva risposte esistenti, DELETE config cascade allenamenti futuri senza presenze |
-| (pending) | feat: ristrutturazione Centro Comunicazioni — tabs Inviate/Ricevute, assenze+indisponibilità unificate, bottone Rispondi atleta, endpoint POST /notifications/reply |
-| (pending) | fix: certificati medici dashboard — eliminata colonna scadenza_visita_medica (ridondante), migrati dati a data_visita_medica, dashboard usa stessa logica rosa (data+1anno), cache invalidation su cambio team/stagione/salvataggio |
-| (pending) | fix: distinta non aggiornata dopo modifica convocazioni — filtro solo convocati (non tutta la rosa) |
-| (pending) | feat: flusso convocazioni Salva/Modifica/Pubblica — bottone Salva→Modifica dopo primo save, pallino stato pubblicazione (🔵 lampeggiante=da pubblicare, 🟢 fisso=pubblicata), endpoint GET /convocazioni-stato |
-| (pending) | feat: PWA installabile — vite-plugin-pwa, manifest, icone, screenshots, registerSW autoUpdate, banner offline, installazione desktop/mobile verificata |
-| (pending) | fix: Lighthouse accessibility — meta description, robots.txt, alt immagini, landmark main, label select (sr-only), heading order h1→h2→h3, contrasto colori (#888→#666 override CSS), aria-label bottoni |
-| (pending) | fix: mobile UX — ripristino avatar header su mobile, toast landscape "usa formato verticale", CSS landscape compatto, rimossa stagione hardcoded da sidebar (ridondante con dropdown header) |
-| (pending) | fix: report giocatore — eventi ordinati per minuto (backend .order + frontend sort safety net) |
-| (pending) | feat: numeri maglia per partita — input editabile nella formazione (priorità: salvato > profilo), aggiornamento live campo+lista, validazione duplicati, confirm async per numeri mancanti, distinta con numeri cerchiati per titolari, bottone Distinta in Match Center, jerseyMap nel MC readonly |
-| (pending) | fix: sidebar landscape mobile — nascosta di default con toggle hamburger, chiusura su tap fuori/click nav, layout compatto |
-| (pending) | style: ordine cognome-nome — tutte le schede giocatori mostrano sempre cognome prima del nome (roster, playerDetail, convocazioni, presenze) |
-| (pending) | fix: calendario logo avversario — aggiunto findLogo a endpoint principale /partite + cache in-memory TTL 2min (shared tra tutti gli endpoint match) |
-| (pending) | feat: calendario badge "⚠️ Inserisci risultato" — partite Terminate senza gol_casa mostrano warning arancione cliccabile (apre MC) invece di falso 0-0 |
-| (pending) | feat: Match Center register_past — partite passate senza live_meta mostrano bottone "⏩ Registra Partita" (setta stato=Terminata senza flusso live) |
-| (pending) | fix: convocazione/distinta mobile — rimossa regola CSS globale display:block su table (rompeva allineamento colonne), aggiunto table-layout:fixed + colgroup su convocazione, overflow-x:auto + min-width su distinta, font ridotti su mobile |
-| (pending) | feat: help interattivo Match Center — data-help su bottone stato, azioni rapide, tabs, timeline, salva; PAGE_HELP per convocazioni e formazione; ELEMENT_HELP per MC (liveBtn, quickActions, tabs, timeline, save) e notifications |
-| (pending) | feat: frontend version bump v3.15→v3.16 (allineamento con backend) + auto-bump minor al superamento di build 99 (v3.16.99→v3.17.1) |
-| (pending) | fix: Import Center — "Import da Portale" mostra anteprima (calendario+marcatori) prima di importare, invece di partire in background |
+| 1feff73 | fix: Import Center — preview anteprima prima di importare da Portale Regionale |
+| 2e2e838 | feat: numeri maglia per partita — input editabile in formazione, distinta cerchiata, bottone Distinta in MC |
+| 28bf43d | refactor: build counter non si incrementa più durante build — solo con npm run release |
+| 57a03c8 | feat: frontend version bump v3.15→v3.16 + auto-bump minor al superamento build 99 |
+| 2d192bd | feat: register_past UX + convocazione nome fix + help expansion |
+| 6a7ab79 | feat: expand in-app help — Match Center interactive + convocazioni/formazione PAGE_HELP |
+| fdbce1f | fix: mobile tables + missing result badge + register_past |
+| a903050 | fix: add logo lookup to main /partite endpoint + optimize with shared cache (TTL 2min) |
+| 5f66734 | fix: mobile UX (avatar, landscape sidebar toggle, stagione rimossa) + report eventi ordinati per minuto |
+| 9efcf28 | fix: mobile UX — ripristino avatar header, toast landscape, CSS landscape compatto |
+| def6cb9 | fix: Lighthouse accessibility — meta description, robots.txt, alt img, heading order, contrasto colori |
+| 5b003be | feat: PWA installabile — manifest, icone, screenshots, registerSW autoUpdate, banner offline |
+| 47e6d4e | fix: certificati medici + distinta + convocazioni flusso + ordine nomi |
+| 2609208 | feat: ristrutturazione Centro Comunicazioni — tabs Inviate/Ricevute, Rispondi atleta |
+| d9730c0 | feat: convocazione dettagliata in home genitore e atleta |
+| a06dde8 | feat: flusso convocazione completo — congelamento indisponibili, vedi convocazione |
+| e510054 | feat: risposta convocazione + fix congruenza flusso |
+| 33f6774 | refactor: capabilities system + convocazioni pubblica + indisponibilità inline |
+| 362bc6a | fix: report partita mostra solo partite Terminate + training calendar fix |
+| 80f5743 | perf: v3.16 — indici DB, VIEW aggregate, endpoint dashboard unificato |
+| a3039dd | feat: tipo competizione + girone — dropdown 4 opzioni, distinta/convocazione dinamiche |
+| 938a561 | feat: Centro Comunicazioni — notifiche in-app, segreteria capabilities, widget convocazione |
+| d096ec3 | perf: dashboard cold start -1.5s — dedup API, certificati in JOIN, rimossi fetch ridondanti |
+| e1edbd4 | feat: offline support — banner globale, buffer localStorage MC + presenze, auto-sync |
+| 79c3db5 | fix: certificati toggle, rimozione Sposta, distinta fixes, diffidati mod5, modali no-overlay-close |
+| 4793e78 | feat: carriera espandibile — click su stagione mostra partite con DataGrid |
+
+> **Nota**: per lo storico completo dei commit precedenti, consultare `git log --oneline`.
 
 ---
 
