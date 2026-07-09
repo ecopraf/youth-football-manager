@@ -190,15 +190,18 @@ export const PAGE_HELP = {
   },
   formazione: {
     title: '🏟️ Formazione',
-    desc: 'Scegli modulo tattico e posiziona i giocatori sul campo.',
+    desc: 'Scegli modulo tattico, posiziona i giocatori sul campo e assegna i numeri di maglia per la partita.',
     items: [
       'Seleziona il modulo dal dropdown (4-3-3, 4-4-2, 3-5-2, ecc.)',
       'Desktop: trascina giocatori dalla lista al campo',
       'Mobile: tap giocatore → tap posizione sul campo',
+      'Assegna i numeri di maglia nell\'input a sinistra di ogni giocatore (1-99)',
+      'I numeri si aggiornano in tempo reale sul campo e nella lista',
+      'Numeri duplicati vengono evidenziati in rosso e bloccano il salvataggio',
       'Pallini colorati indicano ruolo compatibile con la posizione',
       'Servono esattamente 11 titolari con almeno 1 portiere',
       'I non posizionati vanno automaticamente in panchina',
-      'Indica capitano (C) e vice-capitano (V)'
+      'Usa "📋 Ultima" per richiamare la formazione dell\'ultima partita terminata'
     ]
   },
   playerDetail: {
@@ -579,11 +582,11 @@ export const ELEMENT_HELP = {
   },
   'formazione.roster': {
     title: '📋 Lista Convocati',
-    desc: 'I giocatori disponibili per la formazione (solo i convocati). Quelli già posizionati appaiono sbiaditi. Ordinati per ruolo: Portiere → Difensore → Centrocampista → Attaccante.'
+    desc: 'I giocatori disponibili per la formazione (solo i convocati). Quelli già posizionati appaiono sbiaditi. Ordinati per ruolo: Portiere → Difensore → Centrocampista → Attaccante. L\'input numerico a sinistra permette di assegnare il numero di maglia per questa partita (i numeri non sono fissi nel calcio giovanile). I numeri salvati hanno priorità sul numero di default del profilo giocatore.'
   },
   'formazione.salva': {
     title: '💾 Salva Formazione',
-    desc: 'Salva titolari e panchina. Servono esattamente 11 titolari con 1 portiere. I convocati non posizionati vanno automaticamente in panchina. Il modulo e le posizioni personalizzate vengono salvati.'
+    desc: 'Salva titolari, panchina e numeri di maglia. Servono esattamente 11 titolari con 1 portiere. I convocati non posizionati vanno automaticamente in panchina. Se ci sono numeri duplicati il salvataggio viene bloccato. Se mancano numeri a qualche convocato, viene chiesta conferma prima di procedere.'
   },
 
   // === MODALE RISULTATO/EVENTI ===
@@ -625,7 +628,7 @@ export const ELEMENT_HELP = {
   },
   'mc.tabs': {
     title: '📋 Tab di Navigazione',
-    desc: '<strong>Eventi</strong> — Timeline cronologica di tutti gli eventi registrati (default).<br><strong>Formazione</strong> — Visualizza formazione iniziale e finale. Se ci sono state sostituzioni, mostra sub-tabs Iniziale/Finale con modulo tattico.<br><strong>Note</strong> — Appunti liberi con timestamp automatico del minuto live. Auto-save ogni 3 secondi.<br><strong>Import</strong> — Incolla il tabellino da Tuttocampo per importare eventi e formazione automaticamente.'
+    desc: '<strong>Eventi</strong> — Timeline cronologica di tutti gli eventi registrati (default).<br><strong>Formazione</strong> — Visualizza formazione con numeri di maglia assegnati. Bottoni: 📄 Distinta (genera distinta con numeri cerchiati) e ✏️ Modifica. Se ci sono state sostituzioni, mostra sub-tabs Iniziale/Finale.<br><strong>Note</strong> — Appunti liberi con timestamp automatico del minuto live. Auto-save ogni 3 secondi.<br><strong>Import</strong> — Incolla il tabellino da Tuttocampo per importare eventi e formazione automaticamente.'
   },
   'mc.timeline': {
     title: '📋 Timeline Eventi',

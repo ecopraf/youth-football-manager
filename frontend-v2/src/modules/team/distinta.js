@@ -238,9 +238,12 @@ function renderDistinta(d, staff) {
     if (i < t.length) {
       const f = t[i];
       const ruoloTag = f.ruolo_principale === 'Portiere' ? ' (P)' : '';
+      const isTitolare = f.posizione === 'Titolare';
+      const numDisplay = f.numeroMaglia || '';
+      const numCell = numDisplay ? (isTitolare ? '<span style="display:inline-block;width:18px;height:18px;border:2px solid #000;border-radius:50%;text-align:center;line-height:18px;font-weight:700;font-size:9px;">' + numDisplay + '</span>' : numDisplay) : '';
       righe.push('<tr class="' + (f.capitano ? 'capitano' : f.viceCapitano ? 'vice' : '') + '">' +
         '<td style="border:none;font-size:9px;">' + (i + 1) + '</td>' +
-        '<td></td>' +
+        '<td>' + numCell + '</td>' +
         '<td>' + (f.dataNascita ? formatDateShort(f.dataNascita) : '-') + '</td>' +
         '<td style="text-align:left;">' + (f.cognome || '').toUpperCase() + ' ' + (f.nome || '').toUpperCase() + ruoloTag + '</td>' +
         '<td>' + (f.capitano ? 'C' : f.viceCapitano ? 'V' : '') + '</td>' +

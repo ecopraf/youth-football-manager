@@ -3,7 +3,7 @@ import { showLoading, hideLoading } from '../../utils/ui';
 
 const RUOLO_ACR = { 'Portiere': 'POR', 'Difensore': 'DIF', 'Centrocampista': 'CEN', 'Attaccante': 'ATT' };
 
-export { PITCH_CSS, MODULI, buildPitchSlots, convertApiFormation };
+export { PITCH_CSS, MODULI, buildPitchSlots, buildPitchSlotsFromState, convertApiFormation };
 
 const MODULI = {
   '4-3-3': { label: '4-3-3', rows: [1, 4, 3, 3] },
@@ -37,7 +37,12 @@ const PITCH_CSS = `
 @keyframes pulse-suggest { 0%,100%{transform:translate(-50%,-50%) scale(1);} 50%{transform:translate(-50%,-50%) scale(1.1);} }
 .pitch-slot .slot-num { font-size:13px; font-weight:700; color:#667eea; pointer-events:none; user-select:none; }
 .pitch-slot .slot-name { position:absolute; bottom:-12px; font-size:7px; color:white; font-weight:600; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,0.9); pointer-events:none; user-select:none; max-width:50px; overflow:hidden; text-overflow:ellipsis; }
-.roster-item { display:flex; align-items:center; gap:6px; padding:6px 8px; margin-bottom:3px; background:#f8f9fa; border-radius:8px; cursor:grab; border:1px solid #eee; transition:all 0.2s; font-size:11px; }
+.roster-row { display:flex; align-items:center; gap:4px; margin-bottom:3px; }
+.jersey-input { width:28px; height:24px; border:1px solid #ddd; border-radius:6px; text-align:center; font-size:11px; font-weight:600; padding:0; flex-shrink:0; background:#fff; color:#333; outline:none; -moz-appearance:textfield; }
+.jersey-input::-webkit-outer-spin-button,.jersey-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.jersey-input:focus { border-color:#667eea; box-shadow:0 0 0 2px rgba(102,126,234,0.2); }
+.jersey-input.duplicate { border-color:#E74C3C; background:#fef2f2; box-shadow:0 0 0 2px rgba(231,76,60,0.2); }
+.roster-item { display:flex; align-items:center; gap:6px; padding:6px 8px; background:#f8f9fa; border-radius:8px; cursor:grab; border:1px solid #eee; transition:all 0.2s; font-size:11px; flex:1; min-width:0; }
 .roster-item.placed { opacity:0.3; pointer-events:none; }
 .roster-item.selected-mobile { background:#667eea; color:white; border-color:#667eea; }
 .roster-item.selected-mobile .r-num { background:white; color:#667eea; }
@@ -52,7 +57,7 @@ const PITCH_CSS = `
 .bench-section { margin-top:10px; padding-top:10px; border-top:1px solid #eee; }
 .bench-section h5 { margin:0 0 6px; font-size:11px; color:#666; }
 .pitch-readonly .pitch-slot.occupied { cursor:default; }
-@media (max-width:640px) { .pitch { max-width:260px; } .pitch-slot { width:30px; height:30px; } .pitch-slot .slot-num { font-size:10px; } .pitch-slot .slot-name { font-size:6px; bottom:-11px; } .roster-item { padding:5px 6px; font-size:10px; } .roster-item .r-num { width:18px; height:18px; font-size:8px; } .modulo-btn { padding:4px 8px; font-size:10px; } }
+@media (max-width:640px) { .pitch { max-width:260px; } .pitch-slot { width:30px; height:30px; } .pitch-slot .slot-num { font-size:10px; } .pitch-slot .slot-name { font-size:6px; bottom:-11px; } .roster-item { padding:5px 6px; font-size:10px; } .roster-item .r-num { width:18px; height:18px; font-size:8px; } .modulo-btn { padding:4px 8px; font-size:10px; } .jersey-input { width:24px; height:22px; font-size:10px; } }
 `;
 
 export async function openFormazioneForm(mid) {
@@ -81,9 +86,9 @@ export async function openFormazioneForm(mid) {
   const formazione = convertApiFormation(apiFormazione, giocatori, apiMeta);
 
   if (isArchiviata) {
-    renderPitchReadOnly(match, giocatoriConvocati, formazione, giocatori);
+    renderPitchReadOnly(match, giocatoriConvocati, formazione, giocatori, apiFormazione);
   } else {
-    renderPitchEdit(mid, match, giocatoriConvocati, formazione, giocatori);
+    renderPitchEdit(mid, match, giocatoriConvocati, formazione, giocatori, apiFormazione);
   }
 }
 
@@ -121,17 +126,22 @@ function convertApiFormation(apiData, allPlayers, meta) {
   };
 }
 
-function renderPitchReadOnly(match, giocatoriConvocati, formazione, allPlayers) {
+function renderPitchReadOnly(match, giocatoriConvocati, formazione, allPlayers, apiFormazione) {
   const modulo = formazione?.modulo || '4-3-3';
   const titolariIds = formazione ? [formazione.portiere, ...(formazione.difensori||[]), ...(formazione.centrocampisti||[]), ...(formazione.attaccanti||[])].filter(Boolean) : [];
   const riserveIds = formazione?.riserve || [];
 
+  // Build jersey map from saved formation
+  const jerseyMap = {};
+  if (apiFormazione) apiFormazione.forEach(f => { if (f.numeroMaglia) jerseyMap[f.calciatoreId] = f.numeroMaglia; });
+
   let html = `<style>${PITCH_CSS}</style><div class="pitch-readonly">`;
   html += `<div style="text-align:center;margin-bottom:12px;"><span style="background:#667eea;color:white;padding:4px 12px;border-radius:8px;font-size:13px;font-weight:600;">Modulo: ${modulo}</span></div>`;
-  html += `<div class="pitch" id="pitchField">${buildPitchSlots(modulo, titolariIds, allPlayers, formazione?.positions)}</div>`;
+  const assignments = {}; titolariIds.forEach((id,i) => { assignments[i]=id; });
+  html += `<div class="pitch" id="pitchField">${buildPitchSlotsFromState(modulo, assignments, allPlayers, formazione?.positions||{}, jerseyMap)}</div>`;
   if (riserveIds.length > 0) {
     html += `<div class="bench-section"><h5>🪑 Panchina (${riserveIds.length})</h5><div style="display:flex;flex-wrap:wrap;gap:6px;">`;
-    riserveIds.forEach(id => { const g = allPlayers.find(p => p.id === id); if (g) html += `<span style="background:#f0f0f0;padding:4px 10px;border-radius:6px;font-size:11px;">${g.numero_maglia||'?'} ${g.cognome}</span>`; });
+    riserveIds.forEach(id => { const g = allPlayers.find(p => p.id === id); if (g) html += `<span style="background:#f0f0f0;padding:4px 10px;border-radius:6px;font-size:11px;">${jerseyMap[id] || g.numero_maglia || '?'} ${g.cognome}</span>`; });
     html += `</div></div>`;
   }
   html += `</div>`;
@@ -140,7 +150,7 @@ function renderPitchReadOnly(match, giocatoriConvocati, formazione, allPlayers) 
   document.getElementById('modalCancelBtn').addEventListener('click', () => modal.close());
 }
 
-function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers) {
+function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers, apiFormazione) {
   const savedModulo = formazione?.modulo || '4-3-3';
   const titolariIds = formazione ? [formazione.portiere, ...(formazione.difensori||[]), ...(formazione.centrocampisti||[]), ...(formazione.attaccanti||[])].filter(Boolean) : [];
   const isLive = !!(match.live_meta?.stato);
@@ -150,13 +160,20 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
   html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;"><div class="modulo-select" id="moduloSelect" data-help="formazione.modulo" style="margin-bottom:0;">`;
   Object.keys(MODULI).forEach(k => { html += `<button class="modulo-btn${k===savedModulo?' active':''}" data-modulo="${k}">${k}</button>`; });
   html += `</div>${!isLive ? '<button id="recallLastForm" style="padding:6px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#666;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.2s;">📋 Ultima</button>' : ''}</div>`;
-  html += `<div class="pitch-container"><div class="pitch-panel"><div class="pitch" id="pitchField" data-help="formazione.campo">${buildPitchSlots(savedModulo, titolariIds, allPlayers, formazione?.positions)}</div>`;
+  // Build jersey map: saved formation numbers take priority over player profile
+  const savedJerseyMap = {};
+  if (apiFormazione && apiFormazione.length > 0) {
+    apiFormazione.forEach(f => { if (f.numeroMaglia) savedJerseyMap[f.calciatoreId] = f.numeroMaglia; });
+  }
+
+  html += `<div class="pitch-container"><div class="pitch-panel"><div class="pitch" id="pitchField" data-help="formazione.campo">${buildPitchSlotsFromState(savedModulo, (() => { const a = {}; titolariIds.forEach((id,i) => { a[i]=id; }); return a; })(), allPlayers, formazione?.positions||{}, savedJerseyMap)}</div>`;
   html += `<div id="pitchCount" style="text-align:center;margin-top:8px;font-size:12px;font-weight:600;color:#667eea;">${titolariIds.length}/11 titolari</div></div>`;
-  html += `<div class="pitch-roster" id="rosterList" data-help="formazione.roster"><h5 style="margin:0 0 8px;font-size:12px;color:#333;">📋 Convocati</h5>`;
+
+  html += `<div class="pitch-roster" id="rosterList" data-help="formazione.roster"><h5 style="margin:0 0 8px;font-size:12px;color:#333;">📋 Convocati <span style="font-weight:400;color:#999;">(n° maglia)</span></h5>`;
   giocatoriConvocati.forEach(g => {
-    const num = g.numero_maglia || '?';
+    const num = savedJerseyMap[g.id] || g.numero_maglia || '';
     const placed = titolariIds.includes(g.id) ? ' placed' : '';
-    html += `<div class="roster-item${placed}" draggable="true" data-pid="${g.id}" data-num="${num}" data-name="${g.cognome}"><div class="r-num">${num}</div><div class="r-name">${g.cognome} ${g.nome}</div><div class="r-role">${RUOLO_ACR[g.ruolo]||''}</div></div>`;
+    html += `<div class="roster-row"><input type="number" class="jersey-input" data-pid="${g.id}" min="1" max="99" value="${num}" placeholder="-"><div class="roster-item${placed}" draggable="true" data-pid="${g.id}" data-num="${num || '?'}" data-name="${g.cognome}"><div class="r-num">${num || '?'}</div><div class="r-name">${g.cognome} ${g.nome}</div><div class="r-role">${RUOLO_ACR[g.ruolo]||''}</div></div></div>`;
   });
   html += `</div></div>`;
 
@@ -167,6 +184,8 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
   let slotAssignments = {};
   let customPositions = formazione?.positions ? {...formazione.positions} : {};
   titolariIds.forEach((id, i) => { slotAssignments[i] = id; });
+
+  // Pre-populate jersey inputs from saved formation data (already done in HTML above via savedJerseyMap)
 
   document.querySelectorAll('#moduloSelect .modulo-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -210,9 +229,16 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
     } catch(e) { resetRecallBtn(); alert('Errore: ' + e.message); }
   });
 
+  function getJerseyMap() {
+    const m = {};
+    document.querySelectorAll('.jersey-input').forEach(inp => { const v = parseInt(inp.value); if (v) m[inp.dataset.pid] = v; });
+    return m;
+  }
+
   function refreshPitch() {
     const field = document.getElementById('pitchField');
-    if (field) field.innerHTML = buildPitchSlotsFromState(currentModulo, slotAssignments, allPlayers, customPositions);
+    const jerseyMap = getJerseyMap();
+    if (field) field.innerHTML = buildPitchSlotsFromState(currentModulo, slotAssignments, allPlayers, customPositions, jerseyMap);
     updateRosterState(slotAssignments);
     const n = Object.keys(slotAssignments).length;
     const cnt = document.getElementById('pitchCount');
@@ -222,19 +248,70 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
     setupDragDrop(slotAssignments, allPlayers, refreshPitch, customPositions);
   }
 
+  // Jersey number duplicate check
+  function checkJerseyDuplicates() {
+    const inputs = document.querySelectorAll('.jersey-input');
+    const vals = {};
+    inputs.forEach(inp => {
+      inp.classList.remove('duplicate');
+      const v = parseInt(inp.value);
+      if (!v) return;
+      if (vals[v]) { inp.classList.add('duplicate'); vals[v].classList.add('duplicate'); }
+      else vals[v] = inp;
+    });
+  }
+  document.getElementById('rosterList').addEventListener('input', (e) => {
+    if (e.target.classList.contains('jersey-input')) {
+      checkJerseyDuplicates();
+      const pid = e.target.dataset.pid;
+      const val = e.target.value || '?';
+      // Aggiorna pallino nella lista convocati
+      const rNum = e.target.closest('.roster-row')?.querySelector('.r-num');
+      if (rNum) rNum.textContent = val;
+      // Aggiorna pallino nel campo (cerca slot con questo giocatore)
+      document.querySelectorAll('.pitch-slot.occupied').forEach(slot => {
+        const idx = slot.dataset.slot;
+        if (String(slotAssignments[idx]) === pid || slotAssignments[Number(idx)] === pid) {
+          const numEl = slot.querySelector('.slot-num');
+          if (numEl) numEl.textContent = val;
+        }
+      });
+    }
+  });
+
+  let isSaving = false;
   document.getElementById('saveFormBtn').addEventListener('click', async () => {
+    if (isSaving) return;
     const placed = Object.values(slotAssignments);
     if (placed.length !== 11) { alert('⚠️ Posiziona 11 giocatori!'); return; }
     const portieri = placed.filter(id => { const g = allPlayers.find(p=>p.id===id); return g?.ruolo==='Portiere'; });
     if (portieri.length !== 1) { alert('⚠️ Serve esattamente 1 portiere titolare!'); return; }
 
+    // Read jersey numbers from inputs
+    const jerseyMap = {};
+    document.querySelectorAll('.jersey-input').forEach(inp => {
+      jerseyMap[inp.dataset.pid] = parseInt(inp.value) || null;
+    });
+    // Check duplicates
+    const seen = {}; let hasDupes = false;
+    Object.entries(jerseyMap).forEach(([pid, v]) => { if (v) { if (seen[v]) hasDupes = true; seen[v] = true; } });
+    if (hasDupes) { alert('⚠️ Ci sono numeri di maglia duplicati! Correggi prima di salvare.'); return; }
+    // Check missing (non-blocking) — use async confirm
+    const allConvIds = giocatoriConvocati.map(g => g.id);
+    const missing = allConvIds.filter(id => !jerseyMap[id]);
+    if (missing.length > 0) {
+      const proceed = await showConfirmModal(`${missing.length} convocati non hanno un numero di maglia assegnato. Salvare comunque?`);
+      if (!proceed) return;
+    }
+
+    isSaving = true;
     const riserve = giocatoriConvocati.filter(g => !placed.includes(g.id)).map(g => g.id);
     const formazione = [];
     placed.forEach((pid, i) => {
-      formazione.push({ calciatoreId: pid, numeroMaglia: allPlayers.find(p=>p.id===pid)?.numero_maglia || 99, posizione: 'Titolare', capitano: false, viceCapitano: false });
+      formazione.push({ calciatoreId: pid, numeroMaglia: jerseyMap[pid] || null, posizione: 'Titolare', capitano: false, viceCapitano: false });
     });
     riserve.forEach(pid => {
-      formazione.push({ calciatoreId: pid, numeroMaglia: allPlayers.find(p=>p.id===pid)?.numero_maglia || 99, posizione: 'Panchina', capitano: false, viceCapitano: false });
+      formazione.push({ calciatoreId: pid, numeroMaglia: jerseyMap[pid] || null, posizione: 'Panchina', capitano: false, viceCapitano: false });
     });
 
     showLoading();
@@ -244,7 +321,7 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
       alert('✅ Formazione salvata!');
       if (window.YFM?.onFormazioneSaved) window.YFM.onFormazioneSaved(mid);
       else if (window.YFM?.loadCalendar) window.YFM.loadCalendar();
-    } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
+    } catch(e) { hideLoading(); alert('Errore: ' + e.message); isSaving = false; }
   });
 
   document.getElementById('modalCancelBtn').addEventListener('click', () => modal.close());
@@ -252,28 +329,24 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers)
 
 function buildPitchSlots(modulo, titolariIds, allPlayers, positions) {
   const assignments = {}; titolariIds.forEach((id,i) => { assignments[i]=id; });
-  return buildPitchSlotsFromState(modulo, assignments, allPlayers, positions||{});
+  return buildPitchSlotsFromState(modulo, assignments, allPlayers, positions||{}, null);
 }
 
-function buildPitchSlotsFromState(modulo, assignments, allPlayers, customPositions) {
+function buildPitchSlotsFromState(modulo, assignments, allPlayers, customPositions, jerseyMap) {
   const rows = (MODULI[modulo]||MODULI['4-3-3']).rows;
   let html = '', slotIdx = 0;
-  // Mappa riga → ruolo: prima riga = Portiere, ultima = Attaccante, mezzo = Centrocampista/Difensore
   const totalRows = rows.length;
   rows.forEach((count, rowIndex) => {
     const yPercent = 90 - (rowIndex * (75/(totalRows-1)));
-    // Determina ruolo per questa riga
     let slotRole = 'Centrocampista';
     if (rowIndex === 0) slotRole = 'Portiere';
     else if (rowIndex === 1) slotRole = 'Difensore';
     else if (rowIndex === totalRows - 1) slotRole = 'Attaccante';
     else if (rowIndex === totalRows - 2 && totalRows > 3) slotRole = 'Attaccante';
-    // Per moduli a 4 righe: 0=POR, 1=DIF, 2=CEN, 3=ATT
     if (totalRows === 4) {
       if (rowIndex === 2) slotRole = 'Centrocampista';
       if (rowIndex === 3) slotRole = 'Attaccante';
     }
-    // Per moduli a 5 righe: 0=POR, 1=DIF, 2=CEN, 3=CEN, 4=ATT
     if (totalRows === 5) {
       if (rowIndex === 2 || rowIndex === 3) slotRole = 'Centrocampista';
       if (rowIndex === 4) slotRole = 'Attaccante';
@@ -286,7 +359,7 @@ function buildPitchSlotsFromState(modulo, assignments, allPlayers, customPositio
       const pid = assignments[slotIdx];
       const player = pid ? allPlayers.find(p=>p.id===pid) : null;
       const occupied = player ? ' occupied' : '';
-      const num = player ? (player.numero_maglia||'?') : '';
+      const num = player ? (jerseyMap?.[pid] || player.numero_maglia || '?') : '';
       const name = player ? player.cognome : '';
       html += `<div class="pitch-slot${occupied}" data-slot="${slotIdx}" data-role="${slotRole}" style="top:${finalY}%;left:${finalX}%;z-index:${totalRows - rowIndex};"><span class="slot-num">${num}</span><span class="slot-name">${name}</span></div>`;
       slotIdx++;
@@ -498,6 +571,7 @@ function setupDragDrop(assignments, allPlayers, refresh, customPositions) {
 function updateRosterState(assignments) {
   const placedIds = new Set(Object.values(assignments));
   document.querySelectorAll('.roster-item').forEach(item => { item.classList.toggle('placed', placedIds.has(item.dataset.pid)); });
+  // Keep jersey inputs always interactive (they're outside .roster-item so no conflict)
 }
 
 function createModal(title, content, footer, maxW='600px') {
@@ -508,4 +582,23 @@ function createModal(title, content, footer, maxW='600px') {
   const close = () => { const m=document.getElementById('currentModal'); if(m) m.remove(); };
   document.getElementById('modalCloseX').addEventListener('click', close);
   return { modal, close };
+}
+
+function showConfirmModal(message) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:340px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
+      <div style="font-size:14px;color:#333;margin-bottom:20px;">${message}</div>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        <button id="cfmNo" style="padding:8px 20px;border-radius:8px;border:1px solid #ddd;background:#f5f5f5;cursor:pointer;font-size:13px;font-weight:500;">Annulla</button>
+        <button id="cfmYes" style="padding:8px 20px;border-radius:8px;border:none;background:#667eea;color:white;cursor:pointer;font-size:13px;font-weight:600;">Salva</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    const cleanup = (val) => { overlay.remove(); resolve(val); };
+    overlay.querySelector('#cfmYes').addEventListener('click', () => cleanup(true));
+    overlay.querySelector('#cfmNo').addEventListener('click', () => cleanup(false));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(false); });
+  });
 }

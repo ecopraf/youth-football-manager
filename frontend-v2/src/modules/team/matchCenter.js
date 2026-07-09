@@ -3,7 +3,8 @@ import { formatDate } from '../../utils/formatters.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
 import { invalidateDashboardCache } from './dashboard.js';
 import { invalidateStatsCache } from '../performance/stats.js';
-import { PITCH_CSS, buildPitchSlots, convertApiFormation } from './formazione.js';
+import { PITCH_CSS, buildPitchSlots, buildPitchSlotsFromState, convertApiFormation } from './formazione.js';
+import { openDistinta } from './distinta.js';
 import { initOfflineBuffer, destroyOfflineBuffer, isOnline, saveToBuffer, loadFromBuffer, loadMetaFromBuffer, clearBuffer, hasBufferedData } from '../../utils/offlineBuffer.js';
 
 let match = null;
@@ -13,6 +14,7 @@ let allPlayers = [];
 let formazioneData = null;
 let formazioneIniziale = null;
 let moduloIniziale = null;
+let jerseyMapMC = {};
 let isReadOnly = false;
 let liveInterval = null;
 let currentMatchId = null;
@@ -67,6 +69,9 @@ export default async function loadMatchCenter() {
     const apiMeta = formRes?.meta || {};
     formazioneData = convertApiFormation(apiFormazione, allPlayers, apiMeta);
     moduloIniziale = formazioneData?.modulo || null;
+    // Build jersey map from saved formation
+    jerseyMapMC = {};
+    apiFormazione.forEach(f => { if (f.numeroMaglia) jerseyMapMC[f.calciatoreId] = f.numeroMaglia; });
 
     // Save initial formation before applying subs
     if (formazioneData) {
@@ -113,6 +118,9 @@ export default async function loadMatchCenter() {
 
     render(c, mid);
 
+    // Hook: open distinta from MC
+    window.YFM.openDistintaMC = (matchId) => openDistinta(matchId);
+
     // Hook: reload formation after modal save
     window.YFM.onFormazioneSaved = async () => {
       const formRes = await apiFetch('/partite/' + mid + '/formazione').catch(() => ({ formazione: [], meta: {} }));
@@ -120,6 +128,8 @@ export default async function loadMatchCenter() {
       const apiMeta = formRes?.meta || {};
       formazioneData = convertApiFormation(apiFormazione, allPlayers, apiMeta);
       if (!moduloIniziale) moduloIniziale = formazioneData?.modulo || null;
+      jerseyMapMC = {};
+      apiFormazione.forEach(f => { if (f.numeroMaglia) jerseyMapMC[f.calciatoreId] = f.numeroMaglia; });
       if (formazioneData) {
         formazioneIniziale = { modulo: formazioneData.modulo, portiere: formazioneData.portiere, difensori: [...(formazioneData.difensori||[])], centrocampisti: [...(formazioneData.centrocampisti||[])], attaccanti: [...(formazioneData.attaccanti||[])], riserve: [...(formazioneData.riserve||[])], positions: formazioneData.positions };
         eventi.filter(e => e.tipo === 'SUB' && e.principale_id && e.sub_in_id)
@@ -366,13 +376,14 @@ function renderFormationPitch(fData) {
   const modulo = fData.modulo || '4-3-3';
   const titIds = [fData.portiere, ...(fData.difensori||[]), ...(fData.centrocampisti||[]), ...(fData.attaccanti||[])].filter(Boolean);
   const riserveIds = fData.riserve || [];
+  const assignments = {}; titIds.forEach((id,i) => { assignments[i]=id; });
   let html = `<div class="mc-form-header"><span class="mc-form-modulo">${modulo}</span></div>`;
   html += `<div class="mc-form-layout">`;
-  html += `<div class="mc-form-pitch"><div class="pitch">${buildPitchSlots(modulo, titIds, allPlayers, fData.positions)}</div></div>`;
+  html += `<div class="mc-form-pitch"><div class="pitch">${buildPitchSlotsFromState(modulo, assignments, allPlayers, fData.positions||{}, jerseyMapMC)}</div></div>`;
   html += `<div class="mc-form-bench"><div class="mc-bench-title">🪑 Panchina (${riserveIds.length})</div>`;
   riserveIds.forEach(id => {
     const g = allPlayers.find(p => p.id === id);
-    if (g) html += `<div class="mc-bench-item">${g.numero_maglia||'?'} ${g.cognome}</div>`;
+    if (g) html += `<div class="mc-bench-item">${jerseyMapMC[id] || g.numero_maglia || '?'} ${g.cognome}</div>`;
   });
   html += `</div></div>`;
   return html;
@@ -382,16 +393,18 @@ function getSingleFormationView(mid, fData, canEdit) {
   const modulo = fData.modulo || '4-3-3';
   const titolariIds = getCurrentTitolari();
   const riserveIds = getCurrentRiserve();
+  const assignments = {}; titolariIds.forEach((id,i) => { assignments[i]=id; });
   let html = `<div class="mc-qa-card mc-formation-card">`;
-  html += `<div class="mc-form-header"><span class="mc-form-modulo">${modulo}</span>`;
+  html += `<div class="mc-form-header"><span class="mc-form-modulo">${modulo}</span><div style="display:flex;gap:6px;">`;
+  html += `<button class="btn btn-secondary btn-small" onclick="window.YFM.openDistintaMC('${mid}')" style="font-size:11px!important;padding:4px 10px!important;">📄 Distinta</button>`;
   if (canEdit) html += `<button class="btn btn-secondary btn-small mc-form-edit" onclick="window.YFM.openFormazioneForm('${mid}')">✏️</button>`;
-  html += `</div>`;
+  html += `</div></div>`;
   html += `<div class="mc-form-layout">`;
-  html += `<div class="mc-form-pitch"><div class="pitch" id="mcPitchLive">${buildPitchSlots(modulo, titolariIds, allPlayers, fData.positions)}</div></div>`;
+  html += `<div class="mc-form-pitch"><div class="pitch" id="mcPitchLive">${buildPitchSlotsFromState(modulo, assignments, allPlayers, fData.positions||{}, jerseyMapMC)}</div></div>`;
   html += `<div class="mc-form-bench" id="mcBenchLive"><div class="mc-bench-title">🪑 Panchina (${riserveIds.length})</div>`;
   riserveIds.forEach(id => {
     const g = allPlayers.find(p => p.id === id);
-    if (g) html += `<div class="mc-bench-item" data-pid="${id}">${g.numero_maglia||'?'} ${g.cognome}</div>`;
+    if (g) html += `<div class="mc-bench-item" data-pid="${id}">${jerseyMapMC[id] || g.numero_maglia || '?'} ${g.cognome}</div>`;
   });
   html += `</div></div></div>`;
   return html;
