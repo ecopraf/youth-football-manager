@@ -112,16 +112,9 @@ export async function openConvocation(mid, readOnly) {
     const checks = document.querySelectorAll('#currentModal .conv-check:checked');
     const list = [];
     checks.forEach(cb => {
-      const row = cb.closest('.convocation-item');
-      if (row) {
-        const spans = row.querySelectorAll('span');
-        const nc = spans[0]?.textContent.trim() || '';
-        const rm = spans[1]?.textContent.trim() || '';
-        const [nome, ...cognomeParts] = nc.split(' ');
-        const cognome = cognomeParts.join(' ') || '';
-        const ruolo = rm.split(' · ')[0] || '';
-        list.push({ nome, cognome, ruolo });
-      }
+      const pid = cb.dataset.pid;
+      const g = gioc.find(x => x.id === pid);
+      if (g) list.push({ nome: g.nome || '', cognome: g.cognome || '', ruolo: g.ruolo || '' });
     });
     if (list.length === 0) { alert('Nessun convocato selezionato.'); return; }
     showConvocationPreview(match, list, false);

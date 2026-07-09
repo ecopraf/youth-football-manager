@@ -62,7 +62,7 @@ export const PAGE_HELP = {
       'Tab Note: appunti con timestamp automatico del minuto live',
       'Tab Import: incolla tabellino da Tuttocampo per importare eventi',
       'Max 7 sostituzioni per partita (contatore visibile)',
-      'Partite passate senza live: usa "⏩ Registra Partita" per terminare e inserire dati',
+      'Partite passate senza live: usa "📊 Registra Risultato" per confermare il punteggio',
       'Salva per confermare risultato, eventi e note',
       'Doppio-click su ? per help interattivo sugli elementi'
     ]
@@ -617,7 +617,7 @@ export const ELEMENT_HELP = {
   // === MATCH CENTER ===
   'mc.liveBtn': {
     title: '▶️ Bottone Stato Partita',
-    desc: 'Gestisce il ciclo di vita della partita:<br><strong>Inizio 1°T</strong> → avvia il cronometro (abilitato 5min prima del fischio).<br><strong>Fine 1°T</strong> → chiude il primo tempo (abilitato dopo il tempo regolamentare).<br><strong>Inizio 2°T</strong> → riprende dopo l\'intervallo.<br><strong>Fine Partita</strong> → chiude la partita e calcola i minuti giocati.<br><br>⚠️ Il bottone si blocca durante il tempo regolamentare per evitare click accidentali. In emergenza: <strong>tieni premuto 3 secondi</strong> per forzare la transizione.<br><br>Per partite già passate: "⏩ Registra Partita" termina direttamente senza flusso live.'
+    desc: 'Gestisce il ciclo di vita della partita:<br><strong>Inizio 1°T</strong> → avvia il cronometro (abilitato 5min prima del fischio).<br><strong>Fine 1°T</strong> → chiude il primo tempo (abilitato dopo il tempo regolamentare).<br><strong>Inizio 2°T</strong> → riprende dopo l\'intervallo.<br><strong>Fine Partita</strong> → chiude la partita e calcola i minuti giocati.<br><br>⚠️ Il bottone si blocca durante il tempo regolamentare per evitare click accidentali. In emergenza: <strong>tieni premuto 3 secondi</strong> per forzare la transizione.<br><br>Per partite già passate: "📊 Registra Risultato" conferma il punteggio calcolato dagli eventi nella timeline.'
   },
   'mc.quickActions': {
     title: '⚡ Azioni Rapide',

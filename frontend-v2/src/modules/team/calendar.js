@@ -493,8 +493,9 @@ export function renderMatchCard(m, stats, isNext = false) {
   const hasResult = !!(r || (m.gol_casa != null && m.gol_ospite != null) || m.stato === 'Terminata' || isLive);
   const isPast = new Date(m.data_ora) < new Date();
   const isArchiviata = m.archiviata === true || m.archiviata === 'true';
-  const missingResult = !isLive && !isArchiviata && m.gol_casa == null && !r && !m.live_meta && (
-    m.stato === 'Terminata' || (isPast && (Date.now() - new Date(m.data_ora).getTime()) > 12 * 3600000)
+  const pastUnmanaged = isPast && !isLive && !isArchiviata && !m.live_meta && m.stato !== 'Terminata' && (Date.now() - new Date(m.data_ora).getTime()) > 12 * 3600000;
+  const missingResult = !isLive && !isArchiviata && !m.live_meta && (
+    (m.stato === 'Terminata' && m.gol_casa == null && !r) || pastUnmanaged
   );
 
   const golFatti = r?.golFatti ?? ((!missingResult && (m.stato === 'Terminata' || isLive)) ? (m.gol_casa ?? 0) : null);

@@ -170,7 +170,8 @@ async function loadGiocatori(mid) {
 
 function render(c, mid) {
   if (liveInterval) { clearInterval(liveInterval); liveInterval = null; }
-  c.innerHTML = getStyles() + getHeader(mid) + getTabs() + getBody(mid) + getDrawer();
+  const pastBanner = getPastBanner();
+  c.innerHTML = getStyles() + getHeader(mid) + pastBanner + getTabs() + getBody(mid) + getDrawer();
   bindEvents(mid);
   startLiveInterval();
 }
@@ -234,7 +235,7 @@ function getLiveStateLabel() {
   if (!meta?.stato) {
     // Partita passata senza live_meta → registrazione post-partita
     const isPast = match?.data_ora && new Date(match.data_ora).getTime() < Date.now() - 60 * 60 * 1000;
-    if (isPast) return { label: '⏩ Registra Partita', action: 'register_past' };
+    if (isPast) return { label: '📊 Registra Risultato', action: 'register_past' };
     return { label: '▶️ Inizio 1°T', action: 'start_1t' };
   }
   if (meta.stato === '1t') return { label: '⏸️ Fine 1°T', action: 'end_1t' };
@@ -286,6 +287,16 @@ function updateLiveBtnState() {
       countdown.style.display = 'none';
     }
   }
+}
+
+function getPastBanner() {
+  if (!match?.data_ora || match.stato === 'Terminata') return '';
+  const isPast = new Date(match.data_ora).getTime() < Date.now() - 60 * 60 * 1000;
+  if (!isPast || match.live_meta) return '';
+  return `<div style="margin:0 auto 12px;max-width:600px;padding:10px 14px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:10px;font-size:12px;color:#5D4037;display:flex;align-items:center;gap:8px;">
+    <span style="font-size:16px;">📋</span>
+    <span>Inserisci eventi e risultato nella timeline, poi clicca <strong>Registra Risultato</strong> per confermare.</span>
+  </div>`;
 }
 
 function getTabs() {
@@ -621,7 +632,7 @@ function getLiveButton() {
 
   // register_past: nessun blocco, colore diverso
   if (action === 'register_past') {
-    return `<div style="margin-top:12px;"><button class="mc-live-btn" id="mcLiveBtn" data-action="${action}" style="background:#27AE60;">${label}</button><div id="mcLiveCountdown" class="mc-live-countdown" style="display:none;"></div></div>`;
+    return `<div style="margin-top:12px;" data-help="mc.liveBtn"><button class="mc-live-btn" id="mcLiveBtn" data-action="${action}" style="background:#27AE60;">${label}</button><div id="mcLiveCountdown" class="mc-live-countdown" style="display:none;"></div></div>`;
   }
 
   const colors = { start_1t: '#667eea', end_1t: '#F39C12', start_2t: '#667eea', end_match: '#E74C3C' };
@@ -896,7 +907,7 @@ function bindEvents(mid) {
       const action = liveBtn.dataset.action;
       if (!forced && liveBtn.disabled) return;
       const confirmMsg = action === 'end_match' ? 'Confermi Fine Partita?'
-        : action === 'register_past' ? 'Registrare questa partita come terminata? Potrai inserire formazione, eventi e risultato.'
+        : action === 'register_past' ? 'Registrare il risultato? Il punteggio verrà calcolato dagli eventi inseriti nella timeline.'
         : (forced ? 'Forzare transizione? (tempo minimo non raggiunto)' : null);
       if (confirmMsg && !await confirm(confirmMsg)) return;
       try {

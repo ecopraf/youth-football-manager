@@ -765,8 +765,18 @@ Al termine di ogni task che aggiunge nuove funzionalità o modifica significativ
 2. **Aggiornare `AGENTS.md`** se la modifica tocca: nuovi file, endpoint, moduli, dipendenze, tabelle DB, flussi architetturali
 3. **Aggiornare `DATABASE_SCHEMA.md`** se la modifica tocca colonne o tabelle del DB
 4. **Aggiornare `project-rules.md`** se la modifica introduce nuove convenzioni, pattern o regole operative
+5. **Aggiornare l'help in-app** (`helpData.js`) se la modifica:
+   - Aggiunge una nuova pagina/modulo → aggiungere voce in `PAGE_HELP`
+   - Aggiunge elementi interattivi complessi → aggiungere `data-help` + voce in `ELEMENT_HELP`
+   - Modifica significativamente il comportamento di una funzionalità già documentata → aggiornare la descrizione esistente
+   - Rimuove una funzionalità → rimuovere la voce corrispondente
 
 Questo step è parte integrante del completamento del task — un task NON è considerato completato finché la documentazione non è aggiornata.
+
+### File help di riferimento
+- `frontend-v2/src/components/helpData.js` — `PAGE_HELP` (popover "?") + `ELEMENT_HELP` (help interattivo)
+- `frontend-v2/src/components/PageHelp.js` — logica help (non modificare se non necessario)
+- Attributo `data-help="pagina.elemento"` sugli elementi HTML per l'help interattivo
 
 ---
 
