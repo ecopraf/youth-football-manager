@@ -60,8 +60,11 @@ export const PAGE_HELP = {
       'In emergenza (partita sospesa, arbitro fischia prima): tieni premuto 3 secondi per forzare',
       'Tab Formazione: mostra Iniziale e Finale (con sub-tabs) se ci sono state sostituzioni',
       'Tab Note: appunti con timestamp automatico del minuto live',
+      'Tab Import: incolla tabellino da Tuttocampo per importare eventi',
       'Max 7 sostituzioni per partita (contatore visibile)',
-      'Salva per confermare risultato, eventi e note'
+      'Partite passate senza live: usa "⏩ Registra Partita" per terminare e inserire dati',
+      'Salva per confermare risultato, eventi e note',
+      'Doppio-click su ? per help interattivo sugli elementi'
     ]
   },
   stats: {
@@ -171,6 +174,31 @@ export const PAGE_HELP = {
       'Click ○ per segnare come letta, click Apri per andare alla convocazione',
       'Badge campanella in header mostra il totale non lette',
       'Visibile per: Segreteria, Dirigente, Osservatore'
+    ]
+  },
+  convocazioni: {
+    title: '📋 Convocazioni',
+    desc: 'Seleziona i giocatori da convocare per la partita e genera il documento ufficiale.',
+    items: [
+      'Spunta i giocatori da convocare (min 11, max 20)',
+      'Usa Tutti/Nessuno per selezione rapida',
+      'Giocatori infortunati mostrano badge 🏥 e non sono selezionabili',
+      'Salva → Pubblica per inviare notifica ad atleti e genitori',
+      'Dopo la pubblicazione, atleti possono segnalare indisponibilità',
+      '📄 Vedi Convocazione genera il documento stampabile con intestazione società'
+    ]
+  },
+  formazione: {
+    title: '🏟️ Formazione',
+    desc: 'Scegli modulo tattico e posiziona i giocatori sul campo.',
+    items: [
+      'Seleziona il modulo dal dropdown (4-3-3, 4-4-2, 3-5-2, ecc.)',
+      'Desktop: trascina giocatori dalla lista al campo',
+      'Mobile: tap giocatore → tap posizione sul campo',
+      'Pallini colorati indicano ruolo compatibile con la posizione',
+      'Servono esattamente 11 titolari con almeno 1 portiere',
+      'I non posizionati vanno automaticamente in panchina',
+      'Indica capitano (C) e vice-capitano (V)'
     ]
   },
   playerDetail: {
@@ -520,6 +548,12 @@ export const ELEMENT_HELP = {
     desc: 'Modifica Dati: aggiorna anagrafica e stato. Sposta Categoria: trasferisci il giocatore in un\'altra squadra. Elimina: rimuove definitivamente il giocatore dalla rosa.'
   },
 
+  // === NOTIFICHE ===
+  'notifications.tabs': {
+    title: '📤/📥 Tab Inviate e Ricevute',
+    desc: '<strong>Inviate</strong> — Comunicazioni create dallo staff (convocazioni pubblicate, avvisi, comunicazioni manuali). Visibili a tutti i destinatari selezionati.<br><br><strong>Ricevute</strong> — Segnalazioni in arrivo: assenze comunicate da atleti/genitori e indisponibilità post-convocazione. Badge numerico indica le non lette.<br><br>Click ○ per segnare come letta. Click "Apri" per navigare alla partita/convocazione collegata.'
+  },
+
   // === MODALE CONVOCAZIONI ===
   'convocazioni.selezione': {
     title: '✅ Selezione Rapida',
@@ -578,6 +612,28 @@ export const ELEMENT_HELP = {
   'template.materiale': {
     title: '🎒 Materiale Necessario',
     desc: 'Seleziona il materiale da preparare per la seduta. Clicca per attivare/disattivare. Utile per organizzare in anticipo cosa portare in campo.'
+  },
+
+  // === MATCH CENTER ===
+  'mc.liveBtn': {
+    title: '▶️ Bottone Stato Partita',
+    desc: 'Gestisce il ciclo di vita della partita:<br><strong>Inizio 1°T</strong> → avvia il cronometro (abilitato 5min prima del fischio).<br><strong>Fine 1°T</strong> → chiude il primo tempo (abilitato dopo il tempo regolamentare).<br><strong>Inizio 2°T</strong> → riprende dopo l\'intervallo.<br><strong>Fine Partita</strong> → chiude la partita e calcola i minuti giocati.<br><br>⚠️ Il bottone si blocca durante il tempo regolamentare per evitare click accidentali. In emergenza: <strong>tieni premuto 3 secondi</strong> per forzare la transizione.<br><br>Per partite già passate: "⏩ Registra Partita" termina direttamente senza flusso live.'
+  },
+  'mc.quickActions': {
+    title: '⚡ Azioni Rapide',
+    desc: 'Griglia di bottoni per registrare eventi in tempo reale:<br><br>⚽ <strong>Gol</strong> — seleziona marcatore + eventuale assist<br>🟨 <strong>Ammonizione</strong> — seleziona giocatore ammonito<br>🟥 <strong>Espulsione</strong> — seleziona giocatore espulso<br>🔄 <strong>Sostituzione</strong> — chi esce e chi entra (max 7)<br>🥅 <strong>Gol Subito</strong> — gol dell\'avversario (opzionale: n° maglia)<br>🪷 <strong>Autogol</strong> — seleziona giocatore che ha segnato nella propria porta<br><br>Click su un\'azione apre il drawer laterale con il form dettagliato. Il minuto viene pre-compilato dal cronometro live.'
+  },
+  'mc.tabs': {
+    title: '📋 Tab di Navigazione',
+    desc: '<strong>Eventi</strong> — Timeline cronologica di tutti gli eventi registrati (default).<br><strong>Formazione</strong> — Visualizza formazione iniziale e finale. Se ci sono state sostituzioni, mostra sub-tabs Iniziale/Finale con modulo tattico.<br><strong>Note</strong> — Appunti liberi con timestamp automatico del minuto live. Auto-save ogni 3 secondi.<br><strong>Import</strong> — Incolla il tabellino da Tuttocampo per importare eventi e formazione automaticamente.'
+  },
+  'mc.timeline': {
+    title: '📋 Timeline Eventi',
+    desc: 'Lista cronologica degli eventi registrati, ordinati per minuto. Ogni evento mostra:<br>• Minuto<br>• Icona tipo (gol, cartellino, sostituzione)<br>• Nome giocatore + badge (RIG, AUT)<br>• Punteggio progressivo dopo ogni gol<br><br>Click su ⋮ per modificare o eliminare un evento. Le modifiche si riflettono immediatamente nel punteggio in alto.'
+  },
+  'mc.save': {
+    title: '💾 Salva Risultato ed Eventi',
+    desc: 'Salva definitivamente il risultato (calcolato dai gol nella timeline) e tutti gli eventi registrati. Dopo il salvataggio:<br>• Le statistiche individuali vengono aggiornate<br>• I minuti giocati vengono calcolati in base alle sostituzioni<br>• La partita appare come "Terminata" nel calendario<br><br>⚠️ Se la partita è live, il salvataggio non chiude la partita — usa "Fine Partita" per terminare il flusso live.'
   },
 
   // === IMPORT GAZZETTA REGIONALE ===

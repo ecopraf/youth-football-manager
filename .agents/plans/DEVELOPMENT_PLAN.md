@@ -707,6 +707,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: calendario badge "⚠️ Inserisci risultato" — partite Terminate senza gol_casa mostrano warning arancione cliccabile (apre MC) invece di falso 0-0 |
 | (pending) | feat: Match Center register_past — partite passate senza live_meta mostrano bottone "⏩ Registra Partita" (setta stato=Terminata senza flusso live) |
 | (pending) | fix: convocazione/distinta mobile — rimossa regola CSS globale display:block su table (rompeva allineamento colonne), aggiunto table-layout:fixed + colgroup su convocazione, overflow-x:auto + min-width su distinta, font ridotti su mobile |
+| (pending) | feat: help interattivo Match Center — data-help su bottone stato, azioni rapide, tabs, timeline, salva; PAGE_HELP per convocazioni e formazione; ELEMENT_HELP per MC (liveBtn, quickActions, tabs, timeline, save) e notifications |
 
 ---
 

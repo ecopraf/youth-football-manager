@@ -55,7 +55,7 @@ function renderPage(c, absences, comms, teamId) {
     </div>
   </div>`;
 
-  html += `<div class="notif-tabs">
+  html += `<div class="notif-tabs" data-help="notifications.tabs">
     <div class="notif-tab active" data-tab="comms">📤 Inviate${unreadComms > 0 ? `<span class="tab-badge">${unreadComms}</span>` : ''}</div>
     <div class="notif-tab" data-tab="absences">📥 Ricevute${unreadAbs > 0 ? `<span class="tab-badge">${unreadAbs}</span>` : ''}</div>
   </div>`;

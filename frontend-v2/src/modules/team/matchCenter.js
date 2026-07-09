@@ -290,7 +290,7 @@ function updateLiveBtnState() {
 
 function getTabs() {
   const count = eventi.length;
-  return `<div class="mc-tabs">
+  return `<div class="mc-tabs" data-help="mc.tabs">
     <button class="mc-tab active" data-tab="events">📋 Eventi${count ? ' <span class="mc-tab-badge">' + count + '</span>' : ''}</button>
     <button class="mc-tab" data-tab="formation">🏟️ Formazione</button>
     <button class="mc-tab" data-tab="notes">📝 Note</button>
@@ -398,7 +398,7 @@ function getCurrentRiserve() {
 
 function getSaveButton() {
   if (isReadOnly) return '';
-  return '<button class="mc-save-result" id="mcSave">💾 Salva Risultato ed Eventi</button>';
+  return '<button class="mc-save-result" id="mcSave" data-help="mc.save">💾 Salva Risultato ed Eventi</button>';
 }
 
 // ── STYLES ──
@@ -638,7 +638,7 @@ function getLiveButton() {
     countdownText = meta?.stato === 'intervallo' ? `⏸️ Intervallo · ${remaining} min` : `⏳ Abilitato tra ${remaining} min`;
   }
   const countdownHtml = countdownText ? `<div id="mcLiveCountdown" class="mc-live-countdown">${countdownText}</div>` : '<div id="mcLiveCountdown" class="mc-live-countdown" style="display:none;"></div>';
-  return `<div style="margin-top:12px;"><button class="mc-live-btn${disabledClass}" id="mcLiveBtn" data-action="${action}" style="background:${colors[action]};"${disabledAttr}>${label}</button>${countdownHtml}</div>`;
+  return `<div style="margin-top:12px;" data-help="mc.liveBtn"><button class="mc-live-btn${disabledClass}" id="mcLiveBtn" data-action="${action}" style="background:${colors[action]};"${disabledAttr}>${label}</button>${countdownHtml}</div>`;
 }
 
 function getQuickActions(mid) {
@@ -652,13 +652,13 @@ function getQuickActions(mid) {
     { icon: '🪷', label: 'Autogol', tipo: 'AUTOGOL' }
   ];
   const btns = actions.map(a => `<div class="mc-qa-btn" data-tipo="${a.tipo}"><span class="qa-icon">${a.icon}</span><span class="qa-label">${a.label}</span></div>`).join('');
-  return `<div class="mc-qa-card"><div class="mc-qa-title">Azioni rapide</div><div class="mc-qa">${btns}</div></div>`;
+  return `<div class="mc-qa-card" data-help="mc.quickActions"><div class="mc-qa-title">Azioni rapide</div><div class="mc-qa">${btns}</div></div>`;
 }
 
 // ── TIMELINE ──
 function getTimeline(mid) {
   const sorted = [...eventi].sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0));
-  let html = '<div class="mc-tl-title">📋 Timeline Eventi</div><div class="mc-tl-grid">';
+  let html = '<div class="mc-tl-title" data-help="mc.timeline">📋 Timeline Eventi</div><div class="mc-tl-grid">';
   if (sorted.length === 0) {
     html += '<div class="mc-tl-empty">Nessun evento registrato.<br>Usa le azioni rapide per aggiungere.</div>';
   } else {
