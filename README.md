@@ -166,6 +166,11 @@ Il build ID identifica univocamente ogni release: `v3.16.<counter>`
 
 **Auto-bump**: al raggiungimento del build 99, la minor si incrementa automaticamente (es. `v3.16.99` → `v3.17.1`).
 
+**Workflow versioning**:
+- `npm run build` — build senza incrementare il counter (per sviluppo/test locale)
+- `npm run release` — incrementa counter + build (usare SOLO prima del commit/push)
+- Locale e produzione mostrano sempre lo stesso numero
+
 ---
 
 ## 📁 Struttura Frontend

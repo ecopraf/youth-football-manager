@@ -20,47 +20,24 @@ function getBuildCounter() {
   return 0;
 }
 
-function saveBuildCounter(counter, version = SW_VERSION) {
-  fs.writeFileSync(BUILD_COUNTER_FILE, JSON.stringify({
-    version: version,
-    counter: counter,
-    updatedAt: new Date().toISOString()
-  }, null, 2));
-}
-
-function bumpMinor(version) {
-  const match = version.match(/^v(\d+)\.(\d+)$/);
-  if (!match) return version;
-  return `v${match[1]}.${parseInt(match[2]) + 1}`;
-}
 
 function generateBuildInfo() {
-  let currentCounter = getBuildCounter();
-  let version = SW_VERSION;
-  let newCounter = currentCounter + 1;
+  const currentCounter = getBuildCounter();
+  const version = SW_VERSION;
 
-  // Auto-bump: superato 99, incrementa minor e resetta counter
-  if (newCounter > 99) {
-    version = bumpMinor(version);
-    newCounter = 1;
-    // Aggiorna SW_VERSION nel file per persistenza
-    const configPath = path.resolve(__dirname, 'vite.config.js');
-    const configContent = fs.readFileSync(configPath, 'utf8');
-    fs.writeFileSync(configPath, configContent.replace(`const SW_VERSION = '${SW_VERSION}'`, `const SW_VERSION = '${version}'`));
-  }
-  saveBuildCounter(newCounter, version);
-
-  const buildId = `${version}.${newCounter}`;
+  // Il counter NON si incrementa durante il build.
+  // Viene incrementato solo dallo script `npm run release` prima del commit.
+  const buildId = `${version}.${currentCounter}`;
   const now = new Date();
   const buildInfo = `// Auto-generated build info
 // SW Version: ${version}
-// Build Number: ${newCounter}
+// Build Number: ${currentCounter}
 // Build ID: ${buildId}
 // Date: ${now.toLocaleString('it-IT')}
 export const BUILD_INFO = {
   id: '${buildId}',
   version: '${version}',
-  buildNumber: ${newCounter},
+  buildNumber: ${currentCounter},
   date: '${now.toISOString()}',
   buildDate: '${now.toLocaleString('it-IT')}'
 };
