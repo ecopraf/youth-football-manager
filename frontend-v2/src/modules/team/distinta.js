@@ -27,6 +27,7 @@ export async function openDistinta(mid, staffOverrides) {
   const modal = createModal('📄 Distinta Gara', content, footer, '980px');
   
   let curStaff = null;
+  let matchInfo = null;
   try {
     let data = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + mid + '/distinta');
     
@@ -87,6 +88,7 @@ export async function openDistinta(mid, staffOverrides) {
     }
     
     curStaff = staffOverrides || data.staff || {};
+    matchInfo = data.partita;
     renderDistinta(data, curStaff);
   } catch (e) {
     if (e.message === 'NOT_PUBLISHED') {
@@ -112,7 +114,8 @@ export async function openDistinta(mid, staffOverrides) {
       } catch(e) {}
     }
     
-    const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Distinta</title><style>@page{margin:8mm;size:A4 portrait}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;margin:0;padding:8mm}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.distinta-table{width:100%;border-collapse:collapse;margin:4px 0}.distinta-table th,.distinta-table td{border:1px solid #000;padding:4px 5px;text-align:center;font-size:9px}th{background:#f0f0f0;font-size:8px}.capitano{background:#FFF9C4}.vice{background:#E8F5E9}.staff-table{width:100%;border-collapse:collapse;margin:0}.staff-table td{border:1px solid #000;padding:3px 6px;font-size:9px}@media print{body{padding:0}img{display:block!important}}</style></head><body>' + content + '</body></html>';
+    const pdfTitle = matchInfo ? 'Distinta' + (matchInfo.giornata ? ' G' + matchInfo.giornata : '') + ' - ' + (matchInfo.avversario || '') : 'Distinta';
+    const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + pdfTitle + '</title><style>@page{margin:8mm;size:A4 portrait}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;margin:0;padding:8mm}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.distinta-table{width:100%;border-collapse:collapse;margin:4px 0}.distinta-table th,.distinta-table td{border:1px solid #000;padding:4px 5px;text-align:center;font-size:9px}th{background:#f0f0f0;font-size:8px}.capitano{background:#FFF9C4}.vice{background:#E8F5E9}.staff-table{width:100%;border-collapse:collapse;margin:0}.staff-table td{border:1px solid #000;padding:3px 6px;font-size:9px}.num-circle{font-weight:700;font-size:9px;border:1.5px solid #000;border-radius:50%;width:14px;height:14px;line-height:14px;display:inline-block;text-align:center;vertical-align:middle;box-sizing:border-box}@media print{body{padding:0}img{display:block!important}}</style></head><body>' + content + '</body></html>';
     
     // Mobile-friendly: usa iframe nascosto per stampare (evita popup bloccati)
     let printFrame = document.getElementById('yfm-print-frame');
@@ -127,7 +130,12 @@ export async function openDistinta(mid, staffOverrides) {
     doc.write(html);
     doc.close();
     printFrame.onload = () => {
-      setTimeout(() => printFrame.contentWindow.print(), 300);
+      setTimeout(() => {
+        const origTitle = document.title;
+        document.title = pdfTitle;
+        printFrame.contentWindow.print();
+        setTimeout(() => { document.title = origTitle; }, 500);
+      }, 300);
     };
   });
   
@@ -247,7 +255,7 @@ function renderDistinta(d, staff) {
       const ruoloTag = f.ruolo_principale === 'Portiere' ? ' (P)' : '';
       const isTitolare = f.posizione === 'Titolare';
       const numDisplay = f.numeroMaglia || '';
-      const numCell = numDisplay ? (isTitolare ? '<span style="display:inline-block;width:18px;height:18px;border:2px solid #000;border-radius:50%;text-align:center;line-height:18px;font-weight:700;font-size:9px;">' + numDisplay + '</span>' : numDisplay) : '';
+      const numCell = numDisplay ? (isTitolare ? '<span class="num-circle">' + numDisplay + '</span>' : numDisplay) : '';
       righe.push('<tr class="' + (f.capitano ? 'capitano' : f.viceCapitano ? 'vice' : '') + '">' +
         '<td style="border:none;font-size:9px;">' + (i + 1) + '</td>' +
         '<td>' + numCell + '</td>' +

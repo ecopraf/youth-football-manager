@@ -689,12 +689,31 @@ renderCertificati(dashData.certificati); // zero chiamate extra
 
 ## Convenzioni Commit
 
+### Formato obbligatorio
+
+Ogni commit dopo un `npm run release` DEVE includere la versione nel messaggio:
+
+```
+[v3.16.X] tipo: descrizione
+```
+
+La versione si legge dal file `.last-release` nella root del progetto (generato automaticamente da `npm run release`).
+
+### Tipi
+
 ```
 feat: nuova funzionalità
 fix: correzione bug
 docs: documentazione
 refactor: refactoring codice
 style: stili (CSS)
+```
+
+### Esempi
+
+```bash
+git commit -m "[v3.16.4] feat: migliora UI dashboard con badge competizione"
+git commit -m "[v3.16.5] fix: distinta stampa mobile"
 ```
 
 ## 📱 PWA & Offline (Regole)

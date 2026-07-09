@@ -45,5 +45,13 @@ if (counter > 99) {
 fs.writeFileSync(COUNTER_FILE, JSON.stringify({ version, counter, updatedAt: new Date().toISOString() }, null, 2));
 console.log(`📦 Build: ${version}.${counter}`);
 
+// Salva versione completa per uso nel commit message
+const fullVersion = `${version}.${counter}`;
+const releaseFile = path.resolve(__dirname, '..', '.last-release');
+fs.writeFileSync(releaseFile, fullVersion);
+
 // Esegui build
 execSync('npm run build', { stdio: 'inherit', cwd: __dirname });
+
+console.log(`\n✅ Release ${fullVersion} pronta.`);
+console.log(`💡 Commit con: git commit -m "[${fullVersion}] feat: descrizione"\n`);
