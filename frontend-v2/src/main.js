@@ -16,10 +16,20 @@ import { loadSquadre } from './modules/team/squadre'
 import { loadPlayerDetail } from './modules/team/playerDetail.js'
 import { getSavedWorkspaceId, resetWorkspaceCache, loadAvailableWorkspaces, isSuperAdmin, saveCurrentWorkspace, populateWorkspaceSelect } from './modules/club/workspaceSwitcher'
 import { BUILD_INFO } from './build-info'
+import { registerSW } from 'virtual:pwa-register'
 import { apiFetch } from './services/api'
 import { initSessionGuard, destroySessionGuard } from './utils/sessionGuard'
 
 window.YFM_BUILD_ID = BUILD_INFO.id
+
+registerSW({
+  onOfflineReady() {
+    console.log('[PWA] App pronta per uso offline')
+  },
+  onNeedRefresh() {
+    console.log('[PWA] Nuova versione disponibile')
+  }
+})
 
 window.YFM = {
   squadraId: null,

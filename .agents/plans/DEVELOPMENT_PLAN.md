@@ -253,6 +253,93 @@
 
 ---
 
+### EPIC 15: PWA Offline-First
+
+> Rendere YFM utilizzabile offline al campo sportivo: cache dati READ, sync queue per scritture, IndexedDB come storage locale. Approccio "offline-aware" controllato (non cache-everything).
+
+**Caso d'uso primario**: allenatore al campo con rete instabile/assente → Match Center, presenze allenamento, convocazioni/rosa in lettura.
+
+**Stato attuale PWA**:
+- ✅ Installabile (manifest, icone, screenshots, registerSW)
+- ✅ Cache asset statici (JS, CSS, immagini) via Workbox precache
+- ✅ Banner offline globale (`initOfflineBanner()`)
+- ✅ Buffer localStorage per MC eventi/note (`offlineBuffer.js`)
+- ❌ Nessuna cache API REST runtime
+- ❌ Nessun IndexedDB per dati applicativi
+- ❌ `apiFetch()` senza fallback offline
+- ❌ Nessuna sync queue generica per POST/PUT
+
+#### Fase 1: IndexedDB + Cache GET principali
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 15.1 | Creare `src/services/offlineDb.js` — wrapper IndexedDB (idb-keyval o raw) con stores: workspace, squadre, players, matches, trainings, convocations | ⬜ | — | services/offlineDb.js | ~10min |
+| 15.2 | Estendere `apiFetch()` — su risposta OK salva in IndexedDB (solo GET cacheable); su network error ritorna ultimo dato da IndexedDB | ⬜ | 15.1 | services/api.js | ~10min |
+| 15.3 | Definire cache policy: lista endpoint GET cacheable (workspace, squadre, rosa, calendario, partite, convocazioni, allenamenti) vs non-cacheable (login, admin) | ⬜ | 15.2 | services/api.js o services/cachePolicy.js | ~5min |
+| 15.4 | Invalidazione cache IndexedDB: clear store specifico dopo scrittura correlata (es. salva presenze → clear trainings) | ⬜ | 15.2 | services/offlineDb.js | ~5min |
+
+#### Fase 2: Match Center offline completo
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 15.5 | MC: pre-fetch e cache in IndexedDB dei dati partita (convocati, formazione, eventi esistenti) all'apertura | ⬜ | 15.1 | modules/team/matchCenter.js | ~10min |
+| 15.6 | MC: registrazione eventi offline → salva in IndexedDB (evoluzione da localStorage buffer attuale) | ⬜ | 15.5 | modules/team/matchCenter.js, offlineBuffer.js | ~10min |
+| 15.7 | MC: indicatore visivo "modalità offline" (badge/icona) quando opera senza rete | ⬜ | 15.6 | modules/team/matchCenter.js | ~3min |
+
+#### Fase 3: Presenze allenamento offline
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 15.8 | Training: pre-fetch rosa + sessioni settimana in IndexedDB | ⬜ | 15.1 | modules/coach/trainingPresenze.js | ~5min |
+| 15.9 | Training: salvataggio presenze offline → sync queue | ⬜ | 15.8, 15.10 | modules/coach/trainingPresenze.js | ~10min |
+
+#### Fase 4: Sync Queue generica
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 15.10 | Creare `src/services/syncQueue.js` — queue IndexedDB per operazioni POST/PUT/DELETE pendenti (endpoint, method, payload, timestamp, retries) | ⬜ | 15.1 | services/syncQueue.js | ~10min |
+| 15.11 | Auto-sync: al ritorno online (`online` event) esegue queue in ordine FIFO, gestisce conflitti (409 → drop, 401 → re-auth) | ⬜ | 15.10 | services/syncQueue.js | ~10min |
+| 15.12 | UI: indicatore sync pending (badge con contatore operazioni in coda) + toast post-sync | ⬜ | 15.11 | components/layout/Sidebar.js o main.js | ~5min |
+
+#### Fase 5: Service Worker Runtime Cache
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 15.13 | Aggiungere `workbox.runtimeCaching` in vite.config.js per GET API autenticate (NetworkFirst con fallback cache, TTL 5min) | ⬜ | — | vite.config.js | ~5min |
+| 15.14 | Separare cache per workspace/utente (cache key include workspace_id) | ⬜ | 15.13 | vite.config.js | ~5min |
+| 15.15 | Background Sync registration per POST/PUT critici (Workbox BackgroundSync plugin) | ⬜ | 15.13 | vite.config.js | ~10min |
+
+#### Fase 6: Offline Status avanzato
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 15.16 | Estendere banner offline con 3 stati: ONLINE / OFFLINE / SYNCING (con animazione) | ⬜ | 15.11 | main.js | ~5min |
+| 15.17 | Pagine che richiedono dati non cachati: mostrare stato "Dati non disponibili offline" invece di errore generico | ⬜ | 15.2 | services/api.js | ~5min |
+| 15.18 | Test build + aggiornare docs | ⬜ | 15.17 | DEVELOPMENT_PLAN.md, AGENTS.md | ~3min |
+
+**Effort totale stimato**: ~2h 6min (18 task)
+
+**Priorità implementazione**:
+1. Fase 1 (IndexedDB + cache GET) — fondamenta
+2. Fase 4 (Sync Queue) — necessaria per fasi 2-3
+3. Fase 2 (MC offline) — caso d'uso #1 campo sportivo
+4. Fase 3 (Presenze offline) — caso d'uso #2
+5. Fase 5 (SW runtime cache) — ottimizzazione
+6. Fase 6 (UX offline) — polish
+
+**Note architetturali**:
+- IndexedDB preferito a localStorage per: capacità (>5MB), struttura, transazioni
+- La cache è per workspace+utente (multi-tenant safe)
+- JWT nel header → SW non può cachare con Authorization senza logica custom
+- Sync queue usa FIFO con max 3 retry, backoff esponenziale
+- Conflitti: 409 (dato già aggiornato) → drop silenzioso + notifica; 401 → pausa sync + re-login
+- `offlineBuffer.js` esistente verrà migrato a IndexedDB (fase 2) mantenendo retrocompatibilità
+- Dipendenza suggerita: `idb` (wrapper IndexedDB leggero, ~1KB gzip) oppure raw IndexedDB API
+
+**Valore commerciale**: "YFM funziona anche quando al campo non prende internet" — differenziatore forte per società sportive in zone con copertura scarsa.
+
+---
+
 ### EPIC 6: Polish pre-stagione
 
 > Bug fix, UX improvements, preparazione per utenti reali.
@@ -440,19 +527,22 @@ EPIC 11 (Atleta/Genitore) ──→ nessuna dipendenza (usa infrastruttura guest
 EPIC 12 (Club Operations) ──→ dipende parzialmente da EPIC 11 (notifiche genitore per scadenze quote)
 EPIC 13 (Preseason) ──→ nessuna dipendenza
 EPIC 14 (Match Center Evolution) ──→ nessuna dipendenza
+EPIC 15 (PWA Offline-First) ──→ nessuna dipendenza (usa infrastruttura PWA già installata)
 ```
 
 Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 1. **EPIC 1** (pulizia, 20min) → riduce debito tecnico ✅
 2. **EPIC 2** (infortuni, 43min) → feature richiesta dai mister ✅
-3. **EPIC 11** (atleta/genitore, ~2h) → evoluzione accesso utenti, alto valore percepito
-4. **EPIC 3** (visite, 35min) → scadenze mediche = obbligo FIGC
+3. **EPIC 11** (atleta/genitore, ~2h) → evoluzione accesso utenti, alto valore percepito ✅
+4. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
+5. **EPIC 3** (visite, 35min) → scadenze mediche = obbligo FIGC
 6. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro
-6. **EPIC 6** (polish, 33min) → UX
-7. **EPIC 9** (workspace hub, ~57min) → gestione superadmin
-8. **EPIC 7** (tornei, 37min) → nice-to-have
-9. **EPIC 12** (club operations, ~10h) → valore società, post-EPIC 11
-10. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno, bassa priorità
+7. **EPIC 14** (Match Center evolution, ~53min) → UX bordo campo
+8. **EPIC 6** (polish, 33min) → UX
+9. **EPIC 9** (workspace hub, ~57min) → gestione superadmin
+10. **EPIC 7** (tornei, 37min) → nice-to-have
+11. **EPIC 12** (club operations, ~10h) → valore società, post-EPIC 11
+12. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno, bassa priorità
 
 ---
 
@@ -469,7 +559,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | UI | ~~Formazione live con sostituzioni~~ (fatto in Match Center) | ✅ |
 | Tech | TypeScript graduale | P3 |
 | Tech | Test E2E (Playwright) | P3 |
-| Mobile | App nativa | P3 |
+| Mobile | ~~App nativa~~ → PWA installabile (già fatto) | ✅ |
 
 ---
 
@@ -607,6 +697,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | fix: certificati medici dashboard — eliminata colonna scadenza_visita_medica (ridondante), migrati dati a data_visita_medica, dashboard usa stessa logica rosa (data+1anno), cache invalidation su cambio team/stagione/salvataggio |
 | (pending) | fix: distinta non aggiornata dopo modifica convocazioni — filtro solo convocati (non tutta la rosa) |
 | (pending) | feat: flusso convocazioni Salva/Modifica/Pubblica — bottone Salva→Modifica dopo primo save, pallino stato pubblicazione (🔵 lampeggiante=da pubblicare, 🟢 fisso=pubblicata), endpoint GET /convocazioni-stato |
+| (pending) | feat: PWA installabile — vite-plugin-pwa, manifest, icone, screenshots, registerSW autoUpdate, banner offline, installazione desktop/mobile verificata |
 | (pending) | style: ordine cognome-nome — tutte le schede giocatori mostrano sempre cognome prima del nome (roster, playerDetail, convocazioni, presenze) |
 
 ---

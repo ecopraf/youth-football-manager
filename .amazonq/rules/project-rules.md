@@ -696,6 +696,34 @@ refactor: refactoring codice
 style: stili (CSS)
 ```
 
+## 📱 PWA & Offline (Regole)
+
+### Stato attuale
+- PWA installabile con `vite-plugin-pwa` (Workbox precache asset statici)
+- `registerSW({ registerType: 'autoUpdate' })` in main.js
+- Banner offline globale (`initOfflineBanner()`) con stati online/offline
+- Buffer localStorage per Match Center eventi/note (`offlineBuffer.js`)
+- Auto-sync MC al ritorno online
+
+### Regole sviluppo PWA
+- **Mai cachare token/auth** in IndexedDB o SW cache
+- **Cache API per workspace+utente**: ogni store IndexedDB deve essere isolato per workspace_id
+- **Sync queue FIFO**: operazioni offline eseguite in ordine cronologico al ritorno online
+- **Conflitti 409**: drop silenzioso + toast informativo (dato già aggiornato da altro device)
+- **Conflitti 401**: pausa sync, richiedi re-login
+- **Indicatore visivo obbligatorio**: l'utente deve SEMPRE sapere se sta lavorando offline
+- **Pre-fetch proattivo**: quando si apre MC o Presenze, cachare subito i dati necessari
+- **Fallback graceful**: se dato non disponibile offline, mostrare messaggio chiaro (non errore generico)
+- **Service Worker**: non modificare manualmente `sw.js` (generato da Workbox). Configurare solo via `vite.config.js`
+- **Test offline**: prima di committare feature offline, testare con DevTools Network → Offline
+
+### File PWA di riferimento
+- `frontend-v2/vite.config.js` — configurazione VitePWA + manifest
+- `frontend-v2/src/main.js` — registerSW + initOfflineBanner
+- `frontend-v2/src/utils/offlineBuffer.js` — buffer MC (localStorage)
+- `frontend-v2/public/icon-*.png` — icone PWA
+- `frontend-v2/public/screenshots/` — screenshot per Install UI
+
 ## Workflow Post-Modifica
 
 1. Implementa le modifiche

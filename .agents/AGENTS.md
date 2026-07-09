@@ -57,6 +57,7 @@ git status
 | **Frontend** | Vite + JavaScript ES Modules |
 | **Backend** | Node.js/Express (18 router) + Supabase |
 | **Deploy** | Vercel (auto su push a main) |
+| **PWA** | Installabile (vite-plugin-pwa, Workbox precache, registerSW autoUpdate). Offline: solo asset statici. Offline-first API cache: EPIC 15 (planned). |
 | **Auth** | JWT + capabilities granulari per modulo (rosa, partite, formazione, allenamenti, statistiche, guest_links, import, report). Livelli: `''` (nessuno), `'read'`, `'write'`. Admin/superadmin bypassano. Allenatore usa capabilities dal profilo (fallback legacy: tutto se nessun permesso). |
 | **Guest** | JWT guest (24h). Login risolve team_id + player_name. Tipo: `atleta` (home personale) o `genitore` (home squadra). Capabilities differenziate per tipo. |
 | **Notifiche** | Badge 🔔 aggiornato al login + polling 60s + cambio squadra. Centro Comunicazioni con tabs (📤 Inviate + 📥 Ricevute). Inviate: avvisi/convocazioni creati dall'utente (edit/delete). Ricevute: assenze + indisponibilità convocati (read-only + 💬 Rispondi). Convocazioni: salva separato da pubblica (notifica solo su Pubblica). |
@@ -70,6 +71,11 @@ git status
 - `pdf-parse@1.1.1` (parsing PDF calendario SGS/LND)
 - `cheerio` (parsing HTML Tuttocampo)
 - `dotenv`
+
+### Frontend Dependencies
+- `vite` 6, `tailwindcss` 4
+- `vite-plugin-pwa` 1.3 (Workbox precache + manifest generation)
+- `virtual:pwa-register` (auto-import da vite-plugin-pwa per registerSW)
 
 ### Backend Files (Architettura Modulare)
 ```
