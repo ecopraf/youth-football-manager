@@ -70,7 +70,11 @@ export async function loadSquadre(stagioneId) {
       const savedSeasonId = localStorage.getItem(SEASON_STORAGE_KEY);
       let selectedSeason;
       if (savedSeasonId && accessibleSeasons.find(s => s.id === savedSeasonId)) {
-        selectedSeason = accessibleSeasons.find(s => s.id === savedSeasonId);
+        // Verifica: se la stagione salvata non è attiva e ce n'è una attiva, preferisci l'attiva
+        // (evita che superadmin resti su stagione vecchia dopo riapertura app)
+        const saved = accessibleSeasons.find(s => s.id === savedSeasonId);
+        const active = accessibleSeasons.find(s => s.attiva);
+        selectedSeason = (active && !saved.attiva) ? active : saved;
       } else {
         selectedSeason = accessibleSeasons.find(s => s.attiva) || accessibleSeasons[0];
       }
