@@ -486,7 +486,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       // Events for this player
       let eventi = [];
       if (matchIds.length > 0) {
-        const { data: evts } = await supabase.from('match_event').select('tipo_evento, minuto, match_id').eq('player_id', playerId).in('match_id', matchIds);
+        const { data: evts } = await supabase.from('match_event').select('tipo_evento, minuto, match_id').eq('player_id', playerId).in('match_id', matchIds).order('minuto');
         eventi = evts || [];
       }
 

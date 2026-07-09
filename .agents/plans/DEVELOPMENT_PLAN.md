@@ -700,6 +700,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: PWA installabile — vite-plugin-pwa, manifest, icone, screenshots, registerSW autoUpdate, banner offline, installazione desktop/mobile verificata |
 | (pending) | fix: Lighthouse accessibility — meta description, robots.txt, alt immagini, landmark main, label select (sr-only), heading order h1→h2→h3, contrasto colori (#888→#666 override CSS), aria-label bottoni |
 | (pending) | fix: mobile UX — ripristino avatar header su mobile, toast landscape "usa formato verticale", CSS landscape compatto, rimossa stagione hardcoded da sidebar (ridondante con dropdown header) |
+| (pending) | fix: report giocatore — eventi ordinati per minuto (backend .order + frontend sort safety net) |
+| (pending) | fix: sidebar landscape mobile — nascosta di default con toggle hamburger, chiusura su tap fuori/click nav, layout compatto |
 | (pending) | style: ordine cognome-nome — tutte le schede giocatori mostrano sempre cognome prima del nome (roster, playerDetail, convocazioni, presenze) |
 
 ---

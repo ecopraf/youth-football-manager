@@ -69,7 +69,7 @@ export function setupLayout() {
       if (window.YFM && typeof window.YFM.navigateTo === 'function') {
         window.YFM.navigateTo(link.dataset.page);
       }
-      if (window.innerWidth <= 768 && sidebar) {
+      if ((window.innerWidth <= 768 || (window.innerHeight <= 500 && window.innerWidth > window.innerHeight)) && sidebar) {
         sidebar.classList.remove('open');
         document.body.classList.remove('sidebar-open');
       }
@@ -84,9 +84,12 @@ export function setupLayout() {
     });
   }
 
-  // Chiudi sidebar su tap/click fuori (mobile)
+  // Chiudi sidebar su tap/click fuori (mobile + landscape)
   function closeSidebarOutside(e) {
-    if (!sidebar || window.innerWidth > 768) return;
+    if (!sidebar) return;
+    const isMobile = window.innerWidth <= 768;
+    const isLandscape = window.innerHeight <= 500 && window.innerWidth > window.innerHeight;
+    if (!isMobile && !isLandscape) return;
     if (!sidebar.classList.contains('open')) return;
     if (sidebar.contains(e.target) || (menuBtn && menuBtn.contains(e.target))) return;
     sidebar.classList.remove('open');
@@ -163,7 +166,7 @@ export function setupGuestLayout(tipo, playerName) {
       if (window.YFM && typeof window.YFM.navigateTo === 'function') {
         window.YFM.navigateTo(link.dataset.page);
       }
-      if (window.innerWidth <= 768 && sidebar) {
+      if ((window.innerWidth <= 768 || (window.innerHeight <= 500 && window.innerWidth > window.innerHeight)) && sidebar) {
         sidebar.classList.remove('open');
         document.body.classList.remove('sidebar-open');
       }

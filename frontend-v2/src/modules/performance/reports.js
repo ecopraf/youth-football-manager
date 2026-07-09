@@ -244,7 +244,7 @@ function renderReport(report) {
       <div style="margin-bottom:24px;">
         <h3 style="border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:12px;">⚽ Cronologia Eventi</h3>
         <div style="display:flex;flex-direction:column;gap:8px;">
-          ${report.eventi.map(e => {
+          ${report.eventi.sort((a, b) => (a.minuto || 0) - (b.minuto || 0)).map(e => {
             const icona = e.tipo === 'GOAL' ? '⚽' : e.tipo === 'YELLOW' ? '🟨' : '🟥';
             const label = e.tipo === 'GOAL' ? 'Gol' : e.tipo === 'YELLOW' ? 'Amm.' : 'Esp.';
             return `
@@ -742,7 +742,7 @@ function renderPlayerReport(report) {
                     <span style="font-size:10px;color:#888;">${formatDateShort(gruppo.data)}</span>
                   </div>
                   <div style="display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;background:#f8f9fa;border-radius:6px;">
-                    ${gruppo.eventi.map(e => `
+                    ${gruppo.eventi.sort((a, b) => (a.minuto || 0) - (b.minuto || 0)).map(e => `
                       <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:${e.tipo === 'GOAL' ? '#d4edda' : e.tipo === 'ASSIST' ? '#cce5ff' : e.tipo === 'YELLOW' ? '#fff3cd' : '#f8d7da'};border-radius:4px;font-size:11px;">
                         ${e.minuto != null ? `<span style="font-weight:bold;color:#667eea;">${e.minuto}'</span>` : ''}
                         <span>${getEventIcon(e.tipo)}</span>
