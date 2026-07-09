@@ -698,6 +698,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | fix: distinta non aggiornata dopo modifica convocazioni — filtro solo convocati (non tutta la rosa) |
 | (pending) | feat: flusso convocazioni Salva/Modifica/Pubblica — bottone Salva→Modifica dopo primo save, pallino stato pubblicazione (🔵 lampeggiante=da pubblicare, 🟢 fisso=pubblicata), endpoint GET /convocazioni-stato |
 | (pending) | feat: PWA installabile — vite-plugin-pwa, manifest, icone, screenshots, registerSW autoUpdate, banner offline, installazione desktop/mobile verificata |
+| (pending) | fix: Lighthouse accessibility — meta description, robots.txt, alt immagini, landmark main, label select (sr-only), heading order h1→h2→h3, contrasto colori (#888→#666 override CSS), aria-label bottoni |
 | (pending) | style: ordine cognome-nome — tutte le schede giocatori mostrano sempre cognome prima del nome (roster, playerDetail, convocazioni, presenze) |
 
 ---

@@ -724,6 +724,27 @@ style: stili (CSS)
 - `frontend-v2/public/icon-*.png` — icone PWA
 - `frontend-v2/public/screenshots/` — screenshot per Install UI
 
+### Regole Accessibility (Lighthouse)
+
+Ogni nuova pagina/componente DEVE rispettare:
+
+| Regola | Dettaglio |
+|---|---|
+| `<meta name="description">` | Presente in `index.html` — non rimuovere |
+| `robots.txt` | In `public/robots.txt` — non rimuovere |
+| Immagini con `alt` | Ogni `<img>` deve avere attributo `alt` descrittivo (o vuoto `alt=""` se decorativa) |
+| Landmark `<main>` | Il contenitore `#app` in index.html è `<main>` — non cambiare in `<div>` |
+| Label su select/input | Ogni `<select>` e `<input>` deve avere `<label>` associato (usare classe `sr-only` se non visibile) |
+| Heading order | Sequenza h1→h2→h3 senza salti. Dashboard: h1 titolo, h2 sezioni, h3 sotto-sezioni |
+| Contrasto colori | Mai usare `#888`, `#999`, `#aaa` per testo su sfondo bianco. Minimo: `#666` (ratio 4.5:1 WCAG AA). Override globale in `style.css` |
+| `aria-label` su bottoni icona | Bottoni con solo icona/emoji (es. ☰) devono avere `aria-label` descrittivo |
+
+**Classe utility `sr-only`** (definita in style.css):
+```css
+.sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
+```
+Usare per label visivamente nascoste ma accessibili a screen reader.
+
 ## Workflow Post-Modifica
 
 1. Implementa le modifiche

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://youth-football-manager.vercel.app/sitemap.xml

@@ -230,7 +230,7 @@ export default async function loadDashboard() {
         '<div style="font-size:18px;font-weight:800;color:#fff;flex-shrink:0;">' + getLabel(p) + '</div>' +
       '</div>';
     }
-    return '<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:16px;border-radius:14px;"><h3 style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);margin:0 0 12px 0;">' + title + '</h3>' + rows + '</div>';
+    return '<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:16px;border-radius:14px;"><h2 style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);margin:0 0 12px 0;">' + title + '</h2>' + rows + '</div>';
   };
   
   // Helper per stile risultato colorato
@@ -352,7 +352,7 @@ export default async function loadDashboard() {
       const pen = r.penalita ? ' <span style="font-size:9px;color:#E74C3C;">(' + r.penalita + ')</span>' : '';
       return '<tr' + cls + '><td>' + r.pos + '</td><td><div class="cl-team">' + logo + '<span>' + r.nome + pen + '</span></div></td><td><b>' + r.punti + '</b></td><td>' + r.g + '</td><td>' + r.v + '</td><td>' + r.n + '</td><td>' + r.p + '</td><td>' + r.gf + '</td><td>' + r.gs + '</td></tr>';
     }).join('');
-    return '<div data-help="dashboard.classifica"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;text-align:center;">🏆 ' + header + '</h3>' +
+    return '<div data-help="dashboard.classifica"><h2 style="margin:0 0 14px 0;font-size:15px;font-weight:600;color:#333;text-align:center;">🏆 ' + header + '</h2>' +
       (info.aggiornamento ? '<div style="font-size:10px;color:#999;margin-bottom:8px;text-align:center;">Aggiornata al ' + info.aggiornamento + '</div>' : '') +
       '<div style="overflow-x:auto;"><table class="classifica-table"><thead><tr><th>#</th><th>Squadra</th><th>Pt</th><th>G</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
   };
@@ -376,7 +376,7 @@ export default async function loadDashboard() {
         const cls = isUs ? ' class="classifica-row-highlight"' : '';
         return '<tr' + cls + '><td style="text-align:right;padding:4px 0;width:40%;overflow:hidden;"><span style="display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + r.home_club + getLogo(r.home_club) + '</span></td><td style="text-align:center;font-weight:700;white-space:nowrap;padding:4px 8px;width:20%;">' + (r.home_points ?? '-') + ' - ' + (r.away_points ?? '-') + '</td><td style="padding:4px 0;width:40%;overflow:hidden;"><span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + getLogo(r.away_club) + r.away_club + '</span></td></tr>';
       }).join('');
-      return '<div><h3 style="margin:0 0 10px 0;font-size:15px;color:#333;text-align:center;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h3><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;"><tbody>' + rows + '</tbody></table></div>';
+      return '<div><h2 style="margin:0 0 10px 0;font-size:15px;font-weight:600;color:#333;text-align:center;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h2><table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;"><tbody>' + rows + '</tbody></table></div>';
     }
     // Group by giornata
     const byRound = {};
@@ -419,7 +419,7 @@ export default async function loadDashboard() {
       }).join('');
       nav.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
         '<button id="grCalPrev" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;opacity:' + (idx > 0 ? '1' : '0.3') + ';">◀</button>' +
-        '<h3 style="margin:0;font-size:15px;color:#333;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h3>' +
+        '<h2 style="margin:0;font-size:15px;font-weight:600;color:#333;">📅 Giornata ' + round + ' <span style="font-size:11px;color:#999;font-weight:400;">' + date + '</span></h2>' +
         '<button id="grCalNext" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px 8px;opacity:' + (idx < rounds.length - 1 ? '1' : '0.3') + ';">▶</button></div>' +
         '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;"><tbody>' + rows + '</tbody></table>';
       document.getElementById('grCalPrev').onclick = () => { if (idx > 0) { currentIdx = idx - 1; renderRound(currentIdx); } };
@@ -445,7 +445,7 @@ export default async function loadDashboard() {
       const s = isOur ? ' style="background:#f0f4ff;font-weight:600;color:#667eea;"' : '';
       return '<tr' + s + '><td>' + (i + 1) + '</td><td>' + m.nome + '</td><td>' + m.squadra + '</td><td>' + m.gol + '</td></tr>';
     }).join('');
-    return '<div data-help="dashboard.marcatori"><h3 style="margin:0 0 8px 0;font-size:14px;color:#333;text-align:center;">⚽ Top Marcatori</h3>' +
+    return '<div data-help="dashboard.marcatori"><h2 style="margin:0 0 8px 0;font-size:14px;font-weight:600;color:#333;text-align:center;">⚽ Top Marcatori</h2>' +
       '<div class="marcatori-grid">' +
       '<div><div style="font-size:11px;font-weight:700;color:#999;margin-bottom:6px;text-align:center;">GENERALE</div><table class="marcatori-table"><tbody>' + renderTable(top10Reg) + '</tbody></table></div>' +
       '<div><div style="font-size:11px;font-weight:700;color:#667eea;margin-bottom:6px;text-align:center;">GIRONE ' + (classificaData?.info?.group_name || '') + '</div><table class="marcatori-table"><tbody>' + renderTable(top10Gir) + '</tbody></table></div>' +
@@ -501,7 +501,7 @@ export default async function loadDashboard() {
       '<div class="dash-widgets">' +
       widgets.map(w => '<div class="dash-card"><div style="font-size:20px;font-weight:bold;color:' + (w.c || 'var(--text)') + ';">' + w.v + '</div><div style="font-size:10px;color:var(--gray);margin-top:4px;">' + w.l + '</div></div>').join('') +
       '</div>' +
-      '<div class="result-card"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div>';
+      '<div class="result-card"><h2 style="margin:0 0 14px 0;font-size:15px;font-weight:600;color:#333;">📋 Ultimi Risultati</h2>' + renderResults() + '</div>';
     return;
   }
     
@@ -527,12 +527,12 @@ export default async function loadDashboard() {
     renderTopSectionGlass('🅰️ Top 3 Assist', (top.assistmen || []).slice(0, 3), 'assist') +
     renderTopSectionGlass('🏃 Top 3 Presenze (min.)', (top.presenze || []).slice(0, 3), 'presenze') +
     '</div></div>' +
-    '<div data-widget="results"><div class="result-card" data-help="dashboard.risultati"><h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults() + '</div></div>' +
+    '<div data-widget="results"><div class="result-card" data-help="dashboard.risultati"><h2 style="margin:0 0 14px 0;font-size:15px;font-weight:600;color:#333;">📋 Ultimi Risultati</h2>' + renderResults() + '</div></div>' +
     '<div data-widget="injuries" id="dashInjuryWidget"></div>' +
     '<div data-widget="certificati" id="dashCertificatiWidget"></div>' +
     '<div data-widget="convocazione" id="dashConvocazioneWidget"></div>' +
     '<div data-widget="classifica" id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
-    '<div data-widget="staff"><div class="staff-card" data-help="dashboard.staff"><h3 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h3><div>' + renderStaff() + '</div></div></div>' +
+    '<div data-widget="staff"><div class="staff-card" data-help="dashboard.staff"><h2 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h2><div>' + renderStaff() + '</div></div></div>' +
     '</div>';
 
   // Attach dropdown change handler
@@ -571,7 +571,7 @@ export default async function loadDashboard() {
       // Update risultati
       const resCard = c.querySelector('[data-help="dashboard.risultati"]');
       if (resCard) {
-        resCard.innerHTML = '<h3 style="margin:0 0 14px 0;font-size:15px;color:#333;">📋 Ultimi Risultati</h3>' + renderResults();
+        resCard.innerHTML = '<h2 style="margin:0 0 14px 0;font-size:15px;font-weight:600;color:#333;">📋 Ultimi Risultati</h2>' + renderResults();
       }
     };
   }
@@ -611,7 +611,7 @@ export default async function loadDashboard() {
   if (injWidget && activeInjuries.length > 0) {
     const today = new Date();
     injWidget.innerHTML = '<div style="background:#FFF3F3;border:1px solid #FDCECE;border-radius:12px;padding:14px;">' +
-      '<h4 style="margin:0 0 10px 0;font-size:13px;color:#E74C3C;">🏥 Infortunati (' + activeInjuries.length + ')</h4>' +
+      '<h3 style="margin:0 0 10px 0;font-size:13px;color:#E74C3C;">🏥 Infortunati (' + activeInjuries.length + ')</h3>' +
       activeInjuries.map(inj => {
         const days = inj.data_prevista_rientro ? Math.ceil((new Date(inj.data_prevista_rientro) - today) / 86400000) : null;
         const daysLabel = days !== null ? (days > 0 ? days + 'gg' : '⚠️ scaduto') : '';
@@ -647,7 +647,7 @@ export default async function loadDashboard() {
           ? '<span style="color:#27AE60;font-weight:600;">✅ ' + convocati.length + ' convocati</span>'
           : '<span style="color:#E67E22;font-weight:600;">⬜ Da convocare</span>';
         convWidget.innerHTML = '<div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:12px;padding:14px;">' +
-          '<h4 style="margin:0 0 10px 0;font-size:13px;color:#4338ca;">📋 Prossima Convocazione</h4>' +
+          '<h3 style="margin:0 0 10px 0;font-size:13px;color:#4338ca;">📋 Prossima Convocazione</h3>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
           '<div><strong>' + (prossimaPartita.avversario || 'TBD') + '</strong><br><span style="font-size:12px;color:#666;">' + dataStr + ' · ' + oraStr + ' · ' + luogo + '</span></div>' +
           '<div>' + stato + '</div></div>' +
@@ -738,7 +738,7 @@ export default async function loadDashboard() {
 
     function renderModal() {
       overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:scale-in 0.2s;">' +
-        '<h3 style="margin:0 0 4px 0;font-size:16px;">⚙️ Organizza Dashboard</h3>' +
+        '<h2 style="margin:0 0 4px 0;font-size:16px;font-weight:600;">⚙️ Organizza Dashboard</h2>' +
         '<p style="margin:0 0 16px 0;font-size:12px;color:#6b7280;">Riordina e nascondi le sezioni</p>' +
         '<div id="orgList">' + renderList() + '</div>' +
         '<div style="display:flex;gap:8px;margin-top:16px;">' +

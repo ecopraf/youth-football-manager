@@ -456,7 +456,7 @@ body.sidebar-open::before {
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: #888;
+  color: #666;
   padding: 0;
   line-height: 1;
 }
@@ -589,6 +589,8 @@ body.sidebar-open::before {
   }
 }
 
-
-
-
+/* Accessibility: improve contrast for secondary text colors used inline */
+/* These override inline #888/#999/#aaa to meet WCAG AA 4.5:1 ratio on white bg */
+[style*="color:#888"], [style*="color: #888"] { color: #666 !important; }
+[style*="color:#999"], [style*="color: #999"] { color: #737373 !important; }
+[style*="color:#aaa"], [style*="color: #aaa"] { color: #737373 !important; }
