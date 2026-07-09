@@ -749,7 +749,8 @@ Usare per label visivamente nascoste ma accessibili a screen reader.
 ## Workflow Post-Modifica
 
 1. Implementa le modifiche
-2. Testa: `cd frontend-v2 && npm run build` + `cd backend && node -c api/index.js`
+2. Testa: `cd frontend-v2 && npm run release` + `cd backend && node -c api/index.js`
+   > ⚠️ `npm run release` = incrementa build counter + build. Usare `npm run build` SOLO per test intermedi senza commit.
 3. **Test funzionale** (vedi sezione sotto)
 4. Aggiorna documentazione (DEVELOPMENT_PLAN.md changelog + eventuali AGENTS.md/project-rules.md)
 5. Commit con messaggio descrittivo
