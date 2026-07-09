@@ -708,6 +708,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | (pending) | feat: Match Center register_past — partite passate senza live_meta mostrano bottone "⏩ Registra Partita" (setta stato=Terminata senza flusso live) |
 | (pending) | fix: convocazione/distinta mobile — rimossa regola CSS globale display:block su table (rompeva allineamento colonne), aggiunto table-layout:fixed + colgroup su convocazione, overflow-x:auto + min-width su distinta, font ridotti su mobile |
 | (pending) | feat: help interattivo Match Center — data-help su bottone stato, azioni rapide, tabs, timeline, salva; PAGE_HELP per convocazioni e formazione; ELEMENT_HELP per MC (liveBtn, quickActions, tabs, timeline, save) e notifications |
+| (pending) | feat: frontend version bump v3.15→v3.16 (allineamento con backend) + auto-bump minor al superamento di build 99 (v3.16.99→v3.17.1) |
 
 ---
 

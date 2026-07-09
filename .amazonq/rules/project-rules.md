@@ -255,7 +255,7 @@ I workspace attivi nel DB sono:
 - **Nessun `console.log` di debug** nel codice pushato in produzione
 - **Build test obbligatorio** prima di ogni commit (`npm run build` nel frontend, `node -c api/index.js` nel backend)
 - **Porta locale backend**: 3002 (non 3001)
-- **Versione attuale**: v3.16
+- **Versione attuale**: v3.16 (frontend e backend allineati)
 - **Mai riutilizzare campi esistenti per scopi diversi** — se serve un nuovo dato, creare una colonna/tabella dedicata
 - **Preferire campi JSONB** per dati strutturati che non richiedono query dirette (metadati, configurazioni, layout)
 - **NON pushare senza conferma esplicita dell'utente**

@@ -4,7 +4,7 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // Versione software (allineata con backend)
-const SW_VERSION = 'v3.15';
+const SW_VERSION = 'v3.16';
 
 const BUILD_COUNTER_FILE = path.resolve(__dirname, '.build-counter.json');
 
@@ -20,34 +20,51 @@ function getBuildCounter() {
   return 0;
 }
 
-function saveBuildCounter(counter) {
+function saveBuildCounter(counter, version = SW_VERSION) {
   fs.writeFileSync(BUILD_COUNTER_FILE, JSON.stringify({
-    version: SW_VERSION,
+    version: version,
     counter: counter,
     updatedAt: new Date().toISOString()
   }, null, 2));
 }
 
-function generateBuildInfo() {
-  const currentCounter = getBuildCounter();
-  const newCounter = currentCounter + 1;
-  saveBuildCounter(newCounter);
+function bumpMinor(version) {
+  const match = version.match(/^v(\d+)\.(\d+)$/);
+  if (!match) return version;
+  return `v${match[1]}.${parseInt(match[2]) + 1}`;
+}
 
-  const buildId = `${SW_VERSION}.${newCounter}`;
+function generateBuildInfo() {
+  let currentCounter = getBuildCounter();
+  let version = SW_VERSION;
+  let newCounter = currentCounter + 1;
+
+  // Auto-bump: superato 99, incrementa minor e resetta counter
+  if (newCounter > 99) {
+    version = bumpMinor(version);
+    newCounter = 1;
+    // Aggiorna SW_VERSION nel file per persistenza
+    const configPath = path.resolve(__dirname, 'vite.config.js');
+    const configContent = fs.readFileSync(configPath, 'utf8');
+    fs.writeFileSync(configPath, configContent.replace(`const SW_VERSION = '${SW_VERSION}'`, `const SW_VERSION = '${version}'`));
+  }
+  saveBuildCounter(newCounter, version);
+
+  const buildId = `${version}.${newCounter}`;
   const now = new Date();
   const buildInfo = `// Auto-generated build info
-// SW Version: ${SW_VERSION}
+// SW Version: ${version}
 // Build Number: ${newCounter}
 // Build ID: ${buildId}
 // Date: ${now.toLocaleString('it-IT')}
 export const BUILD_INFO = {
   id: '${buildId}',
-  version: '${SW_VERSION}',
+  version: '${version}',
   buildNumber: ${newCounter},
   date: '${now.toISOString()}',
   buildDate: '${now.toLocaleString('it-IT')}'
 };
-export const SW_VERSION = '${SW_VERSION}';
+export const SW_VERSION = '${version}';
 `;
   const filePath = path.resolve(__dirname, 'src/build-info.js');
   fs.writeFileSync(filePath, buildInfo);

@@ -139,7 +139,7 @@ git checkout main
 ```bash
 cd frontend-v2
 npm run build
-# Output: Build ID: v3.15.<git-hash>
+# Output: Build ID: v3.16.<counter>
 # Output in frontend-v2/dist/
 ```
 
@@ -154,15 +154,17 @@ curl https://youth-football-manager-backend.vercel.app/api/health
 ```
 
 **Frontend**: 
-- Apri l'app → Login footer o Sidebar footer → `build: v3.15.<hash>`
+- Apri l'app → Login footer o Sidebar footer → `build: v3.16.<counter>`
 
 ---
 
 ## 🔢 Sistema Build ID
 
-Il build ID identifica univocamente ogni release: `v3.15.<git-hash>`
+Il build ID identifica univocamente ogni release: `v3.16.<counter>`
 
-**Formato**: `v<major>.<minor>.<commit-hash>`
+**Formato**: `v<major>.<minor>.<build-number>`
+
+**Auto-bump**: al raggiungimento del build 99, la minor si incrementa automaticamente (es. `v3.16.99` → `v3.17.1`).
 
 ---
 
