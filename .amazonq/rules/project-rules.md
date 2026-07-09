@@ -351,6 +351,7 @@ Per tabelle con **5+ colonne** o dati misti (testo + numeri), usare il component
 - **Layout desktop vs mobile diverso**: usare `window.innerWidth >= 900` per rendering condizionale (non solo CSS) quando la struttura HTML deve cambiare radicalmente
 - **Sezioni GR (classifica/calendario/marcatori)**: su desktop card unica con `gr-grid` 2 colonne; su mobile card separate con sfondo sfumato individuale
 - **Sfondi sfumati sezioni**: usare gradienti pastello leggeri per distinguere visivamente le aree (es. blu `#f0f4ff→#e8eeff`, verde `#f0fdf4→#e6f9ed`, arancio `#fef7ed→#fdf2e4`)
+- **Landscape mobile**: layout permesso (manifest `orientation: any`), toast discreto "usa formato verticale" su device touch <900px in landscape, CSS compatto (header 48px, padding ridotto)
 - **Font size minimo**: 12px su mobile per leggibilità
 - **Padding/gap ridotti**: su mobile usare gap/padding più compatti (8-12px vs 16-20px desktop)
 

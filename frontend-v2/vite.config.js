@@ -79,7 +79,7 @@ manifest: {
   theme_color: '#667eea',
   background_color: '#ffffff',
   display: 'standalone',
-  orientation: 'portrait',
+  orientation: 'any',
   start_url: '/',
   scope: '/',
   categories: [

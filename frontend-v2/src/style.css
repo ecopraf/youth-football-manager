@@ -44,7 +44,6 @@ body {
 .sidebar-info { padding: 0 24px 20px; }
 .sidebar-info-label { font-size: 12px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
 .sidebar-info-workspace { font-weight: 500; margin: 4px 0; font-size: 15px; color: white; }
-.sidebar-info-season { font-size: 12px; opacity: 0.5; }
 .sidebar-ws-select { width:100%;padding:6px 10px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:rgba(255,255,255,0.1);color:white;font-size:14px;font-weight:500;margin:4px 0;cursor:pointer;appearance:auto; }
 .sidebar-ws-select option { background:#1a1a2e;color:white; }
 
@@ -594,3 +593,12 @@ body.sidebar-open::before {
 [style*="color:#888"], [style*="color: #888"] { color: #666 !important; }
 [style*="color:#999"], [style*="color: #999"] { color: #737373 !important; }
 [style*="color:#aaa"], [style*="color: #aaa"] { color: #737373 !important; }
+
+/* Landscape mobile: ensure layout doesn't break */
+@media (max-height: 500px) and (orientation: landscape) {
+  .header { height: 48px; padding: 0 12px; }
+  .content { padding: 12px; }
+  .sidebar { width: 220px; }
+  .main { margin-left: 0; }
+  .modal-content { max-height: 85vh; }
+}

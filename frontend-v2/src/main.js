@@ -130,6 +130,7 @@ window.YFM.openPlayerDetail = function(playerId) {
 document.addEventListener('DOMContentLoaded', async () => {
   setupLayout();
   initOfflineBanner();
+  initLandscapeHint();
   initRouter();
 
   const path = window.location.pathname;
@@ -235,4 +236,23 @@ function initOfflineBanner() {
   if (!navigator.onLine) {
     show('⚠️ Connessione assente — i dati vengono salvati localmente', '#fef3c7', '#92400e');
   }
+}
+
+function initLandscapeHint() {
+  if (!('ontouchstart' in window)) return; // solo dispositivi touch
+  let hintShown = false;
+  const check = () => {
+    const isLandscape = window.innerWidth > window.innerHeight && window.innerWidth < 900;
+    if (isLandscape && !hintShown) {
+      hintShown = true;
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(10,28,58,0.9);color:white;padding:10px 20px;border-radius:10px;font-size:12px;z-index:9999;display:flex;align-items:center;gap:8px;animation:fadeIn 0.3s;';
+      toast.innerHTML = '📱 Per una migliore esperienza usa il formato verticale';
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 4000);
+    }
+    if (!isLandscape) hintShown = false;
+  };
+  window.addEventListener('orientationchange', () => setTimeout(check, 100));
+  window.addEventListener('resize', check);
 }
