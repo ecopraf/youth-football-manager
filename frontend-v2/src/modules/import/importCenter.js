@@ -664,6 +664,7 @@ async function openGrUnifiedImport() {
   }
 
   const teamId = window.YFM.squadraId;
+  const teamName = sq.nome || window.YFM.getSquadraName();
   const modal = createModal('📥 Import da Portale Regionale', `
     <div style="background:#f0f4ff;padding:12px;border-radius:8px;margin-bottom:16px;">
       <p style="margin:0 0 12px;font-size:13px;color:#333;">Seleziona cosa importare:</p>
@@ -674,9 +675,76 @@ async function openGrUnifiedImport() {
         <input type="checkbox" id="grImpMarcatori" checked> ⚽ Marcatori (gol + minuto)
       </label>
     </div>
-    <div id="grImpPreview" style="font-size:13px;color:#666;">Clicca "Avvia Import" per procedere.</div>
-  `, '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grImpStart">🚀 Avvia Import</button>', '600px');
+    <div id="grImpPreview"><div class="loading"><div class="spinner"></div>Caricamento anteprima...</div></div>
+  `, '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="grImpStart" disabled>🚀 Conferma Import</button>', '700px');
 
+  // Carica preview
+  const preview = document.getElementById('grImpPreview');
+  let calData = null;
+  let evData = null;
+
+  try {
+    [calData, evData] = await Promise.all([
+      apiFetch('/gr/calendario/' + teamId),
+      apiFetch('/gr/match-events/preview?teamId=' + teamId).catch(() => ({ matches: [] }))
+    ]);
+
+    let html = '';
+
+    // Preview calendario
+    if (calData.matches && calData.matches.length > 0) {
+      const ourMatches = calData.matches.filter(m =>
+        isOurTeam(m.casa, teamName) || isOurTeam(m.ospite, teamName)
+      );
+      const withResult = ourMatches.filter(m => m.gol_casa !== null && m.gol_casa !== undefined);
+      html += `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;">
+        📅 <strong>${ourMatches.length}</strong> partite trovate per <strong>${teamName}</strong>
+        <span style="color:#555;">(${withResult.length} con risultato)</span>
+      </div>`;
+      html += '<div style="max-height:180px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;margin-bottom:12px;font-size:12px;">';
+      ourMatches.slice(0, 30).forEach(m => {
+        const isCasa = isOurTeam(m.casa, teamName);
+        const avv = isCasa ? m.ospite : m.casa;
+        const icon = isCasa ? '🏠' : '✈️';
+        const score = (m.gol_casa !== null && m.gol_casa !== undefined) ? ` <strong>${m.gol_casa}-${m.gol_ospite}</strong>` : ' <span style="color:#999;">da giocare</span>';
+        html += `<div style="padding:3px 0;border-bottom:1px solid #f5f5f5;">G.${m.giornata} | ${m.data} | ${icon} ${avv}${score}</div>`;
+      });
+      if (ourMatches.length > 30) html += `<div style="padding:4px 0;color:#999;">...e altre ${ourMatches.length - 30}</div>`;
+      html += '</div>';
+    } else {
+      html += '<div style="color:#999;padding:8px;margin-bottom:12px;">📅 Nessuna partita trovata nel calendario.</div>';
+    }
+
+    // Preview marcatori
+    const newEvents = evData.matches ? evData.matches.filter(m => !m.already_imported) : [];
+    if (evData.matches && evData.matches.length > 0) {
+      const totalGoals = newEvents.reduce((sum, m) => sum + (m.goals?.length || 0), 0);
+      html += `<div style="background:#fff8e1;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;">
+        ⚽ <strong>${newEvents.length}</strong> partite con marcatori da importare
+        <span style="color:#555;">(${totalGoals} gol totali)</span>
+        ${evData.matches.length - newEvents.length > 0 ? `<br><span style="font-size:11px;color:#888;">✅ ${evData.matches.length - newEvents.length} già importate</span>` : ''}
+      </div>`;
+      if (newEvents.length > 0) {
+        html += '<div style="max-height:120px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;margin-bottom:12px;font-size:12px;">';
+        newEvents.slice(0, 15).forEach(m => {
+          const goalsStr = m.goals.map(g => `${g.player} ${g.minute}'`).join(', ');
+          html += `<div style="padding:3px 0;border-bottom:1px solid #f5f5f5;"><strong>G${m.giornata}</strong> ${m.avversario} — <span style="color:#27AE60;">${goalsStr}</span></div>`;
+        });
+        if (newEvents.length > 15) html += `<div style="padding:4px 0;color:#999;">...e altre ${newEvents.length - 15}</div>`;
+        html += '</div>';
+      }
+    } else {
+      html += '<div style="color:#999;padding:8px;">⚽ Nessun marcatore disponibile.</div>';
+    }
+
+    preview.innerHTML = html;
+    document.getElementById('grImpStart').disabled = false;
+  } catch (err) {
+    preview.innerHTML = `<div style="color:#c00;padding:12px;background:#fee;border-radius:8px;">❌ Errore caricamento anteprima: ${err.message}</div>`;
+    return;
+  }
+
+  // Conferma import
   document.getElementById('grImpStart').addEventListener('click', async () => {
     const doCalendario = document.getElementById('grImpCalendario').checked;
     const doMarcatori = document.getElementById('grImpMarcatori').checked;
@@ -685,35 +753,27 @@ async function openGrUnifiedImport() {
     const btn = document.getElementById('grImpStart');
     btn.disabled = true;
     btn.textContent = 'Importazione...';
-    const preview = document.getElementById('grImpPreview');
     const results = [];
 
     try {
-      // 1. Calendario + Risultati
       if (doCalendario) {
-        preview.innerHTML = '<div class="spinner" style="margin:8px auto;"></div> Importazione calendario e risultati...';
+        preview.innerHTML = '<div style="text-align:center;padding:16px;"><div class="spinner" style="margin:0 auto 8px;"></div>Importazione calendario e risultati...</div>';
         const resp = await apiFetch('/gr/import-calendario/' + teamId, {
           method: 'POST', body: JSON.stringify({ mode: 'all' })
         });
         results.push(`📅 Calendario: ${resp.imported} importate, ${resp.updated || 0} aggiornate, ${resp.skipped} già presenti`);
       }
 
-      // 2. Marcatori
       if (doMarcatori) {
-        preview.innerHTML = '<div class="spinner" style="margin:8px auto;"></div> Importazione marcatori...';
-        const evData = await apiFetch('/gr/match-events/preview?teamId=' + teamId);
-        if (evData.matches && evData.matches.length > 0) {
-          const matchIds = evData.matches.filter(m => !m.already_imported).map(m => m.gr_match_id);
-          if (matchIds.length > 0) {
-            const evResp = await apiFetch('/gr/match-events/import', {
-              method: 'POST', body: JSON.stringify({ teamId, matches: matchIds })
-            });
-            results.push(`⚽ Marcatori: ${evResp.imported} gol importati, ${evResp.skipped} saltati`);
-          } else {
-            results.push('⚽ Marcatori: tutti già importati');
-          }
+        preview.innerHTML = '<div style="text-align:center;padding:16px;"><div class="spinner" style="margin:0 auto 8px;"></div>Importazione marcatori...</div>';
+        const newEvents = evData?.matches ? evData.matches.filter(m => !m.already_imported) : [];
+        if (newEvents.length > 0) {
+          const evResp = await apiFetch('/gr/match-events/import', {
+            method: 'POST', body: JSON.stringify({ teamId, matches: newEvents.map(m => m.gr_match_id) })
+          });
+          results.push(`⚽ Marcatori: ${evResp.imported} gol importati, ${evResp.skipped} saltati`);
         } else {
-          results.push('⚽ Marcatori: nessuna partita con gol disponibile');
+          results.push('⚽ Marcatori: tutti già importati');
         }
       }
 
@@ -721,10 +781,10 @@ async function openGrUnifiedImport() {
         '<div style="font-weight:600;margin-bottom:8px;">✅ Import completato!</div>' +
         results.map(r => '<div style="padding:2px 0;">' + r + '</div>').join('') + '</div>';
       btn.textContent = '✅ Fatto';
-      btn.addEventListener('click', () => { modal.close(); loadImportCenter(); });
+      btn.onclick = () => { modal.close(); loadImportCenter(); };
       btn.disabled = false;
     } catch (err) {
-      preview.innerHTML = `<div style="color:#c00;padding:12px;">❌ Errore: ${err.message}</div>`;
+      preview.innerHTML = `<div style="color:#c00;padding:12px;background:#fee;border-radius:8px;">❌ Errore: ${err.message}</div>`;
       btn.textContent = '🚀 Riprova';
       btn.disabled = false;
     }
