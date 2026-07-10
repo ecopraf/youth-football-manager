@@ -716,11 +716,67 @@ export default async function loadDashboard() {
     });
   }
 
-  // Load and apply user preferences
+  // Load and apply user preferences + onboarding
   apiFetch('/users/preferences').then(prefs => {
     if (prefs && prefs.dashboard_layout) applyLayout(prefs.dashboard_layout);
     else applyLayout({ order: DEFAULT_ORDER, hidden: DEFAULT_HIDDEN });
+    // Welcome card onboarding
+    if (!prefs || !prefs.onboarding_dismissed) renderWelcomeCard();
   }).catch(() => applyLayout({ order: DEFAULT_ORDER, hidden: DEFAULT_HIDDEN }));
+
+  // --- Welcome Onboarding Card ---
+  function renderWelcomeCard() {
+    const container = document.getElementById('dashWidgetsContainer');
+    if (!container) return;
+    const profilo = (window.YFM.getUser()?.permessi?.profilo || '').toLowerCase();
+    const steps = getOnboardingSteps(profilo);
+    const card = document.createElement('div');
+    card.id = 'welcomeOnboarding';
+    card.style.cssText = 'background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:16px;padding:20px;color:white;position:relative;animation:scale-in 0.2s;';
+    card.innerHTML = '<button id="welcomeDismiss" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.2);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;" aria-label="Chiudi">✕</button>' +
+      '<div style="font-size:18px;font-weight:700;margin-bottom:4px;">👋 Benvenuto in Youth Football Manager!</div>' +
+      '<div style="font-size:12px;opacity:0.8;margin-bottom:14px;">Ecco come iniziare:</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;">' +
+      steps.map((s, i) => '<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;cursor:pointer;" onclick="window.YFM.navigateTo(\'' + s.route + '\')">' +
+        '<span style="font-size:18px;">' + s.icon + '</span>' +
+        '<div><div style="font-size:13px;font-weight:600;">' + (i + 1) + '. ' + s.title + '</div><div style="font-size:11px;opacity:0.7;">' + s.desc + '</div></div></div>').join('') +
+      '</div>' +
+      '<div style="margin-top:14px;display:flex;gap:8px;align-items:center;">' +
+      '<button id="welcomeDismissBtn" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">Non mostrare più</button>' +
+      '</div>';
+    container.insertBefore(card, container.firstChild);
+    const dismiss = () => {
+      card.remove();
+      apiFetch('/users/preferences', { method: 'PUT', body: JSON.stringify({ onboarding_dismissed: true }) }).catch(() => {});
+    };
+    document.getElementById('welcomeDismiss').onclick = dismiss;
+    document.getElementById('welcomeDismissBtn').onclick = dismiss;
+  }
+
+  function getOnboardingSteps(profilo) {
+    if (profilo === 'segreteria') return [
+      { icon: '📋', title: 'Rosa', desc: 'Gestisci i giocatori della squadra', route: 'roster' },
+      { icon: '🔗', title: 'Link Guest', desc: 'Genera link per genitori e atleti', route: 'guestLinks' },
+      { icon: '📅', title: 'Calendario', desc: 'Visualizza partite e impegni', route: 'calendar' }
+    ];
+    if (profilo === 'dirigente') return [
+      { icon: '📅', title: 'Calendario', desc: 'Consulta le partite in programma', route: 'calendar' },
+      { icon: '📋', title: 'Rosa', desc: 'Visualizza i giocatori', route: 'roster' },
+      { icon: '🔗', title: 'Link Guest', desc: 'Condividi accesso con i genitori', route: 'guestLinks' }
+    ];
+    if (profilo === 'vice_allenatore' || profilo === 'preparatore') return [
+      { icon: '🏋️', title: 'Allenamenti', desc: 'Programma e presenze', route: 'trainingSessions' },
+      { icon: '📋', title: 'Rosa', desc: 'Consulta i giocatori', route: 'roster' },
+      { icon: '📊', title: 'Statistiche', desc: 'Analizza le performance', route: 'stats' }
+    ];
+    // Default: allenatore
+    return [
+      { icon: '📋', title: 'Rosa', desc: 'Aggiungi i tuoi giocatori', route: 'roster' },
+      { icon: '📅', title: 'Calendario', desc: 'Crea la prima partita', route: 'calendar' },
+      { icon: '⚽', title: 'Match Center', desc: 'Gestisci la giornata gara', route: 'calendar' },
+      { icon: '🏋️', title: 'Allenamenti', desc: 'Configura la settimana tipo', route: 'trainingSessions' }
+    ];
+  }
 
   // Organize button handler
   const orgBtn = document.getElementById('dashOrganizeBtn');

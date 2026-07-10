@@ -410,23 +410,33 @@ window.YFM.getSocietaName()
 Il flusso operativo è sequenziale:
 
 ```
-1. Convocazioni pubblicate (giorni prima della partita)
-2. Match Center → Formazione (giorno partita, dai convocati)
-3. Distinta → stampabile in qualsiasi momento
+1. Convocazioni salvate (selezione giocatori)
+2. Convocazioni PUBBLICATE (notifica inviata → sblocca formazione)
+3. Match Center → Formazione (giorno partita, dai convocati)
+4. Distinta → stampabile in qualsiasi momento
 ```
 
 **Regole:**
 
-| Stato | Match Center (tab Formazione) | Distinta |
-|---|---|---|
-| Convocazioni NON pubblicate, no formazione | ❌ Bloccato — messaggio + link a Convocazioni | ⚠️ Vuota stampabile con banner giallo |
-| Convocazioni NON pubblicate, formazione esistente (import) | ✅ Mostra formazione | ⚠️ Mostra formazione con banner |
-| Convocazioni pubblicate, no formazione | ✅ Bottone "Crea" | ✅ Mostra convocati |
-| Convocazioni pubblicate + formazione | ✅ Mostra formazione | ✅ Distinta completa |
+| Stato | Calendario (progress dot) | Match Center (tab Formazione) | Distinta |
+|---|---|---|---|
+| Convocazioni NON salvate | 🟡 Blink su "Conv" | ❌ Bloccato — messaggio + link | ⚠️ Vuota con banner giallo |
+| Convocazioni salvate, NON pubblicate | 🟡 Blink su "Conv" | ❌ Bloccato — messaggio + link | ⚠️ Vuota con banner giallo |
+| Convocazioni PUBBLICATE, no formazione | 🟡 Blink su "Form" | ✅ Bottone "Crea" | ✅ Mostra convocati |
+| Convocazioni PUBBLICATE + formazione | 🟡 Blink su "MC" | ✅ Mostra formazione | ✅ Distinta completa |
+| Formazione esistente (import), conv non pubblicate | 🟡 Blink su "Conv" | ✅ Mostra formazione | ⚠️ Mostra formazione con banner |
 
-- La pubblicazione delle convocazioni è il prerequisito per creare la formazione nel MC
+- La **pubblicazione** delle convocazioni è il prerequisito per creare la formazione nel MC
+- Il check "pubblicata" si basa sulla presenza di una `notification` con `tipo='convocazione'` per la partita (endpoint `/convocazioni-stato`)
+- Il semplice salvataggio (record in `convocation`) NON sblocca la formazione
 - La distinta non blocca MAI — al massimo mostra un avviso e righe vuote
-- Il check "pubblicata" si basa sulla presenza di convocati con `presente=true`
+
+### Pallino "Pubblica" nel modale convocazioni
+
+| Stato | Colore pallino | Animazione |
+|---|---|---|
+| Non pubblicata / modifiche pendenti | `#FFD700` (oro) | `pulse-dot 1.2s infinite` |
+| Pubblicata | `#27AE60` (verde) | Nessuna |
 
 ### Interazioni touch/mobile
 

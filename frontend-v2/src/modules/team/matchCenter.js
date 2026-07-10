@@ -63,9 +63,9 @@ export default async function loadMatchCenter() {
 
     // Load players: formazione → convocati → rosa
     giocatori = await loadGiocatori(mid);
-    // Check if convocazioni are published (convocati con presente=true)
-    const convCheck = await apiFetch('/partite/' + mid + '/convocazioni').catch(() => []);
-    convPubblicata = (Array.isArray(convCheck) ? convCheck : []).some(c => c.presente);
+    // Check if convocazioni are published (notification sent, not just saved)
+    const convStato = await apiFetch('/partite/' + mid + '/convocazioni-stato').catch(() => ({ published: false }));
+    convPubblicata = convStato.published === true;
     // Load full player data + formation for the Formation tab
     allPlayers = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
     const formRes = await apiFetch('/partite/' + mid + '/formazione').catch(() => ({ formazione: [], meta: {} }));

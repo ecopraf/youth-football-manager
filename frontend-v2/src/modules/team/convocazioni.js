@@ -113,7 +113,7 @@ export async function openConvocation(mid, readOnly) {
 
   // Bottone salva/modifica + pubblica con stati visivi
   const saveBtnLabel = hasSavedConv ? '✏️ Modifica' : '💾 Salva';
-  const dotColor = published ? '#27AE60' : '#667eea';
+  const dotColor = published ? '#27AE60' : '#FFD700';
   const dotAnim = published ? 'none' : 'pulse-dot 1.2s infinite';
 
   const footer = `
@@ -161,7 +161,7 @@ export async function openConvocation(mid, readOnly) {
     if (!hasSavedConv) return;
     hasUnsavedChanges = true;
     const dot = document.getElementById('pubDot');
-    if (dot) { dot.style.background = '#667eea'; dot.style.animation = 'pulse-dot 1.2s infinite'; }
+    if (dot) { dot.style.background = '#FFD700'; dot.style.animation = 'pulse-dot 1.2s infinite'; }
   }
 
   document.getElementById('saveBtn').addEventListener('click', async () => {
@@ -186,7 +186,7 @@ export async function openConvocation(mid, readOnly) {
       if (saveBtn) saveBtn.innerHTML = '✏️ Modifica';
       // Segna che pubblica è necessario
       const dot = document.getElementById('pubDot');
-      if (dot) { dot.style.background = '#667eea'; dot.style.animation = 'pulse-dot 1.2s infinite'; }
+      if (dot) { dot.style.background = '#FFD700'; dot.style.animation = 'pulse-dot 1.2s infinite'; }
       alert('✅ Convocazioni salvate! Ricorda di pubblicare per notificare.');
     } catch (e) {
       hideLoading();

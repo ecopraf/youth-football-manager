@@ -45,13 +45,14 @@ async function preloadMatchSteps(matches) {
 
 async function getNextStep(matchId) {
   try {
-    // Chiamate in parallelo (3 invece di 5 sequenziali)
-    const [convResp, formResp, eventiResp] = await Promise.all([
+    // Chiamate in parallelo
+    const [convResp, convStato, formResp, eventiResp] = await Promise.all([
       apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/convocati').catch(() => null),
+      apiFetch('/partite/' + matchId + '/convocazioni-stato').catch(() => ({ published: false })),
       apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/formazione').catch(() => null),
       apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/eventi').catch(() => null)
     ]);
-    const hasConvocazione = convResp && Array.isArray(convResp) && convResp.length > 0;
+    const hasConvocazione = convStato.published === true;
     const hasFormazione = formResp && ((Array.isArray(formResp) && formResp.length > 0) || Object.keys(formResp || {}).length > 0);
     const match = allMatches.find(m => m.id === matchId);
     const hasRisultato = match && match.stato === 'Terminata';
