@@ -322,17 +322,29 @@ export default async function loadDashboard() {
   
   // Render staff
   const renderStaff = () => {
-    const roleLabels = { allenatore: 'Allenatore', dirigente: '1° Dirigente', dirigente2: '2° Dirigente', preparatore_atletico: 'Prep. Atl.', allenatore_portieri: 'All. Portieri' };
-    const roleIcons = { allenatore: '⚽', dirigente: '📋', dirigente2: '📋', preparatore_atletico: '🏋️', allenatore_portieri: '🧤' };
-    const items = ['allenatore','dirigente','dirigente2','preparatore_atletico','allenatore_portieri'].filter(r => s[r]);
-    if (items.length === 0) return '<p style="color:rgba(255,255,255,0.5);text-align:center;padding:20px;">Nessuno staff registrato</p>';
-    return items.map(r => {
-      const initials = s[r].split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const staffList = s._staff || [];
+    if (staffList.length === 0) return '<p style="color:rgba(255,255,255,0.5);text-align:center;padding:20px;">Nessuno staff registrato</p>';
+    const campoRuoli = ['allenatore', 'capo allenatore', 'vice allenatore', 'preparatore', 'portieri', 'medico', 'massaggiatore', 'fisioterapista', 'dirigente'];
+    const isCampo = (ruolo) => { const r = ruolo.toLowerCase(); return campoRuoli.some(k => r.includes(k)); };
+    const filtered = staffList.filter(st => isCampo(st.ruolo));
+    if (filtered.length === 0) return '<p style="color:rgba(255,255,255,0.5);text-align:center;padding:20px;">Nessuno staff registrato</p>';
+    // Ordine di visualizzazione
+    const ordine = ['allenatore', 'capo allenatore', 'vice', 'preparatore', 'portieri', 'medico', 'massaggiatore', 'fisioterapista', 'dirigente'];
+    const getPriority = (ruolo) => { const r = ruolo.toLowerCase(); const idx = ordine.findIndex(k => r.includes(k)); return idx >= 0 ? idx : 99; };
+    filtered.sort((a, b) => {
+      const pa = getPriority(a.ruolo), pb = getPriority(b.ruolo);
+      if (pa !== pb) return pa - pb;
+      return a.nome.localeCompare(b.nome);
+    });
+    const roleIcons = { allenatore: '⚽', 'capo allenatore': '⚽', 'vice': '⚽', dirigente: '📋', preparatore: '🏋️', portieri: '🧤', medico: '🏥', massaggiatore: '💆', fisioterapista: '💆' };
+    const getIcon = (ruolo) => { const r = ruolo.toLowerCase(); return Object.entries(roleIcons).find(([k]) => r.includes(k))?.[1] || '👤'; };
+    return filtered.map(st => {
+      const initials = st.nome.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,0.08);backdrop-filter:blur(4px);margin-bottom:8px;border:1px solid rgba(255,255,255,0.12);">' +
         '<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;border:1.5px solid rgba(255,255,255,0.25);">' + initials + '</div>' +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:13px;font-weight:600;color:#fff;">' + s[r] + '</div>' +
-          '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">' + roleIcons[r] + ' ' + roleLabels[r] + '</div>' +
+          '<div style="font-size:13px;font-weight:600;color:#fff;">' + st.nome + '</div>' +
+          '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">' + getIcon(st.ruolo) + ' ' + st.ruolo + '</div>' +
         '</div>' +
       '</div>';
     }).join('');

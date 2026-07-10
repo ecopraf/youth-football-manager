@@ -16,6 +16,7 @@ let formazioneIniziale = null;
 let moduloIniziale = null;
 let jerseyMapMC = {};
 let isReadOnly = false;
+let convPubblicata = false;
 let liveInterval = null;
 let currentMatchId = null;
 
@@ -62,6 +63,9 @@ export default async function loadMatchCenter() {
 
     // Load players: formazione → convocati → rosa
     giocatori = await loadGiocatori(mid);
+    // Check if convocazioni are published (convocati con presente=true)
+    const convCheck = await apiFetch('/partite/' + mid + '/convocazioni').catch(() => []);
+    convPubblicata = (Array.isArray(convCheck) ? convCheck : []).some(c => c.presente);
     // Load full player data + formation for the Formation tab
     allPlayers = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
     const formRes = await apiFetch('/partite/' + mid + '/formazione').catch(() => ({ formazione: [], meta: {} }));
@@ -341,6 +345,15 @@ function getNotesPanel(mid) {
 }
 
 function getLiveFormation(mid) {
+  // Block formation creation if convocazioni not published and no formation exists
+  if (!formazioneData && !convPubblicata && !isReadOnly) {
+    return `<div class="mc-qa-card" style="text-align:center;padding:24px;">
+      <div style="font-size:32px;margin-bottom:12px;">📋</div>
+      <p style="margin:0 0 8px;font-weight:600;color:#333;">Convocazioni non pubblicate</p>
+      <p style="margin:0 0 16px;font-size:13px;color:#666;">Pubblica prima le convocazioni per creare la formazione.</p>
+      <button class="btn btn-primary btn-small" onclick="window.YFM.openConvocation('${mid}')">📋 Vai a Convocazioni</button>
+    </div>`;
+  }
   if (!formazioneData) {
     return `<div class="mc-qa-card" style="text-align:center;padding:20px;color:#888;">
       <p style="margin:0 0 8px;">Nessuna formazione</p>

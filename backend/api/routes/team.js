@@ -36,6 +36,7 @@ module.exports = function createTeamRouter({ supabase, authMiddleware }) {
       for (const team of filteredData) {
         const { data: staffAssign } = await supabase.from('team_staff').select('ruolo_squadra, staff:staff_id(nome, cognome)').eq('team_id', team.id);
         team._staff_count = (staffAssign || []).length;
+        team._staff = (staffAssign || []).map(sa => ({ nome: sa.staff ? sa.staff.nome + ' ' + sa.staff.cognome : '', ruolo: sa.ruolo_squadra || '' })).filter(s => s.nome);
         // Rosa count (non svincolati)
         const { count: rosaCount } = await supabase.from('team_player').select('id', { count: 'exact', head: true }).eq('team_id', team.id).neq('stato', 'Svincolato');
         team._rosa_count = rosaCount || 0;
@@ -163,6 +164,7 @@ module.exports = function createTeamRouter({ supabase, authMiddleware }) {
       if (error || !data) return res.status(404).json({ error: 'Squadra non trovata' });
 
       const { data: staffAssign } = await supabase.from('team_staff').select('ruolo_squadra, staff:staff_id(nome, cognome)').eq('team_id', id);
+      data._staff = (staffAssign || []).map(sa => ({ nome: sa.staff ? sa.staff.nome + ' ' + sa.staff.cognome : '', ruolo: sa.ruolo_squadra || '' })).filter(s => s.nome);
       if (staffAssign && staffAssign.length > 0) {
         staffAssign.forEach(sa => {
           const nome = sa.staff ? sa.staff.nome + ' ' + sa.staff.cognome : '';

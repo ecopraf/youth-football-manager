@@ -95,7 +95,26 @@ export async function openDistinta(mid, staffOverrides) {
     renderDistinta(data, curStaff, distintaMeta, mid);
   } catch (e) {
     if (e.message === 'NOT_PUBLISHED') {
-      document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Pubblica prima le convocazioni per generare la distinta.<br><small style="color:#666;">Vai su Convocazioni → Pubblica, poi torna qui.</small></div>';
+      // Distinta vuota stampabile — carica comunque dati partita e meta
+      const match = window.YFM.allMatches?.find(m => m.id === mid);
+      const partita = match ? {
+        avversario: match.avversario,
+        dataOra: match.data_ora,
+        competizione: match.competizione || '',
+        giornata: match.giornata,
+        luogo: match.luogo,
+        indirizzo_campo: match.indirizzo_campo || null
+      } : { avversario: '...', dataOra: new Date().toISOString(), competizione: '', giornata: null, luogo: '', indirizzo_campo: null };
+      matchInfo = partita;
+      distintaMeta = await apiFetch('/partite/' + mid + '/distinta-meta').catch(() => ({}));
+      const emptyData = { formazione: [], partita, staff: {} };
+      curStaff = {};
+      renderDistinta(emptyData, curStaff, distintaMeta, mid);
+      // Aggiungi banner informativo sopra la distinta
+      const inner = document.getElementById('distintaInner');
+      if (inner) {
+        inner.insertAdjacentHTML('afterbegin', '<div style="background:#FFF3CD;border:1px solid #FFEAA7;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;"><span style="font-size:20px;">⚠️</span><div><strong style="font-size:13px;">Convocazioni non pubblicate</strong><br><span style="font-size:12px;color:#666;">La distinta è vuota. Pubblica le convocazioni per popolarla automaticamente.</span></div></div>');
+      }
     } else {
       document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Nessun convocato per questa partita. Salva prima le convocazioni.</div>';
     }

@@ -123,7 +123,7 @@ export async function openConvocation(mid, readOnly) {
     <button class="btn btn-primary" id="publishBtn" style="display:flex;align-items:center;" title="Salva e invia notifica ad atleti, genitori e staff"><span id="pubDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${dotColor};margin-right:6px;animation:${dotAnim};"></span>📢 Pubblica</button>
     <button class="btn btn-primary" id="previewBtn" style="background:#0A1C3A;" data-help="convocazioni.anteprima">📄 Vedi Convocazione</button>`;
 
-  const modal = createModal('📋 Convocazioni - vs ' + (match.avversario || '...'), content, footer, '650px');
+  const modal = createModal('📋 Convocazioni vs ' + (match.avversario || '...'), content, footer, '650px');
 
   document.getElementById('previewBtn').addEventListener('click', () => {
     const checks = document.querySelectorAll('#currentModal .conv-check:checked');

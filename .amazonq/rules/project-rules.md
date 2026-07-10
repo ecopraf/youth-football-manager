@@ -405,6 +405,29 @@ window.YFM.getSocietaName()
 - Nuovi panel: aggiungere in `getBody()`, registrare in `panelMap`, bind nel handler tab click
 - Textarea/input nei panel: sempre `box-sizing:border-box` + `width:100%`
 
+### Flusso Convocazioni → Formazione → Distinta (OBBLIGATORIO)
+
+Il flusso operativo è sequenziale:
+
+```
+1. Convocazioni pubblicate (giorni prima della partita)
+2. Match Center → Formazione (giorno partita, dai convocati)
+3. Distinta → stampabile in qualsiasi momento
+```
+
+**Regole:**
+
+| Stato | Match Center (tab Formazione) | Distinta |
+|---|---|---|
+| Convocazioni NON pubblicate, no formazione | ❌ Bloccato — messaggio + link a Convocazioni | ⚠️ Vuota stampabile con banner giallo |
+| Convocazioni NON pubblicate, formazione esistente (import) | ✅ Mostra formazione | ⚠️ Mostra formazione con banner |
+| Convocazioni pubblicate, no formazione | ✅ Bottone "Crea" | ✅ Mostra convocati |
+| Convocazioni pubblicate + formazione | ✅ Mostra formazione | ✅ Distinta completa |
+
+- La pubblicazione delle convocazioni è il prerequisito per creare la formazione nel MC
+- La distinta non blocca MAI — al massimo mostra un avviso e righe vuote
+- Il check "pubblicata" si basa sulla presenza di convocati con `presente=true`
+
 ### Interazioni touch/mobile
 
 - **Drag & drop**: funziona solo su desktop. Su mobile usare **two-tap flow** (tap per selezionare → tap per posizionare)

@@ -1,0 +1,112 @@
+📱 YFM — Novità v3.16 (Luglio 2025)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ PERFORMANCE
+- Dashboard carica 1.5 secondi più veloce
+- App installabile come app nativa (PWA) — su Chrome: "Aggiungi a schermata Home"
+- Funziona offline: Match Center e presenze allenamento salvano i dati anche senza rete e sincronizzano al ritorno
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+👥 LINK ATLETA & GENITORE (ex Guest)
+
+🏃 Link Atleta:
+- Home dedicata con convocazioni, allenamenti, partite, stats personali, classifica
+- Può comunicare indisponibilità (data + motivo)
+- Può rispondere alla convocazione (Disponibile / Indisponibile)
+- Vede card convocazione con campo, orario e ritrovo automatico (-1h15)
+
+👨‍👩‍👦 Link Genitore:
+- Home dedicata con comunicazioni, convocazioni figlio, calendario, risultati, classifica
+- Vede badge priorità sulle comunicazioni (info / importante / urgente)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📢 CENTRO COMUNICAZIONI
+- Notifiche in-app con badge campanella 🔔
+- Notifica automatica quando si pubblica una convocazione
+- Tabs Inviate / Ricevute
+- Possibilità di rispondere direttamente all'atleta
+- 3 livelli priorità: info 🔵 / importante 🟡 / urgente 🔴
+- Scelta destinatari: atleta, genitore, staff + per categoria
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏟️ COMPETIZIONI & CALENDARIO
+- Tipo competizione: Campionato, Coppa, Torneo, Amichevole
+- Girone auto-salvato da import PDF/Gazzetta Regionale
+- Badge 🔒 su partite archiviate
+- Logo avversario visibile nel calendario
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 SCHEDA GIOCATORE (Redesign completo)
+- Layout a 3 card: Anagrafica / Dati Sportivi / Documenti
+- Codice Fiscale auto-calcolato
+- Luogo nascita con autocomplete comuni
+- Email atleta e genitore
+- Certificati medici con badge colorati (Scaduti / In Scadenza / Validi / Mancanti)
+- Carriera espandibile: click su stagione → mostra tutte le partite
+- Campo "Fascia": click → assegna Capitano o Vice (auto-reset precedente)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🩺 INFORTUNI
+- Registrazione infortunio nel dettaglio giocatore (tipo, gravità, date)
+- Stato giocatore diventa automaticamente "Infortunato"
+- Al rientro torna "Attivo"
+- Widget "Infortunati" in dashboard con giorni restanti
+- Badge 🏥 nelle convocazioni
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚽ MATCH CENTER & FORMAZIONE
+- Numeri maglia editabili per singola partita
+- Numero cerchiato nella distinta
+- Bottone rapido "Distinta" dentro il Match Center
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 DISTINTA
+- Form "✏️ Compila" per assistente arbitro (dropdown Staff + Giocatori con auto-fill matricola)
+- Capitano e Vice mostrati automaticamente
+- Nome PDF dinamico: "Distinta G5 - Frascati.pdf"
+- Stampa funziona su mobile (niente più popup bloccati)
+- Portieri indicati con (P)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 CONVOCAZIONI
+- Blocco se rosa < 11 giocatori attivi
+- Assenze settimanali basate sulle presenze reali (registrate dall'allenatore)
+- Indisponibili per la data partita auto-congelati
+- Pubblicazione genera notifica automatica
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 IMPORT
+- Preview anteprima prima di importare da Portale Regionale
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧪 COME TESTARE
+
+1. PWA → Apri app su Chrome mobile → "Aggiungi a schermata Home"
+
+2. Offline → Disattiva WiFi → Apri MC partita → Registra evento → Riattiva WiFi → Verifica sync
+
+3. Link Atleta → Genera link tipo "Atleta" → Aprilo → Verifica home + form indisponibilità
+
+4. Link Genitore → Genera link tipo "Genitore" → Aprilo → Verifica comunicazioni + convocazioni
+
+5. Capitano → Dettaglio giocatore → Fascia → Assegna → Verifica badge in rosa + distinta
+
+6. Distinta → Calendario → Partita → "✏️ Compila" → Seleziona assistente → Applica → Stampa
+
+7. Convocazioni → Prova con rosa < 11 → Verifica blocco
+
+8. Infortuni → Dettaglio giocatore → Registra infortunio → Verifica stato + badge + dashboard
+
+9. Comunicazioni → Crea con priorità "urgente" → Verifica campanella + colore
+
+10. Carriera → Dettaglio giocatore → Click su stagione → Verifica espansione partite
