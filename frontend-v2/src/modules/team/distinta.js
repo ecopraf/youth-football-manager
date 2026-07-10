@@ -21,13 +21,14 @@ function buildCompLine(partita) {
 export async function openDistinta(mid, staffOverrides) {
   const content = '<div id="distintaInner"><div class="loading"><div class="spinner"></div>Caricamento distinta...</div></div>';
   const footer = '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>' +
-    '<button class="btn btn-secondary" id="staffBtn">👥 Staff</button>' +
+    '<button class="btn btn-secondary" id="staffBtn">✏️ Compila</button>' +
     
     '<button class="btn btn-primary" id="printBtn">🖨️ Stampa</button>';
   const modal = createModal('📄 Distinta Gara', content, footer, '980px');
   
   let curStaff = null;
   let matchInfo = null;
+  let distintaMeta = {};
   try {
     let data = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + mid + '/distinta');
     
@@ -62,8 +63,8 @@ export async function openDistinta(mid, staffOverrides) {
           tipoDocumento: g.tipo_documento,
           numeroDocumento: g.numero_documento,
           rilasciatoDa: g.rilasciato_da,
-          capitano: false,
-          viceCapitano: false
+          capitano: g.capitano || false,
+          viceCapitano: g.vice_capitano || false
         }));
       
       data = { formazione: formazioneDaConvocati, partita: null, staff: {} };
@@ -89,7 +90,9 @@ export async function openDistinta(mid, staffOverrides) {
     
     curStaff = staffOverrides || data.staff || {};
     matchInfo = data.partita;
-    renderDistinta(data, curStaff);
+    // Carica distinta_meta (assistente arbitro, ecc.)
+    distintaMeta = await apiFetch('/partite/' + mid + '/distinta-meta').catch(() => ({}));
+    renderDistinta(data, curStaff, distintaMeta, mid);
   } catch (e) {
     if (e.message === 'NOT_PUBLISHED') {
       document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Pubblica prima le convocazioni per generare la distinta.<br><small style="color:#666;">Vai su Convocazioni → Pubblica, poi torna qui.</small></div>';
@@ -139,7 +142,7 @@ export async function openDistinta(mid, staffOverrides) {
     };
   });
   
-  document.getElementById('staffBtn').addEventListener('click', () => openStaffForm(mid, curStaff));
+  document.getElementById('staffBtn').addEventListener('click', () => openStaffForm(mid, curStaff, matchInfo, distintaMeta));
   
 }
 
@@ -234,9 +237,10 @@ async function openValutazioniForm(mid) {
   }
 }
 
-function renderDistinta(d, staff) {
+function renderDistinta(d, staff, meta, mid) {
   const c = document.getElementById('distintaInner');
   if (!c) return;
+  const distintaMeta = meta || {};
   
   // Ordina: titolari per numero maglia, poi riserve per numero maglia
   const t = (d.formazione || []).sort((a, b) => {
@@ -303,7 +307,7 @@ function renderDistinta(d, staff) {
   const timestampStampa = now.toLocaleDateString('it-IT') + ' ' + now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   
   c.innerHTML = 
-    '<style>@media(max-width:600px){.distinta-wrap{font-size:9px!important}.distinta-table th,.distinta-table td{padding:2px 3px!important;font-size:8px!important}.staff-table td{font-size:8px!important;padding:2px 4px!important}}</style>' +
+    '<style>.num-circle{font-weight:700;font-size:9px;border:1.5px solid #000;border-radius:50%;width:14px;height:14px;line-height:14px;display:inline-block;text-align:center;vertical-align:middle;box-sizing:border-box}@media(max-width:600px){.distinta-wrap{font-size:9px!important}.distinta-table th,.distinta-table td{padding:2px 3px!important;font-size:8px!important}.staff-table td{font-size:8px!important;padding:2px 4px!important}}</style>' +
     '<div class="distinta-wrap" style="font-size:10px;line-height:1.4;max-width:700px;margin:0 auto;">' +
     // HEADER: Logo LND | Testo centrale | Logo società
     '<div style="display:flex;align-items:center;margin-bottom:6px;">' +
@@ -334,7 +338,7 @@ function renderDistinta(d, staff) {
     '</div>' +
     // ASSISTENTE ARBITRO + STAFF (tabella a 2 colonne)
     '<table class="staff-table"><tbody>' +
-      '<tr><td style="text-align:left;">Assistente dell\'Arbitro: ________________________</td><td style="text-align:left;white-space:nowrap;"><span>Matr. N° ____________</span><span style="float:right;">Tessera LND N° ____________</span></td></tr>' +
+      '<tr><td style="text-align:left;">Assistente dell\'Arbitro: <strong>' + (distintaMeta.assistente_arbitro || '________________________') + '</strong></td><td style="text-align:left;white-space:nowrap;"><span>Matr. N° ' + (distintaMeta.matricola_assistente || '____________') + '</span><span style="float:right;">Tessera LND N° ' + (distintaMeta.tessera_assistente || '____________') + '</span></td></tr>' +
     staffHtml +
     '</tbody></table>' +
     // NOTE LEGALI
@@ -353,8 +357,9 @@ function renderDistinta(d, staff) {
     '</div>';
 }
 
-function openStaffForm(mid, cur) {
+async function openStaffForm(mid, cur, matchInfo, distintaMeta) {
   const s = cur || {};
+  const dm = distintaMeta || {};
 
   // Carica staff completo dalla squadra via team_staff (già in window.YFM)
   const squadra = window.YFM.getSquadra ? window.YFM.getSquadra() : {};
@@ -410,6 +415,36 @@ function openStaffForm(mid, cur) {
   ];
 
   let formFields = '';
+
+  // --- SEZIONE ASSISTENTE ARBITRO ---
+  const assistenteNome = dm.assistente_arbitro || '';
+  const assistenteMatr = dm.matricola_assistente || '';
+  const assistenteTess = dm.tessera_assistente || '';
+  // Carica giocatori per dropdown
+  const giocatori = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
+  const giocatoriOpts = (giocatori || []).sort((a, b) => (a.cognome || '').localeCompare(b.cognome || '')).map(g =>
+    '<option value="g_' + g.id + '" ' + (assistenteNome === (g.cognome + ' ' + g.nome) ? 'selected' : '') + '>' + g.cognome + ' ' + g.nome + '</option>'
+  ).join('');
+  const staffAssOpts = staffRegistry.map(m =>
+    '<option value="s_' + m.id + '" ' + (assistenteNome === m.nome ? 'selected' : '') + '>' + m.nome + '</option>'
+  ).join('');
+
+  formFields += `
+    <div style="border:2px solid #667eea;border-radius:10px;padding:12px;margin-bottom:14px;background:#eef2ff;">
+      <label style="font-size:13px;font-weight:700;color:#667eea;margin-bottom:8px;display:block;">Assistente dell'Arbitro</label>
+      <select id="sfAssDropdown" style="width:100%;padding:8px 10px;border:1px solid #c7d2fe;border-radius:6px;font-size:13px;margin-bottom:8px;">
+        <option value="">-- Seleziona --</option>
+        <optgroup label="Staff">${staffAssOpts}</optgroup>
+        <optgroup label="Giocatori">${giocatoriOpts}</optgroup>
+        <option value="__manual__">✏️ Inserisci manualmente</option>
+      </select>
+      <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div class="form-group" style="margin-bottom:0;"><label style="font-size:10px;">Nome</label><input id="sfAssNome" value="${assistenteNome}" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group" style="margin-bottom:0;"><label style="font-size:10px;">Matricola</label><input id="sfAssMatr" value="${assistenteMatr}" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group" style="margin-bottom:0;"><label style="font-size:10px;">Tessera LND</label><input id="sfAssTess" value="${assistenteTess}" style="font-size:12px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+      </div>
+    </div>`;
+
   ruoli.forEach(r => {
     const nomeVal = s[r.key] || '';
     const matrVal = s[r.matrKey] || '';
@@ -436,7 +471,7 @@ function openStaffForm(mid, cur) {
 
   const content = `<div style="max-height:70vh;overflow-y:auto;">${formFields}</div>`;
   const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="applyBtn">✅ Applica</button>';
-  const modal = createModal('👥 Staff Distinta', content, footer, '750px');
+  const modal = createModal('✏️ Compila Distinta', content, footer, '750px');
 
   // Listener dropdown: auto-compila campi
   document.querySelectorAll('.staff-dropdown').forEach(sel => {
@@ -463,7 +498,46 @@ function openStaffForm(mid, cur) {
     });
   });
 
-  document.getElementById('applyBtn').addEventListener('click', () => {
+  // Listener dropdown assistente
+  document.getElementById('sfAssDropdown')?.addEventListener('change', () => {
+    const val = document.getElementById('sfAssDropdown').value;
+    if (!val || val === '__manual__') {
+      if (val === '__manual__') {
+        document.getElementById('sfAssNome').value = '';
+        document.getElementById('sfAssMatr').value = '';
+        document.getElementById('sfAssTess').value = '';
+        document.getElementById('sfAssNome').focus();
+      }
+      return;
+    }
+    if (val.startsWith('g_')) {
+      const pid = val.substring(2);
+      const g = giocatori.find(x => x.id === pid);
+      if (g) {
+        document.getElementById('sfAssNome').value = (g.cognome || '') + ' ' + (g.nome || '');
+        document.getElementById('sfAssMatr').value = g.matricola_figc || '';
+        document.getElementById('sfAssTess').value = '';
+      }
+    } else if (val.startsWith('s_')) {
+      const sid = val.substring(2);
+      const m = staffRegistry.find(x => x.id === sid);
+      if (m) {
+        document.getElementById('sfAssNome').value = m.nome || '';
+        document.getElementById('sfAssMatr').value = m.matricola || '';
+        document.getElementById('sfAssTess').value = m.tessera || '';
+      }
+    }
+  });
+
+  document.getElementById('applyBtn').addEventListener('click', async () => {
+    // Salva assistente in distinta_meta
+    const newMeta = {
+      assistente_arbitro: document.getElementById('sfAssNome').value,
+      matricola_assistente: document.getElementById('sfAssMatr').value,
+      tessera_assistente: document.getElementById('sfAssTess').value
+    };
+    apiFetch('/partite/' + mid + '/distinta-meta', { method: 'PUT', body: JSON.stringify({ distinta_meta: newMeta }) }).catch(() => {});
+
     const ns = {
       allenatore: document.getElementById('sfAll').value,
       matricola_allenatore: document.getElementById('sfMatrAll').value,

@@ -148,6 +148,10 @@ function renderPlayerCards(players) {
     card += '<div class="player-role" style="color:#666;font-size:13px;margin-top:2px;">' + (p.ruolo || '-') + ' · #' + (p.numero_maglia || '-') + '</div>';
     card += '</div>';
     
+    // Badge fascia C/V
+    if (p.capitano) card += '<span style="font-size:11px;background:#FFD700;color:#333;padding:3px 8px;border-radius:8px;font-weight:700;margin-right:4px;">C</span>';
+    else if (p.vice_capitano) card += '<span style="font-size:11px;background:#C0C0C0;color:#333;padding:3px 8px;border-radius:8px;font-weight:700;margin-right:4px;">V</span>';
+    
     // Badge stato
     const badgeClass = p.aggregato ? '' : (p.stato === 'Attivo' ? 'badge-green' : 'badge-red');
     const badgeStyle = p.aggregato ? 'background:#F39C12;color:white;' : '';

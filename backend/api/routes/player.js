@@ -36,7 +36,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     try {
       const includiSvincolati = req.query.includi_svincolati === '1';
       let query = supabase.from('team_player')
-        .select('calciatore:player_id(*), numero_maglia, ruolo_preferito, stato, aggregato')
+        .select('id, calciatore:player_id(*), numero_maglia, ruolo_preferito, stato, aggregato, capitano, vice_capitano')
         .eq('team_id', req.params.squadraId);
       if (!includiSvincolati) {
         query = query.neq('stato', 'Svincolato');
@@ -50,7 +50,8 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         numero_documento: r.calciatore.numero_documento, rilasciato_da: r.calciatore.rilasciato_da,
         contatti_genitori: r.calciatore.contatti_genitori || [],
         numero_maglia: r.numero_maglia, ruolo: r.ruolo_preferito, stato: r.stato,
-        aggregato: r.aggregato || false
+        aggregato: r.aggregato || false, capitano: r.capitano || false, vice_capitano: r.vice_capitano || false,
+        team_player_id: r.id
       })));
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -129,11 +130,11 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       // Join team_player per numero_maglia e ruolo_preferito
       const squadraId = req.query.squadraId;
       if (squadraId) {
-        const { data: tp } = await supabase.from('team_player').select('numero_maglia, ruolo_preferito, stato').eq('player_id', req.params.id).eq('team_id', squadraId).single();
-        if (tp) { data.numero_maglia = tp.numero_maglia; data.ruolo = tp.ruolo_preferito; data.stato = tp.stato; }
+        const { data: tp } = await supabase.from('team_player').select('id, numero_maglia, ruolo_preferito, stato, capitano, vice_capitano').eq('player_id', req.params.id).eq('team_id', squadraId).single();
+        if (tp) { data.numero_maglia = tp.numero_maglia; data.ruolo = tp.ruolo_preferito; data.stato = tp.stato; data.capitano = tp.capitano; data.vice_capitano = tp.vice_capitano; data.team_player_id = tp.id; }
       } else {
-        const { data: tp } = await supabase.from('team_player').select('numero_maglia, ruolo_preferito, stato').eq('player_id', req.params.id).limit(1).single();
-        if (tp) { data.numero_maglia = tp.numero_maglia; data.ruolo = tp.ruolo_preferito; data.stato = tp.stato; }
+        const { data: tp } = await supabase.from('team_player').select('id, numero_maglia, ruolo_preferito, stato, capitano, vice_capitano').eq('player_id', req.params.id).limit(1).single();
+        if (tp) { data.numero_maglia = tp.numero_maglia; data.ruolo = tp.ruolo_preferito; data.stato = tp.stato; data.capitano = tp.capitano; data.vice_capitano = tp.vice_capitano; data.team_player_id = tp.id; }
       }
       res.json(data);
     } catch (err) {
@@ -821,6 +822,29 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         }
       }
 
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── CAPITANO / VICE CAPITANO ──
+  router.put('/api/squadre/:squadraId/calciatori/:tpId/ruolo-capitano', authMiddleware, requirePermission('rosa', 'write'), async (req, res) => {
+    try {
+      const { tpId, squadraId } = req.params;
+      const { ruolo } = req.body; // 'capitano' | 'vice_capitano' | null
+      
+      // Reset precedente capitano/vice nella stessa squadra
+      if (ruolo === 'capitano') {
+        await supabase.from('team_player').update({ capitano: false }).eq('team_id', squadraId).eq('capitano', true);
+      } else if (ruolo === 'vice_capitano') {
+        await supabase.from('team_player').update({ vice_capitano: false }).eq('team_id', squadraId).eq('vice_capitano', true);
+      }
+      
+      // Imposta nuovo
+      const update = { capitano: ruolo === 'capitano', vice_capitano: ruolo === 'vice_capitano' };
+      const { error } = await supabase.from('team_player').update(update).eq('id', tpId);
+      if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: err.message });

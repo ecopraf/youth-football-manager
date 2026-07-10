@@ -125,7 +125,7 @@ Le tabelle reali nel DB Supabase sono:
 
 **Colonne notevoli `player`**: `codice_fiscale TEXT` (UNIQUE partial, nullable — gold standard per matching import), `matricola_figc TEXT` (tessera FIGC)
 
-**Colonne notevoli `team_player`**: `stato TEXT` (Attivo, Infortunato, Svincolato), `aggregato BOOLEAN DEFAULT false` (true se giocatore aggregato da categoria inferiore)
+**Colonne notevoli `team_player`**: `stato TEXT` (Attivo, Infortunato, Svincolato), `aggregato BOOLEAN DEFAULT false` (true se giocatore aggregato da categoria inferiore), `capitano BOOLEAN DEFAULT false`, `vice_capitano BOOLEAN DEFAULT false`
 - `match`, `match_event`, `match_formation`, `match_statistics`, `convocation`
 
 **Colonne notevoli `convocation`**: `risposta TEXT` (null=disponibile, 'indisponibile'), `risposta_motivo TEXT`, `risposta_at TIMESTAMPTZ`
@@ -133,7 +133,7 @@ Le tabelle reali nel DB Supabase sono:
 - Batch save (convocazioni-batch): preserva risposte esistenti sui giocatori che restano convocati
 - DELETE training_config: cascade elimina allenamenti futuri del giorno rimosso (solo se senza presenze)
 
-**Colonne notevoli `match`**: `tipo_competizione TEXT` (Campionato, Coppa, Torneo [nome], null=Amichevole), `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS), `tc_match_url TEXT` (URL pagina partita Tuttocampo per import formazioni), `live_meta JSONB` (`{stato: '1t'|'intervallo'|'2t'|'fine', start_1t, end_1t, start_2t, end_match}` — lifecycle Live Match Mode), `formazione_meta JSONB` (`{modulo, positions, modulo_finale}` — modulo iniziale + posizioni custom + modulo finale se cambiato durante partita)
+**Colonne notevoli `match`**: `tipo_competizione TEXT` (Campionato, Coppa, Torneo [nome], null=Amichevole), `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS), `tc_match_url TEXT` (URL pagina partita Tuttocampo per import formazioni), `live_meta JSONB` (`{stato: '1t'|'intervallo'|'2t'|'fine', start_1t, end_1t, start_2t, end_match}` — lifecycle Live Match Mode), `formazione_meta JSONB` (`{modulo, positions, modulo_finale}` — modulo iniziale + posizioni custom + modulo finale se cambiato durante partita), `distinta_meta JSONB` (`{assistente_arbitro, matricola_assistente, tessera_assistente}` — dati compilati dal form Compila distinta)
 - `training`, `training_attendance`, `training_config`, `training_template`
 - `valutazione_partita`, `document`
 - `users`, `guest_token`

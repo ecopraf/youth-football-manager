@@ -69,6 +69,8 @@ function renderPlayerDetail(container, data) {
   const stato = player.stato || 'attivo';
   const peso = player.peso || '-';
   const altezza = player.altezza || '-';
+  const capitanoLabel = player.capitano ? '🎖️ Capitano' : player.vice_capitano ? '🎖️ Vice Capitano' : '-';
+  const teamPlayerId = player.team_player_id || null;
   const telefono = player.telefono || '-';
   const emailAtleta = player.email || '-';
   const tipoDoc = player.tipo_documento || '-';
@@ -294,6 +296,7 @@ function renderPlayerDetail(container, data) {
             <div><span style="font-size:12px;color:#888;">Stato</span><div style="font-size:14px;"><span class="badge ${stato === 'Attivo' ? 'badge-green' : 'badge-red'}">${stato}</span></div></div>
             <div><span style="font-size:12px;color:#888;">Altezza (cm)</span><div style="font-size:14px;">${altezza}</div></div>
             <div><span style="font-size:12px;color:#888;">Peso (kg)</span><div style="font-size:14px;">${peso}</div></div>
+            <div><span style="font-size:12px;color:#888;">Fascia</span><div id="fasciaField" style="font-size:14px;cursor:pointer;padding:4px 0;" title="Clicca per modificare">${capitanoLabel}</div></div>
             <div style="grid-column:1/-1;"><span style="font-size:12px;color:#888;">Matricola FIGC</span><div style="font-size:14px;">${matricolaFigc}</div></div>
           </div>
         </div>
@@ -386,6 +389,30 @@ function renderPlayerDetail(container, data) {
     if (window.YFM?.navigateTo) window.YFM.navigateTo('roster');
     else if (window.navigateTo) window.navigateTo('roster');
   });
+
+  // Fascia inline edit
+  const fasciaField = document.getElementById('fasciaField');
+  if (fasciaField && teamPlayerId) {
+    fasciaField.addEventListener('click', () => {
+      const cur = player.capitano ? 'capitano' : player.vice_capitano ? 'vice_capitano' : '';
+      const opts = [
+        { val: '', label: 'Nessuna fascia' },
+        { val: 'capitano', label: '\uD83C\uDF96\uFE0F Capitano' },
+        { val: 'vice_capitano', label: '\uD83C\uDF96\uFE0F Vice Capitano' }
+      ];
+      fasciaField.innerHTML = opts.map(o =>
+        '<button class="fascia-opt" data-val="' + o.val + '" style="display:block;width:100%;text-align:left;padding:8px 12px;margin-bottom:4px;border:2px solid ' + (cur === o.val ? '#667eea' : '#eee') + ';border-radius:8px;background:' + (cur === o.val ? '#eef2ff' : 'white') + ';cursor:pointer;font-size:13px;">' + o.label + '</button>'
+      ).join('');
+      fasciaField.querySelectorAll('.fascia-opt').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const val = btn.dataset.val || null;
+          await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori/' + teamPlayerId + '/ruolo-capitano', { method: 'PUT', body: JSON.stringify({ ruolo: val }) });
+          loadPlayerDetail(container, player.id);
+        });
+      });
+    });
+  }
 
   // Career expand — helper to build DataGrid for matches
   function buildMatchesExpand(matches, containerEl) {
