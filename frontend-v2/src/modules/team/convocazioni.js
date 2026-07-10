@@ -9,16 +9,18 @@ export async function openConvocation(mid, readOnly) {
   let conv = [];
   let gioc = [];
   let weekAbsences = [];
+  let realAbsences = [];
   
-  [conv, gioc, weekAbsences] = await Promise.all([
+  [conv, gioc, weekAbsences, realAbsences] = await Promise.all([
     apiFetch('/partite/' + mid + '/convocazioni').catch(() => []),
     apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori'),
-    apiFetch('/absence/team/' + window.YFM.squadraId + '/week').catch(() => [])
+    apiFetch('/absence/team/' + window.YFM.squadraId + '/week').catch(() => []),
+    apiFetch('/squadre/' + window.YFM.squadraId + '/assenze-settimana').catch(() => [])
   ]);
 
-  // Conta assenze per giocatore nella settimana
+  // Conta assenze REALI registrate dal mister (training_attendance)
   const absCountByPlayer = {};
-  (weekAbsences || []).forEach(a => {
+  (realAbsences || []).forEach(a => {
     const pid = a.player_id;
     absCountByPlayer[pid] = (absCountByPlayer[pid] || 0) + 1;
   });
@@ -28,6 +30,21 @@ export async function openConvocation(mid, readOnly) {
   const absentForMatchIds = new Set(
     (weekAbsences || []).filter(a => a.data_allenamento === matchDate).map(a => a.player_id)
   );
+
+  // Check rosa sufficiente
+  const attivi = (gioc || []).filter(g => g.stato === 'Attivo' || !g.stato);
+  if (attivi.length === 0) {
+    const content = '<div style="text-align:center;padding:32px 16px;"><div style="font-size:48px;margin-bottom:16px;">⚠️</div><div style="font-size:16px;font-weight:600;color:#333;margin-bottom:8px;">Nessun giocatore in rosa</div><div style="font-size:13px;color:#666;">Aggiungi i giocatori alla rosa prima di convocare.</div></div>';
+    const footer = '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>';
+    createModal('📋 Convocazioni', content, footer);
+    return;
+  }
+  if (attivi.length < 11) {
+    const content = '<div style="text-align:center;padding:32px 16px;"><div style="font-size:48px;margin-bottom:16px;">⚠️</div><div style="font-size:16px;font-weight:600;color:#333;margin-bottom:8px;">Solo ' + attivi.length + ' giocatori in rosa</div><div style="font-size:13px;color:#666;">Servono almeno 11 giocatori per convocare una partita.</div></div>';
+    const footer = '<button class="btn btn-secondary" id="modalCancel">Chiudi</button>';
+    createModal('📋 Convocazioni', content, footer);
+    return;
+  }
 
   // Mappa risposte convocazione per giocatore
   const rispostaMap = {};

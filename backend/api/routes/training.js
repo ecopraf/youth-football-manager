@@ -536,5 +536,44 @@ module.exports = function createTrainingRouter({ supabase, authMiddleware, requi
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  // GET /api/squadre/:teamId/assenze-settimana — assenze REALI registrate dal mister (training_attendance)
+  router.get('/api/squadre/:teamId/assenze-settimana', authMiddleware, async (req, res) => {
+    try {
+      const now = new Date();
+      const day = now.getDay();
+      const diffToMon = day === 0 ? 6 : day - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - diffToMon);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+
+      // Allenamenti della settimana per questa squadra
+      const { data: weekTrainings } = await supabase.from('training')
+        .select('id')
+        .eq('team_id', req.params.teamId)
+        .gte('data_ora', monday.toISOString())
+        .lte('data_ora', sunday.toISOString());
+      const weekIds = (weekTrainings || []).map(t => t.id);
+      if (weekIds.length === 0) return res.json([]);
+
+      // Assenze registrate (presente=false)
+      const { data: absences } = await supabase.from('training_attendance')
+        .select('team_player_id')
+        .in('training_id', weekIds)
+        .eq('presente', false);
+
+      // Mappa team_player_id -> player_id
+      const tpIds = [...new Set((absences || []).map(a => a.team_player_id))];
+      if (tpIds.length === 0) return res.json([]);
+      const { data: tps } = await supabase.from('team_player').select('id, player_id').in('id', tpIds);
+      const tpMap = {};
+      (tps || []).forEach(tp => { tpMap[tp.id] = tp.player_id; });
+
+      // Restituisci array con player_id per ogni assenza
+      const result = (absences || []).map(a => ({ player_id: tpMap[a.team_player_id] })).filter(r => r.player_id);
+      res.json(result);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   return router;
 };

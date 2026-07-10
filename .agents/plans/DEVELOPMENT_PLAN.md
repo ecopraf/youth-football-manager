@@ -575,6 +575,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| — | fix: convocazioni — rosa minimo 11 + assenze settimanali da training_attendance (non da comunicazioni atleta) |
 | — | feat: distinta — capitano/vice da team_player, assistente arbitro in form Compila, nome PDF dinamico, cerchio titolari 14px |
 | 1feff73 | fix: Import Center — preview anteprima prima di importare da Portale Regionale |
 | 2e2e838 | feat: numeri maglia per partita — input editabile in formazione, distinta cerchiata, bottone Distinta in MC |
