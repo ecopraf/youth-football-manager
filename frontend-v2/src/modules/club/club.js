@@ -11,7 +11,6 @@ export default async function loadClub() {
 
     let wsData, facility, staffData;
     if (isGuest) {
-      // Guest: usa dati già in memoria, no chiamate che richiedono permessi
       wsData = window.YFM.workspaceInfo || {};
       facility = window.YFM.facility || null;
       staffData = await apiFetch('/squadre/' + teamId + '/staff-completo').catch(() => []);

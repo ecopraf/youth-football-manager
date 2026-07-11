@@ -37,6 +37,21 @@ export default async function loadGuest() {
     window.YFM.guestPlayerId = guestData.player_id || null;
     window.YFM.guestTeamId = guestData.team_id || null;
     window.YFM.guestPlayerName = playerName;
+    if (guestData.workspace) {
+      window.YFM.workspaceInfo = guestData.workspace;
+      window.YFM.activeWorkspaceId = guestData.workspace.id;
+      // Aggiorna header con logo e nome società
+      const logo = document.getElementById('headerLogo');
+      if (logo && guestData.workspace.logo_url) {
+        logo.src = guestData.workspace.logo_url;
+        logo.style.display = 'block';
+      }
+      const hn = document.getElementById('headerSocName');
+      if (hn && guestData.tipo !== 'atleta') hn.textContent = guestData.workspace.nome_breve || guestData.workspace.nome || '';
+      const wn = document.getElementById('workspaceName');
+      if (wn) wn.textContent = guestData.workspace.nome_breve || guestData.workspace.nome || '';
+    }
+    if (guestData.facility) window.YFM.facility = guestData.facility;
     await loadSquadre();
     
     // Messaggio di benvenuto

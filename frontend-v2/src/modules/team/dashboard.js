@@ -257,8 +257,8 @@ export default async function loadDashboard() {
     const trendHtml = ultimi5.map(r => {
       const style = getResultStyle(r.golFatti, r.golSubiti);
       const esito = r.golFatti > r.golSubiti ? 'V' : r.golFatti === r.golSubiti ? 'P' : 'S';
-      return '<div style="text-align:center;"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:' + style.color + ';color:white;font-size:12px;font-weight:bold;border-radius:8px;margin-bottom:4px;">' + esito + '</span><div style="font-size:10px;color:#aaa;">' + r.golFatti + '-' + r.golSubiti + '</div></div>';
-    }).join('<span style="color:#ddd;margin:0 8px;align-self:center;">—</span>');
+      return '<div style="text-align:center;"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:' + style.color + ';color:white;font-size:12px;font-weight:bold;border-radius:8px;margin-bottom:4px;">' + esito + '</span><div style="font-size:10px;color:rgba(255,255,255,0.8);">' + r.golFatti + '-' + r.golSubiti + '</div></div>';
+    }).join('<span style="color:rgba(255,255,255,0.4);margin:0 8px;align-self:center;">—</span>');
     
     const trendBox = '<div data-help="dashboard.trend" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:14px;padding:16px;margin-bottom:16px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +

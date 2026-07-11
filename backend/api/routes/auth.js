@@ -432,8 +432,64 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         const { data: pl } = await supabase.from('player').select('nome, cognome').eq('id', data.player_id).single();
         if (pl) player_name = `${pl.nome} ${pl.cognome}`;
       }
+
+      // Risolvi workspace info + facility per pagina Club guest
+      let workspace = null, facility = null;
+      const categorie2 = data.squadre_accesso || [];
+      if (categorie2.length > 0) {
+        const { data: cat } = await supabase.from('category').select('workspace_id').eq('id', categorie2[0]).single();
+        if (cat?.workspace_id) {
+          const [{ data: ws }, { data: fac }] = await Promise.all([
+            supabase.from('workspace').select('id, nome, nome_breve, email, telefono, sito_web, logo_url').eq('id', cat.workspace_id).single(),
+            supabase.from('facility').select('nome, indirizzo, citta').eq('workspace_id', cat.workspace_id).eq('is_default', true).maybeSingle()
+          ]);
+          workspace = ws || null;
+          facility = fac || null;
+        }
+      }
+
+      // Lazy cleanup: elimina notifiche convocazione scadute (fire-and-forget)
+      if (team_id) {
+        (async () => {
+          try {
+            const { data: convNotifs } = await supabase.from('notification')
+              .select('id, riferimento_id')
+              .eq('team_id', team_id)
+              .eq('tipo', 'convocazione');
+            if (convNotifs && convNotifs.length > 0) {
+              const matchIds = [...new Set(convNotifs.map(n => n.riferimento_id).filter(Boolean))];
+              if (matchIds.length > 0) {
+                const { data: matches } = await supabase.from('match').select('id, data_ora').in('id', matchIds);
+                const now = new Date();
+                const expiredMatchIds = (matches || []).filter(m => {
+                  const d = new Date(m.data_ora);
+                  const day = d.getDay(); // 0=dom, 6=sab
+                  let expiry;
+                  if (day === 0 || day === 6) {
+                    // Weekend: scade lunedì successivo (ore 00:00)
+                    const daysToMon = day === 6 ? 2 : 1;
+                    expiry = new Date(d);
+                    expiry.setDate(expiry.getDate() + daysToMon);
+                    expiry.setHours(0, 0, 0, 0);
+                  } else {
+                    // Infrasettimanale: scade dopo 1 giorno
+                    expiry = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+                  }
+                  return now >= expiry;
+                }).map(m => m.id);
+                if (expiredMatchIds.length > 0) {
+                  const idsToDelete = convNotifs.filter(n => expiredMatchIds.includes(n.riferimento_id)).map(n => n.id);
+                  if (idsToDelete.length > 0) {
+                    await supabase.from('notification').delete().in('id', idsToDelete);
+                  }
+                }
+              }
+            }
+          } catch (e) { /* silent */ }
+        })();
+      }
       
-      res.json({ token: data.token, jwt: guestJwt, tipo: data.tipo, squadre_accesso: data.squadre_accesso, player_id: data.player_id || null, team_id, player_name });
+      res.json({ token: data.token, jwt: guestJwt, tipo: data.tipo, squadre_accesso: data.squadre_accesso, player_id: data.player_id || null, team_id, player_name, workspace, facility });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }

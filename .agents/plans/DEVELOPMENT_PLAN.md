@@ -773,7 +773,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
-| — | fix: report giocatore "Altro" → "Amichevole" (backend career + frontend playerDetail + reports), presenze fallback match_statistics, subtotali per competizione, query ottimizzate (5 vs 7), Print Center rinominato "Report Squadra", help in-app Print Center, mobile print rosa/scadenze (overflow-x + padding ridotto + colonna Stato nascosta), registro presenze mobile max 3 settimane con highlight raggiungibili, eliminata categoria U18 vuota Albalonga |
+| — | fix: dashboard trend colori invisibili (#aaa→bianco su sfondo viola), guest workspace/facility/logo in header, prossima partita esclude terminate+passate (fallback datetime), cleanup notifiche convocazione scadute (weekend→lunedì, infrasettimanale→+1g) |
 | — | feat: EPIC 16 Print Center completo — hub documentale centralizzato con 7 documenti stampabili (Convocazione, Distinta, Formazione, Report, Presenze, Rosa, Scadenze), varianti (telefoni/staff/torneo), cronologia, Web Share API, pagine standalone A4 |
 | v3.16.13 | fix: convocazioni assenze relative a settimana partita (non corrente), certificati medici responsive (1 colonna mobile, badge toggle singola sezione) |
 | — | data: import amichevoli 2025/26 (6 partite) e 2024/25 (15 partite) da Google Sheets, fix tipo_evento (GOL→GOAL, ASS→ASSIST, AMMONIZIONE→YELLOW, ESPULSIONE→RED), fix formazioni ordine per ruolo (POR slot 0), fix gol trasferta (convenzione: gol_casa=nostri, gol_ospite=avversario), fix risultati campionato Fonte Meravigliosa e Fortitudo |

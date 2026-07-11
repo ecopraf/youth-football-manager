@@ -142,7 +142,8 @@ export function setupGuestLayout(tipo, playerName) {
     <div class="main">
       <header class="header">
         <button id="menuBtn" aria-label="Apri menu">☰</button>
-        <span style="font-weight:600;color:var(--blue);font-size:15px;margin-right:auto;">${playerName || 'Youth Football Manager'}</span>
+        <img id="headerLogo" src="" alt="Logo società" style="width:36px;height:36px;border-radius:8px;object-fit:contain;display:none;">
+        <span id="headerSocName" style="font-weight:600;color:var(--blue);font-size:15px;margin-left:8px;margin-right:auto;">${playerName || 'Youth Football Manager'}</span>
         <div class="header-right" style="display:flex;align-items:center;gap:12px;">
           <div id="guestBellWrap" style="position:relative;cursor:pointer;display:none;">
             <span style="font-size:20px;">🔔</span>

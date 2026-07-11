@@ -31,8 +31,9 @@ export default async function loadGuestAtleta() {
 
     // Fetch convocazione per prossima partita
     const todayStr = new Date().toISOString().slice(0, 10);
+    const now = new Date().toISOString();
     const nextMatch = (matches || [])
-      .filter(m => m.data_ora && m.data_ora.slice(0, 10) >= todayStr && m.stato !== 'Archiviata')
+      .filter(m => m.data_ora && m.data_ora > now && m.stato !== 'Archiviata' && m.stato !== 'Terminata' && m.live_meta?.stato !== 'fine')
       .sort((a, b) => a.data_ora.localeCompare(b.data_ora))[0] || null;
     let myConvocation = null;
     let convocationPublished = false;
