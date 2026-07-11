@@ -569,9 +569,48 @@ const { data: presenze } = await supabase.from('training_attendance').select('te
 const motivi = presenze.filter(p => !p.presente);
 ```
 
+### Regola #3b: Condividere Promise tra componenti che usano gli stessi dati
+
+Se due widget/card nella stessa pagina necessitano degli stessi dati API, creare UNA Promise condivisa e riusarla.
+
+```javascript
+// ❌ VIETATO (stessa API chiamata 2 volte per 2 card diverse)
+apiFetch('/partite/' + id + '/convocazioni').then(data => renderCard1(data));
+apiFetch('/partite/' + id + '/convocazioni').then(data => renderCard2(data));
+
+// ✅ OBBLIGATORIO (una Promise, due consumer)
+const convPromise = apiFetch('/partite/' + id + '/convocazioni').catch(() => []);
+convPromise.then(data => renderCard1(data));
+convPromise.then(data => renderCard2(data));
+```
+
+**Regola corollario**: se due card mostrano lo stesso dato (es. "N disponibili"), DEVONO usare la stessa fonte dati e la stessa formula di calcolo per garantire coerenza visiva.
+
 ### Regola #4: Selezionare solo colonne necessarie
 
 Mai usare `select('*')` su tabelle con molte colonne o molte righe. Specificare sempre le colonne.
+
+### Regola #4b: Coerenza semantica dei dati derivati
+
+Quando un dato viene calcolato da più fonti (es. "giocatori indisponibili" = indisponibili da convocazione + infortunati), la logica di calcolo DEVE essere identica ovunque venga mostrato.
+
+**Regole:**
+- Definire la formula UNA volta e riusarla (funzione helper o variabile condivisa)
+- Mai contare come "indisponibile" un giocatore che è stato esplicitamente incluso in un'azione (es. infortunato ma convocato = in recupero, non indisponibile)
+- Se due UI mostrano lo stesso conteggio, devono usare la stessa fonte dati E la stessa formula
+
+```javascript
+// ❌ VIETATO (logiche diverse per lo stesso concetto)
+// Card A: conta TUTTI gli infortunati
+const infortunati = dashInfortunati.filter(i => !i.data_rientro_effettiva);
+// Card B: conta solo quelli non convocati
+const infortunati = dashInfortunati.filter(i => !i.data_rientro_effettiva && !convIds.has(i.player_id));
+
+// ✅ OBBLIGATORIO (stessa logica ovunque)
+const convIds = new Set(tutti.map(c => c.calciatoreId));
+const infortunatiNonConv = dashInfortunati.filter(i => !i.data_rientro_effettiva && !convIds.has(i.player_id));
+// Usare infortunatiNonConv in ENTRAMBE le card
+```
 
 ### Regola #5: Batch fetch con limite Supabase
 
@@ -618,6 +657,27 @@ const { data: players } = await supabase.from('team_player')
 | GET con aggregazione (stats, summary) | <500ms | <1000ms |
 | GET con batch fetch (presenze, formazioni) | <800ms | <1500ms |
 | POST/PUT/DELETE | <300ms | <500ms |
+
+### Semantica Disponibilità Partita (OBBLIGATORIA)
+
+| Categoria | Icona | Definizione | Fonte dati |
+|-----------|-------|-------------|------------|
+| Disponibili | 👥 | Convocati utilizzabili | `convocation.presente=true` senza risposta indisponibile e senza infortunio indisponibile |
+| Indisponibili | 🏥 | Infortunati non utilizzabili | Infortunati con `risposta='indisponibile'` + infortunati non convocati (`injury` attivi) |
+| Assenti | ❌ | Assenza comunicata (non infortunio) | `convocation.risposta='indisponibile'` di NON infortunati + `absence_notification` per data partita |
+
+**Regole:**
+- Infortunato convocato SENZA risposta indisponibile = in recupero → conta come disponibile (il mister l'ha scelto consapevolmente)
+- Infortunato con `risposta='indisponibile'` → conta come 🏥 indisponibile (NON come ❌ assente)
+- Badge convocazioni: se giocatore è infortunato E indisponibile, mostrare SOLO badge 🤕 (non doppio badge)
+- `absence_notification` per data partita → giocatore frozen nelle convocazioni + conta come ❌ assente nella dashboard
+
+### Migrazione Stagione — Infortuni (OBBLIGATORIO)
+
+La migrazione rosa (`POST /stagioni/:id/migra`) DEVE:
+1. Includere giocatori con `stato IN ('Attivo', 'Infortunato')` (non solo Attivo)
+2. Preservare lo stato originale (infortunato resta infortunato)
+3. Aggiornare `injury.team_id` degli infortuni aperti al nuovo team
 
 ---
 

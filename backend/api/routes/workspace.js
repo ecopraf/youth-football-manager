@@ -348,16 +348,22 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
 
           if (migra_rosa) {
             const { data: oldPlayers } = await supabase.from('team_player')
-              .select('player_id, numero_maglia, ruolo_preferito')
-              .eq('team_id', oldTeamId).eq('stato', 'Attivo');
+              .select('player_id, numero_maglia, ruolo_preferito, stato')
+              .eq('team_id', oldTeamId).in('stato', ['Attivo', 'Infortunato']);
             if (oldPlayers?.length) {
               const inserts = oldPlayers.map(p => ({
                 team_id: newTeam.id, player_id: p.player_id,
                 numero_maglia: p.numero_maglia, ruolo_preferito: p.ruolo_preferito,
-                stato: 'Attivo', aggregato: false
+                stato: p.stato === 'Infortunato' ? 'Infortunato' : 'Attivo', aggregato: false
               }));
               const { data: inserted } = await supabase.from('team_player').insert(inserts).select();
               result.rosa += (inserted || []).length;
+              // Migrare infortuni aperti al nuovo team
+              const injPlayerIds = oldPlayers.filter(p => p.stato === 'Infortunato').map(p => p.player_id);
+              if (injPlayerIds.length) {
+                await supabase.from('injury').update({ team_id: newTeam.id })
+                  .eq('team_id', oldTeamId).in('player_id', injPlayerIds).is('data_rientro_effettiva', null);
+              }
             }
           }
 
@@ -393,12 +399,18 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
             if (!oldTeam) continue;
             if (migra_rosa) {
               const { data: oldPlayers } = await supabase.from('team_player')
-                .select('player_id, numero_maglia, ruolo_preferito')
-                .eq('team_id', oldTeam.id).eq('stato', 'Attivo');
+                .select('player_id, numero_maglia, ruolo_preferito, stato')
+                .eq('team_id', oldTeam.id).in('stato', ['Attivo', 'Infortunato']);
               if (oldPlayers?.length) {
-                const inserts = oldPlayers.map(p => ({ team_id: newTeam.id, player_id: p.player_id, numero_maglia: p.numero_maglia, ruolo_preferito: p.ruolo_preferito, stato: 'Attivo', aggregato: false }));
+                const inserts = oldPlayers.map(p => ({ team_id: newTeam.id, player_id: p.player_id, numero_maglia: p.numero_maglia, ruolo_preferito: p.ruolo_preferito, stato: p.stato === 'Infortunato' ? 'Infortunato' : 'Attivo', aggregato: false }));
                 const { data: inserted } = await supabase.from('team_player').insert(inserts).select();
                 result.rosa += (inserted || []).length;
+                // Migrare infortuni aperti al nuovo team
+                const injPlayerIds = oldPlayers.filter(p => p.stato === 'Infortunato').map(p => p.player_id);
+                if (injPlayerIds.length) {
+                  await supabase.from('injury').update({ team_id: newTeam.id })
+                    .eq('team_id', oldTeam.id).in('player_id', injPlayerIds).is('data_rientro_effettiva', null);
+                }
               }
             }
             if (migra_staff) {

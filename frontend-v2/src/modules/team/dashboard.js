@@ -625,7 +625,7 @@ export default async function loadDashboard() {
     injWidget.innerHTML = '<div style="background:#FFF3F3;border:1px solid #FDCECE;border-radius:12px;padding:14px;">' +
       '<h3 style="margin:0 0 10px 0;font-size:13px;color:#E74C3C;">🏥 Infortunati (' + activeInjuries.length + ')</h3>' +
       activeInjuries.map(inj => {
-        const days = inj.data_prevista_rientro ? Math.ceil((new Date(inj.data_prevista_rientro) - today) / 86400000) : null;
+        const days = inj.data_rientro_prevista ? Math.ceil((new Date(inj.data_rientro_prevista) - today) / 86400000) : null;
         const daysLabel = days !== null ? (days > 0 ? days + 'gg' : '⚠️ scaduto') : '';
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;">' +
           '<span><strong>' + (inj.cognome || '') + '</strong> <span style="color:#888;">' + inj.tipo + '</span></span>' +
@@ -645,42 +645,74 @@ export default async function loadDashboard() {
     bindCertificatiToggle(certWidget);
   }
 
-  // Lazy load: prossima convocazione (per segreteria)
+  // Lazy load: dati convocazione condivisi tra card prossima partita e card segreteria
   if (prossimaPartita) {
+    const convPromise = apiFetch('/partite/' + prossimaPartita.id + '/convocazioni').catch(() => []);
+    const matchDateStr = prossimaPartita.data_ora ? prossimaPartita.data_ora.substring(0, 10) : '';
+    const absPromise = matchDateStr ? apiFetch('/absence/team/' + window.YFM.squadraId + '/week').catch(() => []) : Promise.resolve([]);
+
+    // Helper: calcola conteggi disponibilità
+    function calcAvailability(convAll, weekAbs) {
+      const tutti = (convAll || []).filter(c => c.presente);
+      const injPlayerIds = new Set((window._dashInfortunati || []).map(i => i.player_id));
+      // Assenti "normali" = risposta indisponibile ma NON infortunati
+      const assenti = tutti.filter(c => c.risposta === 'indisponibile' && !injPlayerIds.has(c.calciatoreId));
+      // Infortunati indisponibili = risposta indisponibile E infortunati
+      const injIndisponibili = tutti.filter(c => c.risposta === 'indisponibile' && injPlayerIds.has(c.calciatoreId));
+      // Infortunati non convocati
+      const convIds = new Set(tutti.map(c => c.calciatoreId));
+      const injNonConv = (window._dashInfortunati || []).filter(i => !convIds.has(i.player_id));
+      // Totale indisponibili per infortunio
+      const totInj = injIndisponibili.length + injNonConv.length;
+      // Assenze comunicate per data partita (non già contati come convocati indisponibili)
+      const absForMatch = (weekAbs || []).filter(a => a.data_allenamento === matchDateStr && !convIds.has(a.player_id));
+      const totAssenti = assenti.length + absForMatch.length;
+      const disponibili = tutti.length - assenti.length - injIndisponibili.length;
+      return { tutti, disponibili, totInj, totAssenti };
+    }
+
+    // Card segreteria
     const convWidget = document.getElementById('dashConvocazioneWidget');
     if (convWidget) {
-      apiFetch('/squadre/' + squadraId + '/partite/' + prossimaPartita.id + '/convocati').then(conv => {
-        const convocati = (conv || []).filter(c => c.presente === true);
+      Promise.all([convPromise, absPromise]).then(([convAll, weekAbs]) => {
+        const { tutti, disponibili, totInj, totAssenti } = calcAvailability(convAll, weekAbs);
         const dataMatch = new Date(prossimaPartita.data_ora);
         const dataStr = dataMatch.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
         const oraStr = dataMatch.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
         const luogo = prossimaPartita.luogo === 'Casa' ? '🏠 Casa' : '✈️ Trasferta';
-        const stato = convocati.length > 0
-          ? '<span style="color:#27AE60;font-weight:600;">✅ ' + convocati.length + ' convocati</span>'
+        const stato = tutti.length > 0
+          ? '<span style="color:#27AE60;font-weight:600;">✅ ' + disponibili + ' disponibili</span>'
           : '<span style="color:#E67E22;font-weight:600;">⬜ Da convocare</span>';
+        let alertHtml = '';
+        if (totInj > 0 || totAssenti > 0) {
+          alertHtml = '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;font-size:11px;">';
+          if (totInj > 0) alertHtml += '<span style="background:#fee2e2;color:#dc2626;padding:3px 8px;border-radius:6px;font-weight:600;">🏥 ' + totInj + ' indisponibil' + (totInj === 1 ? 'e' : 'i') + '</span>';
+          if (totAssenti > 0) alertHtml += '<span style="background:#fff3e0;color:#e65100;padding:3px 8px;border-radius:6px;font-weight:600;">❌ ' + totAssenti + ' assent' + (totAssenti === 1 ? 'e' : 'i') + '</span>';
+          alertHtml += '</div>';
+        }
         convWidget.innerHTML = '<div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:12px;padding:14px;">' +
           '<h3 style="margin:0 0 10px 0;font-size:13px;color:#4338ca;">📋 Prossima Convocazione</h3>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
           '<div><strong>' + (prossimaPartita.avversario || 'TBD') + '</strong><br><span style="font-size:12px;color:#666;">' + dataStr + ' · ' + oraStr + ' · ' + luogo + '</span></div>' +
           '<div>' + stato + '</div></div>' +
+          alertHtml +
           '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">' +
-          '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')" style="background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📋 ' + (convocati.length > 0 ? 'Vedi / Modifica' : 'Convoca') + '</button>' +
-          (convocati.length > 0 ? '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\',true)" style="background:#27AE60;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📄 PDF</button>' : '') +
+          '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')" style="background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📋 ' + (tutti.length > 0 ? 'Vedi / Modifica' : 'Convoca') + '</button>' +
+          (tutti.length > 0 ? '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\',true)" style="background:#27AE60;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📄 PDF</button>' : '') +
           '</div></div>';
       }).catch(() => {});
     }
 
-    // Lazy: counter indisponibili nella card prossima partita
+    // Card prossima partita — status line
     const convStatusEl = document.getElementById('dashConvStatus');
     if (convStatusEl && hasEditAccess) {
-      apiFetch('/partite/' + prossimaPartita.id + '/convocazioni').then(convAll => {
-        const tutti = (convAll || []).filter(c => c.presente);
-        if (tutti.length === 0) return;
-        const indisponibili = tutti.filter(c => c.risposta === 'indisponibile');
-        const effettivi = tutti.length - indisponibili.length;
+      Promise.all([convPromise, absPromise]).then(([convAll, weekAbs]) => {
+        const { tutti, disponibili, totInj, totAssenti } = calcAvailability(convAll, weekAbs);
+        if (tutti.length === 0 && totInj === 0 && totAssenti === 0) return;
         let statusHtml = '<div style="font-size:11px;opacity:0.9;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">';
-        statusHtml += '<span>👥 ' + effettivi + ' convocati</span>';
-        if (indisponibili.length > 0) statusHtml += '<span style="color:#fca5a5;font-weight:700;">⚠️ ' + indisponibili.length + ' indisponibil' + (indisponibili.length === 1 ? 'e' : 'i') + '</span>';
+        if (tutti.length > 0) statusHtml += '<span>👥 ' + disponibili + ' disponibili</span>';
+        if (totInj > 0) statusHtml += '<span style="color:#fca5a5;font-weight:700;">🏥 ' + totInj + ' indisponibil' + (totInj === 1 ? 'e' : 'i') + '</span>';
+        if (totAssenti > 0) statusHtml += '<span style="color:#fca5a5;font-weight:700;">❌ ' + totAssenti + ' assent' + (totAssenti === 1 ? 'e' : 'i') + '</span>';
         statusHtml += '</div>';
         convStatusEl.innerHTML = statusHtml;
       }).catch(() => {});

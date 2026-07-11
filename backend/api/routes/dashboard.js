@@ -36,8 +36,8 @@ function createDashboardRouter({ supabase, authMiddleware }) {
           .eq('team_id', teamId).gte('data_ora', now.toISOString()).order('data_ora', { ascending: true }).limit(20),
         supabase.from('training_config').select('giorno_settimana, ora_inizio, ora_fine, luogo')
           .eq('team_id', teamId),
-        supabase.from('injury').select('id, player_id, tipo, data_inizio, data_prevista_rientro, note, player:player_id(nome, cognome)')
-          .eq('team_id', teamId).is('data_fine', null),
+        supabase.from('injury').select('id, player_id, tipo, data_inizio, data_rientro_prevista, note, player:player_id(nome, cognome)')
+          .eq('team_id', teamId).is('data_rientro_effettiva', null),
         supabase.from('team_logo').select('nome, nome_normalizzato, logo_path')
       ]);
 
@@ -154,7 +154,7 @@ function createDashboardRouter({ supabase, authMiddleware }) {
       // ── 5. INFORTUNATI ATTIVI ──
       const infortunati = (injuries || []).map(i => ({
         id: i.id, player_id: i.player_id, nome: i.player?.nome, cognome: i.player?.cognome,
-        tipo: i.tipo, data_inizio: i.data_inizio, data_prevista_rientro: i.data_prevista_rientro, note: i.note
+        tipo: i.tipo, data_inizio: i.data_inizio, data_rientro_prevista: i.data_rientro_prevista, note: i.note
       }));
 
       // ── 6. CERTIFICATI MEDICI (da dati già fetchati in players) ──

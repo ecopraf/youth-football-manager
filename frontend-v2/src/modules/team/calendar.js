@@ -45,9 +45,7 @@ async function preloadMatchSteps(matches) {
 
 async function getNextStep(matchId) {
   try {
-    // Chiamate in parallelo
-    const [convResp, convStato, formResp, eventiResp] = await Promise.all([
-      apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/convocati').catch(() => null),
+    const [convStato, formResp, eventiResp] = await Promise.all([
       apiFetch('/partite/' + matchId + '/convocazioni-stato').catch(() => ({ published: false })),
       apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/formazione').catch(() => null),
       apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + matchId + '/eventi').catch(() => null)

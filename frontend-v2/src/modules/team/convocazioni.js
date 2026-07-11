@@ -100,7 +100,7 @@ export async function openConvocation(mid, readOnly) {
       const isIndisponibile = risp?.risposta === 'indisponibile';
       const isAbsentForMatch = absentForMatchIds.has(g.id);
       const isFrozen = isIndisponibile || isAbsentForMatch;
-      if (isIndisponibile) badges.push(`<span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;" title="${risp.motivo || ''}">❌ Indisponibile</span>`);
+      if (isIndisponibile && !isInj) badges.push(`<span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;" title="${risp.motivo || ''}">❌ Indisponibile</span>`);
       else if (isAbsentForMatch) badges.push('<span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">🚫 Assente</span>');
       return `
       <div class="convocation-item" style="${isFrozen ? 'opacity:0.5;text-decoration:line-through;' : ''}">

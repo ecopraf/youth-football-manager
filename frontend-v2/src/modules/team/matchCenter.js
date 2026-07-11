@@ -150,6 +150,7 @@ export default async function loadMatchCenter() {
 
 async function loadGiocatori(mid) {
   let list = [];
+  // 1. Se esiste formazione, usa quei giocatori (titolari + riserve)
   try {
     const res = await apiFetch('/partite/' + mid + '/formazione');
     const arr = res?.formazione || (Array.isArray(res) ? res : []);
@@ -162,17 +163,7 @@ async function loadGiocatori(mid) {
       });
     }
   } catch(e) {}
-  if (list.length === 0) {
-    try {
-      const conv = await apiFetch('/partite/' + mid + '/convocazioni');
-      const arr = (Array.isArray(conv) ? conv : []).filter(c => c.presente);
-      if (arr.length > 0) {
-        const rosa = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
-        const map = {}; (rosa || []).forEach(g => { map[g.id] = g; });
-        list = arr.map(c => ({ calciatoreId: c.calciatoreId, nome: map[c.calciatoreId]?.nome || '', cognome: map[c.calciatoreId]?.cognome || '' }));
-      }
-    } catch(e) {}
-  }
+  // 2. Fallback: tutta la rosa (convocati si filtrano già altrove)
   if (list.length === 0) {
     try {
       const rosa = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori');

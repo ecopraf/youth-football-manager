@@ -575,8 +575,10 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| — | fix: migrazione stagione include infortunati + migra injury.team_id, dashboard card con semantica corretta (infortunati=indisponibili, assenze comunicate=assenti), badge convocazioni non duplicato |
 | — | feat: welcome card onboarding dismissable in dashboard, differenziata per profilo (allenatore/segreteria/dirigente/vice) |
 | — | fix: flusso convocazioni — pallino Pubblica ora giallo (visibile su sfondo viola), calendario e MC vincolati a pubblicazione effettiva (non solo salvataggio) |
+| — | perf: dashboard card convocazione — 1 sola API call condivisa tra card partita e card segreteria, rimossa /convocati ridondante da calendario, rimosso fallback /convocazioni da MC loadGiocatori |
 | — | fix: card Staff dashboard — mostra tutto lo staff tecnico di campo (ordinato), flusso formazione/distinta con check convocazioni pubblicate |
 | — | fix: convocazioni — rosa minimo 11 + assenze settimanali da training_attendance (non da comunicazioni atleta) |
 | — | feat: distinta — capitano/vice da team_player, assistente arbitro in form Compila, nome PDF dinamico, cerchio titolari 14px |

@@ -16,7 +16,9 @@ export const PAGE_HELP = {
       'Click su una partita per aprire il dettaglio',
       'Click su un giocatore nel podio per la scheda completa',
       'Usa ⚙️ Organizza per riordinare o nascondere i widget',
-      'Segreteria: widget Certificati e Prossima Convocazione in evidenza'
+      'Segreteria: widget Certificati e Prossima Convocazione in evidenza',
+      '🏥 Indisponibili = infortunati non utilizzabili per la partita',
+      '❌ Assenti = giocatori che hanno comunicato assenza (non infortunio)'
     ]
   },
   roster: {
@@ -182,7 +184,8 @@ export const PAGE_HELP = {
     items: [
       'Spunta i giocatori da convocare (min 11, max 20)',
       'Usa Tutti/Nessuno per selezione rapida',
-      'Giocatori infortunati mostrano badge 🏥 e non sono selezionabili',
+      'Giocatori infortunati mostrano badge 🤕 (selezionabili se in recupero)',
+      'Chi ha comunicato assenza per la data partita è congelato con badge 🚫',
       'Salva → Pubblica per inviare notifica ad atleti e genitori',
       'Dopo la pubblicazione, atleti possono segnalare indisponibilità',
       '📄 Vedi Convocazione genera il documento stampabile con intestazione società'
@@ -224,7 +227,7 @@ export const ELEMENT_HELP = {
   },
   'dashboard.prossimaPartita': {
     title: 'Prossima Partita',
-    desc: 'La prossima partita in programma con data, ora, avversario e luogo. Il bottone "Convocazioni" permette di gestire rapidamente la lista convocati.'
+    desc: 'La prossima partita in programma con data, ora, avversario e luogo. Mostra disponibilità: 🏥 indisponibili (infortunati), ❌ assenti (assenze comunicate). Il bottone "Convocazioni" permette di gestire rapidamente la lista convocati.'
   },
   'dashboard.topPlayers': {
     title: 'Top 3 Giocatori',
