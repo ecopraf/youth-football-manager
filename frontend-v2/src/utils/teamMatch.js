@@ -8,12 +8,28 @@ function coreName(name) {
     .replace(/\./g,' ').replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
   const w = n.split(' ').map(x => ABBR[x] || x);
   const c = w.filter(x => !GEN.includes(x) && x.length > 1);
+  // Se rimane solo 1 parola ma l'input ne aveva 2+, preserva anche le generiche significative
+  // per evitare che "Accademia Atl. Lodigiani" e "Lodigiani" collassino allo stesso core
+  if (c.length === 1 && w.length >= 2) {
+    const meaningful = w.filter(x => x.length > 2);
+    if (meaningful.length > 1) return meaningful.join(' ');
+  }
   return c.length > 0 ? c.join(' ') : w.join(' ');
 }
 
 export function isOurTeam(grName, teamName) {
   const a = grName.toLowerCase(), b = teamName.toLowerCase();
-  if (a.includes(b) || b.includes(a)) return true;
+  if (a === b) return true;
   const ca = coreName(grName), cb = coreName(teamName);
-  return ca === cb || ca.includes(cb) || cb.includes(ca);
+  if (ca === cb) return true;
+  // Word-level: all words of the shorter must appear in the longer
+  const wa = ca.split(' '), wb = cb.split(' ');
+  if (wa.length >= 1 && wb.length >= 1) {
+    const [shorter, longer] = wa.length <= wb.length ? [wa, wb] : [wb, wa];
+    // The shorter must have at least half the words of the longer to match
+    if (shorter.length >= longer.length / 2 || shorter.length === longer.length) {
+      if (shorter.every(w => longer.includes(w))) return true;
+    }
+  }
+  return false;
 }

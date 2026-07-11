@@ -249,6 +249,39 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // GET teams per stagione
+  router.get('/api/workspaces/:id/stagioni/:seasonId/teams', authMiddleware, async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('team')
+        .select('id, nome, category_id, season_id, category:category_id(nome, tipo_campionato, genere)')
+        .eq('season_id', req.params.seasonId);
+      if (error) return res.status(400).json({ error: error.message });
+      // Flatten category fields
+      const result = (data || []).map(t => ({
+        ...t,
+        category_name: t.category?.nome || t.nome,
+        category_tipo: t.category?.tipo_campionato || null,
+        category_genere: t.category?.genere || 'M'
+      }));
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // PUT attiva stagione (disattiva le altre)
+  router.put('/api/workspaces/:id/stagioni/:seasonId/attiva', authMiddleware, async (req, res) => {
+    try {
+      if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin' });
+      await supabase.from('season').update({ attiva: false }).eq('workspace_id', req.params.id);
+      const { error } = await supabase.from('season').update({ attiva: true }).eq('id', req.params.seasonId);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
   // POST nuova stagione — input: { anno_inizio: 2026 }
   // Auto-genera nome "2026/27", date 01/07/2026→30/06/2027
   // Auto-crea un team per ogni categoria del workspace

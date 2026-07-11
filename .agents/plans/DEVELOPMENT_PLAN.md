@@ -599,11 +599,11 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 9.1 | Click su card workspace → vista dettaglio con tab (Info, Stagioni, Utenti) | ⬜ | — | modules/admin/workspaces.js | ~15min |
-| 9.2 | Tab Info: form inline modificabile (nome, contatti, social, facility, logo) | ⬜ | 9.1 | modules/admin/workspaces.js | ~10min |
-| 9.3 | Tab Stagioni: lista stagioni con team, azioni (crea, migra, attiva) | ⬜ | 9.1 | modules/admin/workspaces.js | ~15min |
-| 9.4 | Tab Utenti: lista utenti workspace + creazione rapida + modifica ruolo/permessi | ⬜ | 9.1 | modules/admin/workspaces.js | ~15min |
-| 9.5 | Test build + aggiornare docs | ⬜ | 9.4 | DEVELOPMENT_PLAN.md | ~2min |
+| 9.1 | Click su card workspace → vista dettaglio con tab (Info, Stagioni, Utenti) | ✅ | — | modules/admin/workspaces.js | ~15min |
+| 9.2 | Tab Info: form inline modificabile (nome, contatti, social, facility, logo) | ✅ | 9.1 | modules/admin/workspaces.js | ~10min |
+| 9.3 | Tab Stagioni: lista stagioni con team, azioni (crea, migra, attiva) | ✅ | 9.1 | modules/admin/workspaces.js, routes/workspace.js | ~15min |
+| 9.4 | Tab Utenti: lista utenti workspace + creazione rapida + modifica ruolo/permessi | ✅ | 9.1 | modules/admin/workspaces.js | ~15min |
+| 9.5 | Test build + aggiornare docs | ✅ | 9.4 | DEVELOPMENT_PLAN.md | ~2min |
 
 ---
 
@@ -773,7 +773,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
-| v3.16.26 | fix: dashboard trend colori invisibili (#aaa→bianco su sfondo viola), guest workspace/facility/logo in header, prossima partita esclude terminate+passate (fallback datetime), cleanup notifiche convocazione scadute (weekend→lunedì, infrasettimanale→+1g), redesign pagina utenti (card grid responsive, hard delete admin/superadmin, modal mobile fix allineamenti e capabilities inline) |
+| v3.16.27 | feat: EPIC 9 Workspace Hub — vista dettaglio workspace con tab Info (form inline modificabile con logo/facility), Stagioni (lista con team, crea, attiva + gestione categorie inline: crea/elimina), Utenti (lista con profilo/categorie, crea rapido, modifica inline). Backend: GET teams per stagione, PUT attiva stagione |
 | v3.16.24 | fix: report giocatore "Altro" → "Amichevole" (backend career + frontend playerDetail + reports), presenze fallback match_statistics, subtotali per competizione, query ottimizzate (5 vs 7), Print Center rinominato "Report Squadra", help in-app Print Center, mobile print rosa/scadenze (overflow-x + padding ridotto + colonna Stato nascosta), registro presenze mobile max 3 settimane con highlight raggiungibili, eliminata categoria U18 vuota Albalonga |
 | — | feat: EPIC 16 Print Center completo — hub documentale centralizzato con 7 documenti stampabili (Convocazione, Distinta, Formazione, Report, Presenze, Rosa, Scadenze), varianti (telefoni/staff/torneo), cronologia, Web Share API, pagine standalone A4 |
 | v3.16.13 | fix: convocazioni assenze relative a settimana partita (non corrente), certificati medici responsive (1 colonna mobile, badge toggle singola sezione) |
