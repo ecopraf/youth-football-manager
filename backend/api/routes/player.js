@@ -212,7 +212,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       if (matchIds.length > 0) {
         const { data: matches } = await supabase.from('match')
           .select('id, tipo_competizione').in('id', matchIds);
-        (matches || []).forEach(m => { matchCompMap[m.id] = m.tipo_competizione || 'Altro'; });
+        (matches || []).forEach(m => { matchCompMap[m.id] = m.tipo_competizione || 'Amichevole'; });
       }
 
       // Fetch stats
@@ -242,7 +242,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const agg = {};
       (formations || []).forEach(f => {
         const info = tpMap[f.team_player_id];
-        const tipo = matchCompMap[f.match_id] || 'Altro';
+        const tipo = matchCompMap[f.match_id] || 'Amichevole';
         const key = `${info.stagione}|${info.squadra}|${tipo}`;
         if (!agg[key]) agg[key] = { stagione: info.stagione, squadra: info.squadra, team_id: info.team_id, tipo_competizione: tipo, partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
         agg[key].partite++;
@@ -251,7 +251,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       // Add stats data
       (stats || []).forEach(s => {
         const info = tpMap[s.team_player_id];
-        const tipo = matchCompMap[s.match_id] || 'Altro';
+        const tipo = matchCompMap[s.match_id] || 'Amichevole';
         const key = `${info.stagione}|${info.squadra}|${tipo}`;
         if (!agg[key]) agg[key] = { stagione: info.stagione, squadra: info.squadra, team_id: info.team_id, tipo_competizione: tipo, partite: 0, minuti: 0, gol: 0, assist: 0, ammonizioni: 0, espulsioni: 0 };
         agg[key].minuti += s.minuti_giocati || 0;
@@ -266,7 +266,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         const f = (formations || []).find(f2 => f2.match_id === matchId);
         if (!f) return;
         const info = tpMap[f.team_player_id];
-        const tipo = matchCompMap[matchId] || 'Altro';
+        const tipo = matchCompMap[matchId] || 'Amichevole';
         const key = `${info.stagione}|${info.squadra}|${tipo}`;
         if (!agg[key]) return;
         agg[key].gol += ev.gol;

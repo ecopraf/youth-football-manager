@@ -79,11 +79,27 @@ export const PAGE_HELP = {
     ]
   },
   reports: {
-    title: '📄 Report',
+    title: '📄 Report Squadra',
     desc: 'Genera report PDF per partita, stagione o singolo giocatore.',
     items: [
-      'Seleziona il tipo di report',
+      'Report Partita: formazione, eventi, statistiche individuali',
+      'Report Stagionale: riepilogo completo con top marcatori e presenze',
+      'Report Giocatore: statistiche, storico partite e carriera individuale',
+      'Checkbox Amichevoli per includere/escludere le amichevoli dai conteggi',
       'Genera → anteprima → Stampa/Salva PDF'
+    ]
+  },
+  printCenter: {
+    title: '📄 Print Center',
+    desc: 'Hub centralizzato per tutti i documenti stampabili della squadra. Seleziona una partita e genera documenti in 2 tap.',
+    items: [
+      'Seleziona la partita dal dropdown (auto-seleziona prossima/ultima)',
+      'Card colorate indicano disponibilità: ✔ pronto, ⏳ non compilato, 🔒 post-partita',
+      'Documenti Match Day: Convocazione, Distinta, Formazione, Report Gara',
+      'Documenti Squadra: Registro Presenze, Elenco Tesserati, Scadenze Mediche, Report Squadra',
+      'Varianti disponibili: con telefoni, con staff, formato torneo',
+      'Sezione Recenti: ultimi 10 documenti aperti per accesso rapido',
+      'Condividi via Web Share o copia link negli appunti'
     ]
   },
   trainingSessions: {
@@ -385,7 +401,7 @@ export const ELEMENT_HELP = {
   },
   'reports.stagionale': {
     title: 'Report Stagionale',
-    desc: 'PDF riepilogativo dell\'intera stagione: risultati per competizione, top marcatori/assist, presenze, andamento.'
+    desc: 'PDF riepilogativo dell\'intera stagione: risultati per competizione, top marcatori/assist, presenze, andamento. Le amichevoli vengono raggruppate separatamente.'
   },
   'reports.giocatore': {
     title: 'Report Giocatore',

@@ -45,6 +45,7 @@
 | Infortuni | ✅ | routes/player.js, modules/team/playerDetail.js, dashboard.js |
 | Visite Mediche | ⬜ | Non esiste (dati su player, no storico) |
 | Valutazioni | ⚠️ | Parziale (tabella esiste, UI incompleta) |
+| Print Center | ✅ | modules/team/printCenter.js, modules/print/*.js (EPIC 16) |
 
 ---
 
@@ -340,6 +341,199 @@
 
 ---
 
+### EPIC 16: Print Center (Hub Documentale)
+
+> Hub centralizzato per tutti i documenti stampabili/condivisibili della società. Risolve il problema stampa Android (pagine standalone `/print/...`), centralizza l'accesso ai documenti, introduce varianti e cronologia. Differenziatore commerciale: "apri il Print Center, stampa in 2 tap".
+
+**Valore commerciale**: Nessuna app sportiva giovanile offre un hub documentale centralizzato. Per segreteria/dirigente è il punto di riferimento naturale. Risolve elegantemente il problema Android con pagine dedicate A4-optimized.
+
+#### Fase 1: Infrastruttura e pagina base
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 16.1 | Creare modulo `modules/team/printCenter.js` — struttura pagina con sezioni Match Day, Allenamenti, Rosa | ✅ | — | modules/team/printCenter.js | ~10min |
+| 16.2 | Sidebar: voce "📄 Print Center" visibile per allenatore, segreteria, dirigente, admin (capability: `report`) | ✅ | 16.1 | components/layout/sidebarNav.js | ~3min |
+| 16.3 | Router: registrare route `/print-center` | ✅ | 16.1 | router.js | ~2min |
+| 16.4 | UI: selettore partita (dropdown prossima/ultima + lista recenti) con auto-selezione intelligente | ✅ | 16.1 | modules/team/printCenter.js | ~8min |
+| 16.5 | UI: card documento con stato disponibilità (✔ Disponibile / ⏳ Non compilata / 🔒 Post-partita) | ✅ | 16.4 | modules/team/printCenter.js | ~8min |
+| 16.6 | Backend: endpoint `GET /api/squadre/:id/print-center-status?match_id=X` — stato disponibilità di ogni documento per una partita | ✅ | — | routes/statistics.js o nuovo | ~10min |
+
+#### Fase 2: Pagine stampa standalone (`/print/:tipo/:id`)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 16.7 | Creare `modules/print/printConvocazione.js` — pagina standalone A4 convocazione (no sidebar, layout ottimizzato stampa) | ✅ | 16.6 | modules/print/printConvocazione.js | ~12min |
+| 16.8 | Creare `modules/print/printDistinta.js` — pagina standalone A4 distinta gara | ✅ | 16.7 | modules/print/printDistinta.js | ~12min |
+| 16.9 | Creare `modules/print/printFormazione.js` — pagina standalone A4 formazione (campo + nomi) | ✅ | 16.7 | modules/print/printFormazione.js | ~10min |
+| 16.10 | Creare `modules/print/printReport.js` — pagina standalone A4 report partita (riuso logica reports.js) | ✅ | 16.7 | modules/print/printReport.js | ~10min |
+| 16.11 | Router: registrare routes `/print/convocazione/:id`, `/print/distinta/:id`, `/print/formazione/:id`, `/print/report/:id` | ✅ | 16.7 | router.js | ~3min |
+| 16.12 | CSS globale: stile `@media print` per pagine `/print/*` (nasconde header/sidebar, A4 margins, page-break) | ✅ | 16.11 | style.css o print.css | ~5min |
+
+#### Fase 3: Azioni documento (Anteprima, Stampa, Condividi)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 16.13 | Click su card documento → drawer/modale con 4 azioni: 👁 Anteprima, 🖨 Stampa, 📄 PDF, 📤 Condividi | ✅ | 16.5 | modules/team/printCenter.js | ~8min |
+| 16.14 | Anteprima: naviga a pagina print standalone | ✅ | 16.11, 16.13 | modules/team/printCenter.js | ~5min |
+| 16.15 | Stampa: naviga a pagina print + window.print() | ✅ | 16.14 | modules/print/*.js | ~5min |
+| 16.16 | Condividi: Web Share API con fallback copia link | ✅ | 16.14 | modules/team/printCenter.js | ~5min |
+
+#### Fase 4: Documenti Allenamenti e Rosa
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 16.17 | Creare `modules/print/printPresenze.js` — registro presenze allenamenti (tabella giocatori × date, stampabile) | ✅ | 16.12 | modules/print/printPresenze.js | ~12min |
+| 16.18 | Creare `modules/print/printRosa.js` — elenco tesserati (nome, cognome, data nascita, numero, ruolo) | ✅ | 16.12 | modules/print/printRosa.js | ~8min |
+| 16.19 | Creare `modules/print/printScadenzeMediche.js` — lista scadenze visite mediche | ✅ | 16.12 | modules/print/printScadenzeMediche.js | ~8min |
+| 16.20 | Router: registrare routes `/print/presenze/:teamId`, `/print/rosa/:teamId`, `/print/scadenze/:teamId` | ✅ | 16.17 | router.js | ~3min |
+| 16.21 | Aggiungere card Presenze, Rosa, Scadenze nella sezione corrispondente del Print Center | ✅ | 16.17, 16.18, 16.19 | modules/team/printCenter.js | ~5min |
+
+#### Fase 5: Varianti documento
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 16.22 | Convocazione varianti: Standard / Con telefoni genitori / Con staff | ✅ | 16.7 | modules/print/printConvocazione.js | ~8min |
+| 16.23 | Distinta varianti: FIGC / Torneo (semplificata) | ✅ | 16.8 | modules/print/printDistinta.js | ~8min |
+| 16.24 | UI selezione variante nel drawer azioni (radio buttons) | ✅ | 16.22, 16.23, 16.13 | modules/team/printCenter.js | ~5min |
+
+#### Fase 6: Cronologia e Polish
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 16.25 | Cronologia: salvare ultimi 10 documenti aperti in localStorage, mostrare sezione "🕒 Recenti" | ✅ | 16.13 | modules/team/printCenter.js | ~8min |
+| 16.26 | Mobile: layout responsive card documenti (1 colonna, touch targets 44px) | ✅ | 16.5 | modules/team/printCenter.js | ~5min |
+| 16.27 | Report stagionale: aggiungere card nel Print Center (riuso endpoint esistente) | ✅ | 16.10 | modules/team/printCenter.js | ~3min |
+| 16.28 | Test build completo + aggiornare docs | ✅ | 16.27 | DEVELOPMENT_PLAN.md, AGENTS.md | ~3min |
+
+**Effort totale stimato**: ~3h 15min (28 task)
+
+**Priorità implementazione**:
+1. Fase 1 (infrastruttura + pagina) — scheletro navigabile
+2. Fase 2 (pagine standalone) — cuore della feature, risolve problema Android
+3. Fase 3 (azioni) — UX completa
+4. Fase 4 (allenamenti + rosa) — estende copertura documenti
+5. Fase 5 (varianti) — valore aggiunto per segreteria
+6. Fase 6 (cronologia + polish) — UX premium
+
+**Note architetturali**:
+- Le pagine `/print/*` sono route standalone: no sidebar, no header app, solo il documento + bottone "Stampa" e "← Torna"
+- Ogni pagina print fetcha i propri dati via API (autenticata) — funziona anche aperta direttamente via URL
+- Il Print Center è una pagina SPA normale (con sidebar) che mostra le card e gestisce le azioni
+- La cronologia usa `localStorage` key `yfm_print_history` (array di `{tipo, id, titolo, timestamp}`)
+- I bottoni "Stampa" esistenti nelle altre pagine (convocazioni, distinta, report) restano come shortcut — non vengono rimossi
+- Web Share API: fallback su desktop = copia URL negli appunti + toast "Link copiato"
+- Le pagine print usano `printHelper.js` esistente per il flusso stampa (già gestisce Android vs iOS/Desktop)
+- Capability richiesta: `report: read` (stessa dei report esistenti) — non serve nuova capability
+- Nessuna tabella DB nuova necessaria per v1 (tutto basato su dati esistenti)
+
+**Evoluzione futura (v2 → Document Center)**:
+- Archivio documenti generati (tabella `document_archive`)
+- Preferiti (pin documenti frequenti)
+- Ricerca full-text
+- Export ZIP multiplo
+- Sezioni Scouting e Analytics
+- Template personalizzabili per workspace
+
+---
+
+### EPIC 17: Piano Gara (Match Plan)
+
+> Trasformare il Match Center in un vero Piano Gara: calci piazzati, compiti tattici individuali, pressing, costruzione, marcature, piano cambi, obiettivo gara. Entità autonoma nel DB con template riutilizzabili. Differenziatore forte: nessuna app giovanile offre un piano tattico strutturato.
+
+**Valore commerciale**: L'allenatore arriva al campo con un dossier completo (non solo formazione). Possibilità di salvare template ("vs squadre forti", "trasferta", "campo piccolo") e applicarli con un click. Evoluzione futura: lavagna interattiva, promemoria live, PDF dossier gara.
+
+#### Fase 1: Schema DB e migrazione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 17.1 | CREATE TABLE `match_plan` (id, match_id FK, team_id FK, calci_piazzati JSONB, pressing JSONB, costruzione JSONB, calcio_inizio JSONB, marcature JSONB, copertura_preventiva JSONB, piano_cambi JSONB, obiettivo TEXT, note_avversario TEXT, created_at, updated_at) | ⬜ | — | migrazione SQL | ~5min |
+| 17.2 | CREATE TABLE `match_plan_task` (id, match_plan_id FK CASCADE, team_player_id FK, compiti TEXT[], note TEXT) | ⬜ | 17.1 | migrazione SQL | ~3min |
+| 17.3 | CREATE TABLE `match_plan_template` (id, team_id FK, nome TEXT, piano JSONB, created_at) | ⬜ | 17.1 | migrazione SQL | ~3min |
+| 17.4 | Aggiornare DATABASE_SCHEMA.md con nuove tabelle | ⬜ | 17.3 | .agents/knowledge/DATABASE_SCHEMA.md | ~3min |
+
+#### Fase 2: Backend CRUD
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 17.5 | Creare `routes/matchPlan.js` — GET/POST/PUT `/api/partite/:matchId/plan` (upsert piano gara) | ⬜ | 17.1 | routes/matchPlan.js | ~10min |
+| 17.6 | Endpoint GET/POST/PUT/DELETE `/api/partite/:matchId/plan/tasks` (compiti individuali batch) | ⬜ | 17.2, 17.5 | routes/matchPlan.js | ~10min |
+| 17.7 | Endpoint CRUD `/api/squadre/:teamId/plan-templates` (GET lista, POST salva, DELETE elimina) | ⬜ | 17.3 | routes/matchPlan.js | ~10min |
+| 17.8 | Endpoint POST `/api/partite/:matchId/plan/from-template/:templateId` (applica template a partita) | ⬜ | 17.5, 17.7 | routes/matchPlan.js | ~5min |
+| 17.9 | Registrare router in `api/index.js` + authMiddleware | ⬜ | 17.5 | api/index.js | ~3min |
+
+#### Fase 3: Frontend — Tab Piano Gara nel Match Center
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 17.10 | Aggiungere tab "Piano Gara" nel Match Center (panelMap + handler) | ⬜ | 17.5 | modules/team/matchCenter.js | ~5min |
+| 17.11 | Sezione Calci Piazzati: corner dx/sx (dropdown giocatore + backup), punizioni (ordine 1-3), rigori (ordine 1-5), rimesse laterali (dx/sx) | ⬜ | 17.10 | modules/team/matchCenter.js | ~15min |
+| 17.12 | Sezione Pressing & Costruzione: radio Alto/Medio/Basso, trigger checkbox, schema costruzione radio | ⬜ | 17.10 | modules/team/matchCenter.js | ~10min |
+| 17.13 | Sezione Calcio d'Inizio: radio Lunga/Corta + dropdown ricevente | ⬜ | 17.10 | modules/team/matchCenter.js | ~5min |
+| 17.14 | Sezione Marcature: lista coppie (input avversario + dropdown nostro giocatore), add/remove | ⬜ | 17.10 | modules/team/matchCenter.js | ~10min |
+| 17.15 | Sezione Copertura Preventiva: checkbox giocatori che restano dietro su corner/punizione offensiva | ⬜ | 17.10 | modules/team/matchCenter.js | ~8min |
+| 17.16 | Sezione Obiettivo Gara: textarea con auto-save debounce | ⬜ | 17.10 | modules/team/matchCenter.js | ~3min |
+| 17.17 | Sezione Note Avversario: textarea (punti deboli, schema, giocatori pericolosi) | ⬜ | 17.10 | modules/team/matchCenter.js | ~3min |
+| 17.18 | Bottone "Salva Piano" + toast conferma + auto-save su cambio tab | ⬜ | 17.11 | modules/team/matchCenter.js | ~5min |
+
+#### Fase 4: Compiti Tattici Individuali
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 17.19 | Sezione Compiti Individuali: lista giocatori convocati con tag predefiniti per ruolo | ⬜ | 17.6, 17.10 | modules/team/matchCenter.js | ~12min |
+| 17.20 | Libreria tag per ruolo: Portiere (costruzione bassa, uscita alta, ricerca punta...), Difensore (spinta, resta basso, marcatura stretta...), Centrocampista (inserimento, copertura, regia...), Attaccante (profondità, viene incontro, pressing portiere...) | ⬜ | 17.19 | utils/matchPlanTags.js | ~8min |
+| 17.21 | UI: click giocatore → espande card con tag selezionabili (chip toggle) + campo note libero | ⬜ | 17.19, 17.20 | modules/team/matchCenter.js | ~10min |
+| 17.22 | Salvataggio batch compiti (1 chiamata per tutti i giocatori) | ⬜ | 17.21 | modules/team/matchCenter.js | ~5min |
+
+#### Fase 5: Piano Cambi
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 17.23 | Sezione Piano Cambi: lista entry (minuto, esce dropdown, entra dropdown, condizione text) | ⬜ | 17.10 | modules/team/matchCenter.js | ~10min |
+| 17.24 | Add/remove entry + ordinamento per minuto | ⬜ | 17.23 | modules/team/matchCenter.js | ~5min |
+| 17.25 | Opzione "Cambio modulo" (minuto + nuovo modulo dropdown) | ⬜ | 17.23 | modules/team/matchCenter.js | ~5min |
+
+#### Fase 6: Template e Finalizzazione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 17.26 | UI: bottone "Salva come Template" (modale nome) + "Carica Template" (dropdown lista) | ⬜ | 17.7, 17.8, 17.18 | modules/team/matchCenter.js | ~10min |
+| 17.27 | Carica template: popola form con dati template, utente modifica e salva | ⬜ | 17.26 | modules/team/matchCenter.js | ~5min |
+| 17.28 | Badge tab Piano Gara: pallino verde se compilato, vuoto se no | ⬜ | 17.18 | modules/team/matchCenter.js | ~3min |
+| 17.29 | Mobile responsive: layout 1 colonna, sezioni collassabili (accordion) | ⬜ | 17.18 | modules/team/matchCenter.js | ~8min |
+| 17.30 | Test build completo + syntax check backend | ⬜ | 17.29 | — | ~3min |
+| 17.31 | Aggiornare docs (DEVELOPMENT_PLAN, AGENTS.md, DATABASE_SCHEMA) | ⬜ | 17.30 | .agents/ | ~3min |
+
+**Effort totale stimato**: ~4h 15min (31 task)
+
+**Priorità implementazione**:
+1. Fase 1 (DB) — fondamenta, 14min
+2. Fase 2 (Backend CRUD) — API pronte, 38min
+3. Fase 3 (Tab UI base) — form compilabile, ~64min
+4. Fase 4 (Compiti individuali) — cuore tattico, ~35min
+5. Fase 5 (Piano cambi) — operatività bordo campo, ~20min
+6. Fase 6 (Template + polish) — riutilizzabilità, ~32min
+
+**Note architetturali**:
+- `match_plan` è 1:1 con `match` (un piano per partita) — `match_id` UNIQUE
+- Le sezioni usano JSONB per massima flessibilità (evolvere senza migrazioni DDL)
+- `match_plan_task` è relazione 1:N separata per query efficienti sui compiti individuali
+- I template salvano uno snapshot JSONB completo del piano (esclusi compiti individuali che dipendono dalla rosa)
+- I dropdown giocatori nel piano usano i convocati (se disponibili) o la rosa attiva
+- Il tab Piano Gara è visibile solo se la partita non è archiviata (come Formazione)
+- Capability richiesta: `formazione: write` (stessa della formazione — è parte della preparazione tattica)
+- Auto-save debounce (1.5s) su tutti i campi, come già fatto per Note nel MC
+- Nessuna dipendenza da altre Epic
+
+**Evoluzione futura (v2)**:
+- Lavagna interattiva: click su giocatore nel campo → pannello laterale con tutti i suoi compiti/ruoli
+- Promemoria live: a minuto X durante il match, notifica "Ricordati: ingresso Bianchi, cambio modulo"
+- PDF Dossier Gara: pagina aggiuntiva nel Print Center con piano tattico completo
+- Condivisione piano con staff (vice-allenatore vede il piano pre-partita)
+- Storico piani: confronto piano vs esecuzione reale (cambi effettivi vs pianificati)
+- AI suggestions: basate su storico avversario e risultati precedenti
+
+---
+
 ### EPIC 6: Polish pre-stagione
 
 > Bug fix, UX improvements, preparazione per utenti reali.
@@ -528,21 +722,25 @@ EPIC 12 (Club Operations) ──→ dipende parzialmente da EPIC 11 (notifiche g
 EPIC 13 (Preseason) ──→ nessuna dipendenza
 EPIC 14 (Match Center Evolution) ──→ nessuna dipendenza
 EPIC 15 (PWA Offline-First) ──→ nessuna dipendenza (usa infrastruttura PWA già installata)
+EPIC 16 (Print Center) ──→ nessuna dipendenza (riusa endpoint e logica stampa esistenti)
+EPIC 17 (Piano Gara) ──→ nessuna dipendenza (usa Match Center e rosa esistenti)
 ```
 
 Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 1. **EPIC 1** (pulizia, 20min) → riduce debito tecnico ✅
 2. **EPIC 2** (infortuni, 43min) → feature richiesta dai mister ✅
 3. **EPIC 11** (atleta/genitore, ~2h) → evoluzione accesso utenti, alto valore percepito ✅
-4. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
-5. **EPIC 3** (visite, 35min) → scadenze mediche = obbligo FIGC
-6. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro
-7. **EPIC 14** (Match Center evolution, ~53min) → UX bordo campo
-8. **EPIC 6** (polish, 33min) → UX
-9. **EPIC 9** (workspace hub, ~57min) → gestione superadmin
-10. **EPIC 7** (tornei, 37min) → nice-to-have
-11. **EPIC 12** (club operations, ~10h) → valore società, post-EPIC 11
-12. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno, bassa priorità
+4. **EPIC 16** (Print Center, ~3h15) → differenziatore commerciale, hub documentale, risolve Android ✅
+5. **EPIC 17** (Piano Gara, ~4h15) → differenziatore forte, nessuna app giovanile lo offre
+6. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
+7. **EPIC 14** (Match Center evolution, ~53min) → UX bordo campo (complementare a EPIC 17)
+8. **EPIC 3** (visite, 35min) → scadenze mediche = obbligo FIGC
+9. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro + sinergia con note avversario EPIC 17
+10. **EPIC 6** (polish, 33min) → UX
+11. **EPIC 9** (workspace hub, ~57min) → gestione superadmin
+12. **EPIC 7** (tornei, 37min) → nice-to-have
+13. **EPIC 12** (club operations, ~10h) → valore società, post-EPIC 11
+14. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno, bassa priorità
 
 ---
 
@@ -575,6 +773,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| — | fix: report giocatore "Altro" → "Amichevole", presenze fallback match_statistics per import storici, subtotali per competizione (partite/minuti/gol/assist), query ottimizzate (5 query vs 7), rinominato "Report Stagionale" → "Report Squadra" nel Print Center, aggiunto help in-app Print Center |
+| — | feat: EPIC 16 Print Center completo — hub documentale centralizzato con 7 documenti stampabili (Convocazione, Distinta, Formazione, Report, Presenze, Rosa, Scadenze), varianti (telefoni/staff/torneo), cronologia, Web Share API, pagine standalone A4 |
 | v3.16.13 | fix: convocazioni assenze relative a settimana partita (non corrente), certificati medici responsive (1 colonna mobile, badge toggle singola sezione) |
 | — | data: import amichevoli 2025/26 (6 partite) e 2024/25 (15 partite) da Google Sheets, fix tipo_evento (GOL→GOAL, ASS→ASSIST, AMMONIZIONE→YELLOW, ESPULSIONE→RED), fix formazioni ordine per ruolo (POR slot 0), fix gol trasferta (convenzione: gol_casa=nostri, gol_ospite=avversario), fix risultati campionato Fonte Meravigliosa e Fortitudo |
 | v3.16.12 | fix: print mobile iOS/Android (afterprint cleanup), tipo_competizione default Amichevole, report (null) fix |

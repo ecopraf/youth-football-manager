@@ -490,16 +490,38 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         eventi = evts || [];
       }
 
-      // Presenze
+      // Presenze + Minuti + Stats per competizione (query unificate)
       const tpIds = (tps || []).map(tp => tp.id);
       let presenze = 0;
-      if (matchIds.length > 0 && tpIds.length > 0) {
-        const { count } = await supabase.from('convocation').select('id', { count: 'exact', head: true }).in('team_player_id', tpIds).in('match_id', matchIds).eq('presente', true);
-        presenze = count || 0;
-      }
+      let minutiTotali = 0;
+      const statsByComp = {};
 
       const matchMap = {};
       filteredMatches.forEach(m => { matchMap[m.id] = m; });
+
+      if (matchIds.length > 0 && tpIds.length > 0) {
+        const [{ data: convRows }, { data: msData }] = await Promise.all([
+          supabase.from('convocation').select('match_id').in('team_player_id', tpIds).in('match_id', matchIds).eq('presente', true),
+          supabase.from('match_statistics').select('match_id, minuti_giocati').in('team_player_id', tpIds).in('match_id', matchIds)
+        ]);
+
+        // Presenze da convocazione
+        const convMatchIds = new Set((convRows || []).map(c => c.match_id));
+        // Presenze da match_statistics (fallback per partite senza convocazione)
+        const msMatchIds = new Set((msData || []).filter(s => s.minuti_giocati > 0).map(s => s.match_id));
+        // Unione: convocati + giocati senza convocazione
+        const allPresenzeIds = new Set([...convMatchIds, ...msMatchIds]);
+        presenze = allPresenzeIds.size;
+
+        // Minuti + breakdown per competizione
+        (msData || []).forEach(s => {
+          minutiTotali += (s.minuti_giocati || 0);
+          const comp = matchMap[s.match_id]?.tipo_competizione || 'Amichevole';
+          if (!statsByComp[comp]) statsByComp[comp] = { partite: 0, minuti: 0, gol: 0, assist: 0 };
+          statsByComp[comp].partite++;
+          statsByComp[comp].minuti += (s.minuti_giocati || 0);
+        });
+      }
 
       const storico = eventi
         .filter(e => e.tipo_evento === 'GOAL' || e.tipo_evento === 'ASSIST' || e.tipo_evento === 'YELLOW' || e.tipo_evento === 'RED')
@@ -521,20 +543,48 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const ammonizioni = eventi.filter(e => e.tipo_evento === 'YELLOW').length;
       const espulsioni = eventi.filter(e => e.tipo_evento === 'RED').length;
 
-      // Minuti reali da match_statistics
-      let minutiTotali = 0;
-      if (tpIds.length > 0 && matchIds.length > 0) {
-        const { data: msData } = await supabase.from('match_statistics')
-          .select('minuti_giocati')
-          .in('team_player_id', tpIds)
-          .in('match_id', matchIds);
-        minutiTotali = (msData || []).reduce((sum, s) => sum + (s.minuti_giocati || 0), 0);
-      }
+      // Aggiungi gol/assist per competizione
+      eventi.forEach(e => {
+        const comp = matchMap[e.match_id]?.tipo_competizione || 'Amichevole';
+        if (!statsByComp[comp]) statsByComp[comp] = { partite: 0, minuti: 0, gol: 0, assist: 0 };
+        if (e.tipo_evento === 'GOAL') statsByComp[comp].gol++;
+        if (e.tipo_evento === 'ASSIST') statsByComp[comp].assist++;
+      });
 
       res.json({
         giocatore: { nome: player.nome, cognome: player.cognome, data_nascita: player.data_nascita, nazionalita: player.nazionalita },
         stats: { partiteGiocate: presenze, gol, assist, ammonizioni, espulsioni, minutiTotali },
+        statsByComp,
         storico
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/squadre/:id/print-center-status?match_id=X — stato disponibilità documenti
+  router.get('/api/squadre/:id/print-center-status', authMiddleware, async (req, res) => {
+    try {
+      const matchId = req.query.match_id;
+      if (!matchId) return res.json({});
+
+      const [{ data: match }, { data: convs }, { data: formation }, { data: notif }] = await Promise.all([
+        supabase.from('match').select('id, stato, gol_casa, gol_ospite, archiviata').eq('id', matchId).single(),
+        supabase.from('convocation').select('id').eq('match_id', matchId).limit(1),
+        supabase.from('match_formation').select('id').eq('match_id', matchId).limit(1),
+        supabase.from('notification').select('id').eq('riferimento_id', matchId).eq('tipo', 'convocazione').limit(1)
+      ]);
+
+      const isTerminata = match?.stato === 'Terminata' || match?.archiviata;
+      const hasConvocazioni = convs && convs.length > 0;
+      const hasPubblicato = notif && notif.length > 0;
+      const hasFormazione = formation && formation.length > 0;
+
+      res.json({
+        convocazione: hasConvocazioni ? 'available' : 'not_ready',
+        distinta: hasPubblicato ? 'available' : 'not_ready',
+        formazione: hasFormazione ? 'available' : 'not_ready',
+        report: isTerminata ? 'available' : 'post_match'
       });
     } catch (err) {
       res.status(500).json({ error: err.message });

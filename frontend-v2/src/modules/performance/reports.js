@@ -5,7 +5,10 @@ import { printHTML } from '../../utils/printHelper';
 
 export default async function loadReports() {
   const c = document.getElementById('pageContent');
+  const fromPrintCenter = window.YFM.pageParams?.from === 'printCenter';
+  const backBtn = fromPrintCenter ? '<button class="btn btn-secondary" style="margin-bottom:12px;" onclick="window.YFM.navigateTo(\'printCenter\')">← Torna al Print Center</button>' : '';
   c.innerHTML = `
+    ${backBtn}
     <h1 class="page-title">Report</h1>
     <p class="page-subtitle">Genera e scarica report della stagione</p>
     
@@ -243,80 +246,46 @@ function renderReport(report) {
       <!-- Timeline Eventi -->
       ${report.eventi.length > 0 ? `
       <div style="margin-bottom:24px;">
-        <h3 style="border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:12px;">⚽ Cronologia Eventi</h3>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          ${report.eventi.sort((a, b) => (a.minuto || 0) - (b.minuto || 0)).map(e => {
-            const icona = e.tipo === 'GOAL' ? '⚽' : e.tipo === 'YELLOW' ? '🟨' : '🟥';
-            const label = e.tipo === 'GOAL' ? 'Gol' : e.tipo === 'YELLOW' ? 'Amm.' : 'Esp.';
-            return `
-              <div style="display:flex;align-items:center;gap:12px;padding:8px;background:#f8f9fa;border-radius:8px;">
-                <span style="font-weight:bold;min-width:40px;">${e.minuto}'</span>
-                <span>${icona}</span>
-                <span><strong>${e.principale}</strong></span>
-                ${e.secondario ? `<span style="color:#666;">(Assist: ${e.secondario})</span>` : ''}
-              </div>`;
-          }).join('')}
+        <h3 style="border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:12px;">📋 Cronologia</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          ${(() => {
+            const evts = report.eventi.filter(e => e.tipo !== 'ASSIST').sort((a, b) => (a.minuto || 0) - (b.minuto || 0));
+            const assists = report.eventi.filter(e => e.tipo === 'ASSIST');
+            const goalMap = {};
+            evts.filter(e => e.tipo === 'GOAL').forEach(g => { goalMap[g.minuto] = g; });
+            assists.forEach(a => { if (goalMap[a.minuto]) goalMap[a.minuto].assistName = a.principale; });
+            const mid = Math.ceil(evts.length / 2);
+            const renderEvt = e => {
+              const cfg = { GOAL: '⚽ Gol', SUBITO: '🥅 Gol subito', YELLOW: '🟨 Ammonizione', RED: '🟥 Espulsione', SUB: '🔄 Sostituzione', AUTOGOL: '⚽🔴 Autogol', IN: '➡️ Entra', OUT: '⬅️ Esce' };
+              const label = cfg[e.tipo] || e.tipo;
+              const assistTxt = e.assistName ? ' <span style="color:#666;font-size:11px;">(🅰️ ' + e.assistName + ')</span>' : '';
+              return '<div style="padding:4px 8px;background:#f8f9fa;border-radius:6px;font-size:12px;"><span style="font-weight:bold;color:#667eea;">' + (e.minuto || '-') + "'</span> " + label + ' \u2014 <strong>' + e.principale + '</strong>' + assistTxt + '</div>';
+            };
+            return '<div style="display:flex;flex-direction:column;gap:4px;">' + evts.slice(0, mid).map(renderEvt).join('') + '</div><div style="display:flex;flex-direction:column;gap:4px;">' + evts.slice(mid).map(renderEvt).join('') + '</div>';
+          })()}
         </div>
       </div>
       ` : ''}
 
-      <!-- Formazione Titolari -->
+      <!-- Giocatori affiancati -->
       <div style="margin-bottom:24px;">
-        <h3 style="border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:12px;">👥 Titolari</h3>
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead>
-            <tr style="background:#f8f9fa;">
-              <th style="padding:8px;text-align:center;">#</th>
-              <th style="padding:8px;text-align:left;">Nome</th>
-              <th style="padding:8px;text-align:center;">G</th>
-              <th style="padding:8px;text-align:center;">A</th>
-              <th style="padding:8px;text-align:center;">🟨</th>
-              <th style="padding:8px;text-align:center;">🟥</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${titolari.map(g => `
-              <tr style="border-bottom:1px solid #eee;">
-                <td style="padding:8px;text-align:center;font-weight:bold;">${g.numeroMaglia}</td>
-                <td style="padding:8px;">${g.cognome} ${g.nome[0]}.</td>
-                <td style="padding:8px;text-align:center;">${g.gol}</td>
-                <td style="padding:8px;text-align:center;">${g.assist}</td>
-                <td style="padding:8px;text-align:center;color:#E67E22;">${g.ammonizioni > 0 ? g.ammonizioni : ''}</td>
-                <td style="padding:8px;text-align:center;color:#E74C3C;">${g.espulsioni > 0 ? g.espulsioni : ''}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <h3 style="border-bottom:1px solid #ddd;padding-bottom:6px;margin-bottom:8px;">⚽ Titolari (${titolari.length})</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead><tr style="background:#f8f9fa;"><th style="padding:4px;text-align:center;">#</th><th style="padding:4px;text-align:left;">Nome</th><th style="padding:4px;text-align:center;">G</th><th style="padding:4px;text-align:center;">A</th><th style="padding:4px;text-align:center;">🟨</th><th style="padding:4px;text-align:center;">🟥</th></tr></thead>
+              <tbody>${titolari.map(g => '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;text-align:center;font-weight:bold;">' + g.numeroMaglia + '</td><td style="padding:4px;">' + g.cognome + ' ' + g.nome[0] + '.</td><td style="padding:4px;text-align:center;">' + (g.gol || '') + '</td><td style="padding:4px;text-align:center;">' + (g.assist || '') + '</td><td style="padding:4px;text-align:center;color:#E67E22;">' + (g.ammonizioni > 0 ? g.ammonizioni : '') + '</td><td style="padding:4px;text-align:center;color:#E74C3C;">' + (g.espulsioni > 0 ? g.espulsioni : '') + '</td></tr>').join('')}</tbody>
+            </table>
+          </div>
+          ${panchina.length > 0 ? `<div>
+            <h3 style="border-bottom:1px solid #ddd;padding-bottom:6px;margin-bottom:8px;">🔄 Riserve (${panchina.length})</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead><tr style="background:#f8f9fa;"><th style="padding:4px;text-align:center;">#</th><th style="padding:4px;text-align:left;">Nome</th><th style="padding:4px;text-align:center;">G</th><th style="padding:4px;text-align:center;">A</th><th style="padding:4px;text-align:center;">🟨</th><th style="padding:4px;text-align:center;">🟥</th></tr></thead>
+              <tbody>${panchina.map(g => '<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;text-align:center;font-weight:bold;">' + g.numeroMaglia + '</td><td style="padding:4px;">' + g.cognome + ' ' + g.nome[0] + '.</td><td style="padding:4px;text-align:center;">' + (g.gol || '') + '</td><td style="padding:4px;text-align:center;">' + (g.assist || '') + '</td><td style="padding:4px;text-align:center;color:#E67E22;">' + (g.ammonizioni > 0 ? g.ammonizioni : '') + '</td><td style="padding:4px;text-align:center;color:#E74C3C;">' + (g.espulsioni > 0 ? g.espulsioni : '') + '</td></tr>').join('')}</tbody>
+            </table>
+          </div>` : ''}
+        </div>
       </div>
-
-      <!-- Panchina -->
-      ${panchina.length > 0 ? `
-      <div style="margin-bottom:24px;">
-        <h3 style="border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:12px;">🪑 Panchina</h3>
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead>
-            <tr style="background:#f8f9fa;">
-              <th style="padding:8px;text-align:center;">#</th>
-              <th style="padding:8px;text-align:left;">Nome</th>
-              <th style="padding:8px;text-align:center;">G</th>
-              <th style="padding:8px;text-align:center;">A</th>
-              <th style="padding:8px;text-align:center;">🟨</th>
-              <th style="padding:8px;text-align:center;">🟥</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${panchina.map(g => `
-              <tr style="border-bottom:1px solid #eee;">
-                <td style="padding:8px;text-align:center;font-weight:bold;">${g.numeroMaglia}</td>
-                <td style="padding:8px;">${g.cognome} ${g.nome[0]}.</td>
-                <td style="padding:8px;text-align:center;">${g.gol}</td>
-                <td style="padding:8px;text-align:center;">${g.assist}</td>
-                <td style="padding:8px;text-align:center;color:#E67E22;">${g.ammonizioni > 0 ? g.ammonizioni : ''}</td>
-                <td style="padding:8px;text-align:center;color:#E74C3C;">${g.espulsioni > 0 ? g.espulsioni : ''}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-      ` : ''}
 
       <!-- Note -->
       ${report.partita.note ? `
@@ -357,6 +326,7 @@ function printReport() {
     th, td { padding: 3px 5px; text-align: left; border: 1px solid #eee; }
     th { background: #f5f5f5; font-weight: 600; }
     img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    [style*="grid-template-columns"] { display: grid !important; }
     @page { size: A4 portrait; margin: 8mm; }
   </style>`;
 
@@ -494,7 +464,7 @@ function renderSeasonalReport(report) {
         ${(() => {
           const gruppi = {};
           (report.partite || []).forEach(p => {
-            const comp = p.competizione || 'Altro';
+            const comp = p.competizione || 'Amichevole';
             if (!gruppi[comp]) gruppi[comp] = [];
             gruppi[comp].push(p);
           });
@@ -530,37 +500,23 @@ function renderSeasonalReport(report) {
       <!-- Statistiche Giocatori -->
       <div>
         <h3 style="margin:0 0 8px 0;font-size:13px;border-bottom:1px solid #ddd;padding-bottom:4px;">📊 Statistiche Giocatori</h3>
-        <table style="width:100%;border-collapse:collapse;font-size:10px;">
-          <thead>
-            <tr style="background:#f8f9fa;">
-              <th style="padding:4px 6px;text-align:left;border-bottom:2px solid #dee2e6;">Giocatore</th>
-              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">Ruolo</th>
-              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">Pres.</th>
-              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">⚽</th>
-              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">🅰️</th>
-              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">🟨</th>
-              <th style="padding:4px 4px;text-align:center;border-bottom:2px solid #dee2e6;">🟥</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(report.statsGiocatori || []).sort((a, b) => {
-              const ruoloOrder = ['Portiere','Difensore','Centrocampista','Attaccante'];
-              const ra = ruoloOrder.indexOf(a.ruolo), rb = ruoloOrder.indexOf(b.ruolo);
-              if (ra !== rb) return ra - rb;
-              return a.cognome.localeCompare(b.cognome);
-            }).map(p => `
-              <tr style="border-bottom:1px solid #f1f5f9;">
-                <td style="padding:3px 6px;font-weight:500;">${p.cognome} ${p.nome}</td>
-                <td style="padding:3px 4px;text-align:center;font-size:9px;color:#666;">${p.ruolo || '-'}</td>
-                <td style="padding:3px 4px;text-align:center;">${p.presenze || '-'}</td>
-                <td style="padding:3px 4px;text-align:center;font-weight:${p.gol ? '700' : '400'};color:${p.gol ? '#27AE60' : '#ccc'};">${p.gol || '-'}</td>
-                <td style="padding:3px 4px;text-align:center;font-weight:${p.assist ? '700' : '400'};color:${p.assist ? '#3498DB' : '#ccc'};">${p.assist || '-'}</td>
-                <td style="padding:3px 4px;text-align:center;color:${p.ammonizioni ? '#F39C12' : '#ccc'};">${p.ammonizioni || '-'}</td>
-                <td style="padding:3px 4px;text-align:center;color:${p.espulsioni ? '#E74C3C' : '#ccc'};">${p.espulsioni || '-'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+        ${(() => {
+          const sorted = (report.statsGiocatori || []).sort((a, b) => {
+            const ruoloOrder = ['Portiere','Difensore','Centrocampista','Attaccante'];
+            const ra = ruoloOrder.indexOf(a.ruolo), rb = ruoloOrder.indexOf(b.ruolo);
+            if (ra !== rb) return ra - rb;
+            return a.cognome.localeCompare(b.cognome);
+          });
+          const mid = Math.ceil(sorted.length / 2);
+          const col1 = sorted.slice(0, mid);
+          const col2 = sorted.slice(mid);
+          const renderCol = (players) => {
+            const thRow = '<tr style="background:#f8f9fa;"><th style="padding:3px 4px;text-align:left;border-bottom:2px solid #dee2e6;font-size:9px;">Giocatore</th><th style="padding:3px 3px;text-align:center;border-bottom:2px solid #dee2e6;font-size:9px;">R</th><th style="padding:3px 3px;text-align:center;border-bottom:2px solid #dee2e6;font-size:9px;">Pr</th><th style="padding:3px 3px;text-align:center;border-bottom:2px solid #dee2e6;font-size:9px;">⚽</th><th style="padding:3px 3px;text-align:center;border-bottom:2px solid #dee2e6;font-size:9px;">🅰️</th><th style="padding:3px 3px;text-align:center;border-bottom:2px solid #dee2e6;font-size:9px;">🟨</th><th style="padding:3px 3px;text-align:center;border-bottom:2px solid #dee2e6;font-size:9px;">🟥</th></tr>';
+            const rows = players.map(p => `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:2px 4px;font-weight:500;font-size:9px;">${p.cognome} ${p.nome[0]}.</td><td style="padding:2px 3px;text-align:center;font-size:8px;color:#666;">${(p.ruolo || '-')[0]}</td><td style="padding:2px 3px;text-align:center;font-size:9px;">${p.presenze || '-'}</td><td style="padding:2px 3px;text-align:center;font-size:9px;font-weight:${p.gol ? '700' : '400'};color:${p.gol ? '#27AE60' : '#ccc'};">${p.gol || '-'}</td><td style="padding:2px 3px;text-align:center;font-size:9px;font-weight:${p.assist ? '700' : '400'};color:${p.assist ? '#3498DB' : '#ccc'};">${p.assist || '-'}</td><td style="padding:2px 3px;text-align:center;font-size:9px;color:${p.ammonizioni ? '#F39C12' : '#ccc'};">${p.ammonizioni || '-'}</td><td style="padding:2px 3px;text-align:center;font-size:9px;color:${p.espulsioni ? '#E74C3C' : '#ccc'};">${p.espulsioni || '-'}</td></tr>`).join('');
+            return '<table style="width:100%;border-collapse:collapse;"><thead>' + thRow + '</thead><tbody>' + rows + '</tbody></table>';
+          };
+          return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' + renderCol(col1) + renderCol(col2) + '</div>';
+        })()}
       </div>
       
       <!-- Footer -->
@@ -590,6 +546,7 @@ function printSeasonalReport() {
     th, td { padding: 1px 3px; text-align: left; border: 1px solid #eee; }
     th { background: #f5f5f5; font-weight: 600; }
     img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    [style*="grid-template-columns"] { display: grid !important; }
     @page { size: A4 portrait; margin: 5mm; }
   </style>`;
 
@@ -685,12 +642,15 @@ function renderPlayerReport(report) {
           // Raggruppa per competizione
           const byComp = {};
           (report.storico || []).forEach(e => {
-            const comp = e.competizione || 'Altro';
+            const comp = e.competizione || 'Amichevole';
             if (!byComp[comp]) byComp[comp] = [];
             byComp[comp].push(e);
           });
           if (Object.keys(byComp).length === 0) return '<p style="color:#666;font-size:13px;text-align:center;padding:20px;">Nessun evento registrato</p>';
           return Object.entries(byComp).map(([comp, eventi]) => {
+            // Subtotali per competizione
+            const cs = report.statsByComp?.[comp] || {};
+            const subLine = cs.partite ? `<span style="font-size:9px;color:#666;margin-left:8px;">${cs.partite} partite · ${cs.minuti}' · ⚽${cs.gol || 0} · 🅰️${cs.assist || 0}</span>` : '';
             // Raggruppa per partita dentro la competizione
             const byMatch = {};
             eventi.forEach(e => {
@@ -699,28 +659,32 @@ function renderPlayerReport(report) {
               byMatch[key].eventi.push(e);
             });
             const gruppi = Object.values(byMatch).sort((a, b) => (parseInt(a.giornata) || 0) - (parseInt(b.giornata) || 0));
-            return `
-            <div style="margin-bottom:16px;">
-              <div style="background:#667eea;color:white;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;margin-bottom:8px;display:inline-block;">${comp}</div>
-              ${gruppi.map(gruppo => `
-                <div style="margin-bottom:10px;margin-left:8px;">
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                    <span style="background:#f0f0f0;color:#667eea;padding:3px 7px;border-radius:4px;font-size:10px;font-weight:600;min-width:40px;text-align:center;">
-                      ${gruppo.giornata ? 'G.' + String(gruppo.giornata).padStart(2, '0') : ''}
-                    </span>
-                    <span style="font-size:12px;font-weight:500;color:#333;">vs ${gruppo.partita || 'Avversario'}</span>
-                    <span style="font-size:10px;color:#888;">${formatDateShort(gruppo.data)}</span>
-                  </div>
-                  <div style="display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;background:#f8f9fa;border-radius:6px;">
-                    ${gruppo.eventi.sort((a, b) => (a.minuto || 0) - (b.minuto || 0)).map(e => `
-                      <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:${e.tipo === 'GOAL' ? '#d4edda' : e.tipo === 'ASSIST' ? '#cce5ff' : e.tipo === 'YELLOW' ? '#fff3cd' : '#f8d7da'};border-radius:4px;font-size:11px;">
-                        ${e.minuto != null ? `<span style="font-weight:bold;color:#667eea;">${e.minuto}'</span>` : ''}
-                        <span>${getEventIcon(e.tipo)}</span>
-                      </span>
-                    `).join('')}
-                  </div>
+            const mid = Math.ceil(gruppi.length / 2);
+            const col1 = gruppi.slice(0, mid);
+            const col2 = gruppi.slice(mid);
+            const renderGruppo = (gruppo) => `
+              <div style="margin-bottom:6px;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+                  <span style="background:#f0f0f0;color:#667eea;padding:2px 5px;border-radius:3px;font-size:9px;font-weight:600;min-width:32px;text-align:center;">${gruppo.giornata ? 'G.' + String(gruppo.giornata).padStart(2, '0') : ''}</span>
+                  <span style="font-size:11px;font-weight:500;color:#333;">vs ${gruppo.partita || 'Avversario'}</span>
+                  <span style="font-size:9px;color:#888;">${formatDateShort(gruppo.data)}</span>
                 </div>
-              `).join('')}
+                <div style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 6px;background:#f8f9fa;border-radius:4px;">
+                  ${gruppo.eventi.sort((a, b) => (a.minuto || 0) - (b.minuto || 0)).map(e => `
+                    <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:${e.tipo === 'GOAL' ? '#d4edda' : e.tipo === 'ASSIST' ? '#cce5ff' : e.tipo === 'YELLOW' ? '#fff3cd' : '#f8d7da'};border-radius:3px;font-size:10px;">
+                      ${e.minuto != null ? '<span style="font-weight:bold;color:#667eea;">' + e.minuto + "'</span>" : ''}
+                      <span>${getEventIcon(e.tipo)}</span>
+                    </span>
+                  `).join('')}
+                </div>
+              </div>`;
+            return `
+            <div style="margin-bottom:12px;">
+              <div style="display:flex;align-items:center;flex-wrap:wrap;margin-bottom:6px;"><span style="background:#667eea;color:white;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:600;">${comp}</span>${subLine}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>${col1.map(renderGruppo).join('')}</div>
+                <div>${col2.map(renderGruppo).join('')}</div>
+              </div>
             </div>`;
           }).join('');
         })()}
@@ -753,6 +717,7 @@ function printPlayerReport() {
     table { width: 100%; border-collapse: collapse; font-size: 10px; }
     th, td { padding: 3px 5px; border: 1px solid #eee; }
     img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    [style*="grid-template-columns"] { display: grid !important; }
     @page { size: A4 portrait; margin: 8mm; }
   </style>`;
 

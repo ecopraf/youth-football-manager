@@ -141,7 +141,7 @@ function renderPlayerDetail(container, data) {
     </div>`;
 
   // Sezione carriera — raggruppata per tipo competizione
-  const tipoOrder = ['Campionato', 'Coppa', 'Amichevole', 'Altro'];
+  const tipoOrder = ['Campionato', 'Coppa', 'Amichevole'];
   const tipoLabels = { Campionato: '🏆 Campionato', Coppa: '🏅 Coppa', Amichevole: '⚽ Amichevoli', Altro: '📋 Altro' };
   const tipoColors = { Campionato: '#667eea', Coppa: '#F39C12', Amichevole: '#27AE60', Altro: '#888' };
 
@@ -237,7 +237,7 @@ function renderPlayerDetail(container, data) {
   if (career && career.length) {
     const byTipo = {};
     (career || []).forEach(s => {
-      const t = s.tipo_competizione || 'Altro';
+      const t = s.tipo_competizione || 'Amichevole';
       if (!byTipo[t]) byTipo[t] = [];
       byTipo[t].push(s);
     });

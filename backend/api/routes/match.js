@@ -376,16 +376,36 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
 
   router.get('/api/partite/:matchId/formazione', authMiddleware, async (req, res) => {
     try {
-      const { data, error } = await supabase.from('match_formation').select('*, team_player:team_player_id(player_id)').eq('match_id', req.params.matchId);
+      const { data, error } = await supabase.from('match_formation')
+        .select('*, team_player:team_player_id(player_id, numero_maglia, player:player_id(nome, cognome, ruolo_principale))')
+        .eq('match_id', req.params.matchId);
       if (error) return res.status(400).json({ error: error.message });
-      const result = (data || []).map(f => ({
-        ...f, calciatoreId: f.team_player?.player_id || f.team_player_id,
-        posizione: f.is_starter ? 'Titolare' : 'Panchina', numeroMaglia: f.numero_maglia
-      }));
+      const result = (data || []).map(f => {
+        const p = f.team_player?.player || {};
+        return {
+          ...f, calciatoreId: f.team_player?.player_id || f.team_player_id,
+          posizione: f.is_starter ? 'Titolare' : 'Panchina',
+          numeroMaglia: f.numero_maglia || f.team_player?.numero_maglia,
+          nome: p.nome || '', cognome: p.cognome || '', ruolo_principale: p.ruolo_principale || ''
+        };
+      });
       let meta = { modulo: '4-3-3', positions: {} };
-      const { data: matchData } = await supabase.from('match').select('formazione_meta').eq('id', req.params.matchId).single();
+      const { data: matchData } = await supabase.from('match').select('formazione_meta, avversario, data_ora, tipo_competizione, giornata, luogo')
+        .eq('id', req.params.matchId).single();
       if (matchData?.formazione_meta) meta = matchData.formazione_meta;
-      res.json({ formazione: result, meta });
+      // Logo avversario
+      let logoAvv = null;
+      if (matchData?.avversario) {
+        const logos = await getLogos();
+        logoAvv = findLogo(matchData.avversario, logos);
+        if (!logoAvv) {
+          const coreAvv = coreTeamName(matchData.avversario);
+          for (const l of logos) {
+            if (coreAvv && coreTeamName(l.nome) === coreAvv) { logoAvv = l.logo_path; break; }
+          }
+        }
+      }
+      res.json({ formazione: result, meta, partita: matchData ? { ...matchData, logo: logoAvv } : null });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

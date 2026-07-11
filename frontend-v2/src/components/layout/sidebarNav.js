@@ -53,6 +53,7 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
     html += sectionTitle('📈 Performance');
     if (hasCap('statistiche')) html += navItem('stats', '📊', 'Statistiche', 'Marcatori, assist, discipline, statistiche');
     if (hasCap('report')) html += navItem('reports', '📄', 'Report', 'Report partita e stagionale PDF');
+    if (hasCap('report')) html += navItem('printCenter', '🖨', 'Print Center', 'Hub documenti: stampa, anteprima, condividi');
   }
 
   // Club
