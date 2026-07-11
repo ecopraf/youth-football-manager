@@ -1,16 +1,20 @@
 /**
  * PWA-safe print helper.
- * Inietta contenuto HTML in un container nella pagina corrente,
- * usa @media print per nascondere tutto il resto, poi chiama window.print().
- * Nessun iframe, nessun popup, nessun cookie di terze parti.
  *
- * Fix Android: Chrome Android non rispetta bene display:none in @media print
- * per elementi con position:fixed/absolute. Usiamo visibility+height+overflow
- * e rendiamo il container fixed full-page.
+ * Strategia:
+ * - iOS/Desktop: @media print nasconde tutto tranne il print container (funziona bene)
+ * - Android Chrome: @media print non basta — il browser stampa la modale visibile.
+ *   Soluzione: prima di window.print(), nascondiamo FISICAMENTE tutti gli elementi
+ *   del body (display:none inline) e mostriamo solo il print container.
+ *   Dopo afterprint, ripristiniamo tutto.
  */
 
 const PRINT_CONTAINER_ID = 'yfm-print-container';
 const PRINT_STYLE_ID = 'yfm-print-style';
+
+function isAndroid() {
+  return /android/i.test(navigator.userAgent);
+}
 
 export function printHTML(html, title) {
   // Rimuovi container precedente se esiste
@@ -22,7 +26,7 @@ export function printHTML(html, title) {
   const isMobile = window.innerWidth < 768;
   const mobileScale = isMobile ? `#${PRINT_CONTAINER_ID} { font-size: 90%; }` : '';
 
-  // Crea style @media print — aggressivo per Android
+  // Crea style
   style = document.createElement('style');
   style.id = PRINT_STYLE_ID;
   style.textContent = `
@@ -36,22 +40,8 @@ export function printHTML(html, title) {
         height: auto !important;
         overflow: visible !important;
       }
-      /* Nascondi TUTTO tranne il print container */
       body > *:not(#${PRINT_CONTAINER_ID}) {
         display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
-        overflow: hidden !important;
-        position: absolute !important;
-        width: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      /* Anche modali/overlay fixed */
-      .modal, .modal-overlay, [class*="modal"], [style*="position: fixed"], [style*="position:fixed"] {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
       }
       #${PRINT_CONTAINER_ID} {
         display: block !important;
@@ -63,8 +53,6 @@ export function printHTML(html, title) {
         padding: 0 !important;
         margin: 0 !important;
         background: white !important;
-        font-size: initial;
-        line-height: normal;
       }
       ${mobileScale}
     }
@@ -72,7 +60,7 @@ export function printHTML(html, title) {
   `;
   document.head.appendChild(style);
 
-  // Crea container con contenuto — lo mettiamo come PRIMO figlio del body
+  // Crea container
   container = document.createElement('div');
   container.id = PRINT_CONTAINER_ID;
   container.innerHTML = html;
@@ -82,15 +70,42 @@ export function printHTML(html, title) {
   const origTitle = document.title;
   if (title) document.title = title;
 
-  // Cleanup dopo che il dialogo stampa è chiuso
+  // Android: nascondi fisicamente tutti gli altri elementi del body
+  let hiddenElements = [];
+  if (isAndroid()) {
+    const children = document.body.children;
+    for (let i = 0; i < children.length; i++) {
+      const el = children[i];
+      if (el.id === PRINT_CONTAINER_ID || el.id === PRINT_STYLE_ID) continue;
+      hiddenElements.push({ el, prevDisplay: el.style.display });
+      el.style.display = 'none';
+    }
+    // Mostra il container (normalmente hidden via CSS)
+    container.style.display = 'block';
+  }
+
+  // Cleanup
   const cleanup = () => {
     window.removeEventListener('afterprint', cleanup);
     document.title = origTitle;
+    // Android: ripristina elementi
+    if (hiddenElements.length) {
+      hiddenElements.forEach(({ el, prevDisplay }) => {
+        el.style.display = prevDisplay;
+      });
+      hiddenElements = [];
+    }
     container.remove();
     style.remove();
   };
   window.addEventListener('afterprint', cleanup);
 
-  // Stampa
-  window.print();
+  // Piccolo delay per Android — assicura che il DOM sia aggiornato prima del print
+  if (isAndroid()) {
+    requestAnimationFrame(() => {
+      window.print();
+    });
+  } else {
+    window.print();
+  }
 }
