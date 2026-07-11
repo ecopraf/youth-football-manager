@@ -120,5 +120,18 @@ tr.ps-missing td { background: #f3f4f6; color: #888; }
   @page { size: A4 portrait; margin: 15mm; }
   tr.ps-expired td, tr.ps-warning td { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
+@media (max-width: 500px) {
+  .print-page { padding: 8px; max-width: 100%; }
+  .print-doc { padding: 4mm; }
+  .ps-header { gap: 8px; margin-bottom: 4mm; padding-bottom: 3mm; }
+  .ps-logo { height: 36px; }
+  .ps-t1 { font-size: 14px; }
+  .ps-t2 { font-size: 11px; }
+  .ps-t3 { font-size: 10px; }
+  .ps-table { font-size: 10px; display: block; overflow-x: auto; }
+  .ps-table th, .ps-table td { padding: 4px 6px; white-space: nowrap; }
+  .ps-name { white-space: normal; }
+  .ps-legend { flex-wrap: wrap; gap: 8px; }
+}
 `;
 }

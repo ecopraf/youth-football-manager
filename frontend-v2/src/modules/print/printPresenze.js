@@ -99,7 +99,7 @@ function renderPage(container, players, presenze, wsName, wsLogo, catNome, dateF
         <button id="printPrintBtn" class="btn btn-primary">🖨 Stampa</button>
       </div>
       <div class="pp-week-strip no-print">
-        <div class="pp-ws-label">Seleziona settimana (max 2):</div>
+        <div class="pp-ws-label">Seleziona settimana (max 3):</div>
         <div class="pp-ws-scroll" id="ppWeekScroll">${weekStripHtml}</div>
         ${(selectedWeeks || []).length > 0 ? '<button class="btn btn-secondary btn-sm" id="ppResetBtn">✕ Reset</button>' : ''}
       </div>
@@ -173,11 +173,21 @@ function renderPage(container, players, presenze, wsName, wsLogo, catNome, dateF
         // Deselect
         sel.splice(existing, 1);
       } else if (isMobile) {
-        // Mobile: only contiguous
+        // Mobile: only contiguous, max 3
         if (sel.length === 0) {
           sel.push(idx);
-        } else if (sel.length === 1 && Math.abs(idx - sel[0]) === 1) {
-          sel.push(idx);
+        } else if (sel.length < 3) {
+          const min = Math.min(...sel);
+          const max = Math.max(...sel);
+          // Accept if adjacent to current range
+          if (idx === min - 1 || idx === max + 1) {
+            sel.push(idx);
+          // Accept if within range of 3 contiguous (distance ≤ 2 from any selected)
+          } else if (sel.length === 1 && Math.abs(idx - sel[0]) === 2) {
+            sel.push(idx);
+          } else {
+            sel = [idx];
+          }
         } else {
           sel = [idx];
         }
@@ -228,18 +238,18 @@ function renderWeekStrip(weeks, selectedWeeks, allPresenzeDates) {
     months[m].push(i);
   });
 
-  // Calculate reachable weeks when 1 is selected
+  // Calculate reachable weeks when selection is incomplete
   const reachableSet = new Set();
+  const isMobileStrip = window.innerWidth <= 500;
   if (selectedWeeks.length === 1) {
     const selIdx = selectedWeeks[0];
-    const isMobile = window.innerWidth <= 500;
-    if (isMobile) {
-      // Mobile: only adjacent
-      [selIdx - 1, selIdx + 1].forEach(adj => {
+    if (isMobileStrip) {
+      // Mobile: up to 2 away (max 3 contiguous total)
+      [selIdx - 2, selIdx - 1, selIdx + 1, selIdx + 2].forEach(adj => {
         if (adj >= 0 && adj < weeks.length && weeks[adj].sessions > 0) reachableSet.add(adj);
       });
     } else {
-      // Desktop: any week where combined sessions ≤ 25
+      // Desktop: any week where combined sessions ≤ 34
       for (let i = 0; i < weeks.length; i++) {
         if (i === selIdx) continue;
         if (weeks[i].sessions === 0) continue;
@@ -252,6 +262,13 @@ function renderWeekStrip(weeks, selectedWeeks, allPresenzeDates) {
         if (count <= 34) reachableSet.add(i);
       }
     }
+  } else if (selectedWeeks.length === 2 && isMobileStrip) {
+    // Mobile with 2 selected: only the adjacent ends
+    const min = Math.min(...selectedWeeks);
+    const max = Math.max(...selectedWeeks);
+    [min - 1, max + 1].forEach(adj => {
+      if (adj >= 0 && adj < weeks.length && weeks[adj].sessions > 0) reachableSet.add(adj);
+    });
   }
 
   const monthNames = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
@@ -263,7 +280,7 @@ function renderWeekStrip(weeks, selectedWeeks, allPresenzeDates) {
       const w = weeks[i];
       const isSel = selectedWeeks.includes(i);
       const hasData = w.sessions > 0;
-      const isDisabled = selectedWeeks.length === 1 && !isSel && hasData && !reachableSet.has(i);
+      const isDisabled = !isSel && hasData && !reachableSet.has(i) && ((selectedWeeks.length === 1) || (selectedWeeks.length === 2 && isMobileStrip));
       let cls = 'pp-wc';
       if (!hasData) cls += ' pp-wc-empty';
       else if (isDisabled) cls += ' pp-wc-disabled';

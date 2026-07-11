@@ -86,5 +86,18 @@ function getStyles() {
   .print-doc { border: none; padding: 0; }
   @page { size: A4 portrait; margin: 15mm; }
 }
+@media (max-width: 500px) {
+  .print-page { padding: 8px; max-width: 100%; }
+  .print-doc { padding: 4mm; }
+  .pr-header { gap: 8px; margin-bottom: 4mm; padding-bottom: 3mm; }
+  .pr-logo { height: 36px; }
+  .pr-t1 { font-size: 14px; }
+  .pr-t2 { font-size: 11px; }
+  .pr-t3 { font-size: 10px; }
+  .pr-table { font-size: 9px; display: block; overflow-x: auto; }
+  .pr-table th, .pr-table td { padding: 3px 4px; white-space: nowrap; }
+  .pr-name { white-space: normal; }
+  .pr-table th:last-child, .pr-table td:last-child { display: none; }
+}
 `;
 }
