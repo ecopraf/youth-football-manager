@@ -2,11 +2,10 @@
  * PWA-safe print helper.
  *
  * Strategia:
- * - iOS/Desktop: @media print nasconde tutto tranne il print container (funziona bene)
- * - Android Chrome: @media print non basta — il browser stampa la modale visibile.
- *   Soluzione: prima di window.print(), nascondiamo FISICAMENTE tutti gli elementi
- *   del body (display:none inline) e mostriamo solo il print container.
- *   Dopo afterprint, ripristiniamo tutto.
+ * - iOS/Desktop: @media print nella pagina corrente (funziona perfettamente)
+ * - Android: window.open() con pagina dedicata contenente SOLO il documento.
+ *   Chrome Android fa snapshot della pagina e ignora @media print su SPA,
+ *   quindi l'unica soluzione affidabile è stampare da una finestra pulita.
  */
 
 const PRINT_CONTAINER_ID = 'yfm-print-container';
@@ -16,8 +15,59 @@ function isAndroid() {
   return /android/i.test(navigator.userAgent);
 }
 
-export function printHTML(html, title) {
-  // Rimuovi container precedente se esiste
+/**
+ * Stampa su Android: apre nuova finestra con solo il documento
+ */
+function printAndroid(html, title) {
+  const win = window.open('', '_blank');
+  if (!win) {
+    // Popup bloccato — fallback al metodo standard
+    printStandard(html, title);
+    return;
+  }
+
+  win.document.write(`<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title || 'Stampa'}</title>
+<style>
+@page { size: A4; margin: 15mm; }
+html, body { margin: 0; padding: 0; background: white; font-family: Arial, sans-serif; }
+body { padding: 10mm; }
+@media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+${html}
+</body>
+</html>`);
+  win.document.close();
+
+  // Attendi che le immagini siano caricate prima di stampare
+  const images = win.document.querySelectorAll('img');
+  const imagePromises = Array.from(images).map(img => {
+    if (img.complete) return Promise.resolve();
+    return new Promise(resolve => {
+      img.onload = resolve;
+      img.onerror = resolve;
+    });
+  });
+
+  Promise.all(imagePromises).then(() => {
+    setTimeout(() => {
+      win.print();
+      // Chiudi dopo stampa (alcuni browser non supportano afterprint)
+      setTimeout(() => { try { win.close(); } catch(e) {} }, 1000);
+    }, 300);
+  });
+}
+
+/**
+ * Stampa standard (iOS/Desktop): @media print nella pagina corrente
+ */
+function printStandard(html, title) {
   let container = document.getElementById(PRINT_CONTAINER_ID);
   if (container) container.remove();
   let style = document.getElementById(PRINT_STYLE_ID);
@@ -26,7 +76,6 @@ export function printHTML(html, title) {
   const isMobile = window.innerWidth < 768;
   const mobileScale = isMobile ? `#${PRINT_CONTAINER_ID} { font-size: 90%; }` : '';
 
-  // Crea style
   style = document.createElement('style');
   style.id = PRINT_STYLE_ID;
   style.textContent = `
@@ -60,52 +109,32 @@ export function printHTML(html, title) {
   `;
   document.head.appendChild(style);
 
-  // Crea container
   container = document.createElement('div');
   container.id = PRINT_CONTAINER_ID;
   container.innerHTML = html;
   document.body.insertBefore(container, document.body.firstChild);
 
-  // Cambia titolo per il nome file PDF
   const origTitle = document.title;
   if (title) document.title = title;
 
-  // Android: nascondi fisicamente tutti gli altri elementi del body
-  let hiddenElements = [];
-  if (isAndroid()) {
-    const children = document.body.children;
-    for (let i = 0; i < children.length; i++) {
-      const el = children[i];
-      if (el.id === PRINT_CONTAINER_ID || el.id === PRINT_STYLE_ID) continue;
-      hiddenElements.push({ el, prevDisplay: el.style.display });
-      el.style.display = 'none';
-    }
-    // Mostra il container (normalmente hidden via CSS)
-    container.style.display = 'block';
-  }
-
-  // Cleanup
   const cleanup = () => {
     window.removeEventListener('afterprint', cleanup);
     document.title = origTitle;
-    // Android: ripristina elementi
-    if (hiddenElements.length) {
-      hiddenElements.forEach(({ el, prevDisplay }) => {
-        el.style.display = prevDisplay;
-      });
-      hiddenElements = [];
-    }
     container.remove();
     style.remove();
   };
   window.addEventListener('afterprint', cleanup);
 
-  // Piccolo delay per Android — assicura che il DOM sia aggiornato prima del print
+  window.print();
+}
+
+/**
+ * Entry point principale — smista in base al device
+ */
+export function printHTML(html, title) {
   if (isAndroid()) {
-    requestAnimationFrame(() => {
-      window.print();
-    });
+    printAndroid(html, title);
   } else {
-    window.print();
+    printStandard(html, title);
   }
 }
