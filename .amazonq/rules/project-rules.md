@@ -134,6 +134,16 @@ Le tabelle reali nel DB Supabase sono:
 - DELETE training_config: cascade elimina allenamenti futuri del giorno rimosso (solo se senza presenze)
 
 **Colonne notevoli `match`**: `tipo_competizione TEXT` (Campionato, Coppa, Torneo [nome], null=Amichevole), `indirizzo_campo TEXT` (indirizzo campo trasferta da PDF SGS), `tc_match_url TEXT` (URL pagina partita Tuttocampo per import formazioni), `live_meta JSONB` (`{stato: '1t'|'intervallo'|'2t'|'fine', start_1t, end_1t, start_2t, end_match}` — lifecycle Live Match Mode), `formazione_meta JSONB` (`{modulo, positions, modulo_finale}` — modulo iniziale + posizioni custom + modulo finale se cambiato durante partita), `distinta_meta JSONB` (`{assistente_arbitro, matricola_assistente, tessera_assistente}` — dati compilati dal form Compila distinta)
+
+**⚠️ Convenzione gol (CRITICA)**:
+- `gol_casa` = **gol fatti dalla NOSTRA squadra** (sempre, indipendentemente da Casa/Trasferta)
+- `gol_ospite` = **gol fatti dall'AVVERSARIO** (sempre, indipendentemente da Casa/Trasferta)
+- Il campo `luogo` (Casa/Trasferta) indica solo DOVE si gioca, NON chi è "casa" nel punteggio
+- Vittoria = `gol_casa > gol_ospite`, Sconfitta = `gol_casa < gol_ospite`
+- Import da fonti esterne (GR, Tuttocampo, Sheets): se il dato è in formato "casa-ospite" reale, INVERTIRE per trasferte
+
+**Codici tipo_evento (OBBLIGATORI)**: `GOAL`, `ASSIST`, `SUB`, `YELLOW`, `RED`, `SUBITO`, `AUTOGOL`, `IN`, `OUT`
+- ❌ MAI usare: `GOL`, `ASS`, `AMMONIZIONE`, `ESPULSIONE` (codici errati che non matchano la lookup table)
 - `training`, `training_attendance`, `training_config`, `training_template`
 - `valutazione_partita`, `document`
 - `users`, `guest_token`

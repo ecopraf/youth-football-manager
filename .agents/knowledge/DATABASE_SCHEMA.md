@@ -237,8 +237,8 @@ Questo perché un giocatore può essere in più team (aggregato) e serve sapere 
 | avversario | varchar(200) | NO | | Nome squadra avversaria |
 | luogo | varchar(20) | SI | 'Casa' | Casa/Trasferta |
 | giornata | integer | SI | | Numero giornata campionato |
-| gol_casa | integer | SI | 0 | |
-| gol_ospite | integer | SI | 0 | |
+| gol_casa | integer | SI | 0 | ⚠️ Semantica: **gol fatti da NOI** (indipendentemente da Casa/Trasferta) |
+| gol_ospite | integer | SI | 0 | ⚠️ Semantica: **gol fatti dall'AVVERSARIO** (indipendentemente da Casa/Trasferta) |
 | stato | varchar(30) | SI | 'Da disputare' | Da disputare/Terminata/Rinviata |
 | archiviata | boolean | SI | false | |
 | formazione_meta | jsonb | SI | | `{modulo: "4-3-3", positions: [...]}` |
@@ -587,7 +587,7 @@ Questo perché un giocatore può essere in più team (aggregato) e serve sapere 
 
 | Colonna | Tipo | Null | Note |
 |---------|------|------|------|
-| codice | varchar(10) | NO | PK — Es: GOL, AMM, ESP, SOT |
+| codice | varchar(10) | NO | PK — Valori: GOAL, ASSIST, SUB, YELLOW, RED, SUBITO, AUTOGOL, IN, OUT |
 | descrizione | varchar(50) | NO | |
 | icona | varchar(50) | SI | |
 
