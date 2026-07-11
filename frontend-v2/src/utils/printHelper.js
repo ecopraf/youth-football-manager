@@ -16,10 +16,22 @@ function isAndroid() {
 }
 
 /**
+ * Converte URL relativi delle immagini in URL assoluti.
+ * Necessario per Blob URL dove i path relativi non funzionano.
+ */
+function absolutifyImages(html) {
+  const base = window.location.origin;
+  return html.replace(/(<img[^>]+src=["'])(\/[^"']+)(["'])/gi, (match, pre, path, post) => {
+    return pre + base + path + post;
+  });
+}
+
+/**
  * Stampa su Android: apre nuova finestra con Blob URL
  * Chrome Android blocca print() su about:blank — serve un URL reale.
  */
 function printAndroid(html, title) {
+  const absHtml = absolutifyImages(html);
   const fullHtml = `<!DOCTYPE html>
 <html lang="it">
 <head>
@@ -35,7 +47,7 @@ img { max-width: 100%; }
 </style>
 </head>
 <body>
-${html}
+${absHtml}
 <script>
 window.onload = function() {
   setTimeout(function() { window.print(); }, 500);
