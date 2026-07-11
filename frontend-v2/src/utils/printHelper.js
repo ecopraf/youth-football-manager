@@ -16,17 +16,11 @@ function isAndroid() {
 }
 
 /**
- * Stampa su Android: apre nuova finestra con solo il documento
+ * Stampa su Android: apre nuova finestra con Blob URL
+ * Chrome Android blocca print() su about:blank — serve un URL reale.
  */
 function printAndroid(html, title) {
-  const win = window.open('', '_blank');
-  if (!win) {
-    // Popup bloccato — fallback al metodo standard
-    printStandard(html, title);
-    return;
-  }
-
-  win.document.write(`<!DOCTYPE html>
+  const fullHtml = `<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8">
@@ -37,31 +31,31 @@ function printAndroid(html, title) {
 html, body { margin: 0; padding: 0; background: white; font-family: Arial, sans-serif; }
 body { padding: 10mm; }
 @media print { body { padding: 0; } }
+img { max-width: 100%; }
 </style>
 </head>
 <body>
 ${html}
+<script>
+window.onload = function() {
+  setTimeout(function() { window.print(); }, 500);
+};
+<\/script>
 </body>
-</html>`);
-  win.document.close();
+</html>`;
 
-  // Attendi che le immagini siano caricate prima di stampare
-  const images = win.document.querySelectorAll('img');
-  const imagePromises = Array.from(images).map(img => {
-    if (img.complete) return Promise.resolve();
-    return new Promise(resolve => {
-      img.onload = resolve;
-      img.onerror = resolve;
-    });
-  });
+  const blob = new Blob([fullHtml], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
 
-  Promise.all(imagePromises).then(() => {
-    setTimeout(() => {
-      win.print();
-      // Chiudi dopo stampa (alcuni browser non supportano afterprint)
-      setTimeout(() => { try { win.close(); } catch(e) {} }, 1000);
-    }, 300);
-  });
+  if (!win) {
+    URL.revokeObjectURL(url);
+    printStandard(html, title);
+    return;
+  }
+
+  // Cleanup blob URL dopo un po'
+  setTimeout(() => { URL.revokeObjectURL(url); }, 60000);
 }
 
 /**
