@@ -1,6 +1,7 @@
 import { apiFetch } from '../../services/api';
 import { formatDate, formatDateShort, formatBirthDate } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
+import { printHTML } from '../../utils/printHelper';
 
 export default async function loadReports() {
   const c = document.getElementById('pageContent');
@@ -346,12 +347,7 @@ function printReport() {
   if (socialSection) socialSection.remove();
   clone.querySelectorAll('img').forEach(img => { if (img.src) img.setAttribute('src', img.src); });
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <title>Report Partita</title>
-  <meta charset="UTF-8">
-  <style>
+  const printStyles = `<style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; padding: 15px; color: #333; font-size: 11px; background: white; }
     h1 { font-size: 16px; margin: 0 0 6px 0; }
@@ -362,19 +358,9 @@ function printReport() {
     th { background: #f5f5f5; font-weight: 600; }
     img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     @page { size: A4 portrait; margin: 8mm; }
-  </style>
-</head>
-<body>${clone.innerHTML}</body>
-</html>`;
+  </style>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const printWindow = window.open(url, '_blank');
-  if (!printWindow) { alert('Popup bloccato! Abilita i popup per questo sito.'); return; }
-  printWindow.onload = () => {
-    printWindow.print();
-    printWindow.onafterprint = () => printWindow.close();
-  };
+  printHTML(printStyles + clone.innerHTML, 'Report Partita');
 }
 
 function generateSocialComment(report) {
@@ -589,18 +575,12 @@ function printSeasonalReport() {
   const printArea = document.getElementById('seasonalPrintArea');
   if (!printArea) { alert('Area di stampa non trovata'); return; }
 
-  // Converti path relativi immagini in URL assoluti per la finestra di stampa
   const clone = printArea.cloneNode(true);
   clone.querySelectorAll('img').forEach(img => {
-    if (img.src) img.setAttribute('src', img.src); // forza URL assoluto
+    if (img.src) img.setAttribute('src', img.src);
   });
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <title>Report Stagionale</title>
-  <meta charset="UTF-8">
-  <style>
+  const printStyles = `<style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; padding: 10px; color: #333; font-size: 9px; background: white; }
     h1 { font-size: 14px; margin: 0 0 4px 0; }
@@ -611,19 +591,9 @@ function printSeasonalReport() {
     th { background: #f5f5f5; font-weight: 600; }
     img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     @page { size: A4 portrait; margin: 5mm; }
-  </style>
-</head>
-<body>${clone.innerHTML}</body>
-</html>`;
+  </style>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const printWindow = window.open(url, '_blank');
-  if (!printWindow) { alert('Popup bloccato! Abilita i popup per questo sito.'); return; }
-  printWindow.onload = () => {
-    printWindow.print();
-    printWindow.onafterprint = () => printWindow.close();
-  };
+  printHTML(printStyles + clone.innerHTML, 'Report Stagionale');
 }
 
 // ── REPORT GIOCATORE ──
@@ -776,12 +746,7 @@ function printPlayerReport() {
   const clone = printArea.cloneNode(true);
   clone.querySelectorAll('img').forEach(img => { if (img.src) img.setAttribute('src', img.src); });
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <title>Report Giocatore</title>
-  <meta charset="UTF-8">
-  <style>
+  const printStyles = `<style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; padding: 15px; color: #333; font-size: 11px; background: white; }
     h1 { font-size: 16px; margin: 0 0 6px 0; }
@@ -789,17 +754,7 @@ function printPlayerReport() {
     th, td { padding: 3px 5px; border: 1px solid #eee; }
     img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     @page { size: A4 portrait; margin: 8mm; }
-  </style>
-</head>
-<body>${clone.innerHTML}</body>
-</html>`;
+  </style>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const printWindow = window.open(url, '_blank');
-  if (!printWindow) { alert('Popup bloccato! Abilita i popup per questo sito.'); return; }
-  printWindow.onload = () => {
-    printWindow.print();
-    printWindow.onafterprint = () => printWindow.close();
-  };
+  printHTML(printStyles + clone.innerHTML, 'Report Giocatore');
 }

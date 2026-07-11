@@ -1,6 +1,7 @@
 import { apiFetch } from '../../services/api';
 import { formatDateShort } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
+import { printHTML } from '../../utils/printHelper';
 
 function buildCompLine(partita) {
   const comp = partita.competizione || partita.tipo_competizione || '';
@@ -137,28 +138,8 @@ export async function openDistinta(mid, staffOverrides) {
     }
     
     const pdfTitle = matchInfo ? 'Distinta' + (matchInfo.giornata ? ' G' + matchInfo.giornata : '') + ' - ' + (matchInfo.avversario || '') : 'Distinta';
-    const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + pdfTitle + '</title><style>@page{margin:8mm;size:A4 portrait}body{font-family:Arial,Helvetica,sans-serif;font-size:10px;margin:0;padding:8mm}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.distinta-table{width:100%;border-collapse:collapse;margin:4px 0}.distinta-table th,.distinta-table td{border:1px solid #000;padding:4px 5px;text-align:center;font-size:9px}th{background:#f0f0f0;font-size:8px}.capitano{background:#FFF9C4}.vice{background:#E8F5E9}.staff-table{width:100%;border-collapse:collapse;margin:0}.staff-table td{border:1px solid #000;padding:3px 6px;font-size:9px}.num-circle{font-weight:700;font-size:9px;border:1.5px solid #000;border-radius:50%;width:14px;height:14px;line-height:14px;display:inline-block;text-align:center;vertical-align:middle;box-sizing:border-box}@media print{body{padding:0}img{display:block!important}}</style></head><body>' + content + '</body></html>';
-    
-    // Mobile-friendly: usa iframe nascosto per stampare (evita popup bloccati)
-    let printFrame = document.getElementById('yfm-print-frame');
-    if (!printFrame) {
-      printFrame = document.createElement('iframe');
-      printFrame.id = 'yfm-print-frame';
-      printFrame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:0;height:0;border:none;';
-      document.body.appendChild(printFrame);
-    }
-    const doc = printFrame.contentDocument || printFrame.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
-    printFrame.onload = () => {
-      setTimeout(() => {
-        const origTitle = document.title;
-        document.title = pdfTitle;
-        printFrame.contentWindow.print();
-        setTimeout(() => { document.title = origTitle; }, 500);
-      }, 300);
-    };
+    const printStyles = '<style>@page{margin:8mm;size:A4 portrait}body{font-family:Arial,Helvetica,sans-serif;font-size:10px}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.distinta-table{width:100%;border-collapse:collapse;margin:4px 0}.distinta-table th,.distinta-table td{border:1px solid #000;padding:4px 5px;text-align:center;font-size:9px}th{background:#f0f0f0;font-size:8px}.capitano{background:#FFF9C4}.vice{background:#E8F5E9}.staff-table{width:100%;border-collapse:collapse;margin:0}.staff-table td{border:1px solid #000;padding:3px 6px;font-size:9px}.num-circle{font-weight:700;font-size:9px;border:1.5px solid #000;border-radius:50%;width:14px;height:14px;line-height:14px;display:inline-block;text-align:center;vertical-align:middle;box-sizing:border-box}</style>';
+    printHTML(printStyles + content, pdfTitle);
   });
   
   document.getElementById('staffBtn').addEventListener('click', () => openStaffForm(mid, curStaff, matchInfo, distintaMeta));
