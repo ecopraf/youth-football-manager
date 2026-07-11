@@ -114,7 +114,7 @@ export async function openDistinta(mid, staffOverrides) {
       // Aggiungi banner informativo sopra la distinta
       const inner = document.getElementById('distintaInner');
       if (inner) {
-        inner.insertAdjacentHTML('afterbegin', '<div style="background:#FFF3CD;border:1px solid #FFEAA7;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;"><span style="font-size:20px;">⚠️</span><div><strong style="font-size:13px;">Convocazioni non pubblicate</strong><br><span style="font-size:12px;color:#666;">La distinta è vuota. Pubblica le convocazioni per popolarla automaticamente.</span></div></div>');
+        inner.insertAdjacentHTML('afterbegin', '<div class="no-print-banner" style="background:#FFF3CD;border:1px solid #FFEAA7;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;"><span style="font-size:20px;">⚠️</span><div><strong style="font-size:13px;">Convocazioni non pubblicate</strong><br><span style="font-size:12px;color:#666;">La distinta è vuota. Pubblica le convocazioni per popolarla automaticamente.</span></div></div>');
       }
     } else {
       document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Nessun convocato per questa partita. Salva prima le convocazioni.</div>';
@@ -125,8 +125,9 @@ export async function openDistinta(mid, staffOverrides) {
     const el = document.getElementById('distintaInner');
     if (!el) return;
     
-    // Converti immagini in data URI per il PDF
+    // Rimuovi banner informativo dal contenuto di stampa
     let content = el.innerHTML;
+    content = content.replace(/<div class="no-print-banner"[^>]*>.*?<\/div><\/div>/gs, '');
     const imgs = el.querySelectorAll('img');
     for (const img of imgs) {
       try {
