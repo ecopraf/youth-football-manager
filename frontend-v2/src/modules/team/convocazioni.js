@@ -279,7 +279,7 @@ function showConvocationPreview(match, list, isArchiviata = false) {
     <div class="info">Partita: <strong>${(window.YFM.getSocietaName ? window.YFM.getSocietaName() : '').toUpperCase()} - ${match.avversario || 'TBD'}</strong><br>Campo: <strong>${campoInfo}</strong><br>Alle ore: <strong>${oraStr}</strong> del giorno: <strong>${giornoStr}</strong><br>Ritrovo alle ore: <strong>${ritrovoStr}</strong> al Campo di Giuoco</div>
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="list-table" style="border:2px solid #000;border-collapse:collapse;width:100%;table-layout:fixed;"><colgroup><col style="width:8%"><col style="width:42%"><col style="width:40%"><col style="width:10%"></colgroup><thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000;padding:5px 8px;">N.</th><th style="border:1px solid #000;padding:5px 8px;">Cognome</th><th style="border:1px solid #000;padding:5px 8px;">Nome</th><th style="border:1px solid #000;padding:5px 8px;">P</th></tr></thead><tbody>`;
-  const maxRows = window.innerWidth < 768 ? 24 : 25;
+  const maxRows = Math.max(list.length, 20);
   for (let i = 0; i < maxRows; i++) {
     if (i < list.length) {
       html += `<tr><td style="border:1px solid #000;padding:4px 6px;text-align:center;">${i + 1}</td><td style="border:1px solid #000;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${list[i].cognome.toUpperCase()}</td><td style="border:1px solid #000;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${list[i].nome}</td><td style="border:1px solid #000;padding:4px 6px;text-align:center;">${list[i].ruolo === 'Portiere' ? 'P' : ''}</td></tr>`;
@@ -296,6 +296,7 @@ function showConvocationPreview(match, list, isArchiviata = false) {
       #convPreviewInner .info { font-size:12px; }
       #convPreviewInner .t1 { font-size:18px; }
       #convPreviewInner .t2 { font-size:13px; }
+      #convPreviewInner .note { font-size:10px; }
       #convPreviewInner img { height:50px !important; }
     }
   </style>`;
@@ -303,7 +304,7 @@ function showConvocationPreview(match, list, isArchiviata = false) {
   document.getElementById('printFromPreview').addEventListener('click', () => {
     const el = document.getElementById('convPreviewInner');
     if (el) {
-      const printStyles = '<style>@page{margin:10mm;size:A4 portrait}body{font-family:Arial,sans-serif;}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.t1{text-align:center;font-size:22px;font-weight:bold;margin-bottom:2mm;}.t2{text-align:center;font-size:16px;font-weight:bold;margin-bottom:1mm;}.t3{text-align:center;font-size:14px;font-weight:bold;margin-bottom:3mm;}.info{font-size:13px;margin-bottom:4mm;line-height:1.7;}.list-table{width:100%;border-collapse:collapse;margin-bottom:1mm;}.list-table td,.list-table th{padding:3px 6px;font-size:12px;border:1px solid #000;}.note{font-weight:bold;font-style:italic;font-size:12px;margin-top:1mm;text-align:center;color:#E74C3C;}.firma{margin-top:6mm;text-align:right;font-size:14px;font-weight:bold;}</style>';
+      const printStyles = '<style>@page{margin:15mm;size:A4 portrait}body{font-family:Arial,sans-serif;background:white!important;}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.t1{text-align:center;font-size:22px;font-weight:bold;margin-bottom:2mm;}.t2{text-align:center;font-size:16px;font-weight:bold;margin-bottom:1mm;}.t3{text-align:center;font-size:14px;font-weight:bold;margin-bottom:3mm;}.info{font-size:13px;margin-bottom:4mm;line-height:1.7;}.list-table{width:100%;border-collapse:collapse;margin-bottom:1mm;page-break-inside:avoid;}.list-table td,.list-table th{padding:3px 6px;font-size:12px;border:1px solid #000;}.note{font-weight:bold;font-style:italic;font-size:11px;margin-top:1mm;text-align:center;color:#E74C3C;}.firma{margin-top:6mm;text-align:right;font-size:14px;font-weight:bold;}</style>';
       printHTML(printStyles + el.innerHTML, 'Convocazione');
     }
   });

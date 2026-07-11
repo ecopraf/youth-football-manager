@@ -24,9 +24,10 @@ export function printHTML(html, title) {
   style.id = PRINT_STYLE_ID;
   style.textContent = `
     @media print {
+      html, body { background: white !important; background-image: none !important; }
       body > *:not(#${PRINT_CONTAINER_ID}) { display: none !important; }
-      #${PRINT_CONTAINER_ID} { display: block !important; position: absolute; top: 0; left: 0; width: 100%; padding: 0; margin: 0; font-size: initial; line-height: normal; }
-      body { padding: 0 !important; margin: 0 !important; }
+      #${PRINT_CONTAINER_ID} { display: block !important; position: absolute; top: 0; left: 0; width: 100%; padding: 0; margin: 0; font-size: initial; line-height: normal; background: white; }
+      body { padding: 0 !important; margin: 0 !important; background: white !important; }
       ${mobileScale}
     }
     #${PRINT_CONTAINER_ID} { display: none; }

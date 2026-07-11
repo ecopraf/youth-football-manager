@@ -115,12 +115,21 @@ function renderCalendarPage(c, matches, stats) {
 
   const now = new Date();
   const isGuest = !!(window.YFM.guestSquadreAccesso && window.YFM.guestSquadreAccesso.length > 0);
-  
+
+  // Filtro stato e tipo (preserva selezione tra render)
+  const filterStato = window._calFilterStato || 'tutte';
+  const filterTipo = window._calFilterTipo || '';
+
+  // Applica filtro tipo competizione
+  let filteredMatches = matches;
+  if (filterTipo) {
+    filteredMatches = filterTipo === 'Amichevole' ? matches.filter(m => !m.tipo_competizione) : matches.filter(m => m.tipo_competizione === filterTipo);
+  }
+
   // Separa future e passate
-  // Terminata → sempre nelle giocate. Live → sempre nelle future.
   const isMatchLive = (m) => !!(m.live_meta && ['1t','2t','intervallo'].includes(m.live_meta.stato));
   const isPlayed = (m) => m.stato === 'Terminata' || (m.gol_casa !== null && m.stato !== 'Da disputare');
-  const futureMatches = matches
+  const futureMatches = filteredMatches
     .filter(m => !isPlayed(m) && (new Date(m.data_ora) >= now || isMatchLive(m)))
     .sort((a, b) => {
       if (isMatchLive(a) && !isMatchLive(b)) return -1;
@@ -128,7 +137,7 @@ function renderCalendarPage(c, matches, stats) {
       return new Date(a.data_ora) - new Date(b.data_ora);
     });
   
-  const pastMatches = matches
+  const pastMatches = filteredMatches
     .filter(m => isPlayed(m) || (new Date(m.data_ora) < now && !isMatchLive(m)))
     .sort((a, b) => new Date(b.data_ora) - new Date(a.data_ora));
 
@@ -246,6 +255,12 @@ function renderCalendarPage(c, matches, stats) {
           <option value="prossime">Prossime</option>
           <option value="archiviate">Archiviate</option>
         </select>
+        <select id="calFilterTipo" class="filter-select" style="font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid #ddd;">
+          <option value="">Tutte le comp.</option>
+          <option value="Campionato">Campionato</option>
+          <option value="Coppa">Coppa</option>
+          <option value="Amichevole">Amichevole</option>
+        </select>
         <button class="btn btn-secondary" id="btnCalSelect" style="font-size:13px;">☐ Seleziona</button>` : ''}
       </div>
     </div>
@@ -255,9 +270,6 @@ function renderCalendarPage(c, matches, stats) {
       <button class="btn btn-secondary" id="btnCalSelArchive" style="font-size:12px;color:#856404;" disabled>📦 Archivia (0)</button>
       <button class="btn btn-danger" id="btnCalSelDelete" style="font-size:12px;" disabled>🗑️ Elimina (0)</button>
     </div>`;
-
-  // Filtro stato (preserva selezione tra render)
-  const filterStato = window._calFilterStato || 'tutte';
 
   // PROSSIMA PARTITA in evidenza
   if (nextMatch && filterStato !== 'archiviate') {
@@ -297,8 +309,11 @@ function renderCalendarPage(c, matches, stats) {
   document.getElementById('btnAdd')?.addEventListener('click', () => openMatchForm());
   document.getElementById('btnImportPdf')?.addEventListener('click', openImportPdf);
   document.getElementById('calFilterStato')?.addEventListener('change', (e) => { window._calFilterStato = e.target.value; loadCalendar(); });
+  document.getElementById('calFilterTipo')?.addEventListener('change', (e) => { window._calFilterTipo = e.target.value; loadCalendar(); });
   const filterSel = document.getElementById('calFilterStato');
   if (filterSel) filterSel.value = filterStato;
+  const filterTipoSel = document.getElementById('calFilterTipo');
+  if (filterTipoSel) filterTipoSel.value = filterTipo;
   bindCalendarSelection();
   attachCardListeners();
 }
