@@ -121,7 +121,8 @@ screenshots: [
     outDir: 'dist',
     rollupOptions: {
       input: {
-        main: 'index.html'
+        main: 'index.html',
+        print: 'print.html'
       }
     }
   },

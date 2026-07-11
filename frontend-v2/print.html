@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stampa</title>
+<style>
+@page { size: A4; margin: 15mm; }
+html, body { margin: 0; padding: 0; background: white; font-family: Arial, sans-serif; }
+body { padding: 10mm; }
+@media print { body { padding: 0; } }
+img { max-width: 100%; }
+</style>
+</head>
+<body>
+<div id="printContent"></div>
+<script>
+(function() {
+  var html = sessionStorage.getItem('yfm-print-html');
+  var title = sessionStorage.getItem('yfm-print-title');
+  if (!html) {
+    document.getElementById('printContent').innerHTML = '<p>Nessun documento da stampare.</p>';
+    return;
+  }
+  if (title) document.title = title;
+  document.getElementById('printContent').innerHTML = html;
+  sessionStorage.removeItem('yfm-print-html');
+  sessionStorage.removeItem('yfm-print-title');
+
+  // Attendi caricamento immagini poi stampa
+  var images = document.querySelectorAll('img');
+  var loaded = 0;
+  var total = images.length;
+  function tryPrint() {
+    loaded++;
+    if (loaded >= total) {
+      setTimeout(function() { window.print(); }, 400);
+    }
+  }
+  if (total === 0) {
+    setTimeout(function() { window.print(); }, 400);
+  } else {
+    for (var i = 0; i < images.length; i++) {
+      if (images[i].complete) { tryPrint(); }
+      else {
+        images[i].onload = tryPrint;
+        images[i].onerror = tryPrint;
+      }
+    }
+  }
+})();
+</script>
+</body>
+</html>

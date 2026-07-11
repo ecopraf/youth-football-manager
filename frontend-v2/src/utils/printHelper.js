@@ -17,7 +17,7 @@ function isAndroid() {
 
 /**
  * Converte URL relativi delle immagini in URL assoluti.
- * Necessario per Blob URL dove i path relativi non funzionano.
+ * Necessario per la pagina /print.html che potrebbe non risolvere path relativi.
  */
 function absolutifyImages(html) {
   const base = window.location.origin;
@@ -27,47 +27,14 @@ function absolutifyImages(html) {
 }
 
 /**
- * Stampa su Android: apre nuova finestra con Blob URL
- * Chrome Android blocca print() su about:blank — serve un URL reale.
+ * Stampa su Android: apre /print.html che legge da sessionStorage.
+ * URL mostrato nell'header di stampa: youth-football-manager.vercel.app/print.html
  */
 function printAndroid(html, title) {
   const absHtml = absolutifyImages(html);
-  const fullHtml = `<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title || 'Stampa'}</title>
-<style>
-@page { size: A4; margin: 15mm; }
-html, body { margin: 0; padding: 0; background: white; font-family: Arial, sans-serif; }
-body { padding: 10mm; }
-@media print { body { padding: 0; } }
-img { max-width: 100%; }
-</style>
-</head>
-<body>
-${absHtml}
-<script>
-window.onload = function() {
-  setTimeout(function() { window.print(); }, 500);
-};
-<\/script>
-</body>
-</html>`;
-
-  const blob = new Blob([fullHtml], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, '_blank');
-
-  if (!win) {
-    URL.revokeObjectURL(url);
-    printStandard(html, title);
-    return;
-  }
-
-  // Cleanup blob URL dopo un po'
-  setTimeout(() => { URL.revokeObjectURL(url); }, 60000);
+  sessionStorage.setItem('yfm-print-html', absHtml);
+  sessionStorage.setItem('yfm-print-title', title || 'Stampa');
+  window.open('/print.html', '_blank');
 }
 
 /**
