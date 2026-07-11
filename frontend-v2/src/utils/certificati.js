@@ -67,23 +67,24 @@ export function renderCertificatiCard(status) {
   };
 
   return `
+    <style>.cert-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;}@media(max-width:500px){.cert-grid{grid-template-columns:1fr;gap:10px;}.cert-grid>div{padding:10px!important;}.cert-card .cert-detail span{font-size:12px!important;}}</style>
     <div class="cert-card" style="margin-bottom:16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <span style="font-size:14px;font-weight:700;">🏥 Certificati Medici</span>
         <button class="cert-toggle-btn" style="background:none;border:none;font-size:12px;color:#667eea;cursor:pointer;font-weight:600;">▼ Dettaglio</button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        <span style="${badgeStyle('#FDEDEE', '#E74C3C')}">🔴 Scaduti (${scaduti.length})</span>
-        <span style="${badgeStyle('#FFF8E1', '#F39C12')}">🟡 In Scadenza (${inScadenza.length})</span>
-        <span style="${badgeStyle('#E8F8F0', '#27AE60')}">🟢 Validi (${validi.length})</span>
-        <span style="${badgeStyle('#F5F5F5', '#666')}">⚪ Mancanti (${mancanti.length})</span>
+        <span data-cert="scaduti" style="${badgeStyle('#FDEDEE', '#E74C3C')}">🔴 Scaduti (${scaduti.length})</span>
+        <span data-cert="inScadenza" style="${badgeStyle('#FFF8E1', '#F39C12')}">🟡 In Scadenza (${inScadenza.length})</span>
+        <span data-cert="validi" style="${badgeStyle('#E8F8F0', '#27AE60')}">🟢 Validi (${validi.length})</span>
+        <span data-cert="mancanti" style="${badgeStyle('#F5F5F5', '#666')}">⚪ Mancanti (${mancanti.length})</span>
       </div>
       <div class="cert-detail" style="display:none;margin-top:16px;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
-          ${scaduti.length ? `<div style="background:#FDEDEE;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#E74C3C;margin-bottom:8px;">🔴 SCADUTI (${scaduti.length})</div>${playerList(scaduti, 'scaduti')}</div>` : ''}
-          ${inScadenza.length ? `<div style="background:#FFF8E1;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#F39C12;margin-bottom:8px;">🟡 IN SCADENZA (${inScadenza.length})</div>${playerList(inScadenza, 'inScadenza')}</div>` : ''}
-          ${validi.length ? `<div style="background:#E8F8F0;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#27AE60;margin-bottom:8px;">🟢 VALIDI (${validi.length})</div>${playerList(validi, 'validi')}</div>` : ''}
-          ${mancanti.length ? `<div style="background:#F5F5F5;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#666;margin-bottom:8px;">⚪ MANCANTI (${mancanti.length})</div>${playerList(mancanti, 'mancanti')}</div>` : ''}
+        <div class="cert-grid">
+          ${scaduti.length ? `<div data-cert-section="scaduti" style="background:#FDEDEE;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#E74C3C;margin-bottom:8px;">🔴 SCADUTI (${scaduti.length})</div>${playerList(scaduti, 'scaduti')}</div>` : ''}
+          ${inScadenza.length ? `<div data-cert-section="inScadenza" style="background:#FFF8E1;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#F39C12;margin-bottom:8px;">🟡 IN SCADENZA (${inScadenza.length})</div>${playerList(inScadenza, 'inScadenza')}</div>` : ''}
+          ${validi.length ? `<div data-cert-section="validi" style="background:#E8F8F0;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#27AE60;margin-bottom:8px;">🟢 VALIDI (${validi.length})</div>${playerList(validi, 'validi')}</div>` : ''}
+          ${mancanti.length ? `<div data-cert-section="mancanti" style="background:#F5F5F5;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#666;margin-bottom:8px;">⚪ MANCANTI (${mancanti.length})</div>${playerList(mancanti, 'mancanti')}</div>` : ''}
         </div>
       </div>
     </div>`;
@@ -98,13 +99,32 @@ export function bindCertificatiToggle(container) {
   const btn = container.querySelector('.cert-toggle-btn');
   const detail = container.querySelector('.cert-detail');
   if (!btn || !detail) return;
-  const toggle = () => {
+
+  // Bottone "Dettaglio": toggle tutte le sezioni
+  btn.addEventListener('click', () => {
     const open = detail.style.display !== 'none';
     detail.style.display = open ? 'none' : 'block';
     btn.textContent = open ? '▼ Dettaglio' : '▲ Nascondi';
-  };
-  btn.addEventListener('click', toggle);
-  container.querySelectorAll('.cert-card > div:nth-child(2) > span').forEach(badge => {
-    badge.addEventListener('click', toggle);
+    detail.querySelectorAll('[data-cert-section]').forEach(s => { s.style.display = ''; });
+  });
+
+  // Badge click: mostra solo quella sezione (toggle)
+  container.querySelectorAll('[data-cert]').forEach(badge => {
+    badge.addEventListener('click', () => {
+      const key = badge.getAttribute('data-cert');
+      const target = detail.querySelector(`[data-cert-section="${key}"]`);
+      if (!target) return;
+      const isOpen = detail.style.display !== 'none';
+      const isVisible = target.style.display !== 'none';
+      if (isOpen && isVisible) {
+        detail.style.display = 'none';
+        btn.textContent = '▼ Dettaglio';
+      } else {
+        detail.querySelectorAll('[data-cert-section]').forEach(s => { s.style.display = 'none'; });
+        target.style.display = '';
+        detail.style.display = 'block';
+        btn.textContent = '▲ Nascondi';
+      }
+    });
   });
 }

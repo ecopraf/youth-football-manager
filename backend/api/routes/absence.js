@@ -60,14 +60,15 @@ module.exports = function createAbsenceRouter({ supabase, authMiddleware }) {
     }
   });
 
-  // GET /api/absence/team/:teamId/week — assenze della settimana corrente (per convocazioni)
+  // GET /api/absence/team/:teamId/week — assenze della settimana (per convocazioni)
+  // ?date=YYYY-MM-DD → settimana relativa a quella data (default: oggi)
   router.get('/api/absence/team/:teamId/week', authMiddleware, async (req, res) => {
     try {
-      const now = new Date();
-      const day = now.getDay();
+      const ref = req.query.date ? new Date(req.query.date + 'T12:00:00') : new Date();
+      const day = ref.getDay();
       const diffToMon = day === 0 ? 6 : day - 1;
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - diffToMon);
+      const monday = new Date(ref);
+      monday.setDate(ref.getDate() - diffToMon);
       const mondayStr = monday.toISOString().slice(0, 10);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);

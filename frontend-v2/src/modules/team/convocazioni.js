@@ -12,11 +12,13 @@ export async function openConvocation(mid, readOnly) {
   let weekAbsences = [];
   let realAbsences = [];
   
+  const matchDate = match.data_ora ? match.data_ora.substring(0, 10) : '';
+
   [conv, gioc, weekAbsences, realAbsences] = await Promise.all([
     apiFetch('/partite/' + mid + '/convocazioni').catch(() => []),
     apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori'),
-    apiFetch('/absence/team/' + window.YFM.squadraId + '/week').catch(() => []),
-    apiFetch('/squadre/' + window.YFM.squadraId + '/assenze-settimana').catch(() => [])
+    apiFetch('/absence/team/' + window.YFM.squadraId + '/week' + (matchDate ? '?date=' + matchDate : '')).catch(() => []),
+    apiFetch('/squadre/' + window.YFM.squadraId + '/assenze-settimana' + (matchDate ? '?date=' + matchDate : '')).catch(() => [])
   ]);
 
   // Conta assenze REALI registrate dal mister (training_attendance)
@@ -27,7 +29,6 @@ export async function openConvocation(mid, readOnly) {
   });
 
   // Giocatori con assenza segnalata per la data esatta della partita → congelati
-  const matchDate = match.data_ora ? match.data_ora.substring(0, 10) : '';
   const absentForMatchIds = new Set(
     (weekAbsences || []).filter(a => a.data_allenamento === matchDate).map(a => a.player_id)
   );

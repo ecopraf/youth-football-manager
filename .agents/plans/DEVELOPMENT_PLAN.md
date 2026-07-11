@@ -575,6 +575,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.13 | fix: convocazioni assenze relative a settimana partita (non corrente), certificati medici responsive (1 colonna mobile, badge toggle singola sezione) |
+| v3.16.12 | fix: print mobile iOS/Android (afterprint cleanup), tipo_competizione default Amichevole, report (null) fix |
 | — | fix: migrazione stagione include infortunati + migra injury.team_id, dashboard card con semantica corretta (infortunati=indisponibili, assenze comunicate=assenti), badge convocazioni non duplicato |
 | — | feat: welcome card onboarding dismissable in dashboard, differenziata per profilo (allenatore/segreteria/dirigente/vice) |
 | — | fix: flusso convocazioni — pallino Pubblica ora giallo (visibile su sfondo viola), calendario e MC vincolati a pubblicazione effettiva (non solo salvataggio) |
