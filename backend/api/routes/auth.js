@@ -177,8 +177,17 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
   router.delete('/api/auth/users/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { error } = await supabase.from('users').update({ is_active: false }).eq('id', id);
-      if (error) return res.status(400).json({ error: error.message });
+      const hard = req.query.hard === 'true';
+      if (hard) {
+        if (!req.user.is_superadmin && req.user.ruolo !== 'admin') return res.status(403).json({ error: 'Solo admin può eliminare definitivamente' });
+        // Elimina guest_token collegati
+        await supabase.from('guest_token').delete().eq('utente_id', id);
+        const { error } = await supabase.from('users').delete().eq('id', id);
+        if (error) return res.status(400).json({ error: error.message });
+      } else {
+        const { error } = await supabase.from('users').update({ is_active: false }).eq('id', id);
+        if (error) return res.status(400).json({ error: error.message });
+      }
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });

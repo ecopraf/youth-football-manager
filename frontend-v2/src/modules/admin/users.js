@@ -44,23 +44,9 @@ export default async function loadUsers() {
       </div>
     </div>
     
-    <!-- Tabella utenti -->
-    <div class="card" style="overflow-x:auto;">
-      <div id="usersCount" style="font-size:13px;color:#666;margin-bottom:12px;"></div>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="border-bottom:2px solid #eee;">
-            <th style="text-align:left;padding:12px;font-size:13px;">Nome</th>
-            <th style="text-align:left;padding:12px;font-size:13px;">Email</th>
-            <th style="text-align:left;padding:12px;font-size:13px;">Profilo</th>
-            <th style="text-align:left;padding:12px;font-size:13px;">Categorie</th>
-            <th style="text-align:center;padding:12px;font-size:13px;">Stato</th>
-            <th style="text-align:right;padding:12px;font-size:13px;">Azioni</th>
-          </tr>
-        </thead>
-        <tbody id="usersTableBody"></tbody>
-      </table>
-    </div>
+    <!-- Lista utenti card -->
+    <div id="usersCount" style="font-size:13px;color:#666;margin-bottom:12px;"></div>
+    <div id="usersGrid" class="users-grid"></div>
     
     <!-- Modal Wizard 3 Step -->
     <div id="userModal" class="modal-overlay" style="display:none;">
@@ -134,15 +120,15 @@ export default async function loadUsers() {
               </div>
               
               <!-- Stagioni + Categorie affiancate -->
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;" class="user-modal-grid">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:start;" class="user-modal-grid-keep">
                 <div class="form-group" id="stagioniGroup">
                   <label>📅 Stagioni</label>
-                  <div id="stagioniCheckboxes" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;"></div>
+                  <div id="stagioniCheckboxes" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;align-items:flex-start;"></div>
                   <small style="color:#888;margin-top:6px;display:block;font-size:11px;">ℹ️ Nessuna = solo attiva</small>
                 </div>
                 <div class="form-group" id="categorieGroup">
                   <label>🏷️ Categorie</label>
-                  <div id="categorieCheckboxes" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;"></div>
+                  <div id="categorieCheckboxes" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;align-items:flex-start;"></div>
                   <small style="color:#888;margin-top:6px;display:block;font-size:11px;">ℹ️ Nessuna = tutte</small>
                 </div>
               </div>
@@ -153,8 +139,8 @@ export default async function loadUsers() {
                 <div id="capabilitiesGrid" style="display:grid;gap:8px;"></div>
               </div>
               
-              <div class="form-group" id="isActiveGroup" style="display:none;margin-top:16px;">
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="userIsActive" checked> Account attivo</label>
+              <div id="isActiveGroup" style="display:none;margin-top:16px;">
+                <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;color:#666;"><input type="checkbox" id="userIsActive" checked> Account attivo</label>
               </div>
               
               <input type="hidden" id="userId">
@@ -195,9 +181,35 @@ export default async function loadUsers() {
       .cap-toggle button.active-off { background:#f1f5f9;color:#999;border-color:#e2e8f0; }
       .cap-toggle button.active-read { background:#3b82f6;color:white;border-color:#3b82f6; }
       .cap-toggle button.active-write { background:#22c55e;color:white;border-color:#22c55e; }
-      .cat-checkbox { display:flex;align-items:center;gap:6px;padding:6px 10px;background:#f8f9fa;border-radius:8px;font-size:13px;cursor:pointer; }
+      .cat-checkbox { display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;cursor:pointer; }
       .cat-checkbox input { margin:0; }
-      @media(max-width:500px) { .user-modal-grid { grid-template-columns:1fr !important; } }
+      .users-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px; }
+      .user-card { background:white;border-radius:12px;padding:16px;border:1px solid #eee;transition:box-shadow .2s; }
+      .user-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+      .user-card.inactive { opacity:0.6; }
+      .uc-top { display:flex;align-items:center;gap:12px; }
+      .uc-avatar { width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;flex-shrink:0; }
+      .uc-info { flex:1;min-width:0; }
+      .uc-name { font-size:14px;font-weight:600;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+      .uc-email { font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+      .uc-actions { display:flex;gap:4px;flex-shrink:0; }
+      .uc-actions button { width:32px;height:32px;border:1px solid #eee;border-radius:8px;background:white;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .15s; }
+      .uc-actions button:hover { background:#f5f5f5; }
+      .uc-meta { display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center; }
+      .uc-badge { padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600; }
+      .uc-badge-profilo { background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe; }
+      .uc-badge-cat { background:#f0fdf4;color:#166534;border:1px solid #bbf7d0; }
+      .uc-badge-active { background:#E8F8F0;color:#27AE60; }
+      .uc-badge-suspended { background:#FDEDEE;color:#E74C3C; }
+      .uc-badge-you { background:#667eea;color:white; }
+      @media(max-width:500px) {
+        .user-modal-grid { grid-template-columns:1fr !important; }
+        .user-modal-grid-keep { grid-template-columns:1fr 1fr !important; }
+        .users-grid { grid-template-columns:1fr;gap:10px; }
+        .user-card { padding:14px; }
+        .cap-row { padding:6px 10px; }
+        .cap-toggle button { padding:4px 8px;font-size:12px; }
+      }
     </style>
   `;
 
@@ -541,50 +553,57 @@ function applyFilters() {
 
 function renderUsers(filteredUsers) {
   const list = filteredUsers || users;
-  const tbody = document.getElementById('usersTableBody');
-  if (!tbody) return;
+  const grid = document.getElementById('usersGrid');
+  if (!grid) return;
   
   const countEl = document.getElementById('usersCount');
   if (countEl) countEl.textContent = `${list.length} utent${list.length === 1 ? 'e' : 'i'}`;
   
   if (list.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#999;">Nessun utente trovato</td></tr>';
+    grid.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">Nessun utente trovato</div>';
     return;
   }
+
+  const avatarColors = ['#667eea','#764ba2','#E74C3C','#F39C12','#27AE60','#3498db','#8e44ad','#e67e22'];
   
-  tbody.innerHTML = list.map(user => {
+  grid.innerHTML = list.map((user, idx) => {
     const isCurrentUser = user.id === window.YFM.getUser()?.id;
-    const catAccesso = user.categorie_accesso || [];
-    const categorieText = catAccesso.length > 0 
-      ? catAccesso.map(id => categorie.find(c => c.id === id)?.nome || '?').join(', ')
-      : '<span style="color:#999;">Tutte</span>';
-    
     const isActive = user.is_active !== false;
-    const statusBadge = isActive 
-      ? '<span style="padding:3px 8px;border-radius:6px;font-size:11px;background:#E8F8F0;color:#27AE60;font-weight:600;">✅ Attivo</span>'
-      : '<span style="padding:3px 8px;border-radius:6px;font-size:11px;background:#FDEDEE;color:#E74C3C;font-weight:600;">🔒 Sospeso</span>';
+    const initials = ((user.nome?.[0] || '') + (user.cognome?.[0] || '')).toUpperCase() || '?';
+    const color = avatarColors[idx % avatarColors.length];
+    
+    const catAccesso = user.categorie_accesso || [];
+    const catNames = catAccesso.length > 0
+      ? catAccesso.map(id => categorie.find(c => c.id === id)?.nome || '?')
+      : [];
+    
+    const profiloLabel = getProfiloLabel(user);
     
     return `
-      <tr style="border-bottom:1px solid #eee;${!isActive ? 'opacity:0.6;' : ''}">
-        <td style="padding:12px;">
-          <strong>${user.nome} ${user.cognome || ''}</strong>
-          ${isCurrentUser ? '<span style="background:#667eea;color:white;padding:2px 6px;border-radius:4px;font-size:11px;margin-left:8px;">Tu</span>' : ''}
-        </td>
-        <td style="padding:12px;color:#666;font-size:13px;">${user.email}</td>
-        <td style="padding:12px;">
-          <span class="badge badge-${getProfiloBadge(user)}">${getProfiloLabel(user)}</span>
-          ${user.is_superadmin ? '<span class="badge" style="background:#9b59b6;color:white;margin-left:4px;">SA</span>' : ''}
-        </td>
-        <td style="padding:12px;font-size:13px;">${categorieText}</td>
-        <td style="padding:12px;text-align:center;">${statusBadge}</td>
-        <td style="padding:12px;text-align:right;white-space:nowrap;">
-          ${!isCurrentUser ? `
-            <button class="btn btn-small" onclick="window._editUser('${user.id}')" title="Modifica" style="padding:4px 8px;">✏️</button>
-            <button class="btn btn-small" onclick="window._toggleUser('${user.id}')" title="${isActive ? 'Sospendi' : 'Riattiva'}" style="padding:4px 8px;margin-left:4px;background:${isActive ? '#FFF8E1' : '#E8F8F0'};border:1px solid ${isActive ? '#F39C12' : '#27AE60'};">${isActive ? '🔒' : '🔓'}</button>
-            <button class="btn btn-small btn-danger" onclick="window._deleteUser('${user.id}')" title="Elimina" style="padding:4px 8px;margin-left:4px;">🗑️</button>
-          ` : ''}
-        </td>
-      </tr>
+      <div class="user-card${!isActive ? ' inactive' : ''}">
+        <div class="uc-top">
+          <div class="uc-avatar" style="background:${color};">${initials}</div>
+          <div class="uc-info">
+            <div class="uc-name">${user.nome} ${user.cognome || ''}</div>
+            <div class="uc-email">${user.email}</div>
+          </div>
+          <div class="uc-actions">
+            ${!isCurrentUser ? `
+              <button onclick="window._editUser('${user.id}')" title="Modifica">✏️</button>
+              <button onclick="window._toggleUser('${user.id}')" title="${isActive ? 'Sospendi' : 'Riattiva'}">${isActive ? '🔒' : '🔓'}</button>
+              <button onclick="window._deleteUser('${user.id}')" title="Elimina">🗑️</button>
+            ` : ''}
+          </div>
+        </div>
+        <div class="uc-meta">
+          <span class="uc-badge uc-badge-profilo">${profiloLabel}</span>
+          ${catNames.map(n => `<span class="uc-badge uc-badge-cat">${n}</span>`).join('')}
+          ${!catNames.length ? '<span class="uc-badge uc-badge-cat">Tutte</span>' : ''}
+          <span class="uc-badge ${isActive ? 'uc-badge-active' : 'uc-badge-suspended'}">${isActive ? '✅ Attivo' : '🔒 Sospeso'}</span>
+          ${isCurrentUser ? '<span class="uc-badge uc-badge-you">Tu</span>' : ''}
+          ${user.is_superadmin ? '<span class="uc-badge" style="background:#9b59b6;color:white;">SA</span>' : ''}
+        </div>
+      </div>
     `;
   }).join('');
   
@@ -596,9 +615,9 @@ function renderUsers(filteredUsers) {
     } catch (err) { alert('Errore: ' + err.message); }
   };
   window._deleteUser = async (id) => {
-    if (!await confirm('Eliminare definitivamente questo utente?')) return;
+    if (!confirm('ELIMINAZIONE DEFINITIVA: l\'utente verrà rimosso permanentemente dal database. Continuare?')) return;
     try {
-      await apiFetch(`/auth/users/${id}`, { method: 'DELETE' });
+      await apiFetch(`/auth/users/${id}?hard=true`, { method: 'DELETE' });
       await loadData();
     } catch (err) { alert('Errore: ' + err.message); }
   };
