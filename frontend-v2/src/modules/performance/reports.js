@@ -165,7 +165,7 @@ async function loadMatchList() {
     select.innerHTML = '<option value="">-- Seleziona una partita --</option>' +
       giocate.sort((a,b) => new Date(b.data_ora) - new Date(a.data_ora)).map(p => {
         const data = formatDateShort(p.data_ora);
-        return `<option value="${p.id}">✅ ${data} - ${p.avversario} (${p.competizione})</option>`;
+        return `<option value="${p.id}">✅ ${data} - ${p.avversario} (${p.competizione || 'Amichevole'})</option>`;
       }).join('');
     
     document.getElementById('btnGenerateReport').disabled = false;
@@ -215,7 +215,7 @@ function renderReport(report) {
         <div style="flex:1;text-align:center;">
           <h1 style="margin:0 0 4px 0;font-size:22px;">${report.societa} vs ${report.partita.avversario}</h1>
           <p style="margin:0;color:#666;font-size:13px;">
-            ${formatDate(report.partita.dataOra)} · ${report.partita.competizione}
+            ${formatDate(report.partita.dataOra)}${report.partita.competizione ? ' · ' + report.partita.competizione : ''}
             ${report.partita.giornata ? ' · Giornata ' + report.partita.giornata : ''}
             ${report.partita.luogo ? (report.partita.luogo.toLowerCase().includes('casa') ? '(Casa)' : '(Trasferta)') : ''}
           </p>

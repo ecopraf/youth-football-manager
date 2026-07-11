@@ -69,7 +69,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
   router.post('/api/squadre/:squadraId/partite', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
     try {
       const p = req.body;
-      const { data } = await supabase.from('match').insert({ team_id: req.params.squadraId, data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, tipo_competizione: p.tipoCompetizione || null, giornata: p.giornata }).select().single();
+      const { data } = await supabase.from('match').insert({ team_id: req.params.squadraId, data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, tipo_competizione: p.tipoCompetizione || 'Amichevole', giornata: p.giornata }).select().single();
       res.status(201).json(data);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
@@ -78,7 +78,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     try {
       const p = req.body;
       const updateData = { data_ora: p.dataOra, avversario: p.avversario, luogo: p.luogo, giornata: p.giornata };
-      if (p.tipoCompetizione !== undefined) updateData.tipo_competizione = p.tipoCompetizione || null;
+      if (p.tipoCompetizione !== undefined) updateData.tipo_competizione = p.tipoCompetizione || 'Amichevole';
       if (p.noteAvversario !== undefined) updateData.note_avversario = p.noteAvversario;
       if (p.golCasa !== undefined) updateData.gol_casa = p.golCasa;
       if (p.golOspite !== undefined) updateData.gol_ospite = p.golOspite;
@@ -606,7 +606,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         const dataOra = new Date(`${data}T${ora || '15:00'}:00`).toISOString();
         const { error } = await supabase.from('match').insert({
           team_id: req.params.squadraId, data_ora: dataOra, avversario: avversario || 'Avversario',
-          luogo: luogo || 'Casa', tipo_competizione: competizione || null, giornata: parseInt(giornata) || null
+          luogo: luogo || 'Casa', tipo_competizione: competizione || 'Amichevole', giornata: parseInt(giornata) || null
         });
         if (!error) inserite++;
       }

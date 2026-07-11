@@ -25,7 +25,8 @@ export function printHTML(html, title) {
   style.textContent = `
     @media print {
       body > *:not(#${PRINT_CONTAINER_ID}) { display: none !important; }
-      #${PRINT_CONTAINER_ID} { display: block !important; position: absolute; top: 0; left: 0; width: 100%; padding: 0; margin: 0; }
+      #${PRINT_CONTAINER_ID} { display: block !important; position: absolute; top: 0; left: 0; width: 100%; padding: 0; margin: 0; font-size: initial; line-height: normal; }
+      body { padding: 0 !important; margin: 0 !important; }
       ${mobileScale}
     }
     #${PRINT_CONTAINER_ID} { display: none; }
@@ -42,13 +43,15 @@ export function printHTML(html, title) {
   const origTitle = document.title;
   if (title) document.title = title;
 
-  // Stampa
-  window.print();
-
-  // Cleanup
-  setTimeout(() => {
+  // Cleanup solo dopo che il dialogo stampa è chiuso
+  const cleanup = () => {
+    window.removeEventListener('afterprint', cleanup);
     document.title = origTitle;
     container.remove();
     style.remove();
-  }, 500);
+  };
+  window.addEventListener('afterprint', cleanup);
+
+  // Stampa
+  window.print();
 }

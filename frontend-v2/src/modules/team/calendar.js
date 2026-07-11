@@ -729,7 +729,7 @@ export async function openMatchForm(mid) {
   const compType = document.getElementById('mfC').value;
   const torneoValue = document.getElementById('mfTorneo')?.value?.trim() || '';
   // Risolvi tipo → nome competizione
-  let tipoCompetizione = null;
+  let tipoCompetizione = 'Amichevole';
   if (compType === 'campionato') tipoCompetizione = 'Campionato';
   else if (compType === 'coppa') tipoCompetizione = 'Coppa';
   else if (compType === 'torneo') tipoCompetizione = torneoValue || 'Torneo';

@@ -15,7 +15,7 @@ function createImportConfirmRouter({ supabase, authMiddleware, requirePermission
       const { squadraId, partite, importResults, archiveCompleted, competizione, importEvents, importFormations, teamName } = req.body;
       if (!squadraId || !partite || !partite.length) return res.status(400).json({ error: 'Dati mancanti' });
 
-      let tipoComp = competizione || null;
+      let tipoComp = competizione || 'Amichevole';
 
       let roster = [];
       if (importEvents) {
