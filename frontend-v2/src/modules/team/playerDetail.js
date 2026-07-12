@@ -40,8 +40,18 @@ export async function loadPlayerDetail(container, playerId) {
       injuries = [];
     }
 
+    let fees = [];
+    const canSeeFees = window.YFM.canRead('club_operations') || window.YFM.getUser()?.ruolo === 'admin' || window.YFM.getUser()?.is_superadmin;
+    if (canSeeFees) {
+      try {
+        fees = await apiFetch('/fees?player_id=' + playerId + '&team_id=' + window.YFM.squadraId);
+      } catch (e) {
+        fees = [];
+      }
+    }
+
     hideLoading();
-    renderPlayerDetail(container, { player, career, valutazioni, injuries });
+    renderPlayerDetail(container, { player, career, valutazioni, injuries, fees });
   } catch (e) {
     console.error(e);
     hideLoading();
@@ -50,7 +60,7 @@ export async function loadPlayerDetail(container, playerId) {
 }
 
 function renderPlayerDetail(container, data) {
-  const { player, career, valutazioni, injuries } = data;
+  const { player, career, valutazioni, injuries, fees } = data;
 
   if (!player) {
     container.innerHTML = '<div class="error-box">Giocatore non trovato.</div>';
@@ -381,6 +391,7 @@ function renderPlayerDetail(container, data) {
 
     ${valutazioniSection}
     ${injuriesSection}
+    <div id="feesSection"></div>
     ${careerSection}
   `;
 
@@ -389,6 +400,9 @@ function renderPlayerDetail(container, data) {
     if (window.YFM?.navigateTo) window.YFM.navigateTo('roster');
     else if (window.navigateTo) window.navigateTo('roster');
   });
+
+  // Render sezione quote economiche
+  renderFeesSection(document.getElementById('feesSection'), fees, player, isAdmin);
 
   // Fascia inline edit
   const fasciaField = document.getElementById('fasciaField');
@@ -884,4 +898,43 @@ export function loadNewPlayerForm(container) {
       hideLoading();
     }
   });
+}
+
+function renderFeesSection(el, fees, player, isAdmin) {
+  if (!el) return;
+  const STATI_COLORS = { da_pagare: '#E74C3C', parziale: '#F39C12', pagata: '#27AE60' };
+  const STATI_LABELS = { da_pagare: 'Da pagare', parziale: 'Parziale', pagata: 'Pagata' };
+
+  const totDovuto = fees.reduce((s, f) => s + parseFloat(f.importo_totale), 0);
+  const totPagato = fees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato === 'pagata').reduce((ps, i) => ps + parseFloat(i.importo), 0), 0);
+  const totResiduo = totDovuto - totPagato;
+
+  el.innerHTML = `
+    <div class="card" style="margin-top:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 class="section-title" style="margin:0;">💰 Situazione Economica</h3>
+      </div>
+      ${fees.length > 0 ? `
+      <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="padding:8px 14px;background:#f0fdf4;border-radius:8px;font-size:12px;">Totale: <strong>€${totDovuto.toFixed(2)}</strong></div>
+        <div style="padding:8px 14px;background:#eef2ff;border-radius:8px;font-size:12px;">Pagato: <strong>€${totPagato.toFixed(2)}</strong></div>
+        ${totResiduo > 0 ? `<div style="padding:8px 14px;background:#fef2f2;border-radius:8px;font-size:12px;">Residuo: <strong style="color:#E74C3C;">€${totResiduo.toFixed(2)}</strong></div>` : ''}
+      </div>
+      ${fees.map(f => {
+        const insts = (f.fee_installment || []).sort((a, b) => a.numero_rata - b.numero_rata);
+        const color = STATI_COLORS[f.stato] || '#888';
+        return `<div style="margin-bottom:12px;padding:12px;background:#fafafa;border-radius:10px;border:1px solid #eee;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-weight:600;font-size:13px;">€${parseFloat(f.importo_totale).toFixed(2)}</span>
+            <span style="padding:3px 8px;border-radius:8px;font-size:10px;background:${color}20;color:${color};">${STATI_LABELS[f.stato] || f.stato}</span>
+          </div>
+          <div style="display:grid;gap:4px;">
+            ${insts.map(inst => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:${inst.stato === 'pagata' ? '#f0fdf4' : 'white'};border-radius:6px;font-size:12px;">
+              <span>${inst.scadenza_label || 'Rata ' + inst.numero_rata}${inst.scadenza ? ' <span style="color:#888;">(' + new Date(inst.scadenza).toLocaleDateString('it-IT') + ')</span>' : ''}</span>
+              <span style="font-weight:500;">${inst.stato === 'pagata' ? '✅' : '⬜'} €${parseFloat(inst.importo).toFixed(2)}</span>
+            </div>`).join('')}
+          </div>
+        </div>`;
+      }).join('')}` : '<p style="color:var(--gray);font-size:13px;">Nessuna quota registrata.</p>'}
+    </div>`;
 }

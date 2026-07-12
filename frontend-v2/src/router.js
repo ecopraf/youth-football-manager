@@ -37,7 +37,8 @@ export function initRouter() {
     printReport: () => import('./modules/print/printReport.js'),
     printPresenze: () => import('./modules/print/printPresenze.js'),
     printRosa: () => import('./modules/print/printRosa.js'),
-    printScadenze: () => import('./modules/print/printScadenzeMediche.js')
+    printScadenze: () => import('./modules/print/printScadenzeMediche.js'),
+    fees: () => import('./modules/club/fees.js')
   };
 
   window.YFM.isAuthenticated = function() {

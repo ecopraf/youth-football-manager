@@ -16,9 +16,18 @@ All'inizio di ogni nuova conversazione, l'agente DEVE leggere i seguenti file pe
 
 1. **`.agents/plans/DEVELOPMENT_PLAN.md`** — ⭐ FONTE DI VERITÀ: stato, task, priorità, dipendenze
 2. **`backend/.env`** — Credenziali DB, Supabase, JWT
-3. **`.agents/AGENTS.md`** — Entry point, schema DB, comandi, workflow
+3. **`.agents/AGENTS.md`** — Entry point, schema DB, comandi, workflow, **global state frontend**
 
 Solo dopo aver letto questi file l'agente può procedere con il task richiesto dall'utente.
+
+### Checklist pre-implementazione (OBBLIGATORIA)
+
+Prima di scrivere QUALSIASI codice frontend, verificare:
+- [ ] Quali variabili `window.YFM.*` servono? (consultare sezione "Frontend Global State" in AGENTS.md)
+- [ ] L'endpoint backend esiste già? (consultare sezione "Backend Files" in AGENTS.md)
+- [ ] Le tabelle DB esistono? (consultare DATABASE_SCHEMA.md)
+- [ ] Il modulo è registrato nel router? (consultare `router.js`)
+- [ ] La sidebar ha la voce? (consultare `sidebarNav.js`)
 
 ## Workflow Micro-Task
 
@@ -146,6 +155,9 @@ Dopo ogni task completato, l'agente DEVE aggiornare:
    - Nuove dipendenze (package.json)
    - Nuove tabelle o colonne rilevanti nel DB
    - Cambiamenti architetturali (auth flow, deploy, ecc.)
+   - **Nuove variabili `window.YFM.*` o helper functions** → aggiornare sezione "Frontend Global State"
+   - **Rinomina/rimozione variabili globali** → aggiornare tabella "Errori comuni da evitare"
+   - **Nuove tabelle nella gerarchia dati** → aggiornare albero "Gerarchia dati (DB → Frontend)"
 
 > ⚠️ I file `PROJECT_STATUS.md` e `.agents/knowledge/ROADMAP.md` sono deprecati.
 > La fonte di verità unica è `DEVELOPMENT_PLAN.md`.

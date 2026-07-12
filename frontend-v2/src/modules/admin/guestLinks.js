@@ -69,8 +69,8 @@ export default async function loadGuestLinks() {
           <div class="form-group">
             <label>Tipo di accesso *</label>
             <select id="linkTipo" required>
-              <option value="atleta">🏃 Atleta</option>
-              <option value="genitore">👨👩👧 Genitore</option>
+              <option value="atleta">👨👩👦 Famiglia</option>
+              <option value="genitore">👋 Ospite</option>
             </select>
           </div>
           
@@ -298,7 +298,7 @@ function renderTokens() {
             : '<span style="display:inline-flex;align-items:center;gap:4px;color:#27AE60;font-size:12px;font-weight:600;">🟢 Attivo</span>'}
         </td>
         <td style="padding:12px;">
-          ${t.tipo === 'atleta' ? '🏃 Atleta' : '👨👩👧 Genitore'}
+          ${t.tipo === 'atleta' ? '👨👩👦 Famiglia' : '👋 Ospite'}
         </td>
         <td style="padding:12px;font-size:13px;">
           ${playerName !== '-' ? `<strong>${playerName}</strong>` : '-'}
@@ -493,7 +493,7 @@ async function handleBatchGenerate() {
   }
   const teamId = window.YFM.squadraId;
   if (!teamId) { alert('Seleziona una squadra'); return; }
-  if (!await confirm(`Generare link atleta per tutti i giocatori attivi della rosa?\nI giocatori che hanno già un link valido verranno saltati.`)) return;
+  if (!await confirm(`Generare link famiglia per tutti i giocatori attivi della rosa?\nI giocatori che hanno già un link valido verranno saltati.`)) return;
 
   const user = window.YFM.getUser() || {};
   let categorie_accesso = [];

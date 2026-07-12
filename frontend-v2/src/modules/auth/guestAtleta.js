@@ -20,13 +20,14 @@ export default async function loadGuestAtleta() {
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
 
   try {
-    const [notifications, matches, trainings, stats, motivi, absences] = await Promise.all([
+    const [notifications, matches, trainings, stats, motivi, absences, fees] = await Promise.all([
       apiFetch(`/notifications/team/${teamId}?destinatario_tipo=atleta`).catch(() => []),
       apiFetch(`/squadre/${teamId}/partite`).catch(() => []),
       apiFetch(`/squadre/${teamId}/allenamenti-futuri`).catch(() => []),
       apiFetch(`/statistiche/giocatore/${playerId}?team_id=${teamId}`).catch(() => null),
       apiFetch('/absence/motivi').catch(() => ['Infortunio', 'Malattia', 'Impegni scolastici', 'Motivi familiari', 'Altro']),
-      apiFetch(`/absence/player/${playerId}`).catch(() => [])
+      apiFetch(`/absence/player/${playerId}`).catch(() => []),
+      apiFetch(`/fees?player_id=${playerId}&team_id=${teamId}`).catch(() => [])
     ]);
 
     // Fetch convocazione per prossima partita
@@ -50,13 +51,13 @@ export default async function loadGuestAtleta() {
     const absDates = (absences || []).map(a => a.data_allenamento).filter(Boolean);
     sessionStorage.setItem('yfm_abs_dates', JSON.stringify(absDates));
 
-    render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished });
+    render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished, fees });
   } catch (e) {
     c.innerHTML = `<div class="error-box">Errore: ${e.message}</div>`;
   }
 }
 
-function render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished }) {
+function render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished, fees }) {
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
   const absDates = new Set(JSON.parse(sessionStorage.getItem('yfm_abs_dates') || '[]'));
@@ -99,8 +100,7 @@ function render(c, { playerName, playerId, teamId, notifications, matches, train
 
   // Header
   html += `<div class="ga-header">
-    <h1>👋 Ciao ${playerName.split(' ')[0]}!</h1>
-    <p>Il tuo spazio personale</p>
+    <p>Benvenuto nell'area riservata. Qui trovi convocazioni, comunicazioni e situazione quote.</p>
   </div>`;
 
   // Notifiche — card sempre visibile
@@ -181,6 +181,33 @@ function render(c, { playerName, playerId, teamId, notifications, matches, train
         ${statBadge('📋', 'Presenze', s.presenze || s.appearances || 0)}
         ${statBadge('🟡', 'Amm.', s.ammonizioni || s.yellow_cards || 0)}
         ${statBadge('⏱️', 'Minuti', s.minuti || s.minutes || 0)}
+      </div>
+    </div>`;
+  }
+
+  // Situazione Quote
+  if (fees && fees.length > 0) {
+    const allInstallments = fees.flatMap(f => f.fee_installment || []);
+    const today = new Date().toISOString().slice(0, 10);
+    const pagate = allInstallments.filter(i => i.stato === 'pagata');
+    const scadute = allInstallments.filter(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < today);
+    const totale = allInstallments.reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
+    const pagato = pagate.reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
+    html += `<div class="ga-section">
+      <div class="ga-section-title">💰 Situazione Quote</div>
+      <div style="font-size:13px;color:#333;margin-bottom:8px;">Pagato: <strong>€${pagato.toFixed(0)}</strong> / €${totale.toFixed(0)}</div>
+      ${scadute.length > 0 ? `<div style="font-size:12px;color:#E74C3C;font-weight:600;">⚠️ ${scadute.length} rat${scadute.length === 1 ? 'a scaduta' : 'e scadute'}</div>` : ''}
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px;">
+        ${allInstallments.sort((a, b) => (a.numero_rata || 0) - (b.numero_rata || 0)).map(i => {
+          const isPagata = i.stato === 'pagata';
+          const scad = i.scadenza ? new Date(i.scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) : '';
+          const isScaduta = !isPagata && i.scadenza && i.scadenza.slice(0, 10) < today;
+          const label = i.scadenza_label || `Rata ${i.numero_rata}`;
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:8px;background:${isPagata ? '#d1fae5' : isScaduta ? '#fee2e2' : '#f8f9fa'};font-size:12px;">
+            <span>${isPagata ? '✅' : isScaduta ? '⚠️' : '⬜'} ${label} — €${parseFloat(i.importo || 0).toFixed(0)}</span>
+            <span style="color:#888;">${scad}</span>
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
   }

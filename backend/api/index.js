@@ -216,6 +216,9 @@ app.use(createAbsenceRouter({ supabase, authMiddleware }));
 const createNotificationRouter = require('./routes/notification');
 app.use(createNotificationRouter({ supabase, authMiddleware }));
 
+const createFeesRouter = require('./routes/fees');
+app.use(createFeesRouter({ supabase, authMiddleware }));
+
 const createDashboardRouter = require('./routes/dashboard');
 app.use(createDashboardRouter({ supabase, authMiddleware }));
 

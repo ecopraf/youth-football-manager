@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 18 Luglio 2026 | Versione: v3.16 | Build: v3.16.41
+> Ultimo aggiornamento: 18 Luglio 2026 | Versione: v3.16 | Build: v3.16.43
 
 ---
 
@@ -816,6 +816,56 @@
 | Primo accesso | Stagione più recente tra quelle assegnate + prima categoria |
 | Legacy (no stagioni_accesso) | Stagione più recente del workspace |
 
+### EPIC 19: PWA Guest — Installazione App + Notifiche Push
+
+> Permettere alle famiglie (link guest atleta) di installare l'app come PWA e ricevere notifiche push per convocazioni, comunicazioni e scadenze quote.
+
+**Valore**: Le famiglie non devono ricordarsi di aprire il link — ricevono push automatiche. Differenziatore forte rispetto a gruppi WhatsApp.
+
+**Prerequisiti**: EPIC 12 completato (quote visibili nel guest), EPIC 11 completato (infrastruttura guest).
+
+#### Fase 1: Token Refresh & Persistenza Sessione (~2h)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 19.1 | Estendere durata JWT guest da 24h a 30 giorni (o implementare refresh token silenzioso) | ⬜ | — | routes/auth.js | ~15min |
+| 19.2 | Frontend: auto-refresh JWT guest prima della scadenza (intercettore 401 → re-auth con token originale) | ⬜ | 19.1 | services/api.js | ~30min |
+| 19.3 | Banner "Installa App" per guest su mobile (beforeinstallprompt + fallback istruzioni iOS) | ⬜ | — | modules/auth/guestAtleta.js | ~30min |
+| 19.4 | Persistenza: salvare token guest in localStorage, auto-login al riapertura PWA | ⬜ | 19.1 | modules/auth/guest.js | ~30min |
+
+#### Fase 2: Push Subscription (~2h30)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 19.5 | Generare VAPID keys e salvarle in env backend | ⬜ | — | .env, config | ~10min |
+| 19.6 | Tabella DB `push_subscription` (id, user_id, guest_token_id, endpoint, keys_p256dh, keys_auth, created_at) | ⬜ | 19.5 | migration SQL | ~10min |
+| 19.7 | Endpoint POST `/api/push/subscribe` — salva subscription (auth: user o guest) | ⬜ | 19.6 | routes/push.js (nuovo) | ~20min |
+| 19.8 | Endpoint DELETE `/api/push/unsubscribe` — rimuove subscription | ⬜ | 19.7 | routes/push.js | ~10min |
+| 19.9 | Frontend: richiedere permesso notifiche dopo login guest + registrare subscription | ⬜ | 19.7 | modules/auth/guestAtleta.js | ~30min |
+| 19.10 | Service Worker: gestire evento `push` → mostrare notifica nativa con titolo/body/icon | ⬜ | 19.9 | sw.js / service-worker.js | ~30min |
+| 19.11 | Service Worker: gestire `notificationclick` → aprire app sulla pagina corretta | ⬜ | 19.10 | sw.js | ~20min |
+
+#### Fase 3: Invio Push dal Backend (~2h)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 19.12 | Helper `sendPush(subscriptions, payload)` con web-push library | ⬜ | 19.5 | helpers/push.js (nuovo) | ~20min |
+| 19.13 | Trigger push su pubblicazione convocazione → invia a tutti i guest del team | ⬜ | 19.12 | routes/match.js o convocazioni | ~20min |
+| 19.14 | Trigger push su nuova comunicazione (notification tipo=avviso) → invia a guest destinatari | ⬜ | 19.12 | routes/notifications.js | ~20min |
+| 19.15 | Trigger push su scadenza quota (check-scadenze) → invia a guest del player | ⬜ | 19.12 | routes/fees.js | ~20min |
+| 19.16 | Gestione subscription scadute/invalide: rimuovere su errore 410 Gone | ⬜ | 19.12 | helpers/push.js | ~15min |
+
+#### Fase 4: Testing & Polish (~1h30)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 19.17 | Test iOS Safari 16.4+ (PWA installata, push permission) | ⬜ | 19.10 | — | ~30min |
+| 19.18 | Test Android Chrome (install prompt, push) | ⬜ | 19.10 | — | ~20min |
+| 19.19 | Preferenze notifiche guest: toggle on/off per tipo (convocazioni, comunicazioni, quote) | ⬜ | 19.9 | modules/auth/guestAtleta.js | ~30min |
+| 19.20 | Badge icona app con conteggio notifiche non lette (navigator.setAppBadge) | ⬜ | 19.10 | sw.js | ~10min |
+
+**Effort totale**: ~8h | **Priorità**: Post-EPIC 12 | **Dipendenze**: EPIC 11 ✅, EPIC 12
+
 ---
 
 ## 4. Dipendenze tra Epic
@@ -836,6 +886,7 @@ EPIC 15 (PWA Offline-First) ──→ nessuna dipendenza (usa infrastruttura PWA
 EPIC 16 (Print Center) ──→ nessuna dipendenza (riusa endpoint e logica stampa esistenti)
 EPIC 17 (Piano Gara) ──→ nessuna dipendenza (usa Match Center e rosa esistenti)
 EPIC 18 (Refactoring Stagioni) ──→ nessuna dipendenza (refactoring logica esistente)
+EPIC 19 (PWA Guest Push) ──→ dipende da EPIC 11 (guest infrastruttura) + EPIC 12 (quote visibili)
 ```
 
 Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
@@ -854,6 +905,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 13. **EPIC 7** (tornei, 37min) → nice-to-have
 14. **EPIC 12** (club operations, ~10h) → valore società, post-EPIC 11
 15. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno, bassa priorità
+16. **EPIC 19** (PWA Guest Push, ~8h) → engagement famiglie, post-EPIC 12
 
 ---
 
@@ -886,7 +938,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
-| v3.16.41 | fix: staff page — filtro per categoria selezionata (non tutta la stagione), endpoint unificato (3→1 API call), import TC assegna staff al team corrente + gestisce staff esistenti non assegnati, ordinamento categorie per nome in pagina Stagioni |
+| v3.16.42 | feat: EPIC 12 guest UX — link Ospite senza comunicazioni, link Famiglia con sezione 💰 Situazione Quote (rate pagate/scadute), header semplificato (rimosso titolo, solo messaggio benvenuto). Fix nomi colonne fee_installment (stato/scadenza) |
 | v3.16.34 | feat: EPIC 3 Certificati Medici — badge "⚠️ Cert. scaduto" / "⏳ Cert. in scadenza" nelle convocazioni + banner riepilogativo se ≥1 convocato ha certificato scaduto/mancante |
 | v3.16.33 | fix: guest header — rimosso selettore squadra/stagione, avatar con logout (atleta: iniziali, genitore: G), fix loadSquadre per guest con workspaceInfo |
 | v3.16.32 | fix: aggiorna card dashboard in tempo reale dopo salvataggio convocazioni (refreshDashConvCards), data-conv-stato/alert attributes |
@@ -959,7 +1011,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 - Se un task supera 15min → spezzarlo in sotto-task
 
 ### Aggiungere nuovi EPIC
-- Il numero EPIC è **progressivo** (prossimo: EPIC 19)
+- Il numero EPIC è **progressivo** (prossimo: EPIC 20)
 - Inserire SEMPRE in ordine numerico nella sezione "3. Epics & Micro-Task"
 - Mai inserire un EPIC tra due esistenti con numero inferiore/superiore (es. non mettere EPIC 19 tra EPIC 4 e EPIC 6)
 - Aggiornare la sezione "4. Dipendenze tra Epic" se il nuovo EPIC ha dipendenze

@@ -561,6 +561,91 @@ Il sistema supporta **multi-tenant**: ogni workspace è una società sportiva is
 
 ---
 
+## 🌐 Frontend Global State (`window.YFM`)
+
+Tutte le variabili globali disponibili nel frontend dopo il login e la selezione squadra.
+
+### Stato corrente (settato in `modules/team/squadre.js`)
+
+| Variabile | Tipo | Descrizione | Quando disponibile |
+|-----------|------|-------------|--------------------|
+| `window.YFM.squadraId` | UUID | `team.id` della squadra selezionata | Dopo selezione squadra |
+| `window.YFM.currentSeasonId` | UUID | `season.id` della stagione corrente | Dopo selezione squadra |
+| `window.YFM.accessibleSeasons` | Array | Stagioni accessibili all'utente | Dopo selezione squadra |
+| `window.YFM.allSquadre` | Array | Tutte le squadre della stagione | Dopo selezione squadra |
+
+### Workspace (settato in `main.js` / `modules/auth/login.js`)
+
+| Variabile | Tipo | Descrizione |
+|-----------|------|-------------|
+| `window.YFM.activeWorkspaceId` | UUID | `workspace.id` corrente |
+| `window.YFM.workspaceInfo` | Object | `{id, nome, logo, societa_nome, ...}` |
+
+### Helper functions (definite in `main.js`)
+
+| Funzione | Ritorna | Uso |
+|----------|---------|-----|
+| `window.YFM.getUser()` | Object | Utente corrente (da localStorage) |
+| `window.YFM.getSquadra()` | Object | Oggetto squadra corrente da `allSquadre` |
+| `window.YFM.getSquadraName()` | String | Nome squadra (categoria) |
+| `window.YFM.getSocietaName()` | String | Nome società (workspace) |
+| `window.YFM.getWorkspaceLogo()` | String | URL logo workspace |
+| `window.YFM.canRead(modulo)` | Boolean | Ha capability `read` sul modulo |
+| `window.YFM.canWrite(modulo)` | Boolean | Ha capability `write` sul modulo |
+| `window.YFM.isAuthenticated()` | Boolean | Token valido e non scaduto |
+| `window.YFM.navigateTo(page, params)` | void | Naviga a pagina con parametri |
+| `window.YFM.hasAccessToSquadra(id)` | Boolean | Utente ha accesso a quella categoria |
+
+### Guest state (settato in `modules/auth/guest.js`)
+
+| Variabile | Tipo | Descrizione |
+|-----------|------|-------------|
+| `window.YFM.guestToken` | String | Token guest corrente |
+| `window.YFM.guestTeamId` | UUID | team_id per guest (auto-selezionato) |
+| `window.YFM.guestPlayerId` | UUID | player_id (solo tipo atleta) |
+| `window.YFM.guestPlayerName` | String | Nome giocatore (solo tipo atleta) |
+| `window.YFM.guestSquadreAccesso` | Array | category_id accessibili |
+
+### ⚠️ Errori comuni da evitare
+
+| ❌ Sbagliato | ✅ Corretto | Note |
+|---|---|---|
+| `window.YFM.stagioneId` | `window.YFM.currentSeasonId` | `stagioneId` NON ESISTE |
+| `window.YFM.seasonId` | `window.YFM.currentSeasonId` | Usare sempre `currentSeasonId` |
+| `window.YFM.teamId` | `window.YFM.squadraId` | Il campo si chiama `squadraId` |
+| `window.YFM.workspaceId` | `window.YFM.activeWorkspaceId` | Prefisso `active` |
+| `window.YFM.user` | `window.YFM.getUser()` | È una funzione, non una proprietà |
+
+### 🔄 Aggiornamento obbligatorio
+
+Questa sezione DEVE essere aggiornata quando:
+- Si aggiunge una nuova variabile a `window.YFM.*`
+- Si aggiunge/modifica una helper function globale
+- Si cambia il nome o il comportamento di una variabile esistente
+- Si introduce un nuovo flusso di inizializzazione (es. nuovo tipo di login/guest)
+- Si aggiunge una nuova tabella DB che entra nella gerarchia dati
+
+### Gerarchia dati (DB → Frontend)
+
+```
+workspace (società)
+ └── season (stagione: 2024-25)
+      └── category (Under 15, Under 16...)
+           └── team (squadra = category + season)
+                ├── team_player (rosa: player + team)
+                ├── match (partite)
+                ├── training (allenamenti)
+                ├── fee (quote economiche)
+                └── team_staff (staff assegnato)
+```
+
+- `window.YFM.squadraId` = `team.id` (NON `category.id`)
+- `window.YFM.currentSeasonId` = `season.id`
+- Per filtrare dati per squadra+stagione: usare `team_id` (che già implica la stagione)
+- Per filtrare dati cross-stagione: usare `player_id` + `season_id`
+
+---
+
 ## Convenzioni API
 
 ### Risposte

@@ -550,9 +550,10 @@ export default async function loadDashboard() {
     renderTopSectionGlass('🏃 Top 3 Presenze (min.)', (top.presenze || []).slice(0, 3), 'presenze') +
     '</div></div>' +
     '<div data-widget="results"><div class="result-card" data-help="dashboard.risultati"><h2 style="margin:0 0 14px 0;font-size:15px;font-weight:600;color:#333;">📋 Ultimi Risultati</h2>' + renderResults() + '</div></div>' +
-    '<div data-widget="injuries" id="dashInjuryWidget"></div>' +
-    '<div data-widget="certificati" id="dashCertificatiWidget"></div>' +
-    '<div data-widget="convocazione" id="dashConvocazioneWidget"></div>' +
+    '<div data-widget="injuries" id="dashInjuryWidget" style="display:none;"></div>' +
+    '<div data-widget="certificati" id="dashCertificatiWidget" style="display:none;"></div>' +
+    '<div data-widget="fees" id="dashFeesWidget" style="display:none;"></div>' +
+    '<div data-widget="convocazione" id="dashConvocazioneWidget" style="display:none;"></div>' +
     '<div data-widget="classifica" id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
     '<div data-widget="staff"><div class="staff-card" data-help="dashboard.staff"><h2 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h2><div>' + renderStaff() + '</div></div></div>' +
     '</div>';
@@ -640,6 +641,7 @@ export default async function loadDashboard() {
   const injWidget = document.getElementById('dashInjuryWidget');
   if (injWidget && activeInjuries.length > 0) {
     const today = new Date();
+    injWidget.style.display = '';
     injWidget.innerHTML = '<div style="background:#FFF3F3;border:1px solid #FDCECE;border-radius:12px;padding:14px;">' +
       '<h3 style="margin:0 0 10px 0;font-size:13px;color:#E74C3C;">🏥 Infortunati (' + activeInjuries.length + ')</h3>' +
       activeInjuries.map(inj => {
@@ -659,8 +661,32 @@ export default async function loadDashboard() {
     // Costruisci status compatibile con renderCertificatiCard (mappa scadenza → _scadenza)
     const mapDetail = (arr) => (arr || []).map(d => ({ ...d, _scadenza: d.scadenza ? new Date(d.scadenza) : null }));
     const status = { scaduti: mapDetail(certData.dettaglio?.filter(d => d.stato === 'scaduto')), inScadenza: mapDetail(certData.dettaglio?.filter(d => d.stato === 'in_scadenza')), validi: mapDetail(certData.dettaglio?.filter(d => d.stato === 'valido')), mancanti: mapDetail(certData.dettaglio?.filter(d => d.stato === 'mancante')) };
+    certWidget.style.display = '';
     certWidget.innerHTML = '<div style="background:#FFF9F0;border:1px solid #FDE8C8;border-radius:12px;padding:14px;">' + renderCertificatiCard(status) + '</div>';
     bindCertificatiToggle(certWidget);
+  }
+
+  // Widget Quote (visibile per admin/segreteria)
+  const feesWidget = document.getElementById('dashFeesWidget');
+  if (feesWidget && (window.YFM.canRead('club_operations') || window.YFM.canWrite('rosa'))) {
+    apiFetch('/fees?team_id=' + window.YFM.squadraId + '&season_id=' + window.YFM.currentSeasonId).then(fees => {
+      if (!fees?.length) return;
+      const totale = fees.reduce((s, f) => s + parseFloat(f.importo_totale), 0);
+      const incassato = fees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato === 'pagata').reduce((ps, i) => ps + parseFloat(i.importo), 0), 0);
+      const oggi = new Date().toISOString().split('T')[0];
+      const scadute = fees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato === 'da_pagare' && i.scadenza && i.scadenza < oggi).length, 0);
+      const saldati = fees.filter(f => f.stato === 'pagata').length;
+      feesWidget.style.display = '';
+      feesWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashFeesCard">
+        <div style="font-size:14px;font-weight:600;margin-bottom:10px;">💰 Situazione Quote</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+          <div>Incassato: <strong style="color:#27AE60;">€${incassato.toFixed(0)}</strong> / €${totale.toFixed(0)}</div>
+          <div>Saldati: <strong>${saldati}</strong>/${fees.length}</div>
+          ${scadute > 0 ? `<div style="color:#E74C3C;">Rate scadute: <strong>${scadute}</strong> ⚠️</div>` : '<div style="color:#27AE60;">Nessuna rata scaduta ✅</div>'}
+        </div>
+      </div>`;
+      feesWidget.querySelector('#dashFeesCard')?.addEventListener('click', () => window.YFM.navigateTo('fees'));
+    }).catch(() => {});
   }
 
   // Lazy load: dati convocazione condivisi tra card prossima partita e card segreteria
@@ -708,6 +734,7 @@ export default async function loadDashboard() {
           if (totAssenti > 0) alertHtml += '<span style="background:#fff3e0;color:#e65100;padding:3px 8px;border-radius:6px;font-weight:600;">❌ ' + totAssenti + ' assent' + (totAssenti === 1 ? 'e' : 'i') + '</span>';
           alertHtml += '</div>';
         }
+        convWidget.style.display = '';
         convWidget.innerHTML = '<div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:12px;padding:14px;">' +
           '<h3 style="margin:0 0 10px 0;font-size:13px;color:#4338ca;">📋 Prossima Convocazione</h3>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
