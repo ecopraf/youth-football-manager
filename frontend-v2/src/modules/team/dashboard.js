@@ -694,8 +694,8 @@ export default async function loadDashboard() {
           '<h3 style="margin:0 0 10px 0;font-size:13px;color:#4338ca;">📋 Prossima Convocazione</h3>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
           '<div style="display:flex;align-items:center;gap:8px;">' + (prossimaPartita.logo ? '<img src="' + prossimaPartita.logo + '" style="width:28px;height:28px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '') + '<div><strong>' + (prossimaPartita.avversario || 'TBD') + '</strong><br><span style="font-size:12px;color:#666;">' + dataStr + ' · ' + oraStr + ' · ' + luogo + '</span></div></div>' +
-          '<div>' + stato + '</div></div>' +
-          alertHtml +
+          '<div data-conv-stato>' + stato + '</div></div>' +
+          '<div data-conv-alert>' + alertHtml + '</div>' +
           '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">' +
           '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')" style="background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📋 ' + (tutti.length > 0 ? 'Vedi / Modifica' : 'Convoca') + '</button>' +
           (tutti.length > 0 ? '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\',true)" style="background:#27AE60;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📄 PDF</button>' : '') +

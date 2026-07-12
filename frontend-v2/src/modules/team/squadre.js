@@ -11,7 +11,7 @@ export async function loadSquadre(stagioneId) {
     let stagioni = [];
     
     const guestSquadre = window.YFM.guestSquadreAccesso || [];
-    if (guestSquadre.length > 0 && !window.YFM.workspaceInfo) {
+    if (guestSquadre.length > 0) {
       if (window.YFM.guestTeamId) {
         const teamData = await apiFetch(`/squadre/${window.YFM.guestTeamId}`).catch(() => null);
         allSquadre = teamData ? [teamData] : [];

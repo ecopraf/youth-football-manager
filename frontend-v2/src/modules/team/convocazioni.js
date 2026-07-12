@@ -4,6 +4,52 @@ import { showLoading, hideLoading } from '../../utils/ui';
 import { printHTML } from '../../utils/printHelper';
 import { invalidateDashboardCache } from './dashboard.js';
 
+// Aggiorna le card dashboard (convocazione + prossima partita) dopo salvataggio
+function refreshDashConvCards(matchId) {
+  const convWidget = document.getElementById('dashConvocazioneWidget');
+  const convStatus = document.getElementById('dashConvStatus');
+  if (!convWidget && !convStatus) return;
+  const infortunati = window._dashInfortunati || [];
+  apiFetch('/partite/' + matchId + '/convocazioni').then(convAll => {
+    const tutti = (convAll || []).filter(c => c.presente);
+    const injPlayerIds = new Set(infortunati.map(i => i.player_id));
+    const assenti = tutti.filter(c => c.risposta === 'indisponibile' && !injPlayerIds.has(c.calciatoreId));
+    const injIndisponibili = tutti.filter(c => c.risposta === 'indisponibile' && injPlayerIds.has(c.calciatoreId));
+    const convIds = new Set(tutti.map(c => c.calciatoreId));
+    const injNonConv = infortunati.filter(i => !i.data_rientro_effettiva && !convIds.has(i.player_id));
+    const totInj = injIndisponibili.length + injNonConv.length;
+    const totAssenti = assenti.length;
+    const disponibili = tutti.length - assenti.length - injIndisponibili.length;
+    // Update status line in prossima partita card
+    if (convStatus) {
+      let html = '<div style="font-size:11px;opacity:0.9;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">';
+      if (tutti.length > 0) html += '<span>\uD83D\uDC65 ' + disponibili + ' disponibili</span>';
+      if (totInj > 0) html += '<span style="color:#fca5a5;font-weight:700;">\uD83C\uDFE5 ' + totInj + ' indisponibil' + (totInj === 1 ? 'e' : 'i') + '</span>';
+      if (totAssenti > 0) html += '<span style="color:#fca5a5;font-weight:700;">\u274C ' + totAssenti + ' assent' + (totAssenti === 1 ? 'e' : 'i') + '</span>';
+      html += '</div>';
+      convStatus.innerHTML = tutti.length > 0 || totInj > 0 || totAssenti > 0 ? html : '';
+    }
+    // Update segreteria card
+    if (convWidget) {
+      const stato = tutti.length > 0
+        ? '<span style="color:#27AE60;font-weight:600;">\u2705 ' + disponibili + ' disponibili</span>'
+        : '<span style="color:#E67E22;font-weight:600;">\u2B1C Da convocare</span>';
+      let alertHtml = '';
+      if (totInj > 0 || totAssenti > 0) {
+        alertHtml = '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;font-size:11px;">';
+        if (totInj > 0) alertHtml += '<span style="background:#fee2e2;color:#dc2626;padding:3px 8px;border-radius:6px;font-weight:600;">\uD83C\uDFE5 ' + totInj + ' indisponibil' + (totInj === 1 ? 'e' : 'i') + '</span>';
+        if (totAssenti > 0) alertHtml += '<span style="background:#fff3e0;color:#e65100;padding:3px 8px;border-radius:6px;font-weight:600;">\u274C ' + totAssenti + ' assent' + (totAssenti === 1 ? 'e' : 'i') + '</span>';
+        alertHtml += '</div>';
+      }
+      // Update only the dynamic parts (stato + alert)
+      const statoEl = convWidget.querySelector('[data-conv-stato]');
+      const alertEl = convWidget.querySelector('[data-conv-alert]');
+      if (statoEl) statoEl.innerHTML = stato;
+      if (alertEl) alertEl.innerHTML = alertHtml;
+    }
+  }).catch(() => {});
+}
+
 export async function openConvocation(mid, readOnly) {
   const match = window.YFM.allMatches?.find(m => m.id === mid) || {};
   const isArchiviata = match.archiviata === true || match.archiviata === 'true';
@@ -191,6 +237,7 @@ export async function openConvocation(mid, readOnly) {
       const dot = document.getElementById('pubDot');
       if (dot) { dot.style.background = '#FFD700'; dot.style.animation = 'pulse-dot 1.2s infinite'; }
       invalidateDashboardCache();
+      refreshDashConvCards(mid);
       alert('✅ Convocazioni salvate! Ricorda di pubblicare per notificare.');
     } catch (e) {
       hideLoading();
@@ -216,6 +263,7 @@ export async function openConvocation(mid, readOnly) {
       if (dot) { dot.style.background = '#27AE60'; dot.style.animation = 'none'; }
       hasUnsavedChanges = false;
       invalidateDashboardCache();
+      refreshDashConvCards(mid);
       alert('✅ Convocazione pubblicata! Notifica inviata.');
     } catch (e) {
       hideLoading(); alert('Errore: ' + e.message);

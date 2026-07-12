@@ -149,8 +149,14 @@ export function setupGuestLayout(tipo, playerName) {
             <span style="font-size:20px;">🔔</span>
             <span id="guestBellBadge" style="position:absolute;top:-4px;right:-6px;background:#E74C3C;color:white;font-size:10px;font-weight:700;border-radius:50%;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;"></span>
           </div>
-          <label for="squadraSelect" class="sr-only">Seleziona squadra</label>
-          <select class="header-select" id="squadraSelect"><option>Caricamento...</option></select>
+          <select class="header-select" id="squadraSelect" style="display:none;"></select>
+          <div class="user-menu-container" style="position:relative;">
+            <div id="guestAvatarBtn" style="width:36px;height:36px;border-radius:50%;background:${isAtleta ? '#667eea' : '#27AE60'};color:white;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;cursor:pointer;" title="${label}">${isAtleta ? (playerName ? playerName.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() : '⚽') : 'G'}</div>
+            <div id="guestDropdown" style="display:none;position:absolute;top:100%;right:0;margin-top:8px;background:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);min-width:160px;z-index:1000;overflow:hidden;">
+              <div style="padding:12px 16px;border-bottom:1px solid #eee;"><div style="font-weight:600;font-size:13px;">${label}</div><div style="font-size:11px;color:#666;">${isAtleta ? 'Atleta' : 'Genitore'}</div></div>
+              <button onclick="window.YFM.handleLogout()" style="width:100%;padding:12px 16px;text-align:left;background:none;border:none;cursor:pointer;font-size:13px;color:#E74C3C;display:flex;align-items:center;gap:8px;">🚪 Esci</button>
+            </div>
+          </div>
         </div>
       </header>
       <div class="content" id="pageContent"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>
@@ -179,6 +185,18 @@ export function setupGuestLayout(tipo, playerName) {
       e.stopPropagation();
       const isOpen = sidebar.classList.toggle('open');
       document.body.classList.toggle('sidebar-open', isOpen);
+    });
+  }
+
+  // Guest avatar dropdown toggle
+  const guestAvatar = document.getElementById('guestAvatarBtn');
+  const guestDropdown = document.getElementById('guestDropdown');
+  if (guestAvatar && guestDropdown) {
+    guestAvatar.addEventListener('click', () => {
+      guestDropdown.style.display = guestDropdown.style.display === 'none' ? 'block' : 'none';
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.user-menu-container')) guestDropdown.style.display = 'none';
     });
   }
 }

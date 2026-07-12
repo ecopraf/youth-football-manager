@@ -697,7 +697,7 @@ La migrazione rosa (`POST /stagioni/:id/migra`) DEVE:
 
 | Layer | Storage | TTL | Uso |
 |-------|---------|-----|-----|
-| Memory | Variabile JS | 2 min | Dati DB frequenti (dashboard, stats) |
+| Memory | Variabile JS | 5 min | Dati DB frequenti (dashboard, stats) |
 | Session | sessionStorage | 10 min | Dati esterni lenti (classifica GR, calendario GR) |
 
 ### Invalidazione dopo scrittura
@@ -707,8 +707,12 @@ La migrazione rosa (`POST /stagioni/:id/migra`) DEVE:
 | Salva risultato/eventi partita | `invalidateDashboardCache()` + `invalidateStatsCache()` |
 | Archivia/sblocca/elimina partita | `invalidateDashboardCache()` + `invalidateStatsCache()` |
 | Elimina tutte le partite | `invalidateDashboardCache()` + `invalidateStatsCache()` |
-| Modifica roster | `invalidateStatsCache()` |
+| Modifica roster (add/edit/delete) | `invalidateDashboardCache()` |
+| Salva/pubblica convocazioni | `invalidateDashboardCache()` + `refreshDashConvCards(matchId)` |
 | Salva presenze allenamento | `invalidateDashboardCache()` |
+| Salva/annulla seduta allenamento | `invalidateDashboardCache()` |
+| Modifica config settimana tipo | `invalidateDashboardCache()` |
+| Import (rosa, calendario, formazioni) | `invalidateDashboardCache()` |
 
 ### Lazy loading obbligatorio
 

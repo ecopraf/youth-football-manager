@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 9 Luglio 2026 | Versione: v3.16 | Build: v3.16.2
+> Ultimo aggiornamento: 18 Luglio 2026 | Versione: v3.16 | Build: v3.16.33
 
 ---
 
@@ -773,6 +773,11 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.33 | fix: guest header — rimosso selettore squadra/stagione, avatar con logout (atleta: iniziali, genitore: G), fix loadSquadre per guest con workspaceInfo |
+| v3.16.32 | fix: aggiorna card dashboard in tempo reale dopo salvataggio convocazioni (refreshDashConvCards), data-conv-stato/alert attributes |
+| v3.16.31 | fix: cache invalidation completa — aggiunta invalidateDashboardCache in roster, trainingPresenze, trainingSessions, trainingSettings, importCenter + TTL dashboard 2min→5min |
+| v3.16.30 | fix: invalidate dashboard cache dopo salvataggio/pubblicazione convocazioni + logo avversario nella card segreteria |
+| v3.16.29 | fix: teamMatch QUALIFIERS (isOurTeam false positives), aggregabili anno_da=0, import diagnostics marcatori GR |
 | v3.16.27 | feat: EPIC 9 Workspace Hub — vista dettaglio workspace con tab Info (form inline modificabile con logo/facility), Stagioni (lista con team, crea, attiva + gestione categorie inline: crea/elimina), Utenti (lista con profilo/categorie, crea rapido, modifica inline). Backend: GET teams per stagione, PUT attiva stagione |
 | v3.16.24 | fix: report giocatore "Altro" → "Amichevole" (backend career + frontend playerDetail + reports), presenze fallback match_statistics, subtotali per competizione, query ottimizzate (5 vs 7), Print Center rinominato "Report Squadra", help in-app Print Center, mobile print rosa/scadenze (overflow-x + padding ridotto + colonna Stato nascosta), registro presenze mobile max 3 settimane con highlight raggiungibili, eliminata categoria U18 vuota Albalonga |
 | — | feat: EPIC 16 Print Center completo — hub documentale centralizzato con 7 documenti stampabili (Convocazione, Distinta, Formazione, Report, Presenze, Rosa, Scadenze), varianti (telefoni/staff/torneo), cronologia, Web Share API, pagine standalone A4 |
