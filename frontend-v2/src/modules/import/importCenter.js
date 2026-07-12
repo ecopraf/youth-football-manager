@@ -2,6 +2,7 @@ import { apiFetch, API_BASE } from '../../services/api.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
 import { formatDate } from '../../utils/formatters.js';
 import { isOurTeam } from '../../utils/teamMatch.js';
+import { invalidateDashboardCache } from '../team/dashboard.js';
 
 export default async function loadImportCenter() {
   const c = document.getElementById('pageContent');
@@ -263,7 +264,7 @@ async function pdfExtractAndImport(file, searchName, modal) {
       hideLoading();
       modal.close();
       alert(`✅ Importate ${data.inserite} partite!`);
-      loadImportCenter();
+      invalidateDashboardCache(); loadImportCenter();
     } catch (err) {
       hideLoading();
       alert('Errore: ' + err.message);
@@ -369,7 +370,7 @@ function openImportText() {
           hideLoading();
           modal.close();
           alert(`✅ Importate ${resp.inserite} partite!`);
-          loadImportCenter();
+          invalidateDashboardCache(); loadImportCenter();
         } catch (err) {
           hideLoading();
           alert('Errore: ' + err.message);
@@ -455,7 +456,7 @@ async function openImportFormations() {
         let msg = `✅ Formazioni importate: ${resp.imported}/${resp.total}`;
         if (fail > 0) msg += `\n⚠️ ${fail} partite con errori`;
         alert(msg);
-        loadImportCenter();
+        invalidateDashboardCache(); loadImportCenter();
       } catch (err) {
         hideLoading();
         alert('Errore: ' + err.message);
@@ -781,7 +782,7 @@ async function openGrUnifiedImport() {
         '<div style="font-weight:600;margin-bottom:8px;">✅ Import completato!</div>' +
         results.map(r => '<div style="padding:2px 0;">' + r + '</div>').join('') + '</div>';
       btn.textContent = '✅ Fatto';
-      btn.onclick = () => { modal.close(); loadImportCenter(); };
+      btn.onclick = () => { modal.close(); invalidateDashboardCache(); loadImportCenter(); };
       btn.disabled = false;
     } catch (err) {
       preview.innerHTML = `<div style="color:#c00;padding:12px;background:#fee;border-radius:8px;">❌ Errore: ${err.message}</div>`;
@@ -833,7 +834,7 @@ async function openGrCalendario() {
         hideLoading();
         modal.close();
         alert(`✅ Calendario importato!\n• Importate: ${resp.imported}\n• Aggiornate: ${resp.updated || 0}\n• Già presenti: ${resp.skipped}\n• Totale: ${resp.total}`);
-        loadImportCenter();
+        invalidateDashboardCache(); loadImportCenter();
       } catch (err) {
         hideLoading();
         alert('❌ ' + err.message);

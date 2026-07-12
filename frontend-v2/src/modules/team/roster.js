@@ -3,6 +3,7 @@ import { formatDateShort, getAvatarColor } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 import { loadNewPlayerForm } from './playerDetail.js';
 import { calcolaCodiceFiscale, cercaComune } from '../../utils/codiceFiscale.js';
+import { invalidateDashboardCache } from './dashboard.js';
 import { calcCertificatiStatus, renderCertificatiCard, bindCertificatiToggle } from '../../utils/certificati.js';
 
 export { openPlayerForm, filterRoster, updateRosterGrid };
@@ -254,6 +255,7 @@ async function deletePlayer(pid) {
   showLoading();
   try {
     await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori/' + pid, { method: 'DELETE' });
+    invalidateDashboardCache();
     loadRoster();
   } catch (e) {
     alert('Errore: ' + e.message);
@@ -272,6 +274,7 @@ async function deleteSelectedPlayers() {
     }
     selectedPlayers.clear();
     isSelectionMode = false;
+    invalidateDashboardCache();
     loadRoster();
   } catch (e) {
     alert('Errore: ' + e.message);
@@ -673,6 +676,7 @@ function openPlayerForm(pid) {
         await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori', { method: 'POST', body: JSON.stringify(d) });
       }
       closeModal();
+      invalidateDashboardCache();
       loadRoster();
     } catch (e) {
       alert('Errore: ' + e.message);

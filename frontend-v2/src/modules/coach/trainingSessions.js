@@ -7,6 +7,7 @@ import { apiFetch } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
 import { renderCalendar, attachCalendarListeners, setOnDateSelect, selectTodayIfTraining, getSelectedDate } from './trainingCalendar';
 import { loadTrainingData } from './trainingData';
+import { invalidateDashboardCache } from '../team/dashboard.js';
 
 const TIPI_SEDUTA = ['Tattico', 'Tecnico', 'Atletico', 'Partita a tema', 'Possesso palla', 'Difensivo', 'Misto'];
 const TIPI_FASE = [
@@ -225,6 +226,7 @@ function attachSessionListeners(date) {
           trainingId = created?.training?.id || created?.id;
         }
         if (trainingId) await apiFetch(`/training/${trainingId}/annulla`, { method: 'PUT' });
+        invalidateDashboardCache();
         // Aggiungi data ad annullati e aggiorna calendario
         if (trainingData && trainingData.annullati && !trainingData.annullati.includes(date)) {
           trainingData.annullati.push(date);
@@ -289,6 +291,7 @@ async function saveProgramma(date) {
   showLoading();
   try {
     await apiFetch('/squadre/' + window.YFM.squadraId + '/training-by-date', { method: 'POST', body: JSON.stringify({ date, programma: collectProgramma() }) });
+    invalidateDashboardCache();
     hideLoading(); alert('✅ Programma salvato!');
   } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
 }

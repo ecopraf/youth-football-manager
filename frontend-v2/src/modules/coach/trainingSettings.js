@@ -7,6 +7,7 @@ import { apiFetch } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
 import { formatTime } from '../../utils/formatters';
 import { loadTrainingData } from './trainingData';
+import { invalidateDashboardCache } from '../team/dashboard.js';
 
 export default async function loadTrainingSettings() {
   const c = document.getElementById('pageContent');
@@ -114,6 +115,7 @@ function attachConfigListeners(config) {
     b.addEventListener('click', async () => {
       if (!b.dataset.tid || !await confirm('Eliminare?')) return;
       await apiFetch('/allenamenti/config/' + b.dataset.tid, { method: 'DELETE' });
+      invalidateDashboardCache();
       loadTrainingSettings();
     });
   });
@@ -373,6 +375,7 @@ function openConfigForm(tid, g, i, f, l) {
     try {
       if (tid) await apiFetch('/allenamenti/config/' + tid, { method: 'PUT', body: JSON.stringify(data) });
       else await apiFetch('/squadre/' + window.YFM.squadraId + '/allenamenti/config', { method: 'POST', body: JSON.stringify(data) });
+      invalidateDashboardCache();
       hideLoading(); close(); loadTrainingSettings();
     } catch(e) { hideLoading(); alert('Errore: ' + e.message); }
   });

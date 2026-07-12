@@ -9,6 +9,7 @@ import { getAvatarColor, formatDateShort } from '../../utils/formatters';
 import { renderCalendar, attachCalendarListeners, setOnDateSelect, selectTodayIfTraining, getSelectedDate } from './trainingCalendar';
 import { loadTrainingData } from './trainingData';
 import { isOnline, saveToBuffer, loadFromBuffer, clearBuffer, onBackOnline } from '../../utils/offlineBuffer';
+import { invalidateDashboardCache } from '../team/dashboard.js';
 
 const MOTIVI_ASSENZA = [
   { value: '', label: 'Nessun motivo' },
@@ -157,6 +158,7 @@ function attachPresenzeListeners(date) {
       });
       clearBuffer(bufferKey);
       hideLoading(); alert('✅ Presenze salvate!');
+      invalidateDashboardCache();
       loadTrainingPresenze();
     } catch(e) {
       hideLoading();

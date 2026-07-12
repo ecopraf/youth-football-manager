@@ -4,7 +4,7 @@ import { isOurTeam } from '../../utils/teamMatch';
 import { calcCertificatiStatus, renderCertificatiCard, bindCertificatiToggle } from '../../utils/certificati.js';
 
 const CACHE_TTL_LAZY = 10 * 60 * 1000; // 10 min per classifica/GR
-const CACHE_TTL_FAST = 2 * 60 * 1000; // 2 min per dati principali
+const CACHE_TTL_FAST = 5 * 60 * 1000; // 5 min per dati principali
 const memCache = {};
 
 function cachedFetch(key, fetcher, ttl = CACHE_TTL_LAZY) {
