@@ -138,6 +138,150 @@
 
 ---
 
+### EPIC 6: Polish pre-stagione
+
+> Bug fix, UX improvements, preparazione per utenti reali.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 6.1 | Completare UI valutazioni giocatore | ⬜ | — | modules/team/valutazioni.js | ~15min |
+| 6.2 | Report presenze allenamenti (stampabile) | ⬜ | — | modules/performance/reports.js | ~10min |
+| 6.3 | Import_log: aggiungere `durata_import`, `warnings` | ⬜ | — | migrazione SQL + routes/ | ~5min |
+| 6.4 | Document: aggiungere colonna `cartella` | ⬜ | — | migrazione SQL | ~3min |
+
+---
+
+### EPIC 7: Tornei (riattivazione)
+
+> Codice già pronto, solo da riattivare e completare.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 7.1 | Riattivare link sidebar Tornei | ⬜ | — | sidebar.js | ~2min |
+| 7.2 | Generazione calendario round-robin | ⬜ | 7.1 | modules/coach/tournaments.js | ~15min |
+| 7.3 | Inserimento partite torneo nel calendario | ⬜ | 7.2 | routes/tournament.js | ~10min |
+| 7.4 | Classifica live girone | ⬜ | 7.3 | modules/coach/tournaments.js | ~10min |
+
+---
+
+### EPIC 8: Redesign Stagioni & Categorie
+
+> Stagione = 01/07→30/06. Wizard creazione con migrazione. Dropdown solo stagione attiva. Carriera cross-season.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 8.1 | Fix dati DB: rimuovere stagione duplicata, normalizzare date 01/07 | ✅ | — | migrazione SQL | ~3min |
+| 8.2 | Backend: POST stagione con anno_inizio, auto-team, disattiva precedente | ✅ | 8.1 | routes/workspace.js | ~10min |
+| 8.3 | Backend: endpoint migrazione POST /stagioni/:id/migra | ✅ | 8.2 | routes/workspace.js | ~15min |
+| 8.4 | Frontend: rifare UI seasonsCategories.js con wizard + modale | ✅ | 8.2, 8.3 | modules/club/seasonsCategories.js | ~15min |
+| 8.5 | Frontend: dropdown squadre mostra SOLO stagione attiva | ✅ | 8.4 | modules/team/squadre.js | ~5min |
+| 8.6 | Guest genitore: accesso già limitato (roster, club, calendar) | ✅ | — | router.js | ~0min |
+| 8.7 | Staff migrato visibile nella nuova stagione (garantito da 8.3) | ✅ | 8.3 | — | ~0min |
+| 8.8 | Backend: endpoint /career e /last-matches cross-season | ✅ | — | routes/player.js | ~10min |
+| 8.9 | Test build completo | ✅ | 8.8 | — | ~2min |
+| 8.10 | Aggiornare docs | ✅ | 8.9 | DEVELOPMENT_PLAN.md | ~3min |
+
+---
+
+### EPIC 9: Workspace Hub (superadmin)
+
+> Pagina workspace centralizzata con tab Info (modificabile), Stagioni, Utenti. Permette al superadmin di gestire tutto il setup di un workspace senza navigare tra pagine diverse.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 9.1 | Click su card workspace → vista dettaglio con tab (Info, Stagioni, Utenti) | ✅ | — | modules/admin/workspaces.js | ~15min |
+| 9.2 | Tab Info: form inline modificabile (nome, contatti, social, facility, logo) | ✅ | 9.1 | modules/admin/workspaces.js | ~10min |
+| 9.3 | Tab Stagioni: lista stagioni con team, azioni (crea, migra, attiva) | ✅ | 9.1 | modules/admin/workspaces.js, routes/workspace.js | ~15min |
+| 9.4 | Tab Utenti: lista utenti workspace + creazione rapida + modifica ruolo/permessi | ✅ | 9.1 | modules/admin/workspaces.js | ~15min |
+| 9.5 | Test build + aggiornare docs | ✅ | 9.4 | DEVELOPMENT_PLAN.md | ~2min |
+
+---
+
+### EPIC 10: Dashboard Personalizzabile
+
+> Riordino e show/hide widget dashboard per utente. Preferenze salvate in DB.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 10.1 | ALTER TABLE `users` ADD `preferenze_ui` JSONB | ✅ | — | migrazione SQL | ~2min |
+| 10.2 | Endpoint GET/PUT `/api/users/preferences` | ✅ | 10.1 | routes/auth.js | ~5min |
+| 10.3 | Wrappare widget dashboard con `data-widget` ID | ✅ | — | modules/team/dashboard.js | ~5min |
+| 10.4 | UI modale "Organizza" (frecce ↑↓ + toggle visibilità + salva) | ✅ | 10.2, 10.3 | modules/team/dashboard.js | ~10min |
+| 10.5 | Caricamento preferenze al load + applyLayout | ✅ | 10.2, 10.3 | modules/team/dashboard.js | ~5min |
+
+---
+
+### EPIC 11: Sistema Atleta & Genitore (evoluzione Guest)
+
+> Sostituire il concetto generico di "Guest" con due ruoli distinti (Atleta e Genitore) con capabilities, home e notifiche differenziate. Infrastruttura guest_token invariata (nessuna registrazione), ma UX e permessi specifici per tipo.
+
+#### Fase 1: Tipi e Capabilities (backend)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.1 | Definire capabilities Atleta vs Genitore in `capabilities.js` (frontend + backend mirror) | ✅ | — | utils/capabilities.js, helpers/capabilities.js | ~5min |
+| 11.2 | Aggiornare `guest_token.tipo` per supportare valori `atleta` e `genitore` (retrocompat con esistenti) | ✅ | 11.1 | routes/auth.js, routes/guestLinks.js | ~5min |
+| 11.3 | Differenziare JWT guest: includere `tipo` nelle capabilities check del middleware | ✅ | 11.2 | middleware/auth.js, helpers/capabilities.js | ~5min |
+| 11.4 | Endpoint: atleta può POST su `/api/absence-notification` solo per il proprio player_id | ✅ | 11.3 | routes/notification.js | ~5min |
+| 11.5 | Test funzionale capabilities atleta/genitore (permessi differenziati) | ✅ | 11.4 | tmp_test.js | ~5min |
+
+#### Fase 2: Home Atleta (frontend)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.6 | Creare `modules/auth/guestAtleta.js` — Home atleta (notifiche, convocazioni, indisponibilità, allenamenti, partite, stats personali, classifica) | ✅ | 11.3 | modules/auth/guestAtleta.js | ~15min |
+| 11.6a | — Widget notifiche + convocazione prossima | ✅ | 11.6 | modules/auth/guestAtleta.js | ~5min |
+| 11.6b | — Form "Comunica indisponibilità" (data + motivo) | ✅ | 11.4, 11.6 | modules/auth/guestAtleta.js | ~5min |
+| 11.6c | — Sezioni calendario allenamenti + partite + stats personali + classifica | ✅ | 11.6 | modules/auth/guestAtleta.js | ~5min |
+
+#### Fase 3: Home Genitore (frontend)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.7 | Creare `modules/auth/guestGenitore.js` — Home genitore (comunicazioni, convocazioni figlio, calendario, risultati, classifica, stats squadra) | ✅ | 11.3 | modules/auth/guestGenitore.js | ~15min |
+| 11.7a | — Widget comunicazioni con badge priorità | ✅ | 11.7, 11.9 | modules/auth/guestGenitore.js | ~5min |
+| 11.7b | — Sezioni convocazioni figlio + calendario + risultati + classifica | ✅ | 11.7 | modules/auth/guestGenitore.js | ~5min |
+
+#### Fase 4: Router guest differenziato
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.8 | Aggiornare router.js: guest `tipo=atleta` → guestAtleta, `tipo=genitore` → guestGenitore | ✅ | 11.6, 11.7 | router.js, modules/auth/guest.js | ~5min |
+
+#### Fase 5: Priorità notifiche
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.9 | ALTER TABLE `notification` ADD `priorita` TEXT DEFAULT 'info' (info/importante/urgente) | ✅ | — | migrazione SQL | ~3min |
+| 11.10 | Frontend: badge colorato priorità (🔵🟡🔴) nelle liste notifiche | ✅ | 11.9 | modules/team/notifications.js, guestAtleta.js, guestGenitore.js | ~5min |
+
+#### Fase 6: Comunicazioni con destinatari (fase 1)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.11 | ALTER TABLE `notification` ADD `destinatario_tipo TEXT[]` (atleta/genitore/staff) | ✅ | — | migrazione SQL | ~3min |
+| 11.12 | UI creazione comunicazione: selezione destinatari (tipo + categorie) | ✅ | 11.11 | modules/team/notifications.js | ~10min |
+| 11.13 | Backend: filtro GET notifiche per `destinatario_tipo` in base al ruolo richiedente | ✅ | 11.11 | routes/notification.js | ~5min |
+| 11.14 | Notifiche convocazione differenziate: testo diverso per atleta vs genitore | ✅ | 11.11, 11.2 | routes/convocazioni.js | ~5min |
+
+#### Fase 7: UI generazione link (aggiornamento)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 11.15 | Aggiornare UI "Genera Link" — rinominare tipi in "Atleta" e "Genitore" (invece di guest generico) | ✅ | 11.2 | modules/admin/guestLinks.js | ~5min |
+| 11.16 | Test build completo + aggiornare docs | ✅ | 11.15 | DEVELOPMENT_PLAN.md, AGENTS.md | ~5min |
+
+**Effort totale stimato**: ~2h 10min (16 task + 3 sotto-task)
+
+**Note architetturali**:
+- L'infrastruttura `guest_token` resta invariata (link senza registrazione)
+- Il JWT guest contiene già `tipo` — basta usarlo per routing e capabilities
+- Le home atleta/genitore sono pagine standalone (non usano sidebar staff)
+- La priorità notifiche è un campo semplice, non un sistema di regole complesso
+- Le comunicazioni fase 1 usano la tabella `notification` esistente con filtro `destinatario_tipo`
+
+---
+
 ### EPIC 12: Club Operations — Fase 1 (Quote + Kit + Checklist)
 
 > Digitalizzare i flussi operativi della segreteria: gestione quote economiche, kit sportivo, checklist inizio stagione. Dashboard action-driven per segreteria. Posizionamento: da app-allenatore a piattaforma di società.
@@ -195,6 +339,35 @@
 - La voce sidebar "Club Operations" richiede capability `club_operations: read/write` da aggiungere ai profili
 - Le notifiche scadenza quote (12.7) dipendono da EPIC 11 (destinatario_tipo genitore)
 - Fase futura (v4.0): Ricevute PDF, Centro Documentale, Workflow iscrizione completo, Magazzino
+
+---
+
+### EPIC 13: Preseason (Open Day + Ritiro)
+
+> Gestione fase pre-stagione: Open Day per valutare prospect esterni, Ritiro con doppie sedute giornaliere, transizione a stagione regolare.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 13.1 | Migrazione DB: `training.fase` TEXT (regolare/openday/ritiro), `team.config_attiva_dal` DATE, CREATE TABLE `training_participant` (id, training_id, nome, cognome, anno_nascita, provenienza, valutazione, note) | ⬜ | — | migrazione SQL | ~5min |
+| 13.2 | Backend: filtro sessioni virtuali con `config_attiva_dal` (non generare virtuali prima di questa data) | ⬜ | 13.1 | routes/training.js | ~5min |
+| 13.3a | Backend: endpoint CRUD `training_participant` (GET per training_id, POST) | ⬜ | 13.1 | routes/training.js | ~7min |
+| 13.3b | Backend: endpoint PUT/DELETE `training_participant` + campo valutazione (1-5 stelle) | ⬜ | 13.3a | routes/training.js | ~5min |
+| 13.4a | Frontend: tab Preseason nella pagina allenamenti (struttura + navigazione) | ⬜ | 13.2 | modules/coach/training.js | ~8min |
+| 13.4b | Frontend: wizard Open Day (form date/orari + batch create sessioni con fase=openday) | ⬜ | 13.4a, 13.3a | modules/coach/training.js | ~10min |
+| 13.4c | Frontend: lista partecipanti Open Day (tabella + form aggiunta + valutazione stelle) | ⬜ | 13.4b, 13.3b | modules/coach/training.js | ~10min |
+| 13.5a | Frontend: wizard Ritiro (form data inizio/fine + orari AM/PM + batch create) | ⬜ | 13.4a | modules/coach/training.js | ~10min |
+| 13.5b | Frontend: vista calendario preseason (sessioni doppie, colori per fase) | ⬜ | 13.5a | modules/coach/training.js | ~8min |
+| 13.6 | Frontend: bottone "Avvia stagione regolare" → imposta `config_attiva_dal` su team | ⬜ | 13.5b | modules/coach/training.js, routes/training.js | ~5min |
+| 13.7 | Test build completo + aggiornare docs | ⬜ | 13.6 | DEVELOPMENT_PLAN.md, AGENTS.md | ~3min |
+
+**Effort totale stimato**: ~76min (11 task)
+
+**Note architetturali**:
+- `training_participant` è separata da `training_attendance` perché i partecipanti Open Day NON sono nella rosa (sono prospect esterni)
+- `training.fase` permette di colorare/filtrare le sessioni nel calendario (regolare=default, openday=verde, ritiro=arancio)
+- `config_attiva_dal` evita che le sessioni virtuali da `training_config` vengano generate prima dell'inizio effettivo della stagione regolare
+- Il wizard Open Day crea N sessioni in batch con fase=openday
+- Il wizard Ritiro crea sessioni doppie (AM+PM) per ogni giorno del periodo
 
 ---
 
@@ -642,179 +815,6 @@
 | Cambio categoria | Torna alla stagione più recente per quella categoria |
 | Primo accesso | Stagione più recente tra quelle assegnate + prima categoria |
 | Legacy (no stagioni_accesso) | Stagione più recente del workspace |
-
----
-
-### EPIC 6: Polish pre-stagione
-
-> Bug fix, UX improvements, preparazione per utenti reali.
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 6.1 | Completare UI valutazioni giocatore | ⬜ | — | modules/team/valutazioni.js | ~15min |
-| 6.2 | Report presenze allenamenti (stampabile) | ⬜ | — | modules/performance/reports.js | ~10min |
-| 6.3 | Import_log: aggiungere `durata_import`, `warnings` | ⬜ | — | migrazione SQL + routes/ | ~5min |
-| 6.4 | Document: aggiungere colonna `cartella` | ⬜ | — | migrazione SQL | ~3min |
-
----
-
-### EPIC 7: Tornei (riattivazione)
-
-> Codice già pronto, solo da riattivare e completare.
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 7.1 | Riattivare link sidebar Tornei | ⬜ | — | sidebar.js | ~2min |
-| 7.2 | Generazione calendario round-robin | ⬜ | 7.1 | modules/coach/tournaments.js | ~15min |
-| 7.3 | Inserimento partite torneo nel calendario | ⬜ | 7.2 | routes/tournament.js | ~10min |
-| 7.4 | Classifica live girone | ⬜ | 7.3 | modules/coach/tournaments.js | ~10min |
-
----
-
-### EPIC 8: Redesign Stagioni & Categorie
-
-> Stagione = 01/07→30/06. Wizard creazione con migrazione. Dropdown solo stagione attiva. Carriera cross-season.
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 8.1 | Fix dati DB: rimuovere stagione duplicata, normalizzare date 01/07 | ✅ | — | migrazione SQL | ~3min |
-| 8.2 | Backend: POST stagione con anno_inizio, auto-team, disattiva precedente | ✅ | 8.1 | routes/workspace.js | ~10min |
-| 8.3 | Backend: endpoint migrazione POST /stagioni/:id/migra | ✅ | 8.2 | routes/workspace.js | ~15min |
-| 8.4 | Frontend: rifare UI seasonsCategories.js con wizard + modale | ✅ | 8.2, 8.3 | modules/club/seasonsCategories.js | ~15min |
-| 8.5 | Frontend: dropdown squadre mostra SOLO stagione attiva | ✅ | 8.4 | modules/team/squadre.js | ~5min |
-| 8.6 | Guest genitore: accesso già limitato (roster, club, calendar) | ✅ | — | router.js | ~0min |
-| 8.7 | Staff migrato visibile nella nuova stagione (garantito da 8.3) | ✅ | 8.3 | — | ~0min |
-| 8.8 | Backend: endpoint /career e /last-matches cross-season | ✅ | — | routes/player.js | ~10min |
-| 8.9 | Test build completo | ✅ | 8.8 | — | ~2min |
-| 8.10 | Aggiornare docs | ✅ | 8.9 | DEVELOPMENT_PLAN.md | ~3min |
-
----
-
-### EPIC 10: Dashboard Personalizzabile
-
-> Riordino e show/hide widget dashboard per utente. Preferenze salvate in DB.
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 10.1 | ALTER TABLE `users` ADD `preferenze_ui` JSONB | ✅ | — | migrazione SQL | ~2min |
-| 10.2 | Endpoint GET/PUT `/api/users/preferences` | ✅ | 10.1 | routes/auth.js | ~5min |
-| 10.3 | Wrappare widget dashboard con `data-widget` ID | ✅ | — | modules/team/dashboard.js | ~5min |
-| 10.4 | UI modale "Organizza" (frecce ↑↓ + toggle visibilità + salva) | ✅ | 10.2, 10.3 | modules/team/dashboard.js | ~10min |
-| 10.5 | Caricamento preferenze al load + applyLayout | ✅ | 10.2, 10.3 | modules/team/dashboard.js | ~5min |
-
----
-
-### EPIC 9: Workspace Hub (superadmin)
-
-> Pagina workspace centralizzata con tab Info (modificabile), Stagioni, Utenti. Permette al superadmin di gestire tutto il setup di un workspace senza navigare tra pagine diverse.
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 9.1 | Click su card workspace → vista dettaglio con tab (Info, Stagioni, Utenti) | ✅ | — | modules/admin/workspaces.js | ~15min |
-| 9.2 | Tab Info: form inline modificabile (nome, contatti, social, facility, logo) | ✅ | 9.1 | modules/admin/workspaces.js | ~10min |
-| 9.3 | Tab Stagioni: lista stagioni con team, azioni (crea, migra, attiva) | ✅ | 9.1 | modules/admin/workspaces.js, routes/workspace.js | ~15min |
-| 9.4 | Tab Utenti: lista utenti workspace + creazione rapida + modifica ruolo/permessi | ✅ | 9.1 | modules/admin/workspaces.js | ~15min |
-| 9.5 | Test build + aggiornare docs | ✅ | 9.4 | DEVELOPMENT_PLAN.md | ~2min |
-
----
-
-### EPIC 13: Preseason (Open Day + Ritiro)
-
-> Gestione fase pre-stagione: Open Day per valutare prospect esterni, Ritiro con doppie sedute giornaliere, transizione a stagione regolare.
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 13.1 | Migrazione DB: `training.fase` TEXT (regolare/openday/ritiro), `team.config_attiva_dal` DATE, CREATE TABLE `training_participant` (id, training_id, nome, cognome, anno_nascita, provenienza, valutazione, note) | ⬜ | — | migrazione SQL | ~5min |
-| 13.2 | Backend: filtro sessioni virtuali con `config_attiva_dal` (non generare virtuali prima di questa data) | ⬜ | 13.1 | routes/training.js | ~5min |
-| 13.3a | Backend: endpoint CRUD `training_participant` (GET per training_id, POST) | ⬜ | 13.1 | routes/training.js | ~7min |
-| 13.3b | Backend: endpoint PUT/DELETE `training_participant` + campo valutazione (1-5 stelle) | ⬜ | 13.3a | routes/training.js | ~5min |
-| 13.4a | Frontend: tab Preseason nella pagina allenamenti (struttura + navigazione) | ⬜ | 13.2 | modules/coach/training.js | ~8min |
-| 13.4b | Frontend: wizard Open Day (form date/orari + batch create sessioni con fase=openday) | ⬜ | 13.4a, 13.3a | modules/coach/training.js | ~10min |
-| 13.4c | Frontend: lista partecipanti Open Day (tabella + form aggiunta + valutazione stelle) | ⬜ | 13.4b, 13.3b | modules/coach/training.js | ~10min |
-| 13.5a | Frontend: wizard Ritiro (form data inizio/fine + orari AM/PM + batch create) | ⬜ | 13.4a | modules/coach/training.js | ~10min |
-| 13.5b | Frontend: vista calendario preseason (sessioni doppie, colori per fase) | ⬜ | 13.5a | modules/coach/training.js | ~8min |
-| 13.6 | Frontend: bottone "Avvia stagione regolare" → imposta `config_attiva_dal` su team | ⬜ | 13.5b | modules/coach/training.js, routes/training.js | ~5min |
-| 13.7 | Test build completo + aggiornare docs | ⬜ | 13.6 | DEVELOPMENT_PLAN.md, AGENTS.md | ~3min |
-
-**Effort totale stimato**: ~76min (11 task)
-
-**Note architetturali**:
-- `training_participant` è separata da `training_attendance` perché i partecipanti Open Day NON sono nella rosa (sono prospect esterni)
-- `training.fase` permette di colorare/filtrare le sessioni nel calendario (regolare=default, openday=verde, ritiro=arancio)
-- `config_attiva_dal` evita che le sessioni virtuali da `training_config` vengano generate prima dell'inizio effettivo della stagione regolare
-- Il wizard Open Day crea N sessioni in batch con fase=openday
-- Il wizard Ritiro crea sessioni doppie (AM+PM) per ogni giorno del periodo
-
----
-
-### EPIC 11: Sistema Atleta & Genitore (evoluzione Guest)
-
-> Sostituire il concetto generico di "Guest" con due ruoli distinti (Atleta e Genitore) con capabilities, home e notifiche differenziate. Infrastruttura guest_token invariata (nessuna registrazione), ma UX e permessi specifici per tipo.
-
-#### Fase 1: Tipi e Capabilities (backend)
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 11.1 | Definire capabilities Atleta vs Genitore in `capabilities.js` (frontend + backend mirror) | ✅ | — | utils/capabilities.js, helpers/capabilities.js | ~5min |
-| 11.2 | Aggiornare `guest_token.tipo` per supportare valori `atleta` e `genitore` (retrocompat con esistenti) | ✅ | 11.1 | routes/auth.js, routes/guestLinks.js | ~5min |
-| 11.3 | Differenziare JWT guest: includere `tipo` nelle capabilities check del middleware | ✅ | 11.2 | middleware/auth.js, helpers/capabilities.js | ~5min |
-| 11.4 | Endpoint: atleta può POST su `/api/absence-notification` solo per il proprio player_id | ✅ | 11.3 | routes/notification.js | ~5min |
-| 11.5 | Test funzionale capabilities atleta/genitore (permessi differenziati) | ✅ | 11.4 | tmp_test.js | ~5min |
-
-#### Fase 2: Home Atleta (frontend)
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 11.6 | Creare `modules/auth/guestAtleta.js` — Home atleta (notifiche, convocazioni, indisponibilità, allenamenti, partite, stats personali, classifica) | ✅ | 11.3 | modules/auth/guestAtleta.js | ~15min |
-| 11.6a | — Widget notifiche + convocazione prossima | ✅ | 11.6 | modules/auth/guestAtleta.js | ~5min |
-| 11.6b | — Form "Comunica indisponibilità" (data + motivo) | ✅ | 11.4, 11.6 | modules/auth/guestAtleta.js | ~5min |
-| 11.6c | — Sezioni calendario allenamenti + partite + stats personali + classifica | ✅ | 11.6 | modules/auth/guestAtleta.js | ~5min |
-
-#### Fase 3: Home Genitore (frontend)
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 11.7 | Creare `modules/auth/guestGenitore.js` — Home genitore (comunicazioni, convocazioni figlio, calendario, risultati, classifica, stats squadra) | ✅ | 11.3 | modules/auth/guestGenitore.js | ~15min |
-| 11.7a | — Widget comunicazioni con badge priorità | ✅ | 11.7, 11.9 | modules/auth/guestGenitore.js | ~5min |
-| 11.7b | — Sezioni convocazioni figlio + calendario + risultati + classifica | ✅ | 11.7 | modules/auth/guestGenitore.js | ~5min |
-
-#### Fase 4: Router guest differenziato
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 11.8 | Aggiornare router.js: guest `tipo=atleta` → guestAtleta, `tipo=genitore` → guestGenitore | ✅ | 11.6, 11.7 | router.js, modules/auth/guest.js | ~5min |
-
-#### Fase 5: Priorità notifiche
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 11.9 | ALTER TABLE `notification` ADD `priorita` TEXT DEFAULT 'info' (info/importante/urgente) | ✅ | — | migrazione SQL | ~3min |
-| 11.10 | Frontend: badge colorato priorità (🔵🟡🔴) nelle liste notifiche | ✅ | 11.9 | modules/team/notifications.js, guestAtleta.js, guestGenitore.js | ~5min |
-
-#### Fase 6: Comunicazioni con destinatari (fase 1)
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 11.11 | ALTER TABLE `notification` ADD `destinatario_tipo TEXT[]` (atleta/genitore/staff) | ✅ | — | migrazione SQL | ~3min |
-| 11.12 | UI creazione comunicazione: selezione destinatari (tipo + categorie) | ✅ | 11.11 | modules/team/notifications.js | ~10min |
-| 11.13 | Backend: filtro GET notifiche per `destinatario_tipo` in base al ruolo richiedente | ✅ | 11.11 | routes/notification.js | ~5min |
-| 11.14 | Notifiche convocazione differenziate: testo diverso per atleta vs genitore | ✅ | 11.11, 11.2 | routes/convocazioni.js | ~5min |
-
-#### Fase 7: UI generazione link (aggiornamento)
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 11.15 | Aggiornare UI "Genera Link" — rinominare tipi in "Atleta" e "Genitore" (invece di guest generico) | ✅ | 11.2 | modules/admin/guestLinks.js | ~5min |
-| 11.16 | Test build completo + aggiornare docs | ✅ | 11.15 | DEVELOPMENT_PLAN.md, AGENTS.md | ~5min |
-
-**Effort totale stimato**: ~2h 10min (16 task + 3 sotto-task)
-
-**Note architetturali**:
-- L'infrastruttura `guest_token` resta invariata (link senza registrazione)
-- Il JWT guest contiene già `tipo` — basta usarlo per routing e capabilities
-- Le home atleta/genitore sono pagine standalone (non usano sidebar staff)
-- La priorità notifiche è un campo semplice, non un sistema di regole complesso
-- Le comunicazioni fase 1 usano la tabella `notification` esistente con filtro `destinatario_tipo`
 
 ---
 
