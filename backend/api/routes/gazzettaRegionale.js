@@ -452,11 +452,18 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
   function parseGoalsFromHtml(html, extractHome) {
     const parts = html.split('vc_container_goal');
     const targetHtml = extractHome ? (parts[1] || '') : (parts[2] || '');
-    const goalRe = /vc_goal_player">([^<]+)<\/span>\s*<span class="vc_goal_minute">(\d+)'/g;
+    // Match player name (may contain newlines/tabs) + optional minute
+    const goalRe = /vc_goal_player">\s*([^<]+?)\s*<\/span>\s*<span class="vc_goal_minute">\s*(\d*)\s*'\s*<\/span>/g;
     const goals = [];
     let m;
     while ((m = goalRe.exec(targetHtml)) !== null) {
-      goals.push({ player: m[1].trim(), minute: parseInt(m[2]) });
+      let player = m[1].replace(/[\n\t\r]+/g, ' ').trim();
+      const minute = m[2] ? parseInt(m[2]) : null;
+      // Skip autogol (non sono gol nostri)
+      if (/autogol/i.test(player)) continue;
+      // Pulisci annotazioni extra (es. "(rig.)")
+      player = player.replace(/\s*\(.*?\)\s*/g, '').trim();
+      if (player) goals.push({ player, minute });
     }
     return goals;
   }
