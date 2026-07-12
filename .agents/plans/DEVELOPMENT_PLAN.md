@@ -958,6 +958,12 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 - Deve avere: ID univoco, dipendenze esplicite, file coinvolti
 - Se un task supera 15min → spezzarlo in sotto-task
 
+### Aggiungere nuovi EPIC
+- Il numero EPIC è **progressivo** (prossimo: EPIC 19)
+- Inserire SEMPRE in ordine numerico nella sezione "3. Epics & Micro-Task"
+- Mai inserire un EPIC tra due esistenti con numero inferiore/superiore (es. non mettere EPIC 19 tra EPIC 4 e EPIC 6)
+- Aggiornare la sezione "4. Dipendenze tra Epic" se il nuovo EPIC ha dipendenze
+
 ### Aggiungere nuove Epic
 - Formato: `EPIC N: Titolo`
 - Deve avere: descrizione breve, tabella task, dipendenze
