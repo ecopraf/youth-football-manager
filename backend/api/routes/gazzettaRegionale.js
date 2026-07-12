@@ -583,12 +583,22 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
           .select('player_id, minuto').eq('match_id', dbMatch.id).eq('tipo_evento', 'GOAL');
 
         for (const goal of goals) {
-          // Match cognome con rosa
-          const player = (roster || []).find(r =>
-            r.player.cognome.toLowerCase() === goal.player.toLowerCase() ||
-            r.player.cognome.toLowerCase().startsWith(goal.player.toLowerCase()) ||
-            goal.player.toLowerCase().startsWith(r.player.cognome.toLowerCase())
-          );
+          // Match cognome con rosa (GR può riportare solo cognome, o parti del nome+cognome)
+          const gp = goal.player.toLowerCase();
+          const gpParts = gp.split(/\s+/);
+          const player = (roster || []).find(r => {
+            const cog = r.player.cognome.toLowerCase();
+            const nom = r.player.nome.toLowerCase();
+            // Exact cognome
+            if (cog === gp) return true;
+            // startsWith bidirezionale
+            if (cog.startsWith(gp) || gp.startsWith(cog)) return true;
+            // Cognome contenuto in goal.player (es. "Ercole Salazar" contiene "Salazar")
+            if (gpParts.includes(cog) || gpParts.some(p => cog.includes(p) && p.length >= 4)) return true;
+            // Match su parti del nome (es. GR "Ercole Salazar" → nome "Tristan Ercole", cognome "Salazar")
+            if (gpParts.length >= 2 && gpParts.some(p => cog === p) && gpParts.some(p => nom.includes(p))) return true;
+            return false;
+          });
           if (!player) { skipped++; skipReasons.no_player++; unmatchedPlayers.push(goal.player); continue; }
 
           // Skip se già presente (stesso player + stesso minuto)

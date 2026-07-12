@@ -26,12 +26,18 @@ function createImportConfirmRouter({ supabase, authMiddleware, requirePermission
       function findPlayer(nome) {
         if (!nome || roster.length === 0) return null;
         const searchLower = nome.toLowerCase().trim();
+        const searchParts = searchLower.split(/\s+/);
+        // 1. Exact cognome
         let found = roster.find(r => r.player && r.player.cognome.toLowerCase() === searchLower);
         if (found) return found.player_id;
-        found = roster.find(r => r.player && searchLower.includes(r.player.cognome.toLowerCase()));
+        // 2. Cognome contenuto nel search o viceversa
+        found = roster.find(r => r.player && (searchLower.includes(r.player.cognome.toLowerCase()) || r.player.cognome.toLowerCase().includes(searchLower)));
         if (found) return found.player_id;
-        found = roster.find(r => r.player && r.player.cognome.toLowerCase().includes(searchLower));
-        if (found) return found.player_id;
+        // 3. Multi-word: una parola matcha cognome + altra matcha nome (es. "Ercole Salazar" → cognome Salazar, nome Tristan Ercole)
+        if (searchParts.length >= 2) {
+          found = roster.find(r => r.player && searchParts.some(p => r.player.cognome.toLowerCase() === p) && searchParts.some(p => r.player.nome.toLowerCase().includes(p)));
+          if (found) return found.player_id;
+        }
         return null;
       }
 
