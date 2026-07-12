@@ -588,7 +588,9 @@ export default async function loadDashboard() {
     };
   }
 
-  // Lazy load: classifica + GR (cached 10min, non bloccano il render)
+  // Lazy load: classifica + GR (cached 10min, non bloccano il render) — solo se configurato
+  const hasGrConfig = !!(window.YFM.getSquadra()?.classifica_url);
+  if (hasGrConfig) {
   Promise.all([
     cachedFetch('dash_classifica_' + squadraId, () => apiFetch('/squadre/' + squadraId + '/classifica').catch(() => ({ classifica: null }))),
     cachedFetch('dash_marcatori_' + squadraId, () => apiFetch('/gr/marcatori/' + squadraId).catch(() => ({ marcatori: [] }))),
@@ -616,6 +618,12 @@ export default async function loadDashboard() {
       attachCalendarioNav();
     }
   });
+  } else {
+    // GR non configurato: pulisci colonna e cache
+    const col = document.getElementById('dashLazyCol');
+    if (col) col.innerHTML = '';
+    try { ['dash_classifica_','dash_marcatori_','dash_calendario_'].forEach(k => sessionStorage.removeItem(k + squadraId)); } catch(e) {}
+  }
 
   // Render infortuni attivi (dati già dal dashboard aggregato)
   const activeInjuries = (window._dashInfortunati || []).filter(i => !i.data_rientro_effettiva);

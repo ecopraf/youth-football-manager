@@ -479,9 +479,10 @@ function openGrConfig() {
   if (currentUrl) {
     const girone = squadra.category?.girone || '';
     const tipoCamp = squadra.category?.tipo_campionato || '';
-    const infoStr = [tipoCamp, girone ? `Girone ${girone}` : ''].filter(Boolean).join(' — ');
+    const parts = currentUrl.match(/levels\/(\d+)\/(\d+)\/(\d+)/);
+    const infoStr = [tipoCamp, girone ? `Girone ${girone}` : ''].filter(Boolean).join(' — ') || (parts ? `Campionato ${parts[2]} / Girone ${parts[3]}` : 'Girone impostato');
     statusHtml = `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#2E7D32;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-      <span>✅ Configurato: <strong>${infoStr || 'Girone impostato'}</strong></span>
+      <span>✅ Configurato: <strong>${infoStr}</strong></span>
       <button class="btn btn-small" id="grResetConfig" style="background:#fee;color:#c00;border:1px solid #fcc;font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;">🗑️ Rimuovi</button>
     </div>`;
   }
@@ -607,7 +608,10 @@ function openGrConfig() {
     try {
       await apiFetch('/gr/configure', { method: 'POST', body: JSON.stringify({ teamId: window.YFM.squadraId, url: null }) });
       const sq = window.YFM.allSquadre?.find(s => s.id === window.YFM.squadraId);
-      if (sq) sq.classifica_url = null;
+      if (sq) { sq.classifica_url = null; if (sq.category) sq.category.girone = null; }
+      // Invalida cache GR sessionStorage
+      try { ['dash_classifica_','dash_marcatori_','dash_calendario_'].forEach(k => sessionStorage.removeItem(k + window.YFM.squadraId)); } catch(e) {}
+      invalidateDashboardCache();
       hideLoading();
       modal.close();
       loadImportCenter();
@@ -647,9 +651,15 @@ function openGrConfig() {
     showLoading('Salvataggio...');
     try {
       await apiFetch('/gr/configure', { method: 'POST', body: JSON.stringify({ teamId: window.YFM.squadraId, url, girone: gironeName }) });
-      // Aggiorna classifica_url in memoria
+      // Aggiorna classifica_url e girone in memoria
       const sq = window.YFM.allSquadre?.find(s => s.id === window.YFM.squadraId);
-      if (sq) sq.classifica_url = `https://v2.apiweb.gazzettaregionale.it/classifiche/levels/1/${selectedChamp}/${selectedGroup}/classifica`;
+      if (sq) {
+        sq.classifica_url = `https://v2.apiweb.gazzettaregionale.it/classifiche/levels/1/${selectedChamp}/${selectedGroup}/classifica`;
+        if (sq.category) sq.category.girone = gironeName;
+      }
+      // Invalida cache GR per forzare refresh dashboard
+      try { ['dash_classifica_','dash_marcatori_','dash_calendario_'].forEach(k => sessionStorage.removeItem(k + window.YFM.squadraId)); } catch(e) {}
+      invalidateDashboardCache();
       hideLoading();
       modal.close();
       alert('✅ Girone configurato per ' + teamName + '!');
