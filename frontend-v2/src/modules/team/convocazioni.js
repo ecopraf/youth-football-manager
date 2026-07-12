@@ -2,6 +2,7 @@ import { apiFetch } from '../../services/api';
 import { formatDate, getAvatarColor } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 import { printHTML } from '../../utils/printHelper';
+import { invalidateDashboardCache } from './dashboard.js';
 
 export async function openConvocation(mid, readOnly) {
   const match = window.YFM.allMatches?.find(m => m.id === mid) || {};
@@ -189,6 +190,7 @@ export async function openConvocation(mid, readOnly) {
       // Segna che pubblica è necessario
       const dot = document.getElementById('pubDot');
       if (dot) { dot.style.background = '#FFD700'; dot.style.animation = 'pulse-dot 1.2s infinite'; }
+      invalidateDashboardCache();
       alert('✅ Convocazioni salvate! Ricorda di pubblicare per notificare.');
     } catch (e) {
       hideLoading();
@@ -213,6 +215,7 @@ export async function openConvocation(mid, readOnly) {
       const dot = document.getElementById('pubDot');
       if (dot) { dot.style.background = '#27AE60'; dot.style.animation = 'none'; }
       hasUnsavedChanges = false;
+      invalidateDashboardCache();
       alert('✅ Convocazione pubblicata! Notifica inviata.');
     } catch (e) {
       hideLoading(); alert('Errore: ' + e.message);
