@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 18 Luglio 2026 | Versione: v3.16 | Build: v3.16.43
+> Ultimo aggiornamento: 19 Luglio 2026 | Versione: v3.16 | Build: v3.16.45
 
 ---
 
@@ -938,6 +938,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.45 | feat: Quote — capability `quote` dedicata (visibile solo admin/segreteria, personalizzabile). Colonna `fee.importo_pagato` come fonte di verità per rigenerazione (fix bug residuo doppia rigenerazione). Modale dettaglio giocatore mostra Pagato/Residuo. Fix checkbox selezione multipla (non apre più dettaglio). Fix modale edit config (resta aperto il configuratore dopo salvataggio) |
+| v3.16.44 | feat: Quote — modale Configura Quote con ✏️ Modifica (nome/importo/rate/categoria), 📋 Duplica config, 🔄 Rigenera quote esistenti (batch ottimizzato, preserva pagamenti con logica residuo). Endpoint POST /fee-configs/:id/rigenera. Help in-app per pagina Quote. Fix showToast mancante |
 | v3.16.42 | feat: EPIC 12 guest UX — link Ospite senza comunicazioni, link Famiglia con sezione 💰 Situazione Quote (rate pagate/scadute), header semplificato (rimosso titolo, solo messaggio benvenuto). Fix nomi colonne fee_installment (stato/scadenza) |
 | v3.16.34 | feat: EPIC 3 Certificati Medici — badge "⚠️ Cert. scaduto" / "⏳ Cert. in scadenza" nelle convocazioni + banner riepilogativo se ≥1 convocato ha certificato scaduto/mancante |
 | v3.16.33 | fix: guest header — rimosso selettore squadra/stagione, avatar con logout (atleta: iniziali, genitore: G), fix loadSquadre per guest con workspaceInfo |

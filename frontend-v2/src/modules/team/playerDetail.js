@@ -41,7 +41,7 @@ export async function loadPlayerDetail(container, playerId) {
     }
 
     let fees = [];
-    const canSeeFees = window.YFM.canRead('club_operations') || window.YFM.getUser()?.ruolo === 'admin' || window.YFM.getUser()?.is_superadmin;
+    const canSeeFees = window.YFM.canRead('quote') || window.YFM.getUser()?.ruolo === 'admin' || window.YFM.getUser()?.is_superadmin;
     if (canSeeFees) {
       try {
         fees = await apiFetch('/fees?player_id=' + playerId + '&team_id=' + window.YFM.squadraId);

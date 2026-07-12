@@ -20,22 +20,19 @@ export default async function loadGuestAtleta() {
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
 
   try {
-    const [notifications, matches, trainings, stats, motivi, absences, fees] = await Promise.all([
+    const [notifications, futureMatches, trainings, stats, absences, fees] = await Promise.all([
       apiFetch(`/notifications/team/${teamId}?destinatario_tipo=atleta`).catch(() => []),
-      apiFetch(`/squadre/${teamId}/partite`).catch(() => []),
+      apiFetch(`/squadre/${teamId}/partite-future`).catch(() => []),
       apiFetch(`/squadre/${teamId}/allenamenti-futuri`).catch(() => []),
       apiFetch(`/statistiche/giocatore/${playerId}?team_id=${teamId}`).catch(() => null),
-      apiFetch('/absence/motivi').catch(() => ['Infortunio', 'Malattia', 'Impegni scolastici', 'Motivi familiari', 'Altro']),
       apiFetch(`/absence/player/${playerId}`).catch(() => []),
       apiFetch(`/fees?player_id=${playerId}&team_id=${teamId}`).catch(() => [])
     ]);
+    const motivi = ['Infortunio', 'Malattia', 'Impegni scolastici', 'Motivi familiari', 'Altro'];
 
-    // Fetch convocazione per prossima partita
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const now = new Date().toISOString();
-    const nextMatch = (matches || [])
-      .filter(m => m.data_ora && m.data_ora > now && m.stato !== 'Archiviata' && m.stato !== 'Terminata' && m.live_meta?.stato !== 'fine')
-      .sort((a, b) => a.data_ora.localeCompare(b.data_ora))[0] || null;
+    // Prossima partita (già ordinata asc dal backend)
+    const nextMatch = (futureMatches || [])
+      .filter(m => m.stato !== 'Archiviata' && m.stato !== 'Terminata' && m.live_meta?.stato !== 'fine')[0] || null;
     let myConvocation = null;
     let convocationPublished = false;
     if (nextMatch) {
@@ -51,22 +48,17 @@ export default async function loadGuestAtleta() {
     const absDates = (absences || []).map(a => a.data_allenamento).filter(Boolean);
     sessionStorage.setItem('yfm_abs_dates', JSON.stringify(absDates));
 
-    render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished, fees });
+    render(c, { playerName, playerId, teamId, notifications, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished, fees });
   } catch (e) {
     c.innerHTML = `<div class="error-box">Errore: ${e.message}</div>`;
   }
 }
 
-function render(c, { playerName, playerId, teamId, notifications, matches, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished, fees }) {
+function render(c, { playerName, playerId, teamId, notifications, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished, fees }) {
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
   const absDates = new Set(JSON.parse(sessionStorage.getItem('yfm_abs_dates') || '[]'));
 
-  // Ultime partite (max 5)
-  const past = (matches || [])
-    .filter(m => m.stato === 'Archiviata' || (m.data_ora && m.data_ora.slice(0, 10) < todayStr))
-    .sort((a, b) => b.data_ora.localeCompare(a.data_ora))
-    .slice(0, 5);
 
   // Prossimi allenamenti (max 5)
   const nextTrainings = (trainings || []).slice(0, 5);
@@ -151,24 +143,6 @@ function render(c, { playerName, playerId, teamId, notifications, matches, train
     </div>`;
   }
 
-  // Ultime partite
-  if (past.length > 0) {
-    html += `<div class="ga-section">
-      <div class="ga-section-title">📅 Ultime Partite</div>
-      ${past.map(m => {
-        const d = new Date(m.data_ora);
-        const dateStr = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
-        const result = m.gol_casa != null && m.gol_trasferta != null ? `${m.gol_casa}-${m.gol_trasferta}` : '—';
-        return `<div class="ga-match-card">
-          <div>
-            <div class="ga-match-team">${m.avversario || '?'}</div>
-            <div class="ga-match-meta">${dateStr}${m.casa ? ' (Casa)' : ' (Trasf.)'}</div>
-          </div>
-          <span class="ga-match-result">${result}</span>
-        </div>`;
-      }).join('')}
-    </div>`;
-  }
 
   // Stats personali
   if (stats) {
@@ -185,30 +159,37 @@ function render(c, { playerName, playerId, teamId, notifications, matches, train
     </div>`;
   }
 
-  // Situazione Quote
+  // Situazione Quote (raggruppate per tipologia)
   if (fees && fees.length > 0) {
-    const allInstallments = fees.flatMap(f => f.fee_installment || []);
     const today = new Date().toISOString().slice(0, 10);
-    const pagate = allInstallments.filter(i => i.stato === 'pagata');
-    const scadute = allInstallments.filter(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < today);
+    const allInstallments = fees.flatMap(f => f.fee_installment || []);
     const totale = allInstallments.reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
-    const pagato = pagate.reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
+    const pagato = allInstallments.filter(i => i.stato === 'pagata').reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
+    const scaduteCount = allInstallments.filter(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < today).length;
     html += `<div class="ga-section">
       <div class="ga-section-title">💰 Situazione Quote</div>
       <div style="font-size:13px;color:#333;margin-bottom:8px;">Pagato: <strong>€${pagato.toFixed(0)}</strong> / €${totale.toFixed(0)}</div>
-      ${scadute.length > 0 ? `<div style="font-size:12px;color:#E74C3C;font-weight:600;">⚠️ ${scadute.length} rat${scadute.length === 1 ? 'a scaduta' : 'e scadute'}</div>` : ''}
-      <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px;">
-        ${allInstallments.sort((a, b) => (a.numero_rata || 0) - (b.numero_rata || 0)).map(i => {
-          const isPagata = i.stato === 'pagata';
-          const scad = i.scadenza ? new Date(i.scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) : '';
-          const isScaduta = !isPagata && i.scadenza && i.scadenza.slice(0, 10) < today;
-          const label = i.scadenza_label || `Rata ${i.numero_rata}`;
-          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:8px;background:${isPagata ? '#d1fae5' : isScaduta ? '#fee2e2' : '#f8f9fa'};font-size:12px;">
-            <span>${isPagata ? '✅' : isScaduta ? '⚠️' : '⬜'} ${label} — €${parseFloat(i.importo || 0).toFixed(0)}</span>
-            <span style="color:#888;">${scad}</span>
-          </div>`;
-        }).join('')}
-      </div>
+      ${scaduteCount > 0 ? `<div style="font-size:12px;color:#E74C3C;font-weight:600;margin-bottom:8px;">⚠️ ${scaduteCount} rat${scaduteCount === 1 ? 'a scaduta' : 'e scadute'}</div>` : ''}
+      ${fees.map(fee => {
+        const installments = (fee.fee_installment || []).sort((a, b) => (a.numero_rata || 0) - (b.numero_rata || 0));
+        const feePagato = installments.filter(i => i.stato === 'pagata').reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
+        const feeTotale = installments.reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
+        return `<div style="margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:4px;">${fee.fee_config?.nome || 'Quota'} <span style="font-weight:400;color:#888;">€${feePagato.toFixed(0)}/${feeTotale.toFixed(0)}</span></div>
+          <div style="display:flex;flex-direction:column;gap:3px;">
+            ${installments.map(i => {
+              const isPagata = i.stato === 'pagata';
+              const scad = i.scadenza ? new Date(i.scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) : '';
+              const isScaduta = !isPagata && i.scadenza && i.scadenza.slice(0, 10) < today;
+              const label = i.scadenza_label || `Rata ${i.numero_rata}`;
+              return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:8px;background:${isPagata ? '#d1fae5' : isScaduta ? '#fee2e2' : '#f8f9fa'};font-size:12px;">
+                <span>${isPagata ? '✅' : isScaduta ? '⚠️' : '⬜'} ${label} — €${parseFloat(i.importo || 0).toFixed(0)}</span>
+                <span style="color:#888;">${scad}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
     </div>`;
   }
 

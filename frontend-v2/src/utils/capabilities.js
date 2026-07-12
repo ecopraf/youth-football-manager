@@ -11,14 +11,15 @@ export const CAPABILITIES = [
   { id: 'statistiche', label: 'Statistiche', icon: '📊', desc: 'Visualizzazione stats' },
   { id: 'guest_links', label: 'Link Guest', icon: '🔗', desc: 'Generare link accesso' },
   { id: 'import', label: 'Import', icon: '📥', desc: 'Import da TC/GR/PDF' },
-  { id: 'report', label: 'Report', icon: '📄', desc: 'Report PDF' }
+  { id: 'report', label: 'Report', icon: '📄', desc: 'Report PDF' },
+  { id: 'quote', label: 'Quote', icon: '💰', desc: 'Gestione quote economiche' }
 ];
 
 export const PROFILI = {
   admin: {
     label: 'Admin',
     icon: '🔑',
-    capabilities: { rosa: 'write', partite: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read' }
+    capabilities: { rosa: 'write', partite: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write' }
   },
   allenatore: {
     label: 'Allenatore',
@@ -48,7 +49,7 @@ export const PROFILI = {
   segreteria: {
     label: 'Segreteria',
     icon: '📎',
-    capabilities: { rosa: 'write', partite: 'read', formazione: 'write', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read' }
+    capabilities: { rosa: 'write', partite: 'read', formazione: 'write', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write' }
   },
   custom: {
     label: 'Personalizzato',

@@ -50,7 +50,7 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
     }
   });
 
-  // PUT /api/fee-configs/:id
+  // PUT /api/fee-configs/:id — aggiorna solo il template config
   router.put('/api/fee-configs/:id', authMiddleware, async (req, res) => {
     try {
       const { nome, importo_totale, rate, category_id, attiva } = req.body;
@@ -68,10 +68,91 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
     }
   });
 
-  // DELETE /api/fee-configs/:id — disattiva (soft delete)
+  // POST /api/fee-configs/:id/rigenera — rigenera installments da config aggiornata
+  router.post('/api/fee-configs/:id/rigenera', authMiddleware, async (req, res) => {
+    try {
+      const { data: config } = await supabase.from('fee_config').select('*').eq('id', req.params.id).single();
+      if (!config) return res.status(404).json({ error: 'Configurazione non trovata' });
+
+      const { data: fees } = await supabase.from('fee').select('id, importo_pagato').eq('fee_config_id', req.params.id);
+      if (!fees?.length) return res.json({ success: true, rigenerati: 0 });
+
+      const newImporto = parseFloat(config.importo_totale);
+      const newRate = config.rate;
+      const feeIds = fees.map(f => f.id);
+
+      // 2. Elimina tutte le installments in batch
+      await supabase.from('fee_installment').delete().in('fee_id', feeIds);
+
+      // 3. Aggiorna importo_totale su tutte le fee
+      await supabase.from('fee').update({ importo_totale: newImporto, updated_at: new Date().toISOString() }).in('id', feeIds);
+
+      // 3. Genera nuove installments per tutte le fee
+      const allNewInsts = [];
+      const feeStatusUpdates = [];
+      for (const fee of fees) {
+        const totalePagato = parseFloat(fee.importo_pagato) || 0;
+        let residuoPagato = totalePagato;
+        const insts = [];
+        let primaRataNonCoperta = -1;
+        for (let idx = 0; idx < newRate.length; idx++) {
+          const importoRata = parseFloat(newRate[idx].importo);
+          if (residuoPagato >= importoRata - 0.01) {
+            residuoPagato = Math.round((residuoPagato - importoRata) * 100) / 100;
+            insts.push({ fee_id: fee.id, numero_rata: idx + 1, importo: importoRata, scadenza_label: newRate[idx].scadenza_label || null, scadenza: newRate[idx].scadenza || null, stato: 'pagata', data_pagamento: new Date().toISOString().split('T')[0] });
+          } else { primaRataNonCoperta = idx; break; }
+        }
+        const rateRimanenti = newRate.length - insts.length;
+        if (rateRimanenti > 0) {
+          const residuoDaSaldare = Math.round((newImporto - totalePagato) * 100) / 100;
+          if (residuoDaSaldare > 0) {
+            // Prima rata non coperta: ridotta del residuo pagato rimasto
+            // Rate successive: importo originale da config
+            for (let idx = primaRataNonCoperta; idx < newRate.length; idx++) {
+              const isFirst = idx === primaRataNonCoperta;
+              const importoConfig = parseFloat(newRate[idx].importo);
+              const importoRata = isFirst ? Math.round((importoConfig - residuoPagato) * 100) / 100 : importoConfig;
+              const note = isFirst && residuoPagato > 0.01 ? `Residuo \u20ac${residuoPagato.toFixed(2)} applicato dalla rata precedente` : null;
+              insts.push({ fee_id: fee.id, numero_rata: idx + 1, importo: importoRata, scadenza_label: newRate[idx].scadenza_label || null, scadenza: newRate[idx].scadenza || null, stato: 'da_pagare', note });
+            }
+          } else {
+            for (let idx = primaRataNonCoperta; idx < newRate.length; idx++) {
+              insts.push({ fee_id: fee.id, numero_rata: idx + 1, importo: 0, scadenza_label: newRate[idx].scadenza_label || null, scadenza: newRate[idx].scadenza || null, stato: 'pagata', data_pagamento: new Date().toISOString().split('T')[0] });
+            }
+          }
+        }
+        allNewInsts.push(...insts);
+        const tuttePagate = insts.every(i => i.stato === 'pagata');
+        const almenaUna = insts.some(i => i.stato === 'pagata');
+        feeStatusUpdates.push({ id: fee.id, stato: tuttePagate ? 'pagata' : almenaUna ? 'parziale' : 'da_pagare' });
+      }
+
+      // 5. Insert batch (chunk da 500)
+      for (let i = 0; i < allNewInsts.length; i += 500) {
+        await supabase.from('fee_installment').insert(allNewInsts.slice(i, i + 500));
+      }
+
+      // 6. Aggiorna stati fee in batch
+      const byStato = {};
+      feeStatusUpdates.forEach(f => { (byStato[f.stato] = byStato[f.stato] || []).push(f.id); });
+      for (const [stato, ids] of Object.entries(byStato)) {
+        await supabase.from('fee').update({ stato }).in('id', ids);
+      }
+
+      res.json({ success: true, rigenerati: fees.length });
+    } catch (err) {
+      console.error('fee-config rigenera error:', err);
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // DELETE /api/fee-configs/:id — elimina config + tutte le fee collegate
   router.delete('/api/fee-configs/:id', authMiddleware, async (req, res) => {
     try {
-      const { error } = await supabase.from('fee_config').update({ attiva: false }).eq('id', req.params.id);
+      // Elimina tutte le fee (cascade elimina anche fee_installment)
+      await supabase.from('fee').delete().eq('fee_config_id', req.params.id);
+      // Elimina la config
+      const { error } = await supabase.from('fee_config').delete().eq('id', req.params.id);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
     } catch (err) {
@@ -87,7 +168,7 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
   router.get('/api/fees', authMiddleware, async (req, res) => {
     try {
       const { team_id, season_id, player_id } = req.query;
-      let query = supabase.from('fee').select('*, fee_installment(*)');
+      let query = supabase.from('fee').select('*, fee_installment(*), fee_config:fee_config_id(nome)');
       if (team_id) query = query.eq('team_id', team_id);
       if (season_id) query = query.eq('season_id', season_id);
       if (player_id) query = query.eq('player_id', player_id);
@@ -164,6 +245,19 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // DELETE /api/fees-batch — elimina quote multiple
+  router.delete('/api/fees-batch', authMiddleware, async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!ids?.length) return res.status(400).json({ error: 'ids richiesti' });
+      const { error } = await supabase.from('fee').delete().in('id', ids);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, deleted: ids.length });
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
   // ═══════════════════════════════════════════
   // FEE INSTALLMENT — pagamento singola rata
   // ═══════════════════════════════════════════
@@ -181,13 +275,14 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
       }).eq('id', req.params.id).select().single();
       if (error) return handleDbError(error, res);
 
-      // Aggiorna stato fee in base alle rate
+      // Aggiorna stato fee e importo_pagato in base alle rate
       const { data: allInst } = await supabase.from('fee_installment')
-        .select('stato').eq('fee_id', inst.fee_id);
+        .select('stato, importo').eq('fee_id', inst.fee_id);
       const tuttePagate = (allInst || []).every(i => i.stato === 'pagata');
       const almenaUnaPagata = (allInst || []).some(i => i.stato === 'pagata');
       const nuovoStato = tuttePagate ? 'pagata' : almenaUnaPagata ? 'parziale' : 'da_pagare';
-      await supabase.from('fee').update({ stato: nuovoStato, updated_at: new Date().toISOString() }).eq('id', inst.fee_id);
+      const importoPagato = (allInst || []).filter(i => i.stato === 'pagata').reduce((s, i) => s + parseFloat(i.importo), 0);
+      await supabase.from('fee').update({ stato: nuovoStato, importo_pagato: importoPagato, updated_at: new Date().toISOString() }).eq('id', inst.fee_id);
 
       res.json({ ...inst, fee_stato: nuovoStato });
     } catch (err) {
@@ -206,13 +301,14 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
       }).eq('id', req.params.id).select().single();
       if (error) return handleDbError(error, res);
 
-      // Ricalcola stato fee
+      // Ricalcola stato fee e importo_pagato
       const { data: allInst } = await supabase.from('fee_installment')
-        .select('stato').eq('fee_id', inst.fee_id);
+        .select('stato, importo').eq('fee_id', inst.fee_id);
       const tuttePagate = (allInst || []).every(i => i.stato === 'pagata');
       const almenaUnaPagata = (allInst || []).some(i => i.stato === 'pagata');
       const nuovoStato = tuttePagate ? 'pagata' : almenaUnaPagata ? 'parziale' : 'da_pagare';
-      await supabase.from('fee').update({ stato: nuovoStato, updated_at: new Date().toISOString() }).eq('id', inst.fee_id);
+      const importoPagato = (allInst || []).filter(i => i.stato === 'pagata').reduce((s, i) => s + parseFloat(i.importo), 0);
+      await supabase.from('fee').update({ stato: nuovoStato, importo_pagato: importoPagato, updated_at: new Date().toISOString() }).eq('id', inst.fee_id);
 
       res.json({ ...inst, fee_stato: nuovoStato });
     } catch (err) {

@@ -232,6 +232,20 @@ export const PAGE_HELP = {
       'Storico carriera e ultime partite',
       'Valutazioni post-partita'
     ]
+  },
+  fees: {
+    title: '💰 Quote',
+    desc: 'Gestione quote economiche della squadra: configurazione, assegnazione e monitoraggio pagamenti.',
+    items: [
+      '⚙️ Configura Quote: crea template con nome, importo e rate personalizzabili',
+      '✏️ Modifica: cambia nome, importo, rate o categoria di una config esistente',
+      '🔄 Rigenera: applica le modifiche della config alle quote già assegnate (preserva pagamenti)',
+      '📋 Duplica: crea una copia della config come base per una nuova quota',
+      '▶ Applica: genera quote per tutti i giocatori della rosa dalla config selezionata',
+      'Click su un giocatore per espandere il dettaglio rate con stato pagamento',
+      'Filtri per stato: Da pagare, Parziale, Pagata',
+      'Badge scadenze: ⚠️ scaduta, ⏳ in scadenza (7gg), 📅 prossima'
+    ]
   }
 };
 

@@ -199,6 +199,13 @@ Le tabelle reali nel DB Supabase sono:
 - `tournament`
 - `absence_notification`
 - `notification`
+- `fee`, `fee_config`, `fee_installment`
+
+**Colonne notevoli `fee`**: `fee_config_id UUID`, `player_id UUID`, `team_id UUID`, `season_id UUID`, `importo_totale NUMERIC(10,2)`, `importo_pagato NUMERIC(10,2) DEFAULT 0` (fonte di verità per rigenerazione — aggiornato da endpoint pay/unpay), `stato TEXT` (da_pagare, parziale, pagata)
+
+**Colonne notevoli `fee_config`**: `workspace_id UUID`, `nome TEXT`, `importo_totale NUMERIC(10,2)`, `rate JSONB` (array di {importo, scadenza_label, scadenza}), `category_id UUID` (nullable), `attiva BOOLEAN`
+
+**Colonne notevoli `fee_installment`**: `fee_id UUID`, `numero_rata INT`, `importo NUMERIC(10,2)`, `scadenza DATE`, `scadenza_label TEXT`, `stato TEXT` (da_pagare, pagata, parziale), `data_pagamento DATE`, `metodo_pagamento TEXT`, `ricevuta_numero TEXT`, `note TEXT`
 
 **Colonne notevoli `import_log`**: `tipo TEXT` (calendario_pdf, calendario_testo, calendario_tuttocampo, rosa_xls, rosa_tuttocampo, formazioni_tuttocampo), `dettagli JSONB`, `record_importati INT`, `esito TEXT`
 
@@ -266,14 +273,14 @@ I workspace attivi nel DB sono:
 
 ### Profili predefiniti
 
-| Profilo | rosa | partite | formazione | allenamenti | statistiche | guest_links | import | report |
-|---------|------|---------|------------|-------------|-------------|-------------|--------|--------|
-| allenatore | write | write | write | write | read | — | write | read |
-| vice_allenatore | read | read | write | write | read | — | — | read |
-| dirigente | read | read | read | — | read | write | — | read |
-| preparatore | read | — | — | write | read | — | — | — |
-| osservatore | read | read | — | — | read | — | — | read |
-| segreteria | write | read | write | read | read | write | write | read |
+| Profilo | rosa | partite | formazione | allenamenti | statistiche | guest_links | import | report | quote |
+|---------|------|---------|------------|-------------|-------------|-------------|--------|--------|-------|
+| allenatore | write | write | write | write | read | — | write | read | — |
+| vice_allenatore | read | read | write | write | read | — | — | read | — |
+| dirigente | read | read | read | — | read | write | — | read | — |
+| preparatore | read | — | — | write | read | — | — | — | — |
+| osservatore | read | read | — | — | read | — | — | read | — |
+| segreteria | write | read | write | read | read | write | write | read | write |
 | custom | (personalizzato dall'admin) |
 
 ### File di riferimento

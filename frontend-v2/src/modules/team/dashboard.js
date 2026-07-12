@@ -668,7 +668,7 @@ export default async function loadDashboard() {
 
   // Widget Quote (visibile per admin/segreteria)
   const feesWidget = document.getElementById('dashFeesWidget');
-  if (feesWidget && (window.YFM.canRead('club_operations') || window.YFM.canWrite('rosa'))) {
+  if (feesWidget && window.YFM.canRead('quote')) {
     Promise.all([
       apiFetch('/fees?team_id=' + window.YFM.squadraId + '&season_id=' + window.YFM.currentSeasonId),
       apiFetch('/fee-configs?workspace_id=' + window.YFM.activeWorkspaceId)
