@@ -264,6 +264,7 @@ function render(c) {
   });
   document.getElementById('btnParsePaste').addEventListener('click', handleParse);
   document.getElementById('wsNome').addEventListener('blur', autoMatchLogo);
+  document.getElementById('wsNomeBreve').addEventListener('blur', autoMatchLogo);
 }
 
 function renderGrid() {
@@ -1269,7 +1270,11 @@ function handleParse() {
 function autoMatchLogo() {
   const nome = document.getElementById('wsNome').value.trim();
   if (!nome || document.getElementById('wsLogoUrl').value) return;
-  const match = findLogo(nome);
+  let match = findLogo(nome);
+  if (!match) {
+    const nomeBreve = document.getElementById('wsNomeBreve').value.trim();
+    if (nomeBreve) match = findLogo(nomeBreve);
+  }
   if (match) {
     document.getElementById('wsLogoUrl').value = match;
     renderLogoPreview(match, true);
