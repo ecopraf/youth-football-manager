@@ -242,11 +242,11 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
         const ex = findExisting(m.giornata, avversario);
 
         if (mode === 'results') {
-          // Solo aggiorna risultati di partite esistenti
+          // Aggiorna risultati di partite esistenti (merge: aggiorna se diverso o mancante)
           if (ex && m.gol_casa !== null && m.gol_casa !== undefined && m.stato === '5') {
             const golCasa = isCasa ? m.gol_casa : m.gol_ospite;
             const golOspite = isCasa ? m.gol_ospite : m.gol_casa;
-            if (ex.gol_casa === null || ex.gol_casa === undefined) {
+            if (ex.gol_casa === null || ex.gol_casa !== golCasa || ex.gol_ospite !== golOspite) {
               await supabase.from('match').update({ gol_casa: golCasa, gol_ospite: golOspite, stato: 'Terminata' }).eq('id', ex.id);
               updated++;
             } else { skipped++; }
@@ -514,9 +514,10 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
           const dbMatch = findDbMatch(dbMatches, grMatch.giornata, avversario);
           let already_imported = false;
           if (dbMatch) {
-            const { count } = await supabase.from('match_event').select('id', { count: 'exact', head: true })
+            const { count: dbCount } = await supabase.from('match_event').select('id', { count: 'exact', head: true })
               .eq('match_id', dbMatch.id).eq('tipo_evento', 'GOAL');
-            already_imported = (count || 0) > 0;
+            // Marca come importata solo se il numero di gol nel DB >= quelli da GR
+            already_imported = (dbCount || 0) >= goals.length && goals.length > 0;
           }
           return { gr_match_id: grMatch.id, giornata: grMatch.giornata, avversario, luogo, risultato, goals, already_imported, db_match_id: dbMatch?.id || null };
         }));
@@ -562,17 +563,17 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
         const dbMatch = findDbMatch(dbMatches, grMatch.giornata, avversario);
         if (!dbMatch) { skipped++; skipReasons.no_db_match++; continue; }
 
-        // Check se già importati
-        const { count } = await supabase.from('match_event').select('id', { count: 'exact', head: true })
-          .eq('match_id', dbMatch.id).eq('tipo_evento', 'GOAL');
-        if ((count || 0) > 0) { skipped++; skipReasons.already_imported++; continue; }
-
         // Scrape gol
         let goals = [];
         try {
           const htmlResp = await fetch(`https://v2.apiweb.gazzettaregionale.it/live/home/${grId}`);
           if (htmlResp.ok) goals = parseGoalsFromHtml(await htmlResp.text(), isHome);
         } catch (e) { /* skip */ }
+        if (goals.length === 0) continue;
+
+        // Fetch eventi esistenti per merge (non skippare tutta la partita)
+        const { data: existingEvents } = await supabase.from('match_event')
+          .select('player_id, minuto').eq('match_id', dbMatch.id).eq('tipo_evento', 'GOAL');
 
         for (const goal of goals) {
           // Match cognome con rosa
@@ -582,6 +583,12 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
             goal.player.toLowerCase().startsWith(r.player.cognome.toLowerCase())
           );
           if (!player) { skipped++; skipReasons.no_player++; unmatchedPlayers.push(goal.player); continue; }
+
+          // Skip se già presente (stesso player + stesso minuto)
+          const alreadyExists = (existingEvents || []).some(e =>
+            e.player_id === player.player.id && e.minuto === (goal.minute || null)
+          );
+          if (alreadyExists) { skipped++; skipReasons.already_imported++; continue; }
 
           await supabase.from('match_event').insert({
             match_id: dbMatch.id,
