@@ -477,9 +477,12 @@ function openGrConfig() {
   // Mostra stato attuale se configurato
   let statusHtml = '';
   if (currentUrl) {
-    const parts = currentUrl.match(/levels\/(\d+)\/(\d+)\/(\d+)/);
-    statusHtml = `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#2E7D32;">
-      ✅ Girone già configurato${parts ? ` (campionato ${parts[2]}, girone ${parts[3]})` : ''}
+    const girone = squadra.category?.girone || '';
+    const tipoCamp = squadra.category?.tipo_campionato || '';
+    const infoStr = [tipoCamp, girone ? `Girone ${girone}` : ''].filter(Boolean).join(' — ');
+    statusHtml = `<div style="background:#e8f5e9;padding:10px 12px;border-radius:8px;margin-bottom:12px;font-size:12px;color:#2E7D32;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <span>✅ Configurato: <strong>${infoStr || 'Girone impostato'}</strong></span>
+      <button class="btn btn-small" id="grResetConfig" style="background:#fee;color:#c00;border:1px solid #fcc;font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;">🗑️ Rimuovi</button>
     </div>`;
   }
 
@@ -596,6 +599,23 @@ function openGrConfig() {
   }
 
   loadChampionships();
+
+  // Reset config
+  document.getElementById('grResetConfig')?.addEventListener('click', async () => {
+    if (!confirm('Rimuovere la configurazione del girone?')) return;
+    showLoading('Rimozione...');
+    try {
+      await apiFetch('/gr/configure', { method: 'POST', body: JSON.stringify({ teamId: window.YFM.squadraId, url: null }) });
+      const sq = window.YFM.allSquadre?.find(s => s.id === window.YFM.squadraId);
+      if (sq) sq.classifica_url = null;
+      hideLoading();
+      modal.close();
+      loadImportCenter();
+    } catch (err) {
+      hideLoading();
+      alert('❌ ' + err.message);
+    }
+  });
 
   document.getElementById('grChamp').addEventListener('change', (e) => {
     if (e.target.value) {

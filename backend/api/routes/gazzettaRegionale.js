@@ -34,11 +34,24 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
     } catch (e) { res.json({ classifica: [], error: e.message }); }
   });
 
-  // POST /api/gr/configure — salva URL GR per il team
+  // POST /api/gr/configure — salva URL GR per il team (url=null per reset)
   router.post('/api/gr/configure', authMiddleware, async (req, res) => {
     try {
       const { teamId, url, girone } = req.body;
-      if (!teamId || !url) return res.status(400).json({ error: 'teamId e url richiesti' });
+      if (!teamId) return res.status(400).json({ error: 'teamId richiesto' });
+
+      // Reset: url esplicitamente null
+      if (url === null) {
+        const { error } = await supabase.from('team').update({ classifica_url: null }).eq('id', teamId);
+        if (error) return res.status(400).json({ error: error.message });
+        const { data: team } = await supabase.from('team').select('category_id').eq('id', teamId).single();
+        if (team?.category_id) {
+          await supabase.from('category').update({ girone: null }).eq('id', team.category_id);
+        }
+        return res.json({ success: true, reset: true });
+      }
+
+      if (!url) return res.status(400).json({ error: 'teamId e url richiesti' });
       const parsed = parseGrUrl(url);
       if (!parsed) return res.status(400).json({ error: 'URL non valido. Formato: .../1/55/2325' });
 
