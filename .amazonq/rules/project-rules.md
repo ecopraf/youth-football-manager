@@ -376,6 +376,21 @@ overlay.innerHTML = `<div class="modal-card-class">
 - **Tabelle dati numerici su mobile**: usare media query per ridurre padding (`3px 2px`), font (`10px`), e forzare `width` fissa sulle colonne numeriche (es. `22px`) per allineamento
 - **Tabelle con colonne miste (testo+numeri)**: numeri sempre `text-align:right` + `font-variant-numeric:tabular-nums` per incolonnamento perfetto
 
+### Principi UX di default (OBBLIGATORI)
+
+Questi principi si applicano AUTOMATICAMENTE a ogni nuova UI senza bisogno di richiesta esplicita:
+
+| Principio | Dettaglio |
+|---|---|
+| Informazioni compatte | Dati correlati (alert, scadenze, stato) vanno inline tra parentesi o badge accanto al titolo — mai su righe separate se evitabile |
+| Raggruppamento per tipologia | Liste eterogenee (quote, kit, documenti) DEVONO essere raggruppate per tipo con header collassabile |
+| Card espandibili | Gruppi con >3 elementi: header chiuso di default con summary, click per espandere. Riduce scroll e cognitive load |
+| Summary nell'header | Ogni card/gruppo chiuso deve mostrare le info essenziali (totale, stato critico, prossima scadenza) senza bisogno di espandere |
+| Desktop intatto su fix mobile | Modifiche per mobile usano SOLO media query CSS (`@media max-width:500px`) — mai toccare stili inline desktop |
+| Tooltip per dettagli secondari | Info di dettaglio (date specifiche, breakdown) nel `title` attribute per hover desktop; su mobile il tap sulla riga apre il modale dettaglio |
+| Filtri con stato visibile | Bottoni filtro devono avere stile `active` evidente (sfondo primary, testo bianco) per indicare la selezione corrente |
+| Coerenza dashboard ↔ pagina | Widget dashboard e pagina dedicata devono usare la stessa struttura dati e lo stesso raggruppamento (es. per tipologia) |
+
 ### Standard Tabelle Responsive (DataGrid)
 
 Per tabelle con **5+ colonne** o dati misti (testo + numeri), usare il componente `DataGrid` (`components/DataGrid.js`) che gestisce automaticamente:

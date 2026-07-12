@@ -70,8 +70,12 @@ function render(c, isAdmin) {
       <div style="padding:10px 16px;background:#fef2f2;border-radius:10px;font-size:13px;">Pendenti: <strong style="color:#E74C3C;">${pendenti}</strong></div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <style>.btn-filter.active{background:#667eea!important;color:white!important;border-color:#667eea!important;}
+      @media(max-width:500px){.fee-row{padding:8px 10px!important;}.fee-row-name{font-size:12px!important;}.fee-row-rate{font-size:11px!important;}.fee-group-header{padding:10px 12px!important;}}</style>
       <button class="btn btn-secondary btn-filter active" data-filter="all" style="font-size:12px;padding:6px 12px;">Tutte</button>
       <button class="btn btn-secondary btn-filter" data-filter="da_pagare" style="font-size:12px;padding:6px 12px;">Da pagare</button>
+      <button class="btn btn-secondary btn-filter" data-filter="scadute" style="font-size:12px;padding:6px 12px;">⚠️ Scadute</button>
+      <button class="btn btn-secondary btn-filter" data-filter="in_scadenza" style="font-size:12px;padding:6px 12px;">⏳ In scadenza</button>
       <button class="btn btn-secondary btn-filter" data-filter="parziale" style="font-size:12px;padding:6px 12px;">Parziali</button>
       <button class="btn btn-secondary btn-filter" data-filter="pagata" style="font-size:12px;padding:6px 12px;">Pagate</button>
     </div>
@@ -93,39 +97,127 @@ function render(c, isAdmin) {
 
 function renderTable(filter, isAdmin) {
   const container = document.getElementById('feesTableContainer');
-  const filtered = filter === 'all' ? feesList : feesList.filter(f => f.stato === filter);
+  const today = new Date().toISOString().slice(0, 10);
+  const in7days = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+  // Filtri
+  let filtered;
+  if (filter === 'all') filtered = feesList;
+  else if (filter === 'scadute') filtered = feesList.filter(f => (f.fee_installment || []).some(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < today));
+  else if (filter === 'in_scadenza') filtered = feesList.filter(f => (f.fee_installment || []).some(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) >= today && i.scadenza.slice(0, 10) <= in7days));
+  else filtered = feesList.filter(f => f.stato === filter);
 
   if (!filtered.length) {
     container.innerHTML = '<p style="color:var(--gray);font-size:13px;margin-top:12px;">Nessuna quota trovata.</p>';
     return;
   }
 
-  container.innerHTML = `
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
-        <thead><tr style="background:#F8F9FA;">
-          <th style="padding:8px 6px;text-align:left;">Giocatore</th>
-          <th style="padding:8px 6px;text-align:right;">Totale</th>
-          <th style="padding:8px 6px;text-align:center;">Rate</th>
-          <th style="padding:8px 6px;text-align:center;">Stato</th>
-          ${isAdmin ? '<th style="padding:8px 6px;text-align:center;">Azioni</th>' : ''}
-        </tr></thead>
-        <tbody>${filtered.map(f => {
+  // Raggruppa per fee_config_id
+  const groups = {};
+  filtered.forEach(f => {
+    const key = f.fee_config_id || 'other';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(f);
+  });
+  const configNames = {};
+  feeConfigs.forEach(cfg => { configNames[cfg.id] = cfg.nome; });
+
+  let html = '';
+  Object.entries(groups).forEach(([cfgId, fees]) => {
+    const groupName = configNames[cfgId] || 'Altro';
+    const groupTot = fees.reduce((s, f) => s + parseFloat(f.importo_totale), 0);
+    const groupPagato = fees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato === 'pagata').reduce((ps, i) => ps + parseFloat(i.importo), 0), 0);
+    const allInsts = fees.flatMap(f => f.fee_installment || []);
+    const nScadute = allInsts.filter(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < today).length;
+    const nInScadenza = allInsts.filter(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) >= today && i.scadenza.slice(0, 10) <= in7days).length;
+    const nSaldati = fees.filter(f => f.stato === 'pagata').length;
+
+    html += `<div style="margin-bottom:16px;background:white;border-radius:12px;border:1px solid #eee;overflow:hidden;">
+      <div class="fee-group-header" data-cfg="${cfgId}" style="padding:12px 16px;background:linear-gradient(135deg,#f0f4ff,#e8eeff);cursor:pointer;user-select:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="fee-group-chevron" style="font-size:12px;transition:transform 0.2s;">▶</span>
+            <span style="font-weight:700;font-size:14px;color:#4338ca;">${groupName}</span>
+            ${(() => {
+              const nonPagate = allInsts.filter(i => i.stato !== 'pagata' && i.scadenza).sort((a, b) => a.scadenza.localeCompare(b.scadenza));
+              const scaduta = nonPagate.find(i => i.scadenza.slice(0, 10) < today);
+              const inScad = nonPagate.find(i => i.scadenza.slice(0, 10) >= today && i.scadenza.slice(0, 10) <= in7days);
+              const prossima = nonPagate.find(i => i.scadenza.slice(0, 10) >= today);
+              if (scaduta) {
+                const label = scaduta.scadenza_label || 'Rata ' + scaduta.numero_rata;
+                const dt = new Date(scaduta.scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+                return `<span style="font-size:11px;color:#E74C3C;font-weight:500;">(⚠️ ${label} scaduta ${dt})</span>`;
+              } else if (inScad) {
+                const label = inScad.scadenza_label || 'Rata ' + inScad.numero_rata;
+                const diff = Math.ceil((new Date(inScad.scadenza) - new Date()) / 86400000);
+                return `<span style="font-size:11px;color:#d97706;font-weight:500;">(⏳ ${label} tra ${diff}g)</span>`;
+              } else if (prossima) {
+                const label = prossima.scadenza_label || 'Rata ' + prossima.numero_rata;
+                const dt = new Date(prossima.scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+                return `<span style="font-size:11px;color:#888;">(📅 ${label} — ${dt})</span>`;
+              }
+              return '';
+            })()}
+          </div>
+          <span style="font-size:12px;color:#555;font-weight:600;">€${groupPagato.toFixed(0)} / €${groupTot.toFixed(0)}</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px;margin-left:20px;font-size:11px;color:#666;flex-wrap:wrap;">
+          <span>✅ ${nSaldati} saldati</span>
+          ${nScadute > 0 ? `<span style="color:#E74C3C;font-weight:600;">⚠️ ${nScadute} scadut${nScadute === 1 ? 'a' : 'e'}</span>` : ''}
+          ${nInScadenza > 0 ? `<span style="color:#F39C12;font-weight:600;">⏳ ${nInScadenza} in scadenza</span>` : ''}
+        </div>
+      </div>
+      <div class="fee-group-body" data-cfg="${cfgId}" style="display:none;border-top:1px solid #e0e7ff;">
+        ${fees.map(f => {
           const p = rosterMap[f.player_id];
           const nome = p ? `${p.cognome || ''} ${p.nome || ''}`.trim() : '—';
-          const insts = f.fee_installment || [];
+          const insts = (f.fee_installment || []).sort((a, b) => a.numero_rata - b.numero_rata);
           const pagate = insts.filter(i => i.stato === 'pagata').length;
-          const color = STATI_COLORS[f.stato] || '#888';
-          return `<tr style="border-bottom:1px solid #f0f0f0;cursor:pointer;" class="fee-row" data-id="${f.id}">
-            <td style="padding:8px 6px;font-weight:500;">${nome}</td>
-            <td style="padding:8px 6px;text-align:right;">€${parseFloat(f.importo_totale).toFixed(2)}</td>
-            <td style="padding:8px 6px;text-align:center;">${pagate}/${insts.length}</td>
-            <td style="padding:8px 6px;text-align:center;"><span style="padding:3px 8px;border-radius:8px;font-size:11px;background:${color}20;color:${color};">${STATI_LABELS[f.stato] || f.stato}</span></td>
-            ${isAdmin ? `<td style="padding:8px 6px;text-align:center;"><button class="btn-fee-del" data-id="${f.id}" style="font-size:10px;padding:3px 6px;background:#eee;border:none;border-radius:6px;cursor:pointer;">🗑️</button></td>` : ''}
-          </tr>`;
-        }).join('')}</tbody>
-      </table>
+          const hasScaduta = insts.some(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < today);
+          const hasInScad = insts.some(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) >= today && i.scadenza.slice(0, 10) <= in7days);
+          let dot = '⚪';
+          if (f.stato === 'pagata') dot = '🟢';
+          else if (hasScaduta) dot = '🔴';
+          else if (hasInScad) dot = '🟡';
+          const tooltip = insts.map(i => {
+            const st = i.stato === 'pagata' ? '✅' : (i.scadenza && i.scadenza.slice(0, 10) < today ? '⚠️ SCADUTA' : '⬜');
+            const dt = i.scadenza ? new Date(i.scadenza).toLocaleDateString('it-IT') : 'N/D';
+            return `${i.scadenza_label || 'Rata ' + i.numero_rata}: \u20ac${parseFloat(i.importo).toFixed(0)} - ${dt} ${st}`;
+          }).join('\n');
+          let badge = '';
+          if (f.stato === 'pagata') badge = '<span style="font-size:10px;padding:2px 6px;border-radius:6px;background:#d1fae5;color:#27AE60;font-weight:600;">Saldato</span>';
+          else if (hasScaduta) badge = '<span style="font-size:10px;padding:2px 6px;border-radius:6px;background:#fee2e2;color:#E74C3C;font-weight:600;">Scaduta</span>';
+          else if (hasInScad) badge = '<span style="font-size:10px;padding:2px 6px;border-radius:6px;background:#fef3c7;color:#d97706;font-weight:600;">In scadenza</span>';
+          return `<div class="fee-row" data-id="${f.id}" title="${tooltip}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #f5f5f5;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+              <span style="font-size:12px;">${dot}</span>
+              <span class="fee-row-name" style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nome}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+              <span class="fee-row-rate" style="font-size:12px;color:#888;">${pagate}/${insts.length} rate</span>
+              <span style="font-size:13px;font-weight:600;min-width:50px;text-align:right;">€${parseFloat(f.importo_totale).toFixed(0)}</span>
+              ${badge}
+              ${isAdmin ? `<button class="btn-fee-del" data-id="${f.id}" style="font-size:10px;padding:3px 6px;background:#eee;border:none;border-radius:6px;cursor:pointer;margin-left:4px;">🗑️</button>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
     </div>`;
+  });
+
+  container.innerHTML = html;
+
+  // Toggle expand/collapse
+  container.querySelectorAll('.fee-group-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const cfg = header.dataset.cfg;
+      const body = container.querySelector(`.fee-group-body[data-cfg="${cfg}"]`);
+      const chevron = header.querySelector('.fee-group-chevron');
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      chevron.style.transform = open ? '' : 'rotate(90deg)';
+    });
+  });
 
   // Click riga → dettaglio rate
   container.querySelectorAll('.fee-row').forEach(row => {
@@ -406,7 +498,7 @@ function showConfigModal() {
     const sum = rate.reduce((s, r) => s + (parseFloat(r.importo) || 0), 0);
     if (Math.abs(sum - parseFloat(importo_totale)) > 0.01) { alert('Il totale delle rate non corrisponde all\'importo totale'); return; }
     try {
-      await apiFetch('/fee-configs', { method: 'POST', body: JSON.stringify({
+      const created = await apiFetch('/fee-configs', { method: 'POST', body: JSON.stringify({
         workspace_id: workspaceId,
         category_id: cat,
         nome,
@@ -414,7 +506,12 @@ function showConfigModal() {
         rate: rate.map(r => ({ importo: parseFloat(r.importo), scadenza_label: r.scadenza_label || null, scadenza: r.scadenza || null }))
       })});
       close();
-      loadFees();
+      // Chiedi se applicare subito
+      if (created?.id && confirm(`Quota "${nome}" salvata. Applicare subito a tutti i giocatori della rosa?`)) {
+        await applyConfigToTeam(created.id);
+      } else {
+        loadFees();
+      }
     } catch (err) { alert(err.message); }
   });
 }

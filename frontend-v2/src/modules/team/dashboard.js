@@ -669,20 +669,51 @@ export default async function loadDashboard() {
   // Widget Quote (visibile per admin/segreteria)
   const feesWidget = document.getElementById('dashFeesWidget');
   if (feesWidget && (window.YFM.canRead('club_operations') || window.YFM.canWrite('rosa'))) {
-    apiFetch('/fees?team_id=' + window.YFM.squadraId + '&season_id=' + window.YFM.currentSeasonId).then(fees => {
+    Promise.all([
+      apiFetch('/fees?team_id=' + window.YFM.squadraId + '&season_id=' + window.YFM.currentSeasonId),
+      apiFetch('/fee-configs?workspace_id=' + window.YFM.activeWorkspaceId)
+    ]).then(([fees, configs]) => {
       if (!fees?.length) return;
+      const oggi = new Date().toISOString().split('T')[0];
+      const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const configNames = {};
+      (configs || []).forEach(c => { configNames[c.id] = c.nome; });
+
+      // Raggruppa per config
+      const groups = {};
+      fees.forEach(f => { const k = f.fee_config_id || 'other'; if (!groups[k]) groups[k] = []; groups[k].push(f); });
+
+      let rowsHtml = '';
+      Object.entries(groups).forEach(([cfgId, gFees]) => {
+        const name = configNames[cfgId] || 'Altro';
+        const tot = gFees.reduce((s, f) => s + parseFloat(f.importo_totale), 0);
+        const inc = gFees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato === 'pagata').reduce((ps, i) => ps + parseFloat(i.importo), 0), 0);
+        const allInsts = gFees.flatMap(f => f.fee_installment || []);
+        const nonPagate = allInsts.filter(i => i.stato !== 'pagata' && i.scadenza).sort((a, b) => a.scadenza.localeCompare(b.scadenza));
+        const scaduta = nonPagate.find(i => i.scadenza.slice(0, 10) < oggi);
+        const inScad = nonPagate.find(i => i.scadenza.slice(0, 10) >= oggi && i.scadenza.slice(0, 10) <= in7);
+        let alert = '';
+        if (scaduta) { alert = `<span style="color:#E74C3C;font-size:11px;">(⚠️ ${scaduta.scadenza_label || 'Rata'} scaduta)</span>`; }
+        else if (inScad) { const d = Math.ceil((new Date(inScad.scadenza) - new Date()) / 86400000); alert = `<span style="color:#d97706;font-size:11px;">(⏳ ${inScad.scadenza_label || 'Rata'} tra ${d}g)</span>`; }
+        rowsHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
+          <span style="font-weight:500;">${name} ${alert}</span>
+          <span>€${inc.toFixed(0)}/<span style="color:#888;">€${tot.toFixed(0)}</span></span>
+        </div>`;
+      });
+
       const totale = fees.reduce((s, f) => s + parseFloat(f.importo_totale), 0);
       const incassato = fees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato === 'pagata').reduce((ps, i) => ps + parseFloat(i.importo), 0), 0);
-      const oggi = new Date().toISOString().split('T')[0];
-      const scadute = fees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato === 'da_pagare' && i.scadenza && i.scadenza < oggi).length, 0);
+      const scadute = fees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < oggi).length, 0);
       const saldati = fees.filter(f => f.stato === 'pagata').length;
+
       feesWidget.style.display = '';
       feesWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashFeesCard">
         <div style="font-size:14px;font-weight:600;margin-bottom:10px;">💰 Situazione Quote</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-          <div>Incassato: <strong style="color:#27AE60;">€${incassato.toFixed(0)}</strong> / €${totale.toFixed(0)}</div>
-          <div>Saldati: <strong>${saldati}</strong>/${fees.length}</div>
-          ${scadute > 0 ? `<div style="color:#E74C3C;">Rate scadute: <strong>${scadute}</strong> ⚠️</div>` : '<div style="color:#27AE60;">Nessuna rata scaduta ✅</div>'}
+        <div style="font-size:12px;display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${rowsHtml}</div>
+        <div style="display:flex;gap:12px;font-size:11px;color:#666;border-top:1px solid #f0f0f0;padding-top:8px;flex-wrap:wrap;">
+          <span>Totale: <strong style="color:#27AE60;">€${incassato.toFixed(0)}</strong>/€${totale.toFixed(0)}</span>
+          <span>${saldati}/${fees.length} saldati</span>
+          ${scadute > 0 ? `<span style="color:#E74C3C;">${scadute} rate scadute</span>` : ''}
         </div>
       </div>`;
       feesWidget.querySelector('#dashFeesCard')?.addEventListener('click', () => window.YFM.navigateTo('fees'));
