@@ -3,6 +3,7 @@ import { formatDate, getAvatarColor } from '../../utils/formatters';
 import { showLoading, hideLoading } from '../../utils/ui';
 import { printHTML } from '../../utils/printHelper';
 import { invalidateDashboardCache } from './dashboard.js';
+import { calcCertificatiStatus } from '../../utils/certificati.js';
 
 // Aggiorna le card dashboard (convocazione + prossima partita) dopo salvataggio
 function refreshDashConvCards(matchId) {
@@ -124,6 +125,12 @@ export async function openConvocation(mid, readOnly) {
     return;
   }
 
+  // Calcola certificati scaduti/in scadenza per warning
+  const certStatus = calcCertificatiStatus(gioc);
+  const certExpiredIds = new Set(certStatus.scaduti.map(p => p.id));
+  const certExpiringSoonIds = new Set(certStatus.inScadenza.map(p => p.id));
+  const certMissingIds = new Set(certStatus.mancanti.map(p => p.id));
+
   // Determina stato: esistono convocazioni salvate? È stata pubblicata?
   const hasSavedConv = conv.length > 0;
   const isPublished = hasSavedConv ? await apiFetch('/partite/' + mid + '/convocazioni-stato').catch(() => ({ published: false })) : { published: false };
@@ -139,10 +146,15 @@ export async function openConvocation(mid, readOnly) {
       <span style="font-size:12px;color:var(--gray);" id="convCount">${ids.length} convocati</span>${frozenIds.size > 0 ? `<span style="font-size:11px;color:#dc2626;font-weight:600;">❌ ${frozenIds.size} non disponibil${frozenIds.size === 1 ? 'e' : 'i'}</span>` : ''}
       <span id="convWarning" style="color:#E74C3C;font-weight:600;font-size:12px;display:none;"></span>
     </div>
+    <div id="certBanner" style="display:none;background:#FDEDEE;border:1px solid #FDCECE;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#E74C3C;font-weight:600;"></div>
     ${sorted.map(g => {
       const abs = absCountByPlayer[g.id] || 0;
       const isInj = g.stato === 'Infortunato';
+      const certScaduto = certExpiredIds.has(g.id);
+      const certInScadenza = certExpiringSoonIds.has(g.id);
       const badges = [];
+      if (certScaduto) badges.push('<span style="background:#FDEDEE;color:#E74C3C;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">⚠️ Cert. scaduto</span>');
+      else if (certInScadenza) badges.push('<span style="background:#FFF8E1;color:#F39C12;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">⏳ Cert. in scadenza</span>');
       if (isInj) badges.push('<span style="background:#FDEDEE;color:#E74C3C;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">🤕 Infortunato</span>');
       if (abs > 0) badges.push(`<span style="background:#FFF3E0;color:#E65100;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600;">⚠️ ${abs} assenz${abs > 1 ? 'e' : 'a'} sett.</span>`);
       const risp = rispostaMap[g.id];
@@ -195,6 +207,18 @@ export async function openConvocation(mid, readOnly) {
     if (c > 20) { w.textContent = '⚠️ Max 20!'; w.style.display = 'inline'; s.disabled = true; s.style.opacity = '0.5'; }
     else if (c < 11) { w.textContent = '⚠️ Minimo 11!'; w.style.display = 'inline'; s.disabled = true; s.style.opacity = '0.5'; }
     else if (c < 16) { w.textContent = '⚠️ Solo ' + c; w.style.display = 'inline'; }
+    // Banner certificati scaduti tra i convocati
+    const banner = document.getElementById('certBanner');
+    if (banner) {
+      const selectedIds = [...checks].map(cb => cb.dataset.pid);
+      const expConv = selectedIds.filter(id => certExpiredIds.has(id));
+      const missConv = selectedIds.filter(id => certMissingIds.has(id));
+      const tot = expConv.length + missConv.length;
+      if (tot > 0) {
+        banner.style.display = 'block';
+        banner.textContent = '⚠️ ' + tot + ' convocati con certificato medico scaduto o mancante — non impiegabili senza rinnovo';
+      } else { banner.style.display = 'none'; }
+    }
   }
   document.querySelectorAll('#currentModal .conv-check:not(:disabled)').forEach(cb => cb.addEventListener('change', () => { upd(); markChanged(); }));
   document.getElementById('btnSelAll').addEventListener('click', () => {

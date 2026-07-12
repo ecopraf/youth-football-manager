@@ -43,7 +43,7 @@
 | Gazzetta Regionale | ✅ | routes/gazzettaRegionale.js |
 | Tornei | ⏸️ | modules/coach/tournaments.js (disabilitato) |
 | Infortuni | ✅ | routes/player.js, modules/team/playerDetail.js, dashboard.js |
-| Visite Mediche | ⬜ | Non esiste (dati su player, no storico) |
+| Visite Mediche | ✅ | utils/certificati.js, dashboard.js, convocazioni.js (badge+banner) |
 | Valutazioni | ⚠️ | Parziale (tabella esiste, UI incompleta) |
 | Print Center | ✅ | modules/team/printCenter.js, modules/print/*.js (EPIC 16) |
 
@@ -81,18 +81,15 @@
 
 ---
 
-### EPIC 3: Visite Mediche (storico separato)
+### EPIC 3: Certificati Medici (alert + warning convocazioni)
 
-> Separare le visite mediche da player in tabella dedicata con storico.
+> Potenziare la gestione certificati medici esistente (`player.data_visita_medica`) con alert intelligenti e warning nelle convocazioni. Nessuna tabella nuova — il campo scadenza su player è sufficiente. Il tipo (agonistico/non agonistico) è implicito dalla categoria (≥U14 = agonistico). La conservazione 5 anni è responsabilità della società (documenti cartacei/PDF), non dell'app.
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 3.1 | CREATE TABLE `player_medical` | ⬜ | — | migrazione SQL | ~3min |
-| 3.2 | Migrazione dati: copia scadenza_visita_medica esistente → player_medical | ⬜ | 3.1 | script SQL | ~5min |
-| 3.3 | Endpoint CRUD `/api/players/:id/medical` | ⬜ | 3.1 | routes/player.js | ~10min |
-| 3.4 | Sezione "Visite mediche" in playerDetail | ⬜ | 3.3 | modules/team/playerDetail.js | ~10min |
-| 3.5 | Alert scadenze in dashboard (visite < 30gg) | ⬜ | 3.3 | modules/team/dashboard.js | ~5min |
-| 3.6 | Aggiornare docs | ⬜ | 3.5 | DEVELOPMENT_PLAN.md | ~2min |
+| 3.1 | Dashboard: affinare widget certificati con 3 livelli (>30gg = ok, ≤30gg = giallo, scaduto = rosso) + contatore per livello | ✅ | — | modules/team/dashboard.js, utils/certificati.js | ~5min |
+| 3.2 | Convocazioni: badge rosso "⚠️ Cert. scaduto" su giocatori con certificato scaduto + banner riepilogativo se ≥1 convocato ha scadenza | ✅ | — | modules/team/convocazioni.js | ~8min |
+| 3.3 | Aggiornare docs | ✅ | 3.2 | DEVELOPMENT_PLAN.md | ~2min |
 
 ---
 
@@ -773,6 +770,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.34 | feat: EPIC 3 Certificati Medici — badge "⚠️ Cert. scaduto" / "⏳ Cert. in scadenza" nelle convocazioni + banner riepilogativo se ≥1 convocato ha certificato scaduto/mancante |
 | v3.16.33 | fix: guest header — rimosso selettore squadra/stagione, avatar con logout (atleta: iniziali, genitore: G), fix loadSquadre per guest con workspaceInfo |
 | v3.16.32 | fix: aggiorna card dashboard in tempo reale dopo salvataggio convocazioni (refreshDashConvCards), data-conv-stato/alert attributes |
 | v3.16.31 | fix: cache invalidation completa — aggiunta invalidateDashboardCache in roster, trainingPresenze, trainingSessions, trainingSettings, importCenter + TTL dashboard 2min→5min |
