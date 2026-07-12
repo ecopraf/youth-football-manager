@@ -111,7 +111,7 @@ function renderRoster(c, players, scadenze) {
       else { sec.style.display = 'none'; arrow.textContent = '▶'; }
     });
     document.getElementById('btnRecuperaSvincolato')?.addEventListener('click', openRecuperaModal);
-    document.getElementById('btnAggregaPlayer')?.addEventListener('click', openAggregaModal);
+    document.getElementById('btnAggregaPlayer')?.addEventListener('click', () => openAggregaModal());
     // Riattiva buttons
     document.querySelectorAll('.btn-riattiva').forEach(btn => {
       btn.addEventListener('click', async (e) => {
@@ -319,11 +319,11 @@ function renderSvincolatiSection() {
     '</div>';
 }
 
-async function openAggregaModal() {
+async function openAggregaModal(showAll = false) {
   showLoading('Ricerca giocatori aggregabili...');
   let disponibili = [];
   try {
-    disponibili = await apiFetch('/squadre/' + window.YFM.squadraId + '/aggregabili');
+    disponibili = await apiFetch('/squadre/' + window.YFM.squadraId + '/aggregabili' + (showAll ? '?all=1' : ''));
   } catch (e) {
     alert('Errore: ' + e.message);
     hideLoading();
@@ -332,7 +332,7 @@ async function openAggregaModal() {
   hideLoading();
 
   if (disponibili.length === 0) {
-    alert('Nessun giocatore disponibile per aggregazione (servono giocatori pi\u00F9 giovani in altre categorie della stessa stagione).');
+    alert('Nessun giocatore disponibile per aggregazione (servono giocatori in altre categorie della stessa stagione).');
     return;
   }
 
@@ -363,7 +363,8 @@ async function openAggregaModal() {
   modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
   modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:500px;width:90%;max-height:80vh;display:flex;flex-direction:column;">' +
     '<div style="padding:16px 20px;border-bottom:1px solid #eee;"><h2 style="margin:0;font-size:18px;">\u2795 Aggrega Giocatore</h2><p style="margin:4px 0 0;font-size:12px;color:#888;">Giocatori da categorie inferiori della stessa stagione</p>' +
-    '<div style="margin-top:10px;display:flex;gap:6px;"><button class="aggSortBtn" data-sort="ruolo" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid #667eea;background:#667eea;color:white;">Per Ruolo</button><button class="aggSortBtn" data-sort="alfa" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid #ddd;background:white;color:#333;">A-Z</button></div></div>' +
+    '<div style="margin-top:10px;display:flex;gap:6px;align-items:center;"><button class="aggSortBtn" data-sort="ruolo" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid #667eea;background:#667eea;color:white;">Per Ruolo</button><button class="aggSortBtn" data-sort="alfa" style="padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid #ddd;background:white;color:#333;">A-Z</button>' +
+    '<label style="margin-left:auto;display:flex;align-items:center;gap:4px;font-size:11px;color:#666;cursor:pointer;"><input type="checkbox" id="aggShowAll" ' + (showAll ? 'checked' : '') + '> Tutte le categorie</label></div></div>' +
     '<div id="aggListContainer" style="padding:16px 20px;overflow-y:auto;flex:1;"></div>' +
     '<div style="padding:12px 20px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:10px;">' +
     '<button id="aggCancel" class="btn btn-secondary" style="padding:10px 16px;">Annulla</button>' +
@@ -388,6 +389,12 @@ async function openAggregaModal() {
   renderAggList();
 
   document.getElementById('aggCancel').addEventListener('click', () => modal.remove());
+
+  // Toggle tutte le categorie
+  modal.querySelector('#aggShowAll').addEventListener('change', (e) => {
+    modal.remove();
+    openAggregaModal(e.target.checked);
+  });
 
   // Sort toggle
   modal.querySelectorAll('.aggSortBtn').forEach(btn => {

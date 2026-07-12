@@ -516,7 +516,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
 
       // Verifica categoria destinazione
       const { data: destTeam } = await supabase.from('team').select('category:category_id(anno_da, nome)').eq('id', req.params.squadraId).single();
-      if (!destTeam?.category?.anno_da) return res.status(400).json({ error: 'Categoria destinazione non trovata' });
+      if (!destTeam?.category) return res.status(400).json({ error: 'Categoria destinazione non trovata' });
 
       // Validazione: il giocatore deve essere più giovane (anno nascita > anno_da della categoria)
       for (const pid of playerIds) {
@@ -564,11 +564,22 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const { data: destTeam } = await supabase.from('team')
         .select('category:category_id(anno_da, nome), season:season_id(id, workspace_id)')
         .eq('id', req.params.squadraId).single();
-      if (!destTeam?.category?.anno_da) return res.json([]);
+      if (!destTeam?.category) return res.json([]);
+
+      // Ordine categorie per determinare quella immediatamente inferiore
+      const showAll = req.query.all === '1';
+      const CATS_ORDER = ['U14', 'U15', 'U16', 'U17', 'U18', 'U19'];
+      const destIdx = CATS_ORDER.indexOf(destTeam.category.nome);
+      const lowerCat = destIdx > 0 ? CATS_ORDER[destIdx - 1] : null;
 
       // Tutti i team della stessa stagione
       const { data: sameSeasonTeams } = await supabase.from('team').select('id, category:category_id(nome)').eq('season_id', destTeam.season.id);
-      const otherTeamIds = (sameSeasonTeams || []).filter(t => t.id !== req.params.squadraId).map(t => t.id);
+      let otherTeams = (sameSeasonTeams || []).filter(t => t.id !== req.params.squadraId);
+      // Default: solo categoria immediatamente inferiore
+      if (!showAll && lowerCat) {
+        otherTeams = otherTeams.filter(t => t.category?.nome === lowerCat);
+      }
+      const otherTeamIds = otherTeams.map(t => t.id);
       if (otherTeamIds.length === 0) return res.json([]);
 
       // Giocatori attivi in quei team
@@ -582,13 +593,12 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const { data: currentTp } = await supabase.from('team_player').select('player_id').eq('team_id', req.params.squadraId);
       const currentIds = new Set((currentTp || []).map(tp => tp.player_id));
 
-      // Filtra: solo pi\u00F9 giovani della categoria e non gi\u00E0 presenti
+      // Filtra: non gi\u00E0 presenti + data_nascita valida
       const result = (candidates || [])
         .filter(tp => {
           if (currentIds.has(tp.player_id)) return false;
           if (!tp.calciatore?.data_nascita) return false;
-          const year = parseInt(tp.calciatore.data_nascita.split('-')[0]);
-          return year > destTeam.category.anno_da;
+          return true;
         })
         .map(tp => ({
           id: tp.calciatore.id,

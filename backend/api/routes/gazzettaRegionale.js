@@ -519,10 +519,12 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
       const teamName = ws?.nome || ws?.season?.workspace?.nome || '';
 
       let imported = 0, skipped = 0;
+      const skipReasons = { no_gr_match: 0, no_db_match: 0, already_imported: 0, no_player: 0 };
+      const unmatchedPlayers = [];
 
       for (const grId of grMatchIds) {
         const grMatch = grMatches.find(m => m.id === grId || m.id === String(grId));
-        if (!grMatch) { skipped++; continue; }
+        if (!grMatch) { skipped++; skipReasons.no_gr_match++; continue; }
 
         const isHome = matchTeamNameGR(teamName, grMatch.casa);
         const avversario = isHome ? grMatch.ospite : grMatch.casa;
@@ -531,12 +533,12 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
         const dbMatch = (dbMatches || []).find(m =>
           m.giornata === grMatch.giornata || m.avversario?.toLowerCase().includes(avversario.toLowerCase().slice(0, 6))
         );
-        if (!dbMatch) { skipped++; continue; }
+        if (!dbMatch) { skipped++; skipReasons.no_db_match++; continue; }
 
         // Check se già importati
         const { count } = await supabase.from('match_event').select('id', { count: 'exact', head: true })
           .eq('match_id', dbMatch.id).eq('tipo_evento', 'GOAL');
-        if ((count || 0) > 0) { skipped++; continue; }
+        if ((count || 0) > 0) { skipped++; skipReasons.already_imported++; continue; }
 
         // Scrape gol
         let goals = [];
@@ -552,7 +554,7 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
             r.player.cognome.toLowerCase().startsWith(goal.player.toLowerCase()) ||
             goal.player.toLowerCase().startsWith(r.player.cognome.toLowerCase())
           );
-          if (!player) { skipped++; continue; }
+          if (!player) { skipped++; skipReasons.no_player++; unmatchedPlayers.push(goal.player); continue; }
 
           await supabase.from('match_event').insert({
             match_id: dbMatch.id,
@@ -564,7 +566,7 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
         }
       }
 
-      res.json({ success: true, imported, skipped });
+      res.json({ success: true, imported, skipped, skipReasons, unmatchedPlayers: [...new Set(unmatchedPlayers)] });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

@@ -60,14 +60,29 @@ function coreTeamName(name) {
   // Rimuovi parole generiche per tenere solo il "core"
   const GENERIC = ['polisportiva', 'atletico', 'atletica', 'calcio', 'football', 'club', 'sporting', 'dinamo', 'virtus', 'real', 'accademia', 'giovani', 'citta', 'olimpia', 'di', 'del', 'dei', 'la', 'le'];
   const core = expanded.filter(w => !GENERIC.includes(w) && w.length > 1);
+  // Se rimane solo 1 parola ma c'erano qualificatori, preservali per disambiguare
+  const QUALIFIERS = ['polisportiva', 'atletico', 'atletica', 'accademia', 'citta', 'real', 'virtus', 'olimpia', 'sporting', 'dinamo'];
+  if (core.length === 1 && expanded.length >= 2) {
+    const qualifiers = expanded.filter(w => QUALIFIERS.includes(w));
+    if (qualifiers.length > 0) return [...qualifiers, ...core].join(' ');
+  }
   return core.length > 0 ? core.join(' ') : expanded.join(' ');
 }
 
 // Match GR: confronta i core names
 function matchTeamNameGR(teamDbName, grName) {
+  if (teamDbName.toLowerCase() === grName.toLowerCase()) return true;
   const coreDb = coreTeamName(teamDbName);
   const coreGr = coreTeamName(grName);
-  return coreDb === coreGr || coreDb.includes(coreGr) || coreGr.includes(coreDb);
+  if (coreDb === coreGr) return true;
+  // Word-level matching: all words of the shorter must appear in the longer
+  const wa = coreDb.split(' '), wb = coreGr.split(' ');
+  const [shorter, longer] = wa.length <= wb.length ? [wa, wb] : [wb, wa];
+  // Require shorter to have more than half the words of longer (strict)
+  // Exception: single-word names only match other single-word names (already handled by coreDb === coreGr)
+  if (shorter.length > 1 && shorter.every(w => longer.includes(w))) return true;
+  // Single word shorter: only match if longer is also single word (exact, already checked above)
+  return false;
 }
 
 // Parsing minuto da stringa tipo "30' st" → 75

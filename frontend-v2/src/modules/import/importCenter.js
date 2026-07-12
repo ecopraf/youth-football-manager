@@ -771,7 +771,7 @@ async function openGrUnifiedImport() {
           const evResp = await apiFetch('/gr/match-events/import', {
             method: 'POST', body: JSON.stringify({ teamId, matches: newEvents.map(m => m.gr_match_id) })
           });
-          results.push(`⚽ Marcatori: ${evResp.imported} gol importati, ${evResp.skipped} saltati`);
+          results.push(`⚽ Marcatori: ${evResp.imported} gol importati, ${evResp.skipped} saltati${evResp.unmatchedPlayers?.length ? ' (non trovati: ' + evResp.unmatchedPlayers.join(', ') + ')' : ''}`);
         } else {
           results.push('⚽ Marcatori: tutti già importati');
         }
@@ -897,7 +897,18 @@ async function openGrEventi() {
           body: JSON.stringify({ teamId, matches: selected.map(m => m.gr_match_id) })
         });
         modal.close();
-        alert(`\u2705 Import completato!\n${result.imported} gol importati, ${result.skipped} saltati (gi\u00e0 presenti o giocatore non trovato)`);
+        let msg = `\u2705 Import completato!\n${result.imported} gol importati, ${result.skipped} saltati`;
+        if (result.skipReasons) {
+          const r = result.skipReasons;
+          const parts = [];
+          if (r.already_imported) parts.push(`${r.already_imported} già importati`);
+          if (r.no_player) parts.push(`${r.no_player} giocatore non in rosa`);
+          if (r.no_db_match) parts.push(`${r.no_db_match} partita non trovata`);
+          if (r.no_gr_match) parts.push(`${r.no_gr_match} match GR non trovato`);
+          if (parts.length) msg += '\n(' + parts.join(', ') + ')';
+        }
+        if (result.unmatchedPlayers?.length) msg += '\n\nNon trovati in rosa: ' + result.unmatchedPlayers.join(', ');
+        alert(msg);
       } catch (e) {
         alert('Errore: ' + e.message);
         document.getElementById('grEventiConfirm').disabled = false;
