@@ -8,6 +8,24 @@ const path = require('path');
 const fs = require('fs');
 
 module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddleware }) {
+
+  // Helper: trova partita nel DB per giornata+avversario (priorità giornata, fallback avversario)
+  function findDbMatch(dbMatches, giornata, avversario) {
+    if (!dbMatches || !dbMatches.length) return null;
+    const avvLow = avversario.toLowerCase().slice(0, 6);
+    // Priorità 1: giornata esatta + avversario match
+    const exact = dbMatches.find(m =>
+      m.giornata === giornata && m.avversario?.toLowerCase().includes(avvLow)
+    );
+    if (exact) return exact;
+    // Priorità 2: solo giornata esatta
+    const byGiornata = dbMatches.find(m => m.giornata === giornata);
+    if (byGiornata) return byGiornata;
+    // Priorità 3: solo avversario (unico match con quel nome)
+    const byAvv = dbMatches.filter(m => m.avversario?.toLowerCase().includes(avvLow));
+    if (byAvv.length === 1) return byAvv[0];
+    return null;
+  }
   const router = express.Router();
 
   // GET /api/gr/levels — lista livelli (Giovanili, Dilettanti...)
@@ -493,9 +511,7 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
           } catch (e) { /* skip */ }
           if (goals.length === 0) return null;
 
-          const dbMatch = (dbMatches || []).find(m =>
-            m.giornata === grMatch.giornata || m.avversario?.toLowerCase().includes(avversario.toLowerCase().slice(0, 6))
-          );
+          const dbMatch = findDbMatch(dbMatches, grMatch.giornata, avversario);
           let already_imported = false;
           if (dbMatch) {
             const { count } = await supabase.from('match_event').select('id', { count: 'exact', head: true })
@@ -543,9 +559,7 @@ module.exports = function createGazzettaRegionaleRouter({ supabase, authMiddlewa
         const avversario = isHome ? grMatch.ospite : grMatch.casa;
 
         // Trova la partita nel DB
-        const dbMatch = (dbMatches || []).find(m =>
-          m.giornata === grMatch.giornata || m.avversario?.toLowerCase().includes(avversario.toLowerCase().slice(0, 6))
-        );
+        const dbMatch = findDbMatch(dbMatches, grMatch.giornata, avversario);
         if (!dbMatch) { skipped++; skipReasons.no_db_match++; continue; }
 
         // Check se già importati
