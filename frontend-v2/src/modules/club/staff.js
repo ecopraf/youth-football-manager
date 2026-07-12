@@ -4,7 +4,7 @@ import { showLoading, hideLoading } from '../../utils/ui';
 let staffList = [];
 let categorie = [];
 
-const RUOLI_SOCIETARI = ['Presidente', 'Direttore Generale', 'Direttore Tecnico', 'Direttore Sportivo', 'Osservatore'];
+const RUOLI_SOCIETARI = ['Presidente', 'Vice Presidente', 'Direttore Generale', 'Direttore Tecnico', 'Direttore Sportivo', 'Osservatore'];
 const RUOLI_TECNICI = ['Allenatore', 'Vice Allenatore', 'Preparatore Atletico', 'Preparatore Portieri', 'Dirigente', 'Medico', 'Fisioterapista', 'Massaggiatore'];
 const RUOLI = [...RUOLI_TECNICI, ...RUOLI_SOCIETARI];
 
@@ -319,6 +319,8 @@ const RUOLI_MAP = {
   'direttore tecnico': 'Direttore Tecnico',
   'dir. tecnico': 'Direttore Tecnico',
   'presidente': 'Presidente',
+  'vice presidente': 'Vice Presidente',
+  'vicepresidente': 'Vice Presidente',
   'osservatore': 'Osservatore',
   'medico': 'Medico',
   'fisioterapista': 'Fisioterapista',
