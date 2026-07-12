@@ -1417,6 +1417,12 @@ async function handleSave(e) {
     workspaces = await apiFetch('/auth/workspaces');
     closeModal();
     renderGrid();
+    // Aggiorna selettore workspace nella sidebar (superadmin)
+    const sel = document.getElementById('workspaceSelect');
+    if (sel) {
+      const { populateWorkspaceSelect } = await import('../club/workspaceSwitcher.js');
+      populateWorkspaceSelect(workspaces);
+    }
   } catch (err) {
     alert('Errore: ' + err.message);
   }
@@ -1464,6 +1470,11 @@ async function openDeleteModal(wsId) {
       workspaces = await apiFetch('/auth/workspaces');
       document.getElementById('deleteModal').style.display = 'none';
       renderGrid();
+      const sel = document.getElementById('workspaceSelect');
+      if (sel) {
+        const { populateWorkspaceSelect } = await import('../club/workspaceSwitcher.js');
+        populateWorkspaceSelect(workspaces);
+      }
     } catch (err) {
       alert('Errore: ' + err.message);
     }

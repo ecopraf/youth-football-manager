@@ -585,7 +585,7 @@ function openGrConfig() {
       let html = '<div style="background:#e8f5e9;padding:8px 12px;border-radius:8px;margin-bottom:8px;font-size:12px;">✅ ' + info.championship_name + ' - Gir. ' + (info.group_name || '') + ' (' + data.classifica.length + ' squadre)</div>';
       html += '<div style="max-height:200px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:4px 8px;font-size:12px;">';
       data.classifica.forEach(r => {
-        const isUs = r.nome.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(r.nome.toLowerCase());
+        const isUs = isOurTeam(r.nome, teamName);
         const style = isUs ? 'font-weight:700;color:#667eea;background:#f0f4ff;' : '';
         html += '<div style="padding:3px 0;border-bottom:1px solid #f5f5f5;' + style + '">' + r.pos + '. ' + r.nome + ' (' + r.punti + ' pt)</div>';
       });
@@ -1022,7 +1022,7 @@ async function openGrPreview() {
       html += '<div style="overflow-x:auto;margin-bottom:24px;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#f5f5f5;"><th style="padding:6px;">#</th><th style="padding:6px;text-align:left;">Squadra</th><th style="padding:6px;">Pt</th><th style="padding:6px;">G</th><th style="padding:6px;">V</th><th style="padding:6px;">N</th><th style="padding:6px;">P</th><th style="padding:6px;">GF</th><th style="padding:6px;">GS</th></tr></thead><tbody>';
       const teamName = classifica.teamName || '';
       classifica.classifica.forEach(r => {
-        const isUs = r.nome.toLowerCase().includes(teamName.toLowerCase()) || teamName.toLowerCase().includes(r.nome.toLowerCase());
+        const isUs = isOurTeam(r.nome, teamName);
         const style = isUs ? ' style="background:#f0f4ff;font-weight:700;color:#667eea;"' : '';
         const logo = r.logo ? `<img src="${r.logo}" style="width:18px;height:18px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display='none'">` : '';
         html += `<tr${style}><td style="padding:4px 6px;text-align:center;">${r.pos}</td><td style="padding:4px 6px;"><div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">${logo}<span>${r.nome}</span></div></td><td style="padding:4px 6px;text-align:center;font-weight:700;">${r.punti}</td><td style="padding:4px 6px;text-align:center;">${r.g}</td><td style="padding:4px 6px;text-align:center;">${r.v}</td><td style="padding:4px 6px;text-align:center;">${r.n}</td><td style="padding:4px 6px;text-align:center;">${r.p}</td><td style="padding:4px 6px;text-align:center;">${r.gf}</td><td style="padding:4px 6px;text-align:center;">${r.gs}</td></tr>`;
