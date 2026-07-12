@@ -806,6 +806,15 @@ Ogni commit dopo un `npm run release` DEVE includere la versione nel messaggio:
 
 La versione si legge dal file `.last-release` nella root del progetto (generato automaticamente da `npm run release`).
 
+### Comando commit standard (dopo release)
+
+```bash
+git add <file-modificati> frontend-v2/.build-counter.json
+git add -f frontend-v2/src/build-info.js .last-release
+git commit -m "[v3.16.X] tipo: descrizione"
+git push origin main
+```
+
 ### Tipi
 
 ```
@@ -879,8 +888,18 @@ Usare per label visivamente nascoste ma accessibili a screen reader.
    > ⚠️ `npm run release` = incrementa build counter + build. Usare `npm run build` SOLO per test intermedi senza commit.
 3. **Test funzionale** (vedi sezione sotto)
 4. Aggiorna documentazione (DEVELOPMENT_PLAN.md changelog + eventuali AGENTS.md/project-rules.md)
-5. Commit con messaggio descrittivo
+5. Commit con messaggio descrittivo — **INCLUDERE SEMPRE** `frontend-v2/.build-counter.json` nel commit (vedi sotto)
 6. Push su main → deploy automatico Vercel (SOLO con conferma utente)
+
+### File obbligatori nel commit dopo `npm run release`
+
+| File | Motivo | Come aggiungerlo |
+|------|--------|------------------|
+| `frontend-v2/.build-counter.json` | Vercel lo legge durante il build per generare il build ID corretto | `git add frontend-v2/.build-counter.json` |
+| `frontend-v2/src/build-info.js` | Contiene il build ID mostrato nell'app | `git add -f frontend-v2/src/build-info.js` |
+| `.last-release` | Riferimento versione per il messaggio di commit | `git add -f .last-release` |
+
+> ⚠️ **CRITICO**: Se `.build-counter.json` non viene committato, Vercel genera il build con il counter vecchio e l'app mostra una versione obsoleta. Questo file NON è nel `.gitignore` ma va aggiunto esplicitamente ad ogni commit.
 
 > ⚠️ **REGOLA**: Aggiornare SEMPRE la documentazione (changelog, schema, endpoint) ad ogni commit. Non serve che l'utente lo chieda esplicitamente.
 

@@ -170,6 +170,7 @@ Il build ID identifica univocamente ogni release: `v3.16.<counter>`
 - `npm run build` — build senza incrementare il counter (per sviluppo/test locale)
 - `npm run release` — incrementa counter + build (usare SOLO prima del commit/push)
 - Locale e produzione mostrano sempre lo stesso numero
+- ⚠️ **IMPORTANTE**: committare sempre `frontend-v2/.build-counter.json` insieme ai file modificati, altrimenti Vercel genera il build con il counter vecchio
 
 ---
 
