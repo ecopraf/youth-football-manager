@@ -329,8 +329,18 @@ export default async function loadDashboard() {
     const filtered = staffList.filter(st => isCampo(st.ruolo));
     if (filtered.length === 0) return '<p style="color:rgba(255,255,255,0.5);text-align:center;padding:20px;">Nessuno staff registrato</p>';
     // Ordine di visualizzazione
-    const ordine = ['allenatore', 'capo allenatore', 'vice', 'preparatore', 'portieri', 'medico', 'massaggiatore', 'fisioterapista', 'dirigente'];
-    const getPriority = (ruolo) => { const r = ruolo.toLowerCase(); const idx = ordine.findIndex(k => r.includes(k)); return idx >= 0 ? idx : 99; };
+    const getPriority = (ruolo) => {
+      const r = ruolo.toLowerCase();
+      if (r.includes('vice')) return 1;
+      if (r.includes('allenatore')) return 0;
+      if (r.includes('preparatore') && r.includes('portieri')) return 3;
+      if (r.includes('preparatore')) return 2;
+      if (r.includes('portieri')) return 3;
+      if (r.includes('medico')) return 4;
+      if (r.includes('massaggiatore') || r.includes('fisioterapista')) return 5;
+      if (r.includes('dirigente')) return 6;
+      return 99;
+    };
     filtered.sort((a, b) => {
       const pa = getPriority(a.ruolo), pb = getPriority(b.ruolo);
       if (pa !== pb) return pa - pb;

@@ -305,6 +305,7 @@ async function handleDelete(id) {
 // ── PASTE DA TUTTOCAMPO ──
 const RUOLI_MAP = {
   'allenatore': 'Allenatore',
+  'capo allenatore': 'Allenatore',
   'vice allenatore': 'Vice Allenatore',
   'preparatore atletico': 'Preparatore Atletico',
   'prep. atletico': 'Preparatore Atletico',
