@@ -45,6 +45,42 @@ Solo dopo aver letto questi file l'agente può procedere con il task richiesto d
 - Mai modificare più di 200 righe senza conferma utente
 - Dipendenze devono essere esplicite ("Dipende da: 2.1")
 
+### ⚠️ Prevenzione Timeout (CRITICO)
+
+L'agente ha un limite di tempo per risposta. Per evitare timeout:
+
+1. **Mai riscrivere un file intero** con `fsWrite create` se il file supera 100 righe. Usare SEMPRE `fsReplace` con diff mirati
+2. **Max 3-4 `fsReplace` diffs per chiamata** su file grandi (>300 righe). Se servono più modifiche, suddividere in step separati
+3. **Un file per step**: se un task richiede modifiche a 3+ file, fare un file alla volta con build test intermedio
+4. **Leggere solo le righe necessarie**: usare `sed -n 'X,Yp'` per leggere sezioni specifiche invece di `fsRead` su file grandi
+5. **Build test dopo ogni file modificato** (non accumulare modifiche senza verificare)
+6. **Se un task tocca un file con molti riferimenti da sostituire** (es. rinominare una variabile usata 10+ volte), suddividere in:
+   - Step A: sostituzioni nella funzione `render()` 
+   - Step B: sostituzioni nella funzione `wizard()`
+   - Step C: sostituzioni nelle funzioni helper
+   - Step D: rimozione codice morto
+7. **Grep prima, replace dopo**: sempre verificare con `grep -n` quanti riferimenti esistono prima di iniziare le sostituzioni
+8. **Mai combinare analisi + implementazione**: se serve capire la struttura di un file grande, farlo in uno step separato (solo lettura), poi implementare nello step successivo
+
+**Soglie operative:**
+| Operazione | Limite sicuro | Rischio timeout |
+|---|---|---|
+| `fsReplace` diffs su stesso file | ≤4 diffs | >6 diffs |
+| Righe totali modificate per step | ≤80 righe | >150 righe |
+| File modificati per step | ≤2 file | >3 file |
+| `fsRead` dimensione file | ≤300 righe | >500 righe (usare sed) |
+
+**Pattern sicuro per refactoring ampi:**
+```
+Step 1: grep -n per mappare tutti i riferimenti
+Step 2: fsReplace su funzione A (max 3 diffs)
+Step 3: build test
+Step 4: fsReplace su funzione B (max 3 diffs)  
+Step 5: build test
+Step 6: rimuovere codice morto
+Step 7: build test finale
+```
+
 ## Accesso Diretto al Database
 
 L'agente ha accesso diretto al DB PostgreSQL tramite la connection string in `backend/.env`:
@@ -657,6 +693,73 @@ const { data: certs } = await supabase.from('player').select('id, data_visita_me
 const { data: players } = await supabase.from('team_player')
   .select('id, player:player_id(id, nome, cognome, data_visita_medica)')...;
 // Usa players direttamente per i certificati, zero query extra
+```
+
+### Regola #8: Endpoint unificati — Mai duplicare chiamate per dati già disponibili
+
+Se un endpoint backend fetcha dati correlati (es. `category`, `team`, `team_staff`) per costruire la risposta, **includere quei dati nella risposta** anziché costringere il frontend a fare chiamate separate per gli stessi dati.
+
+```javascript
+// ❌ VIETATO (frontend fa 3 chiamate, backend fetcha gli stessi dati 2 volte)
+// Frontend:
+const [staff, categorie, teams] = await Promise.all([
+  apiFetch('/workspaces/X/staff'),      // backend fetcha category + team internamente
+  apiFetch('/workspaces/X/categorie'),   // stessa query category!
+  apiFetch('/stagioni/Y/squadre')        // stessa query team + N+1 loop!
+]);
+
+// ✅ OBBLIGATORIO (1 chiamata, backend restituisce tutto)
+// Frontend:
+const { staff, categories, seasonTeamIds } = await apiFetch('/workspaces/X/staff?season_id=Y');
+// Backend: fetcha category e team UNA volta, li include nella risposta
+```
+
+**Checklist prima di creare un nuovo endpoint o modificare un modulo frontend:**
+1. Il backend ha già questi dati in un endpoint esistente? → Estendere la risposta
+2. Il frontend ha già questi dati in memoria (variabile globale, `staffList`, `window.YFM.*`)? → Riusarli
+3. Serve davvero una chiamata API o basta filtrare dati già fetchati? → Filtrare in memoria
+
+### Regola #9: Mai chiamate API ridondanti nel frontend
+
+Se un modulo ha già fetchato dati in `loadData()` e li tiene in una variabile di modulo (es. `staffList`, `categorie`), le funzioni interne (modal, azioni) NON devono ri-fetchare gli stessi dati.
+
+```javascript
+// ❌ VIETATO (ri-fetcha dati già in memoria)
+async function openModal() {
+  const staff = await apiFetch('/workspaces/X/staff'); // staffList esiste già!
+  renderModal(staff);
+}
+
+// ✅ OBBLIGATORIO (usa dati in memoria)
+function openModal() {
+  renderModal(staffList); // già fetchato da loadData()
+}
+```
+
+**Eccezioni ammesse:**
+- Azione rara che richiede dati di un'altra stagione/workspace (es. "Copia da altra stagione")
+- Dati che potrebbero essere cambiati da un altro utente (refresh esplicito)
+
+### Regola #10: Formato risposta per endpoint che servono pagine intere
+
+Quando un endpoint serve una pagina frontend con dati eterogenei, restituire un **oggetto strutturato** (non un array semplice) per includere metadati utili:
+
+```javascript
+// ✅ Formato consigliato per endpoint "pagina"
+res.json({
+  staff: [...],           // dati principali
+  categories: [...],      // dati per form/filtri
+  seasonTeamIds: [...],   // dati per filtro stagione
+});
+
+// Frontend: destruttura in una riga
+const { staff, categories, seasonTeamIds } = await apiFetch(url);
+```
+
+**Retrocompatibilità**: se si cambia formato (da array a oggetto), il frontend DEVE gestire entrambi:
+```javascript
+const res = await apiFetch(url);
+const list = Array.isArray(res) ? res : (res.staff || []);
 ```
 
 ### Benchmark di riferimento (Luglio 2025)

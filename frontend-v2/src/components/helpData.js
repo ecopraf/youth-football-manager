@@ -501,11 +501,7 @@ export const ELEMENT_HELP = {
   // === STAGIONI E CATEGORIE ===
   'seasons.nuovaStagione': {
     title: '+ Nuova Stagione',
-    desc: 'Crea una nuova stagione sportiva (es: 2026/27). Imposta date inizio/fine e attivala quando inizia.'
-  },
-  'seasons.attiva': {
-    title: 'Attiva Stagione',
-    desc: 'La stagione attiva è quella visualizzata di default. Solo una stagione può essere attiva alla volta.'
+    desc: 'Crea una nuova stagione sportiva (es: 2026/27). La più recente viene selezionata automaticamente come default.'
   },
   'seasons.nuovaCategoria': {
     title: '+ Nuova Categoria',

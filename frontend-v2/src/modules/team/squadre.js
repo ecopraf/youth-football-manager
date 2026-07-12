@@ -48,17 +48,13 @@ export async function loadSquadre(stagioneId) {
       if (user?.is_superadmin || user?.ruolo === 'admin') {
         // Superadmin e admin vedono TUTTE le stagioni del workspace
         accessibleSeasons = [...stagioni];
+      } else if (stagioniAccesso.length > 0) {
+        // Staff con stagioni assegnate: vede solo quelle
+        accessibleSeasons = stagioni.filter(s => stagioniAccesso.includes(s.id));
       } else {
-        // Staff: stagione attiva + eventuali extra da stagioni_accesso
-        const activeSeason = stagioni.find(s => s.attiva);
-        accessibleSeasons = activeSeason ? [activeSeason] : [];
-        if (stagioniAccesso.length > 0) {
-          stagioni.forEach(s => {
-            if (stagioniAccesso.includes(s.id) && !accessibleSeasons.find(a => a.id === s.id)) {
-              accessibleSeasons.push(s);
-            }
-          });
-        }
+        // Legacy (nessuna stagione assegnata): vede la più recente
+        const sorted = stagioni.slice().sort((a, b) => (b.nome || '').localeCompare(a.nome || ''));
+        accessibleSeasons = sorted.length > 0 ? [sorted[0]] : [];
       }
       
       // Ordina per anno decrescente (2026/27 prima, 2024/25 dopo)
@@ -66,24 +62,20 @@ export async function loadSquadre(stagioneId) {
       
       window.YFM.accessibleSeasons = accessibleSeasons;
       
-      // Seleziona stagione: da localStorage o default (attiva o prima accessibile)
+      // Seleziona stagione: da localStorage o default (la più recente tra quelle accessibili)
       const savedSeasonId = localStorage.getItem(SEASON_STORAGE_KEY);
       let selectedSeason;
       if (savedSeasonId && accessibleSeasons.find(s => s.id === savedSeasonId)) {
-        // Verifica: se la stagione salvata non è attiva e ce n'è una attiva, preferisci l'attiva
-        // (evita che superadmin resti su stagione vecchia dopo riapertura app)
-        const saved = accessibleSeasons.find(s => s.id === savedSeasonId);
-        const active = accessibleSeasons.find(s => s.attiva);
-        selectedSeason = (active && !saved.attiva) ? active : saved;
+        selectedSeason = accessibleSeasons.find(s => s.id === savedSeasonId);
       } else {
-        selectedSeason = accessibleSeasons.find(s => s.attiva) || accessibleSeasons[0];
+        selectedSeason = accessibleSeasons[0] || null;
       }
       
       if (selectedSeason) {
         window.YFM.currentSeasonId = selectedSeason.id;
         localStorage.setItem(SEASON_STORAGE_KEY, selectedSeason.id);
         const teams = await apiFetch(`/stagioni/${selectedSeason.id}/squadre`);
-        (teams || []).forEach(t => { t._stagione = selectedSeason.nome; t._stagioneAttiva = selectedSeason.attiva; });
+        (teams || []).forEach(t => { t._stagione = selectedSeason.nome; });
         allSquadre = teams || [];
       } else {
         allSquadre = [];
@@ -107,7 +99,7 @@ export async function loadSquadre(stagioneId) {
     if (savedSquadraId && allSquadre.find(s => s.id === savedSquadraId)) {
       window.YFM.squadraId = savedSquadraId;
     } else if (allSquadre.length > 0 && !allSquadre.find(s => s.id === window.YFM.squadraId)) {
-      const preferActive = allSquadre.find(s => s._stagioneAttiva) || allSquadre[0];
+      const preferActive = allSquadre[0];
       window.YFM.squadraId = preferActive.id;
     }
     if (window.YFM.squadraId) {
@@ -181,16 +173,34 @@ function renderSeasonSelector(seasons, selected) {
   sel.className = 'header-select';
   sel.style.cssText = 'font-size:13px;padding:6px 10px;min-width:100px;';
   sel.innerHTML = seasons.map(s => 
-    `<option value="${s.id}" ${s.id === selected?.id ? 'selected' : ''}>${s.nome}${s.attiva ? ' ★' : ''}</option>`
+    `<option value="${s.id}" ${s.id === selected?.id ? 'selected' : ''}>${s.nome}${s.id === seasons[0]?.id ? ' ★' : ''}</option>`
   ).join('');
   
   sel.onchange = async () => {
+    // Salva category_id corrente per tentare di mantenerla nella nuova stagione
+    const prevSquadra = window.YFM.allSquadre?.find(s => s.id === window.YFM.squadraId);
+    const prevCategoryName = prevSquadra?.category?.nome || null;
+    
     window.YFM.currentSeasonId = sel.value;
     localStorage.setItem(SEASON_STORAGE_KEY, sel.value);
-    // Ricarica squadre per la nuova stagione
-    localStorage.removeItem(STORAGE_KEY);
-    window.YFM.squadraId = null;
     invalidateDashboardCache();
+    
+    // Carica squadre della nuova stagione
+    const newTeams = await apiFetch(`/stagioni/${sel.value}/squadre`).catch(() => []);
+    
+    // Cerca stessa categoria nella nuova stagione
+    let matchTeam = prevCategoryName 
+      ? newTeams.find(t => t.category?.nome === prevCategoryName) 
+      : null;
+    
+    if (matchTeam) {
+      window.YFM.squadraId = matchTeam.id;
+      localStorage.setItem(STORAGE_KEY, matchTeam.id);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+      window.YFM.squadraId = null;
+    }
+    
     await loadSquadre(sel.value);
     window.YFM.navigateTo(window.YFM.currentPage);
     import('../coach/notifications.js').then(m => m.updateNotifBadge()).catch(() => {});

@@ -557,7 +557,9 @@ async function renderTabStagioni(container) {
       } catch (e) { /* graceful */ }
     }
 
-    const firstExpanded = stagioni.find(s => s.attiva)?.id || stagioni[0]?.id || null;
+    const sortedStagioni = stagioni.slice().sort((a, b) => (b.nome || '').localeCompare(a.nome || ''));
+    const latestId = sortedStagioni[0]?.id || null;
+    const firstExpanded = latestId || stagioni[0]?.id || null;
 
     container.innerHTML = `
       <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
@@ -568,16 +570,16 @@ async function renderTabStagioni(container) {
           ${stagioni.map(s => {
             const teams = teamsBySeason[s.id] || [];
             const isExpanded = s.id === firstExpanded;
+            const isLatest = s.id === latestId;
             return `
-            <div style="border-radius:10px;border:1px solid ${s.attiva ? '#86efac' : '#e5e7eb'};overflow:hidden;">
-              <div data-toggle-season="${s.id}" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:${s.attiva ? '#f0fdf4' : '#f8f9fa'};cursor:pointer;">
+            <div style="border-radius:10px;border:1px solid ${isLatest ? '#86efac' : '#e5e7eb'};overflow:hidden;">
+              <div data-toggle-season="${s.id}" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:${isLatest ? '#f0fdf4' : '#f8f9fa'};cursor:pointer;">
                 <div>
                   <span style="font-weight:600;">${s.nome}</span>
-                  ${s.attiva ? '<span style="margin-left:8px;font-size:11px;background:#22c55e;color:white;padding:2px 8px;border-radius:10px;">ATTIVA</span>' : ''}
+                  ${isLatest ? '<span style="margin-left:8px;font-size:11px;background:#667eea;color:white;padding:2px 8px;border-radius:10px;">★ Più recente</span>' : ''}
                   <span style="margin-left:8px;font-size:11px;color:#999;">${teams.length} team</span>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center;">
-                  ${!s.attiva ? `<button class="btn btn-small" data-activate="${s.id}" style="background:#22c55e;color:white;border-color:#22c55e;font-size:11px;">Attiva</button>` : ''}
                   <button class="btn btn-small" data-edit-season="${s.id}" style="padding:4px 8px;font-size:11px;">✏️</button>
                   <button class="btn btn-small btn-danger" data-del-season="${s.id}" style="padding:4px 8px;font-size:11px;">🗑️</button>
                   <span style="font-size:14px;transition:transform .2s;${isExpanded ? 'transform:rotate(90deg);' : ''}">▶</span>
@@ -635,20 +637,6 @@ async function renderTabStagioni(container) {
       if (body.style.display === 'none') { body.style.display = ''; arrow.style.transform = 'rotate(90deg)'; }
       else { body.style.display = 'none'; arrow.style.transform = ''; }
     }));
-
-    container.querySelectorAll('[data-activate]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        showLoading('Attivazione...');
-        try {
-          await apiFetch(`/workspaces/${selectedWs.id}/stagioni/${btn.dataset.activate}/attiva`, { method: 'PUT' });
-        } catch (e2) {
-          alert('Errore: ' + e2.message);
-        }
-        hideLoading();
-        await renderTabStagioni(container);
-      });
-    });
 
     // Edit season
     container.querySelectorAll('[data-edit-season]').forEach(btn => {
@@ -843,10 +831,10 @@ function editCategory(catId, categorie, container) {
 }
 
 async function showNewSeasonForm(container, existingStagioni) {
-  const activeSeason = existingStagioni.find(s => s.attiva);
+  const latestSeason = existingStagioni.slice().sort((a, b) => (b.nome || '').localeCompare(a.nome || ''))[0] || null;
   let suggestedYear;
-  if (activeSeason?.nome) {
-    suggestedYear = parseInt(activeSeason.nome.split('/')[0]) + 1;
+  if (latestSeason?.nome) {
+    suggestedYear = parseInt(latestSeason.nome.split('/')[0]) + 1;
   } else {
     const now = new Date();
     suggestedYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
@@ -858,10 +846,10 @@ async function showNewSeasonForm(container, existingStagioni) {
 
   // Get teams from active season for migration
   let activeTeams = [];
-  if (activeSeason) {
+  if (latestSeason) {
     showLoading('Caricamento...');
     try {
-      activeTeams = await apiFetch(`/workspaces/${selectedWs.id}/stagioni/${activeSeason.id}/teams`) || [];
+      activeTeams = await apiFetch(`/workspaces/${selectedWs.id}/stagioni/${latestSeason.id}/teams`) || [];
     } catch (e) { /* graceful */ }
     hideLoading();
   }
@@ -893,13 +881,13 @@ async function showNewSeasonForm(container, existingStagioni) {
 
   function renderMigrationTable() {
     const area = modal.querySelector('#wizMigrationArea');
-    if (!activeSeason || !activeTeams.length) {
-      area.innerHTML = activeSeason ? '<p style="font-size:12px;color:#999;">Nessun team nella stagione attiva da migrare.</p>' : '';
+    if (!latestSeason || !activeTeams.length) {
+      area.innerHTML = latestSeason ? '<p style="font-size:12px;color:#999;">Nessun team nella stagione più recente da migrare.</p>' : '';
       return;
     }
     area.innerHTML = `
       <div style="padding:14px;background:#f0f4ff;border-radius:10px;border:1px solid #c7d2fe;">
-        <div style="font-size:13px;font-weight:600;color:#4338ca;margin-bottom:10px;">\ud83d\udd04 Migrazione da "${activeSeason.nome}"</div>
+        <div style="font-size:13px;font-weight:600;color:#4338ca;margin-bottom:10px;">\ud83d\udd04 Migrazione da "${latestSeason.nome}"</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px;">
           <thead><tr style="text-align:left;border-bottom:1px solid #c7d2fe;">
             <th style="padding:4px 6px;">Attuale</th>
@@ -982,10 +970,10 @@ async function showNewSeasonForm(container, existingStagioni) {
         method: 'POST', body: JSON.stringify({ anno_inizio: anno, skip_auto_teams: migrations.length > 0 })
       });
 
-      if (newSeason?.id && migrations.length > 0 && activeSeason) {
+      if (newSeason?.id && migrations.length > 0 && latestSeason) {
         const migResult = await apiFetch(`/stagioni/${newSeason.id}/migra`, {
           method: 'POST', body: JSON.stringify({
-            from_season_id: activeSeason.id,
+            from_season_id: latestSeason.id,
             migrations, migra_rosa, migra_staff, migra_config
           })
         });
@@ -1078,13 +1066,16 @@ function showCatForm(container) {
 
 async function renderTabUtenti(container) {
   try {
-    const [res, categorie] = await Promise.all([
+    const [res, categorie, stagioni] = await Promise.all([
       apiFetch('/auth/users?workspace_id=' + selectedWs.id + '&only_active=false'),
-      apiFetch(`/workspaces/${selectedWs.id}/categorie`)
+      apiFetch(`/workspaces/${selectedWs.id}/categorie`),
+      apiFetch(`/workspaces/${selectedWs.id}/stagioni`)
     ]);
     const users = res.users || res;
     const catMap = {};
     (categorie || []).forEach(c => { catMap[c.id] = c.nome; });
+    const seasonMap = {};
+    (stagioni || []).forEach(s => { seasonMap[s.id] = s.nome; });
 
     const roleColors = {
       admin: { bg: '#fef3c7', color: '#92400e' },
@@ -1101,6 +1092,7 @@ async function renderTabUtenti(container) {
           ${users.map(u => {
             const rc = roleColors[u.ruolo] || roleColors.staff;
             const cats = (u.categorie_accesso || []).map(id => catMap[id]).filter(Boolean);
+            const seasonNames = (u.stagioni_accesso || []).map(id => seasonMap[id]).filter(Boolean);
             const profilo = u.permessi?.profilo || u.ruolo || 'staff';
             return `
               <div style="background:white;border-radius:10px;padding:14px 18px;border:1px solid #eee;${!u.is_active ? 'opacity:0.5;' : ''}">
@@ -1116,6 +1108,7 @@ async function renderTabUtenti(container) {
                   </div>
                 </div>
                 ${cats.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">${cats.map(c => `<span style="background:#f0f4ff;color:#4338ca;padding:2px 8px;border-radius:5px;font-size:11px;">${c}</span>`).join('')}</div>` : ''}
+                ${seasonNames.length ? `<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:6px;">${seasonNames.map(s => `<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:5px;font-size:11px;">📅 ${s}</span>`).join('')}</div>` : ''}
               </div>
             `;
           }).join('')}
@@ -1124,11 +1117,11 @@ async function renderTabUtenti(container) {
       <div id="userFormArea"></div>
     `;
 
-    document.getElementById('btnNewUser')?.addEventListener('click', () => showUserForm(container, categorie, null));
+    document.getElementById('btnNewUser')?.addEventListener('click', () => showUserForm(container, categorie, stagioni, null));
     container.querySelectorAll('[data-edit-user]').forEach(btn => {
       btn.addEventListener('click', () => {
         const user = users.find(u => u.id === btn.dataset.editUser);
-        if (user) showUserForm(container, categorie, user);
+        if (user) showUserForm(container, categorie, stagioni, user);
       });
     });
   } catch (e) {
@@ -1136,7 +1129,7 @@ async function renderTabUtenti(container) {
   }
 }
 
-function showUserForm(container, categorie, user) {
+function showUserForm(container, categorie, stagioni, user) {
   const isEdit = !!user;
   const profili = ['admin', 'allenatore', 'vice_allenatore', 'dirigente', 'preparatore', 'osservatore', 'segreteria'];
   const area = document.getElementById('userFormArea');
@@ -1160,6 +1153,15 @@ function showUserForm(container, categorie, user) {
         </div>
         ${!isEdit ? '<div class="form-group"><label>Password</label><input id="uqPassword" type="text" value="" placeholder="Lascia vuoto per default"></div>' : ''}
         <div class="form-group">
+          <label>Stagioni accesso</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+            ${(stagioni || []).map(s => {
+              const checked = (user?.stagioni_accesso || []).includes(s.id);
+              return `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;"><input type="checkbox" class="uqSeason" value="${s.id}" ${checked ? 'checked' : ''}> ${s.nome}</label>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="form-group">
           <label>Categorie accesso</label>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
             ${(categorie || []).map(c => {
@@ -1182,6 +1184,7 @@ function showUserForm(container, categorie, user) {
     e.preventDefault();
     const profilo = document.getElementById('uqProfilo').value;
     const catIds = [...document.querySelectorAll('.uqCat:checked')].map(cb => cb.value);
+    const seasonIds = [...document.querySelectorAll('.uqSeason:checked')].map(cb => cb.value);
     const ruolo = ['admin'].includes(profilo) ? 'admin' : 'allenatore';
 
     showLoading('Salvataggio...');
@@ -1193,6 +1196,7 @@ function showUserForm(container, categorie, user) {
           ruolo,
           permessi: { profilo, capabilities: {} },
           categorie_accesso: catIds,
+          stagioni_accesso: seasonIds,
           is_active: document.getElementById('uqActive')?.checked !== false
         };
         await apiFetch(`/auth/users/${user.id}`, { method: 'PUT', body: JSON.stringify(body) });
@@ -1205,7 +1209,8 @@ function showUserForm(container, categorie, user) {
           ruolo,
           workspace_id: selectedWs.id,
           permessi: { profilo, capabilities: {} },
-          categorie_accesso: catIds
+          categorie_accesso: catIds,
+          stagioni_accesso: seasonIds
         };
         await apiFetch('/auth/users', { method: 'POST', body: JSON.stringify(body) });
       }

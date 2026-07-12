@@ -92,7 +92,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         });
       }
       const { data: user } = await supabase.from('users')
-        .select('id, nome, cognome, email, ruolo, workspace_id, is_superadmin, permessi, squadre_accesso')
+        .select('id, nome, cognome, email, ruolo, workspace_id, is_superadmin, permessi, squadre_accesso, stagioni_accesso')
         .eq('id', req.user.id).single();
       if (!user) return res.status(404).json({ error: 'Utente non trovato' });
       res.json({

@@ -22,12 +22,13 @@ import { initSessionGuard, destroySessionGuard } from './utils/sessionGuard'
 
 window.YFM_BUILD_ID = BUILD_INFO.id
 
-registerSW({
+const updateSW = registerSW({
   onOfflineReady() {
     console.log('[PWA] App pronta per uso offline')
   },
   onNeedRefresh() {
-    console.log('[PWA] Nuova versione disponibile')
+    console.log('[PWA] Nuova versione disponibile, aggiornamento...')
+    updateSW(true)
   }
 })
 

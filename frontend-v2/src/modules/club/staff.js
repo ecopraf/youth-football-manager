@@ -26,7 +26,8 @@ export default async function loadStaff() {
   c.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <h1 class="page-title">👥 Staff</h1>
-      ${isAdmin ? `<div style="display:flex;gap:8px;">
+      ${isAdmin ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary" id="btnMigrateStaff" style="font-size:12px;">📋 Copia da altra stagione</button>
         <button class="btn btn-secondary" id="btnPasteStaff">📋 Incolla da TC</button>
         <button class="btn btn-primary" id="btnAddStaff" data-help="staff.aggiungi">+ Aggiungi</button>
       </div>` : ''}
@@ -72,6 +73,7 @@ export default async function loadStaff() {
   if (isAdmin) {
     document.getElementById('btnAddStaff').addEventListener('click', () => openStaffModal());
     document.getElementById('btnPasteStaff').addEventListener('click', openPasteModal);
+    document.getElementById('btnMigrateStaff')?.addEventListener('click', openMigrateModal);
   }
   document.getElementById('staffModalClose').addEventListener('click', closeModal);
   document.getElementById('staffModalCancel').addEventListener('click', closeModal);
@@ -82,10 +84,16 @@ async function loadData() {
   const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
   if (!wsId) return;
   try {
-    [staffList, categorie] = await Promise.all([
-      apiFetch(`/workspaces/${wsId}/staff`),
-      apiFetch(`/workspaces/${wsId}/categorie`)
-    ]);
+    const seasonId = window.YFM.currentSeasonId;
+    const qs = seasonId ? `?season_id=${seasonId}` : '';
+    const res = await apiFetch(`/workspaces/${wsId}/staff${qs}`);
+    // Supporta sia nuovo formato {staff, categories, seasonTeamIds} sia vecchio (array)
+    if (Array.isArray(res)) {
+      staffList = res;
+    } else {
+      staffList = res.staff || [];
+      categorie = res.categories || [];
+    }
   } catch (e) {
     staffList = [];
     categorie = [];
@@ -102,14 +110,20 @@ function renderSections() {
   const squadreAccesso = user?.categorie_accesso || user?.squadre_accesso || [];
   const filterByCategory = !isAdmin && squadreAccesso.length > 0;
 
-  let tecnici = staffList.filter(s => !isSocietario(s.ruolo));
+  // Filtra per team corrente (categoria selezionata nella stagione corrente)
+  const currentTeamId = window.YFM.squadraId;
+  const filteredBySeasonList = currentTeamId
+    ? staffList.filter(s => isSocietario(s.ruolo) || (s.team_staff || []).some(ts => ts.team_id === currentTeamId))
+    : staffList;
+
+  let tecnici = filteredBySeasonList.filter(s => !isSocietario(s.ruolo));
   if (filterByCategory) {
     tecnici = tecnici.filter(s => {
       const cats = (s.categorie || []).map(c => c.id);
       return cats.length === 0 || cats.some(cid => squadreAccesso.includes(cid));
     });
   }
-  const societari = staffList.filter(s => isSocietario(s.ruolo));
+  const societari = filteredBySeasonList.filter(s => isSocietario(s.ruolo));
 
   let html = '';
 
@@ -211,12 +225,25 @@ function openStaffModal(staffId = null) {
 
   const selectedCats = (s?.categorie || []).map(c => c.id);
   const container = document.getElementById('sfCategorie');
-  container.innerHTML = categorie.map(cat => `
+  const catSection = container.parentElement; // div con h4 "Categorie assegnate"
+  const seasons = window.YFM.accessibleSeasons || [];
+  const latestSeason = seasons.length > 0 ? seasons.slice().sort((a, b) => (b.nome || '').localeCompare(a.nome || ''))[0] : null;
+  const stagioneLabel = latestSeason ? ` <span style="font-size:11px;color:#888;">(${latestSeason.nome})</span>` : '';
+  container.innerHTML = (categorie.length > 0 ? `<p style="font-size:11px;color:#667eea;margin:0 0 8px;">Assegnazione per stagione corrente${stagioneLabel}</p>` : '') +
+    categorie.map(cat => `
     <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
       <input type="checkbox" name="sfCat" value="${cat.id}" ${selectedCats.includes(cat.id) ? 'checked' : ''}>
       <span>${cat.nome}</span>
     </label>
   `).join('') || '<p style="color:#999;font-size:13px;">Nessuna categoria disponibile</p>';
+
+  // Nasconde categorie per ruoli societari
+  const ruoloSelect = document.getElementById('sfRuolo');
+  function toggleCatSection() {
+    catSection.style.display = isSocietario(ruoloSelect.value) ? 'none' : '';
+  }
+  toggleCatSection();
+  ruoloSelect.onchange = toggleCatSection;
 }
 
 function closeModal() {
@@ -349,15 +376,28 @@ function openPasteModal() {
     parsed = parseTCStaff(text);
     if (parsed.length === 0) { alert('Nessun membro staff riconosciuto. Verifica il formato.'); return; }
 
-    const existingNames = new Set(staffList.map(s => (s.cognome + ' ' + s.nome).toLowerCase()));
+    const currentTeam = (window.YFM.allSquadre || []).find(t => t.id === window.YFM.squadraId);
+    const currentCatId = currentTeam?.category_id;
+    // Staff già assegnati alla categoria corrente
+    const assignedNames = new Set(staffList.filter(s => 
+      (s.team_staff || []).some(ts => ts.team_id === window.YFM.squadraId)
+    ).map(s => (s.cognome + ' ' + s.nome).toLowerCase()));
+    // Staff che esistono nel workspace ma non assegnati alla categoria corrente
+    const existingMap = {};
+    staffList.forEach(s => { existingMap[(s.cognome + ' ' + s.nome).toLowerCase()] = s; });
 
     const preview = overlay.querySelector('#staffParsePreview');
     preview.innerHTML = '<p style="font-weight:600;margin-bottom:8px;">' + parsed.length + ' membri trovati:</p>' +
       parsed.map((p, i) => {
-        const isDuplicate = existingNames.has((p.cognome + ' ' + p.nome).toLowerCase());
-        return `<label style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;background:${isDuplicate ? '#fff3cd' : '#f8f9fa'};margin-bottom:4px;cursor:pointer;opacity:${isDuplicate ? '0.7' : '1'};">
-          <input type="checkbox" ${isDuplicate ? '' : 'checked'} class="staffPasteCheck" data-idx="${i}" ${isDuplicate ? 'disabled' : ''}>
-          <div style="flex:1;"><span style="font-weight:600;">${p.cognome} ${p.nome}</span>${isDuplicate ? ' <span style="font-size:10px;color:#856404;">✓ già presente</span>' : ''}</div>
+        const key = (p.cognome + ' ' + p.nome).toLowerCase();
+        const isAssigned = assignedNames.has(key);
+        const existsUnassigned = !isAssigned && existingMap[key];
+        let bg = '#f8f9fa', badge = '', disabled = '', checked = 'checked';
+        if (isAssigned) { bg = '#d4edda'; badge = ' <span style="font-size:10px;color:#155724;">✓ già assegnato</span>'; disabled = 'disabled'; checked = ''; }
+        else if (existsUnassigned) { bg = '#e8f4fd'; badge = ' <span style="font-size:10px;color:#0c5460;">↗ da assegnare</span>'; }
+        return `<label style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;background:${bg};margin-bottom:4px;cursor:pointer;opacity:${isAssigned ? '0.7' : '1'};">
+          <input type="checkbox" ${checked} class="staffPasteCheck" data-idx="${i}" ${disabled}>
+          <div style="flex:1;"><span style="font-weight:600;">${p.cognome} ${p.nome}</span>${badge}</div>
           <span style="font-size:11px;color:#667eea;background:#f0f4ff;padding:3px 8px;border-radius:6px;">${p.ruolo}</span>
         </label>`;
       }).join('');
@@ -370,23 +410,135 @@ function openPasteModal() {
     if (!selected.length) return;
 
     const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
+    const currentTeam = (window.YFM.allSquadre || []).find(t => t.id === window.YFM.squadraId);
+    const currentCatId = currentTeam?.category_id;
+    const existingMap = {};
+    staffList.forEach(s => { existingMap[(s.cognome + ' ' + s.nome).toLowerCase()] = s; });
     showLoading('Importazione staff...');
     let imported = 0;
     try {
       for (const s of selected) {
-        await apiFetch(`/workspaces/${wsId}/staff`, {
-          method: 'POST',
-          body: JSON.stringify({ nome: s.nome, cognome: s.cognome, ruolo: s.ruolo })
-        });
+        const key = (s.cognome + ' ' + s.nome).toLowerCase();
+        const existing = existingMap[key];
+        if (existing && currentCatId && !isSocietario(s.ruolo)) {
+          // Staff esiste ma non assegnato alla categoria corrente: aggiungi assegnazione
+          const existingCatIds = (existing.categorie || []).map(c => c.id);
+          if (!existingCatIds.includes(currentCatId)) {
+            await apiFetch(`/staff/${existing.id}`, {
+              method: 'PUT',
+              body: JSON.stringify({ ...existing, categorie_ids: [...existingCatIds, currentCatId], workspace_id: wsId })
+            });
+          }
+        } else {
+          // Staff nuovo: crea
+          const body = { nome: s.nome, cognome: s.cognome, ruolo: s.ruolo };
+          if (currentCatId && !isSocietario(s.ruolo)) body.categorie_ids = [currentCatId];
+          await apiFetch(`/workspaces/${wsId}/staff`, { method: 'POST', body: JSON.stringify(body) });
+        }
         imported++;
       }
       overlay.remove();
-      alert(`✅ ${imported} membri staff importati!`);
+      alert(`✅ ${imported} membri staff importati/assegnati!`);
       await loadData();
     } catch (err) {
       alert('Errore: ' + err.message);
     } finally {
       hideLoading();
     }
+  });
+}
+
+// ── MIGRAZIONE STAFF DA ALTRA STAGIONE ──
+async function openMigrateModal() {
+  const wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceInfo?.id;
+  if (!wsId) return;
+  const stagioni = window.YFM.allStagioni || await apiFetch(`/workspaces/${wsId}/stagioni`).catch(() => []);
+  if (stagioni.length < 2) {
+    alert('Serve almeno una seconda stagione da cui copiare.');
+    return;
+  }
+  const currentSeasonId = window.YFM.currentSeasonId;
+  const otherSeasons = stagioni.filter(s => s.id !== currentSeasonId);
+  if (!otherSeasons.length) { alert('Nessuna altra stagione disponibile.'); return; }
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:24px;width:90%;max-width:460px;max-height:85vh;overflow-y:auto;">
+      <h3 style="margin:0 0 16px;font-size:16px;">📋 Copia Staff da altra stagione</h3>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">Stagione sorgente</label>
+        <select id="migrateFromSeason" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;">
+          ${otherSeasons.map(s => `<option value="${s.id}">${s.nome}</option>`).join('')}
+        </select>
+      </div>
+      <div id="migrateStaffList" style="margin-bottom:14px;"><p style="color:#999;font-size:13px;">Seleziona una stagione per vedere lo staff.</p></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-secondary" id="migrateCancel">Annulla</button>
+        <button class="btn btn-primary" id="migrateConfirm">Copia selezionati</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#migrateCancel').addEventListener('click', () => overlay.remove());
+
+  const listDiv = overlay.querySelector('#migrateStaffList');
+  const select = overlay.querySelector('#migrateFromSeason');
+
+  async function loadSourceStaff() {
+    const seasonId = select.value;
+    listDiv.innerHTML = '<p style="color:#999;font-size:12px;">Caricamento...</p>';
+    try {
+      const teams = await apiFetch(`/stagioni/${seasonId}/squadre`);
+      const teamIds = (teams || []).map(t => t.id);
+      if (!teamIds.length) { listDiv.innerHTML = '<p style="color:#999;">Nessun team in questa stagione.</p>'; return; }
+      const allStaff = staffList;
+      // Get assignments for source season
+      const sourceStaff = allStaff.filter(s => 
+        (s.team_staff || []).some(ts => teamIds.includes(ts.team_id))
+      );
+      // Check which are already in current season
+      const currentSquadra = window.YFM.allSquadre || [];
+      const currentTeamIds = currentSquadra.map(t => t.id);
+      const alreadyAssigned = new Set();
+      (allStaff || []).forEach(s => {
+        if ((s.team_staff || []).some(ts => currentTeamIds.includes(ts.team_id))) {
+          alreadyAssigned.add(s.id);
+        }
+      });
+
+      if (!sourceStaff.length) { listDiv.innerHTML = '<p style="color:#999;">Nessuno staff in questa stagione.</p>'; return; }
+      listDiv.innerHTML = sourceStaff.map(s => {
+        const already = alreadyAssigned.has(s.id);
+        const ruolo = (s.team_staff || []).find(ts => teamIds.includes(ts.team_id))?.ruolo_squadra || s.ruolo || '';
+        return `<label style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px;${already ? 'opacity:0.5;' : 'cursor:pointer;'}">
+          <input type="checkbox" class="migrateStaffCb" value="${s.id}" ${already ? 'disabled checked' : 'checked'}>
+          <span style="font-weight:500;">${s.cognome} ${s.nome}</span>
+          <span style="color:#888;font-size:11px;">${ruolo}</span>
+          ${already ? '<span style="color:#22c55e;font-size:11px;">✓ già presente</span>' : ''}
+        </label>`;
+      }).join('');
+    } catch (e) { listDiv.innerHTML = `<p style="color:#E74C3C;">${e.message}</p>`; }
+  }
+
+  select.addEventListener('change', loadSourceStaff);
+  loadSourceStaff();
+
+  overlay.querySelector('#migrateConfirm').addEventListener('click', async () => {
+    const staffIds = [...overlay.querySelectorAll('.migrateStaffCb:checked:not(:disabled)')].map(cb => cb.value);
+    if (!staffIds.length) { alert('Nessuno staff selezionato.'); return; }
+    overlay.remove();
+    showLoading('Migrazione staff...');
+    try {
+      const result = await apiFetch(`/workspaces/${wsId}/staff/migrate`, {
+        method: 'POST',
+        body: JSON.stringify({ from_season_id: select.value, to_season_id: currentSeasonId, staff_ids: staffIds })
+      });
+      alert(`✅ Migrati: ${result.migrated || 0} staff${result.skipped ? ` (${result.skipped} già presenti)` : ''}`);
+      await loadData();
+      renderSections();
+    } catch (e) { alert('Errore: ' + e.message); }
+    finally { hideLoading(); }
   });
 }

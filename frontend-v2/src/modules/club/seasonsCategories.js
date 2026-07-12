@@ -39,7 +39,9 @@ async function loadData() {
 function render() {
   const container = document.getElementById('scContent');
   if (!container) return;
-  const activeSeason = seasons.find(s => s.attiva);
+  // Più recente = prima in ordine decrescente per nome (formato "YYYY/YY")
+  const sortedSeasons = seasons.slice().sort((a, b) => (b.nome || '').localeCompare(a.nome || ''));
+  const latestSeasonId = sortedSeasons[0]?.id || null;
 
   // Count rosa/staff per team
   const teamCounts = {};
@@ -49,7 +51,7 @@ function render() {
     }
   }
 
-  let expandedSeason = seasons.find(s => s.attiva)?.id || seasons[0]?.id || null;
+  let expandedSeason = latestSeasonId || seasons[0]?.id || null;
 
   container.innerHTML = `
     <!-- STAGIONI -->
@@ -60,19 +62,19 @@ function render() {
       </div>
       ${seasons.length === 0 ? '<p style="color:#999;text-align:center;padding:20px;">Nessuna stagione creata</p>' : `
       <div style="display:flex;flex-direction:column;gap:8px;">
-        ${seasons.map(s => {
-          const sTeams = teamsBySeason[s.id] || [];
+        ${sortedSeasons.map(s => {
+          const sTeams = (teamsBySeason[s.id] || []).sort((a, b) => (a.category?.nome || a.nome || '').localeCompare(b.category?.nome || b.nome || ''));
           const isExpanded = s.id === expandedSeason;
+          const isLatest = s.id === latestSeasonId;
           return `
-          <div style="border-radius:10px;border:1px solid ${s.attiva ? '#86efac' : '#e5e7eb'};overflow:hidden;">
-            <div data-toggle-season="${s.id}" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:${s.attiva ? '#f0fdf4' : '#f8f9fa'};cursor:pointer;">
+          <div style="border-radius:10px;border:1px solid ${isLatest ? '#86efac' : '#e5e7eb'};overflow:hidden;">
+            <div data-toggle-season="${s.id}" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:${isLatest ? '#f0fdf4' : '#f8f9fa'};cursor:pointer;">
               <div>
                 <span style="font-weight:600;">${s.nome}</span>
-                ${s.attiva ? '<span style="margin-left:8px;font-size:11px;background:#22c55e;color:white;padding:2px 8px;border-radius:10px;">ATTIVA</span>' : ''}
+                ${isLatest ? '<span style="margin-left:8px;font-size:11px;background:#667eea;color:white;padding:2px 8px;border-radius:10px;">★ Più recente</span>' : ''}
                 <span style="margin-left:8px;font-size:11px;color:#999;">${sTeams.length} team</span>
               </div>
               <div style="display:flex;gap:6px;align-items:center;">
-                ${!s.attiva ? `<button class="btn btn-small" data-activate="${s.id}" style="background:#22c55e;color:white;border-color:#22c55e;">Attiva</button>` : ''}
                 <button class="btn btn-small" data-edit-season="${s.id}" style="padding:4px 8px;font-size:11px;">✏️</button>
                 <button class="btn btn-small btn-danger" data-del-season="${s.id}">🗑️</button>
                 <span style="font-size:14px;transition:transform .2s;${isExpanded ? 'transform:rotate(90deg);' : ''}">▶</span>
@@ -127,7 +129,6 @@ function render() {
   // Bind events
   document.getElementById('btnAddSeason')?.addEventListener('click', showSeasonWizard);
   document.getElementById('btnAddCategory')?.addEventListener('click', addCategory);
-  container.querySelectorAll('[data-activate]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); activateSeason(btn.dataset.activate); }));
   container.querySelectorAll('[data-edit-season]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); editSeason(btn.dataset.editSeason); }));
   container.querySelectorAll('[data-del-season]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); deleteSeason(btn.dataset.delSeason); }));
   container.querySelectorAll('[data-edit-cat]').forEach(btn => btn.addEventListener('click', () => editCategory(btn.dataset.editCat)));
@@ -157,10 +158,10 @@ function render() {
 
 // ── WIZARD NUOVA STAGIONE ──
 function showSeasonWizard() {
-  const activeSeason = seasons.find(s => s.attiva);
+  const latestSeason = seasons.slice().sort((a, b) => (b.nome || '').localeCompare(a.nome || ''))[0] || null;
   let suggestedYear;
-  if (activeSeason?.nome) {
-    suggestedYear = parseInt(activeSeason.nome.split('/')[0]) + 1;
+  if (latestSeason?.nome) {
+    suggestedYear = parseInt(latestSeason.nome.split('/')[0]) + 1;
   } else {
     const now = new Date();
     suggestedYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
@@ -170,7 +171,7 @@ function showSeasonWizard() {
   // Calcola promozioni categoria
   const CATS_ORDER = ['U14', 'U15', 'U16', 'U17', 'U18', 'U19'];
   const TIPI = ['Provinciale', 'Regionale', 'Elite', 'Nazionale'];
-  const activeTeams = activeSeason ? (teamsBySeason[activeSeason.id] || []) : [];
+  const activeTeams = latestSeason ? (teamsBySeason[latestSeason.id] || []) : [];
 
   function nextCategory(catName) {
     const idx = CATS_ORDER.indexOf(catName);
@@ -188,9 +189,9 @@ function showSeasonWizard() {
         <input id="wizAnno" type="number" value="${suggestedYear}" min="2020" max="2050" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:16px;box-sizing:border-box;">
         <div id="wizPreview" style="font-size:12px;color:#666;margin-top:4px;">Stagione: ${suggestedYear}/${(suggestedYear + 1).toString().slice(2)} — dal 01/07/${suggestedYear} al 30/06/${suggestedYear + 1}</div>
       </div>
-      ${activeSeason && activeTeams.length > 0 ? `
+      ${latestSeason && activeTeams.length > 0 ? `
       <div style="margin-bottom:16px;padding:14px;background:#f0f4ff;border-radius:10px;border:1px solid #c7d2fe;">
-        <div style="font-size:13px;font-weight:600;color:#4338ca;margin-bottom:10px;">🔄 Migrazione da "${activeSeason.nome}"</div>
+        <div style="font-size:13px;font-weight:600;color:#4338ca;margin-bottom:10px;">🔄 Migrazione da "${latestSeason.nome}"</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px;">
           <thead><tr style="text-align:left;border-bottom:1px solid #c7d2fe;">
             <th style="padding:4px 6px;">Attuale</th>
@@ -225,7 +226,7 @@ function showSeasonWizard() {
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
           <input type="checkbox" id="wizMigraConfig" checked> Config allenamenti
         </label>
-      </div>` : (activeSeason ? '<p style="font-size:12px;color:#999;">Nessun team nella stagione attiva da migrare.</p>' : '<p style="font-size:12px;color:#999;">Nessuna stagione precedente da cui migrare.</p>')}
+      </div>` : (latestSeason ? '<p style="font-size:12px;color:#999;">Nessun team nella stagione più recente da migrare.</p>' : '<p style="font-size:12px;color:#999;">Nessuna stagione precedente da cui migrare.</p>')}
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button id="wizCancel" class="btn btn-secondary btn-small">Annulla</button>
         <button id="wizConfirm" class="btn btn-primary btn-small">Crea Stagione</button>
@@ -277,7 +278,7 @@ function showSeasonWizard() {
       if (newSeason?.id && migrations.length > 0) {
         const migResult = await apiFetch(`/stagioni/${newSeason.id}/migra`, {
           method: 'POST', body: JSON.stringify({
-            from_season_id: activeSeason.id,
+            from_season_id: latestSeason.id,
             migrations, migra_rosa, migra_staff, migra_config
           })
         });
@@ -298,20 +299,6 @@ function showSeasonWizard() {
     } catch (e) { alert('Errore: ' + e.message); }
     finally { hideLoading(); }
   });
-}
-
-async function activateSeason(id) {
-  const s = seasons.find(x => x.id === id);
-  if (!await confirm(`Attivare la stagione "${s?.nome}"?\nTutti gli utenti vedranno i dati di questa stagione.`)) return;
-  showLoading();
-  try {
-    await apiFetch(`/stagioni/${id}`, { method: 'PUT', body: JSON.stringify({ attiva: true }) });
-    const { loadSquadre } = await import('../team/squadre.js');
-    await loadSquadre();
-    await loadData();
-    render();
-  } catch (e) { alert('Errore: ' + e.message); }
-  finally { hideLoading(); }
 }
 
 async function editSeason(id) {
@@ -488,12 +475,12 @@ function addCategory() {
       const newCat = await apiFetch(`/workspaces/${wsId}/categorie`, {
         method: 'POST', body: JSON.stringify({ nome, tipo_campionato, anno_da: 0, anno_a: 0, genere })
       });
-      // Auto-crea team se c'è stagione attiva
-      const activeSeason = seasons.find(s => s.attiva);
-      if (activeSeason && newCat?.id) {
+      // Auto-crea team nella stagione più recente
+      const latestS = seasons.slice().sort((a, b) => (b.nome || '').localeCompare(a.nome || ''))[0];
+      if (latestS && newCat?.id) {
         const teamName = window.YFM.workspaceInfo?.nome || nome;
         await apiFetch(`/categorie/${newCat.id}/team`, {
-          method: 'POST', body: JSON.stringify({ season_id: activeSeason.id, nome: teamName })
+          method: 'POST', body: JSON.stringify({ season_id: latestS.id, nome: teamName })
         });
         const { loadSquadre } = await import('../team/squadre.js');
         await loadSquadre();

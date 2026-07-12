@@ -4,6 +4,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { getLatestSeason } = require('../helpers/seasons');
 
 module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   const router = express.Router();
@@ -243,7 +244,10 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
       const { id } = req.params;
       const { data, error } = await supabase.from('season').select('*').eq('workspace_id', id).order('data_inizio', { ascending: false });
       if (error) return res.status(400).json({ error: error.message });
-      res.json(data || []);
+      const seasons = data || [];
+      const latest = getLatestSeason(seasons);
+      const result = seasons.map(s => ({ ...s, is_latest: s.id === latest?.id }));
+      res.json(result);
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }
@@ -269,18 +273,6 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
     }
   });
 
-  // PUT attiva stagione (disattiva le altre)
-  router.put('/api/workspaces/:id/stagioni/:seasonId/attiva', authMiddleware, async (req, res) => {
-    try {
-      if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin' });
-      await supabase.from('season').update({ attiva: false }).eq('workspace_id', req.params.id);
-      const { error } = await supabase.from('season').update({ attiva: true }).eq('id', req.params.seasonId);
-      if (error) return res.status(400).json({ error: error.message });
-      res.json({ success: true });
-    } catch (err) {
-      res.status(500).json({ error: 'Errore server' });
-    }
-  });
 
   // POST nuova stagione — input: { anno_inizio: 2026 }
   // Auto-genera nome "2026/27", date 01/07/2026→30/06/2027
@@ -307,9 +299,6 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
       // Check duplicato
       const { data: existing } = await supabase.from('season').select('id').eq('workspace_id', id).eq('nome', seasonName);
       if (existing && existing.length > 0) return res.status(400).json({ error: `Stagione ${seasonName} già esistente` });
-
-      // Disattiva stagioni precedenti
-      await supabase.from('season').update({ attiva: false }).eq('workspace_id', id);
 
       // Crea stagione
       const { data: season, error } = await supabase.from('season').insert({
@@ -476,28 +465,34 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   router.get('/api/workspaces/:id/staff', authMiddleware, async (req, res) => {
     try {
       const wsId = req.params.id;
+      const seasonId = req.query.season_id;
       const { data: staffData, error } = await supabase.from('staff').select('*').eq('workspace_id', wsId).order('cognome');
       if (error) return res.status(400).json({ error: error.message });
       const staffIds = (staffData || []).map(s => s.id);
-      if (staffIds.length === 0) return res.json([]);
+      if (staffIds.length === 0) return res.json({ staff: [], categories: [], seasonTeamIds: [] });
 
-      const { data: tsData } = await supabase.from('team_staff').select('staff_id, team_id, ruolo_squadra').in('staff_id', staffIds);
-      const { data: categories } = await supabase.from('category').select('id, nome').eq('workspace_id', wsId);
-      const { data: seasons } = await supabase.from('season').select('id').eq('workspace_id', wsId);
+      const [{ data: tsData }, { data: categories }, { data: seasons }] = await Promise.all([
+        supabase.from('team_staff').select('staff_id, team_id, ruolo_squadra').in('staff_id', staffIds),
+        supabase.from('category').select('id, nome').eq('workspace_id', wsId),
+        supabase.from('season').select('id').eq('workspace_id', wsId)
+      ]);
       const seasonIds = (seasons || []).map(s => s.id);
-      const { data: teams } = await supabase.from('team').select('id, category_id').in('season_id', seasonIds.length > 0 ? seasonIds : ['x']);
+      const { data: teams } = await supabase.from('team').select('id, category_id, season_id').in('season_id', seasonIds.length > 0 ? seasonIds : ['x']);
 
       const catMap = {};
       (categories || []).forEach(c => { catMap[c.id] = c.nome; });
       const teamCatMap = {};
       (teams || []).forEach(t => { teamCatMap[t.id] = t.category_id; });
 
-      const result = (staffData || []).map(s => {
+      // Team IDs della stagione richiesta (per filtro frontend)
+      const seasonTeamIds = seasonId ? (teams || []).filter(t => t.season_id === seasonId).map(t => t.id) : [];
+
+      const staff = (staffData || []).map(s => {
         const assignments = (tsData || []).filter(ts => ts.staff_id === s.id);
         const catIds = [...new Set(assignments.map(a => teamCatMap[a.team_id]).filter(Boolean))];
-        return { ...s, categorie: catIds.map(id => ({ id, nome: catMap[id] || '?' })), ruolo_squadra: assignments[0]?.ruolo_squadra || s.ruolo };
+        return { ...s, team_staff: assignments, categorie: catIds.map(id => ({ id, nome: catMap[id] || '?' })), ruolo_squadra: assignments[0]?.ruolo_squadra || s.ruolo };
       });
-      res.json(result);
+      res.json({ staff, categories: categories || [], seasonTeamIds });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }
@@ -513,12 +508,14 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
       if (error) return res.status(400).json({ error: error.message });
 
       if (categorie_ids && categorie_ids.length > 0) {
-        const { data: seasons } = await supabase.from('season').select('id').eq('workspace_id', wsId);
+        const { data: seasons } = await supabase.from('season').select('id, nome').eq('workspace_id', wsId);
+        const latestSeason = getLatestSeason(seasons);
         const seasonIds = (seasons || []).map(s => s.id);
-        const { data: teams } = await supabase.from('team').select('id, category_id').in('season_id', seasonIds);
+        const { data: teams } = await supabase.from('team').select('id, category_id, season_id').in('season_id', seasonIds.length > 0 ? seasonIds : ['x']);
         const inserts = [];
         categorie_ids.forEach(catId => {
-          const team = (teams || []).find(t => t.category_id === catId);
+          const team = (teams || []).find(t => t.category_id === catId && t.season_id === latestSeason?.id)
+            || (teams || []).find(t => t.category_id === catId);
           if (team) inserts.push({ staff_id: staff.id, team_id: team.id, ruolo_squadra: ruolo });
         });
         if (inserts.length > 0) await supabase.from('team_staff').insert(inserts);
@@ -537,14 +534,17 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
       if (error) return res.status(400).json({ error: error.message });
 
       if (categorie_ids !== undefined && workspace_id) {
-        const { data: seasons } = await supabase.from('season').select('id').eq('workspace_id', workspace_id);
+        const { data: seasons } = await supabase.from('season').select('id, nome').eq('workspace_id', workspace_id);
+        const latestSeason = getLatestSeason(seasons);
         const seasonIds = (seasons || []).map(s => s.id);
-        const { data: teams } = await supabase.from('team').select('id, category_id').in('season_id', seasonIds);
+        const { data: teams } = await supabase.from('team').select('id, category_id, season_id').in('season_id', seasonIds.length > 0 ? seasonIds : ['x']);
         const teamIds = (teams || []).map(t => t.id);
-        await supabase.from('team_staff').delete().eq('staff_id', req.params.id).in('team_id', teamIds);
+        await supabase.from('team_staff').delete().eq('staff_id', req.params.id).in('team_id', teamIds.length > 0 ? teamIds : ['x']);
+        // Assegna al team della stagione più recente per ogni categoria
         const inserts = [];
         categorie_ids.forEach(catId => {
-          const team = (teams || []).find(t => t.category_id === catId);
+          const team = (teams || []).find(t => t.category_id === catId && t.season_id === latestSeason?.id)
+            || (teams || []).find(t => t.category_id === catId);
           if (team) inserts.push({ staff_id: req.params.id, team_id: team.id, ruolo_squadra: ruolo });
         });
         if (inserts.length > 0) await supabase.from('team_staff').insert(inserts);
@@ -566,6 +566,53 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
       const { error } = await supabase.from('staff').delete().eq('id', staffId);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+  });
+
+  // ── STAFF MIGRATE (copia da altra stagione) ──
+  router.post('/api/workspaces/:id/staff/migrate', authMiddleware, async (req, res) => {
+    try {
+      const { from_season_id, to_season_id, staff_ids } = req.body;
+      if (!from_season_id || !to_season_id || !staff_ids?.length) {
+        return res.status(400).json({ error: 'Parametri mancanti' });
+      }
+      // Get teams della stagione destinazione
+      const { data: toTeams } = await supabase.from('team').select('id, category_id').eq('season_id', to_season_id);
+      if (!toTeams?.length) return res.status(400).json({ error: 'Nessun team nella stagione destinazione' });
+      // Get assegnazioni correnti dalla stagione sorgente
+      const { data: fromTeams } = await supabase.from('team').select('id, category_id').eq('season_id', from_season_id);
+      const fromTeamIds = fromTeams.map(t => t.id);
+      const { data: fromAssignments } = await supabase.from('team_staff')
+        .select('staff_id, team_id, ruolo_squadra')
+        .in('team_id', fromTeamIds)
+        .in('staff_id', staff_ids);
+      // Get existing assignments nella destinazione per skip duplicati
+      const toTeamIds = toTeams.map(t => t.id);
+      const { data: existingAssignments } = await supabase.from('team_staff')
+        .select('staff_id, team_id')
+        .in('team_id', toTeamIds);
+      const existingSet = new Set((existingAssignments || []).map(a => `${a.staff_id}_${a.team_id}`));
+      // Map category_id from source team to dest team
+      const catToDestTeam = {};
+      toTeams.forEach(t => { catToDestTeam[t.category_id] = t.id; });
+      const fromTeamCatMap = {};
+      fromTeams.forEach(t => { fromTeamCatMap[t.id] = t.category_id; });
+      // Build inserts
+      const inserts = [];
+      for (const a of (fromAssignments || [])) {
+        const srcCatId = fromTeamCatMap[a.team_id];
+        const destTeamId = catToDestTeam[srcCatId] || toTeams[0].id;
+        const key = `${a.staff_id}_${destTeamId}`;
+        if (existingSet.has(key)) continue;
+        inserts.push({ staff_id: a.staff_id, team_id: destTeamId, ruolo_squadra: a.ruolo_squadra });
+        existingSet.add(key);
+      }
+      if (inserts.length) {
+        await supabase.from('team_staff').insert(inserts);
+      }
+      res.json({ success: true, migrated: inserts.length, skipped: staff_ids.length - inserts.length });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }

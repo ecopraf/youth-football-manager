@@ -511,12 +511,12 @@ async function loadData() {
     const [catRes, stagRes, staffRes, usersRes] = await Promise.all([
       wsId ? apiFetch(`/workspaces/${wsId}/categorie`).catch(() => []) : [],
       wsId ? apiFetch(`/workspaces/${wsId}/stagioni`).catch(() => []) : [],
-      wsId ? apiFetch(`/workspaces/${wsId}/staff`).catch(() => []) : [],
+      wsId ? apiFetch(`/workspaces/${wsId}/staff`).catch(() => ({ staff: [] })) : [],
       apiFetch(usersUrl)
     ]);
     categorie = catRes;
     stagioni = stagRes;
-    staffList = staffRes;
+    staffList = Array.isArray(staffRes) ? staffRes : (staffRes.staff || []);
     users = usersRes.users || [];
     
     hideLoading();

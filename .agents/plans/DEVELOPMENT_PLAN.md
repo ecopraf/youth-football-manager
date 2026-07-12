@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 18 Luglio 2026 | Versione: v3.16 | Build: v3.16.33
+> Ultimo aggiornamento: 18 Luglio 2026 | Versione: v3.16 | Build: v3.16.41
 
 ---
 
@@ -531,6 +531,120 @@
 
 ---
 
+### EPIC 18: Refactoring Stagioni — Rimozione "attiva" e Assegnazione Esplicita
+
+> Eliminare il concetto di "stagione attiva" come flag globale. Ogni utente/staff vede solo le stagioni assegnate. La stellina indica la più recente (calcolata al volo). Staff assegnato per stagione con migrazione esplicita. Selettore stagione/categoria con logica di persistenza intelligente.
+
+**Problema attuale**: `season.attiva` è un flag globale per workspace che crea bug (staff assegnato alla stagione sbagliata), obbliga un'azione manuale ("attiva stagione"), e non riflette la realtà multi-utente.
+
+**Nuovo modello**:
+- Visibilità stagioni = `users.stagioni_accesso` (assegnazione esplicita)
+- Default = la più recente tra quelle assegnate (calcolata al volo per anno)
+- Stellina ★ = cosmetico, indica la più recente
+- Staff = assegnato per team (= per stagione), con migrazione esplicita
+- `season.attiva` = campo ignorato (non rimosso dal DB per evitare migrazione distruttiva)
+
+#### Fase 1: Backend — Nuova logica visibilità stagioni
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 18.1 | Helper `getLatestSeason(seasons)`: ordina per anno desc, ritorna la prima (sostituisce `.find(s => s.attiva)`) | ✅ | — | helpers/seasons.js (nuovo) | ~5min |
+| 18.2 | Endpoint GET `/workspaces/:id/stagioni`: aggiungere campo calcolato `is_latest` (true sulla più recente) al posto di `attiva` nella risposta | ✅ | 18.1 | routes/workspace.js | ~5min |
+| 18.3 | Endpoint POST creazione stagione: rimuovere `await supabase.from('season').update({ attiva: false })` — non disattivare più le altre | ✅ | 18.1 | routes/workspace.js | ~3min |
+| 18.4 | Endpoint PUT `/stagioni/:id` (team.js): rimuovere logica "disattiva le altre quando ne attivi una" | ✅ | 18.1 | routes/team.js | ~3min |
+| 18.5 | Rimuovere endpoint PUT `/workspaces/:id/stagioni/:seasonId/attiva` (non più necessario) | ✅ | 18.3 | routes/workspace.js | ~3min |
+| 18.6 | Staff POST/PUT: usare `getLatestSeason()` al posto di `.find(s => s.attiva)` come fallback (già fixato parzialmente) | ✅ | 18.1 | routes/workspace.js | ~5min |
+
+#### Fase 2: Backend — Assegnazione stagioni a utenti
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 18.7 | Endpoint PUT `/api/users/:id` (creazione/modifica utente): accettare `stagioni_accesso` come array di season_id obbligatorio (almeno 1) | ✅ | — | routes/auth.js | ~5min |
+| 18.8 | Endpoint GET `/auth/me`: includere `stagioni_accesso` dell'utente nella risposta (per il frontend) | ✅ | 18.7 | routes/auth.js | ~3min |
+| 18.9 | Logica visibilità: superadmin/admin → tutte le stagioni; staff → solo `stagioni_accesso`; se vuoto (legacy) → la più recente | ✅ | 18.7 | modules/team/squadre.js | ~5min |
+
+#### Fase 3: Frontend — Selettore stagione/categoria
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 18.10 | `loadSquadre()`: sostituire `stagioni.find(s => s.attiva)` con `getLatestSeason()` (ordina per anno desc, prende la prima tra quelle accessibili) | ✅ | 18.2 | modules/team/squadre.js | ~5min |
+| 18.11 | Selettore stagione: stellina ★ sulla più recente (non su `attiva`), ordinamento anno desc | ✅ | 18.10 | modules/team/squadre.js | ~3min |
+| 18.12 | Cambio stagione: mantiene la categoria selezionata se esiste nella nuova stagione, altrimenti fallback alla prima disponibile | ✅ | 18.10 | modules/team/squadre.js | ~8min |
+| 18.13 | Cambio categoria: torna alla stagione più recente per quella categoria | ✅ | 18.12 | modules/team/squadre.js | ~5min |
+| 18.14 | Rimuovere logica `_stagioneAttiva` e `preferisci l'attiva` dal selettore | ✅ | 18.10 | modules/team/squadre.js | ~3min |
+
+#### Fase 4: Frontend — Pagina Stagioni & Categorie
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 18.15 | Rimuovere badge "ATTIVA" e bottone "Attiva" dalla lista stagioni | ✅ | 18.5 | modules/club/seasonsCategories.js | ~5min |
+| 18.16 | Aggiungere badge "★ Più recente" (cosmetico, non cliccabile) sulla stagione con anno più alto | ✅ | 18.15 | modules/club/seasonsCategories.js | ~3min |
+| 18.17 | Wizard creazione stagione: rimuovere riferimento a "attivala" — la nuova è automaticamente la più recente | ✅ | 18.15 | modules/club/seasonsCategories.js | ~3min |
+
+#### Fase 5: Frontend — Workspace Hub (superadmin)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 18.18 | Tab Stagioni: rimuovere bottone "Attiva", aggiungere badge "★ Più recente" | ✅ | 18.5 | modules/admin/workspaces.js | ~5min |
+| 18.19 | Tab Utenti: aggiungere selezione stagioni (checkbox) nella creazione/modifica utente | ✅ | 18.7 | modules/admin/workspaces.js | ~8min |
+| 18.20 | Tab Utenti: mostrare stagioni assegnate nella lista utenti (chip/badge) | ✅ | 18.19 | modules/admin/workspaces.js | ~5min |
+
+#### Fase 6: Staff — Migrazione esplicita da pagina Staff
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 18.21 | Backend: endpoint POST `/api/workspaces/:id/staff/migrate` — body: `{ from_season_id, to_season_id, staff_ids[] }` — crea `team_staff` per ogni staff nel team della stagione destinazione (skip duplicati) | ✅ | — | routes/workspace.js | ~10min |
+| 18.22 | Frontend pagina Staff: bottone "📋 Copia da altra stagione" (visibile se >1 stagione nel workspace) | ✅ | 18.21 | modules/club/staff.js | ~5min |
+| 18.23 | Modale migrazione: dropdown stagione sorgente → preview staff con checkbox (deselezionabili) → conferma | ✅ | 18.22 | modules/club/staff.js | ~10min |
+| 18.24 | Preview: mostrare "✓ già presente" per staff già assegnati nella stagione destinazione (non selezionabili) | ✅ | 18.23 | modules/club/staff.js | ~5min |
+
+#### Fase 7: Staff — Modale con contesto stagione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 18.25 | Modale staff: mostrare la stagione correntemente visualizzata (readonly) + dropdown categoria | ✅ | 18.10 | modules/club/staff.js | ~5min |
+| 18.26 | Pagina Staff: filtrare lista per stagione selezionata nel header (mostra solo staff assegnati a team di quella stagione) | ✅ | 18.25 | modules/club/staff.js | ~8min |
+
+#### Fase 8: Pulizia e finalizzazione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 18.27 | Aggiornare helpData.js: rimuovere riferimenti a "stagione attiva", aggiornare testi | ✅ | 18.15 | components/helpData.js | ~3min |
+| 18.28 | Verificare endpoint migrazione stagione (wizard): `migra_staff` continua a funzionare (copia team_staff dalla stagione precedente) | ✅ | 18.3 | routes/workspace.js | ~5min |
+| 18.29 | Test build completo frontend + syntax check backend | ✅ | 18.28 | — | ~3min |
+| 18.30 | Aggiornare docs (DEVELOPMENT_PLAN, AGENTS.md, project-rules.md) — rimuovere riferimenti a "stagione attiva" come concetto operativo | ✅ | 18.29 | .agents/, .amazonq/rules/ | ~5min |
+
+**Effort totale stimato**: ~2h 40min (30 task)
+
+**Priorità implementazione**:
+1. Fase 1 (Backend logica) — rimuove dipendenza da `attiva`, 24min
+2. Fase 2 (Assegnazione utenti) — fondamenta nuovo modello, 13min
+3. Fase 3 (Selettore frontend) — UX core, 24min
+4. Fase 6 (Migrazione staff) — risolve il problema originale, 30min
+5. Fase 7 (Modale staff) — contesto stagione chiaro, 13min
+6. Fase 4+5 (UI stagioni) — pulizia visuale, 16min
+7. Fase 8 (Pulizia) — docs e test, 16min
+
+**Note architetturali**:
+- `season.attiva` resta come colonna nel DB (non viene droppata) ma non viene più letta/scritta da nessuna logica
+- La "più recente" si calcola con: `seasons.sort((a,b) => b.nome.localeCompare(a.nome))[0]` (il nome è formato "YYYY/YY")
+- `users.stagioni_accesso` diventa il campo primario per la visibilità (già esiste, oggi è opzionale)
+- Per utenti legacy senza `stagioni_accesso`: fallback = la più recente (retrocompatibile)
+- Il selettore stagione nel header mantiene la selezione in localStorage (come oggi)
+- La pagina Staff filtra per stagione selezionata — se cambio stagione, vedo lo staff di quella stagione
+- La migrazione staff (pagina Staff) è indipendente dalla migrazione nel wizard creazione stagione (entrambe funzionano)
+- Nessuna dipendenza da altre Epic
+
+**Comportamento selettore (riepilogo)**:
+| Azione | Risultato |
+|--------|----------|
+| Cambio stagione | Mantiene categoria se esiste, altrimenti fallback prima disponibile |
+| Cambio categoria | Torna alla stagione più recente per quella categoria |
+| Primo accesso | Stagione più recente tra quelle assegnate + prima categoria |
+| Legacy (no stagioni_accesso) | Stagione più recente del workspace |
+
+---
+
 ### EPIC 6: Polish pre-stagione
 
 > Bug fix, UX improvements, preparazione per utenti reali.
@@ -721,6 +835,7 @@ EPIC 14 (Match Center Evolution) ──→ nessuna dipendenza
 EPIC 15 (PWA Offline-First) ──→ nessuna dipendenza (usa infrastruttura PWA già installata)
 EPIC 16 (Print Center) ──→ nessuna dipendenza (riusa endpoint e logica stampa esistenti)
 EPIC 17 (Piano Gara) ──→ nessuna dipendenza (usa Match Center e rosa esistenti)
+EPIC 18 (Refactoring Stagioni) ──→ nessuna dipendenza (refactoring logica esistente)
 ```
 
 Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
@@ -728,16 +843,17 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 2. **EPIC 2** (infortuni, 43min) → feature richiesta dai mister ✅
 3. **EPIC 11** (atleta/genitore, ~2h) → evoluzione accesso utenti, alto valore percepito ✅
 4. **EPIC 16** (Print Center, ~3h15) → differenziatore commerciale, hub documentale, risolve Android ✅
-5. **EPIC 17** (Piano Gara, ~4h15) → differenziatore forte, nessuna app giovanile lo offre
-6. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
-7. **EPIC 14** (Match Center evolution, ~53min) → UX bordo campo (complementare a EPIC 17)
-8. **EPIC 3** (visite, 35min) → scadenze mediche = obbligo FIGC
-9. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro + sinergia con note avversario EPIC 17
-10. **EPIC 6** (polish, 33min) → UX
-11. **EPIC 9** (workspace hub, ~57min) → gestione superadmin
-12. **EPIC 7** (tornei, 37min) → nice-to-have
-13. **EPIC 12** (club operations, ~10h) → valore società, post-EPIC 11
-14. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno, bassa priorità
+5. **EPIC 18** (Refactoring Stagioni, ~2h40) → fix architetturale critico, risolve bug staff + semplifica modello
+6. **EPIC 17** (Piano Gara, ~4h15) → differenziatore forte, nessuna app giovanile lo offre
+7. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
+8. **EPIC 14** (Match Center evolution, ~53min) → UX bordo campo (complementare a EPIC 17)
+9. **EPIC 3** (visite, 35min) → scadenze mediche = obbligo FIGC
+10. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro + sinergia con note avversario EPIC 17
+11. **EPIC 6** (polish, 33min) → UX
+12. **EPIC 9** (workspace hub, ~57min) → gestione superadmin
+13. **EPIC 7** (tornei, 37min) → nice-to-have
+14. **EPIC 12** (club operations, ~10h) → valore società, post-EPIC 11
+15. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno, bassa priorità
 
 ---
 
@@ -770,6 +886,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.41 | fix: staff page — filtro per categoria selezionata (non tutta la stagione), endpoint unificato (3→1 API call), import TC assegna staff al team corrente + gestisce staff esistenti non assegnati, ordinamento categorie per nome in pagina Stagioni |
 | v3.16.34 | feat: EPIC 3 Certificati Medici — badge "⚠️ Cert. scaduto" / "⏳ Cert. in scadenza" nelle convocazioni + banner riepilogativo se ≥1 convocato ha certificato scaduto/mancante |
 | v3.16.33 | fix: guest header — rimosso selettore squadra/stagione, avatar con logout (atleta: iniziali, genitore: G), fix loadSquadre per guest con workspaceInfo |
 | v3.16.32 | fix: aggiorna card dashboard in tempo reale dopo salvataggio convocazioni (refreshDashConvCards), data-conv-stato/alert attributes |
