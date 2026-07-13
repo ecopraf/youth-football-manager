@@ -327,6 +327,11 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         const { data: wsUsers } = await supabase.from('users').select('id').eq('workspace_id', user.workspace_id);
         const userIds = (wsUsers || []).map(u => u.id);
         query = query.in('utente_id', userIds);
+      } else if (user.workspace_id) {
+        // Staff con capability guest_links: mostra tutti i link del workspace
+        const { data: wsUsers } = await supabase.from('users').select('id').eq('workspace_id', user.workspace_id);
+        const userIds = (wsUsers || []).map(u => u.id);
+        query = query.in('utente_id', userIds);
       } else {
         query = query.eq('utente_id', user.id);
       }

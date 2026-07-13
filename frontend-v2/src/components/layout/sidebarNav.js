@@ -34,7 +34,7 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
 
   // Team
   html += sectionTitle('⚽ Team');
-  if (hasCap('rosa')) html += navItem('roster', '🎽', 'Rosa', 'Lista giocatori, statistiche individuali, storico');
+  if (hasCap('rosa')) html += navItem('roster', '👕', 'Rosa', 'Lista giocatori, statistiche individuali, storico');
   if (hasCap('partite')) html += navItem('calendar', '📅', 'Calendario', 'Calendario partite, risultati, archiviazione');
 
   // Coach
@@ -87,7 +87,7 @@ function buildGuestNav() {
   let html = '';
   html += navItem('dashboard', '🏠', 'Dashboard', 'Panoramica', true);
   html += sectionTitle('⚽ Team');
-  html += navItem('roster', '🎽', 'Rosa', 'Lista giocatori');
+  html += navItem('roster', '👕', 'Rosa', 'Lista giocatori');
   html += navItem('calendar', '📅', 'Calendario', 'Calendario partite');
   html += sectionTitle('🏛️ Club');
   html += navItem('club', '🏢', 'Società', 'Riferimenti società');
