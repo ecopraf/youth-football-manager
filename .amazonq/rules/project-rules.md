@@ -398,6 +398,7 @@ Questi principi si applicano AUTOMATICAMENTE a ogni nuova UI senza bisogno di ri
 | Tooltip per dettagli secondari | Info di dettaglio (date specifiche, breakdown) nel `title` attribute per hover desktop; su mobile il tap sulla riga apre il modale dettaglio |
 | Filtri con stato visibile | Bottoni filtro devono avere stile `active` evidente (sfondo primary, testo bianco) per indicare la selezione corrente |
 | Coerenza dashboard ↔ pagina | Widget dashboard e pagina dedicata devono usare la stessa struttura dati e lo stesso raggruppamento (es. per tipologia) |
+| Ordinamento liste giocatori | Ogni lista di giocatori DEVE essere ordinata per **cognome + nome** (`localeCompare`) salvo casi specifici (es. per ruolo nelle formazioni, per numero maglia nel roster, per minuto nelle sostituzioni). Se non specificato diversamente, il default è sempre alfabetico |
 
 ### Standard Tabelle Responsive (DataGrid)
 

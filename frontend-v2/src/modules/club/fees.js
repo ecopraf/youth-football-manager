@@ -127,7 +127,12 @@ function renderTable(filter, isAdmin) {
     return;
   }
 
-  // Raggruppa per fee_config_id
+  // Raggruppa per fee_config_id, ordina per cognome+nome dentro ogni gruppo
+  const sortByName = (a, b) => {
+    const pa = rosterMap[a.player_id], pb = rosterMap[b.player_id];
+    return (pa?.cognome || '').localeCompare(pb?.cognome || '') || (pa?.nome || '').localeCompare(pb?.nome || '');
+  };
+  filtered.sort(sortByName);
   const groups = {};
   filtered.forEach(f => {
     const key = f.fee_config_id || 'other';

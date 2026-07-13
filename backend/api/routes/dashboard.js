@@ -187,6 +187,7 @@ function createDashboardRouter({ supabase, authMiddleware }) {
           }
         }
       });
+      certificati.dettaglio.sort((a, b) => (a.cognome || '').localeCompare(b.cognome || '') || (a.nome || '').localeCompare(b.nome || ''));
 
       // ── RISPOSTA AGGREGATA ──
       res.json({ stats, topPlayers, prossimePartite, allenamenti, infortunati, certificati });

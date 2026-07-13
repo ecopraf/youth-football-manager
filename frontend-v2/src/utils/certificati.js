@@ -34,6 +34,12 @@ export function calcCertificatiStatus(players, sogliaGiorni = 30) {
     }
   });
 
+  const sortByName = (a, b) => (a.cognome || '').localeCompare(b.cognome || '') || (a.nome || '').localeCompare(b.nome || '');
+  scaduti.sort(sortByName);
+  inScadenza.sort(sortByName);
+  validi.sort(sortByName);
+  mancanti.sort(sortByName);
+
   return { scaduti, inScadenza, validi, mancanti };
 }
 

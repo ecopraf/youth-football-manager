@@ -39,7 +39,7 @@ export default async function printDistinta() {
       ]);
       const convIds = new Set((Array.isArray(convResp) ? convResp : []).filter(c => c.presente).map(c => c.calciatoreId));
       formazione = rosa.filter(g => convIds.has(g.id)).map(g => ({
-        nome: g.nome, cognome: g.cognome, numeroMaglia: g.numero_maglia,
+        nome: g.nome, cognome: g.cognome, numeroMaglia: null,
         dataNascita: g.data_nascita, matricolaFigc: g.matricola_figc,
         tipoDocumento: g.tipo_documento, numeroDocumento: g.numero_documento,
         rilasciatoDa: g.rilasciato_da, ruolo_principale: g.ruolo,
@@ -47,12 +47,39 @@ export default async function printDistinta() {
       }));
     }
 
-    const sorted = formazione.sort((a, b) => {
-      const aT = a.posizione === 'Titolare' ? 0 : 1;
-      const bT = b.posizione === 'Titolare' ? 0 : 1;
-      if (aT !== bT) return aT - bT;
-      return (a.numeroMaglia || 99) - (b.numeroMaglia || 99);
-    });
+    // Logica numeri distinta:
+    // - Tutti (titolari+riserve) con numero dal mister → ordina titolari per numero (cerchiati), riserve per numero
+    // - Solo tutti i titolari con numero → titolari per numero (cerchiati), riserve alfabetiche senza numero
+    // - Manca anche un titolare senza numero → tutto alfabetico, nessun numero
+    const titolari = formazione.filter(f => f.posizione === 'Titolare');
+    const riserve = formazione.filter(f => f.posizione !== 'Titolare');
+    const tuttiConNumero = formazione.length > 0 && formazione.every(f => f.numeroMaglia);
+    const tuttiTitolariConNumero = titolari.length > 0 && titolari.every(f => f.numeroMaglia);
+
+    let sorted;
+    if (tuttiConNumero) {
+      // Caso ideale: mister ha assegnato numeri a tutti
+      sorted = formazione.sort((a, b) => {
+        const aT = a.posizione === 'Titolare' ? 0 : 1;
+        const bT = b.posizione === 'Titolare' ? 0 : 1;
+        if (aT !== bT) return aT - bT;
+        return a.numeroMaglia - b.numeroMaglia;
+      });
+    } else if (tuttiTitolariConNumero) {
+      // Solo titolari con numero: riserve senza
+      riserve.forEach(f => { f.numeroMaglia = null; });
+      sorted = formazione.sort((a, b) => {
+        const aT = a.posizione === 'Titolare' ? 0 : 1;
+        const bT = b.posizione === 'Titolare' ? 0 : 1;
+        if (aT !== bT) return aT - bT;
+        if (aT === 0) return a.numeroMaglia - b.numeroMaglia;
+        return (a.cognome || '').localeCompare(b.cognome || '') || (a.nome || '').localeCompare(b.nome || '');
+      });
+    } else {
+      // Numeri incompleti: tutto alfabetico senza numeri
+      formazione.forEach(f => { f.numeroMaglia = null; });
+      sorted = formazione.sort((a, b) => (a.cognome || '').localeCompare(b.cognome || '') || (a.nome || '').localeCompare(b.nome || ''));
+    }
 
     const dt = new Date(partita.dataOra || partita.data_ora);
     const wsName = window.YFM.getSocietaName();
