@@ -331,15 +331,6 @@ async function proceedToApp(user, workspaces) {
     await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
     if (user.is_superadmin) populateWorkspaceSelect(workspaces);
 
-    // Check scadenze quote (fire & forget, solo admin/segreteria)
-    if (window.YFM.squadraId && window.YFM.activeWorkspaceId) {
-      const { apiFetch } = await import('../../services/api');
-      apiFetch('/fees/check-scadenze', { method: 'POST', body: JSON.stringify({
-        workspace_id: window.YFM.activeWorkspaceId,
-        team_id: window.YFM.squadraId
-      })}).catch(() => {});
-    }
-
     hideLoading();
     window.YFM.navigateTo('dashboard');
   } catch (err) {

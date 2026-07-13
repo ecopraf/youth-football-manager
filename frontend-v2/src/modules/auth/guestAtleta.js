@@ -303,11 +303,40 @@ function bindEvents(c, playerId, teamId, motivi) {
   const dateInput = document.getElementById('gaAbsDate');
   const dateLabel = document.getElementById('gaAbsDateLabel');
 
-  // Click-to-expand notifiche
+  // Click-to-expand notifiche + segna come letta
   c.querySelectorAll('[data-notif-id]').forEach(el => {
     el.addEventListener('click', () => {
       const body = el.querySelector('.ga-notif-body');
       if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+      // Segna come letta
+      const nid = el.dataset.notifId;
+      if (nid && el.classList.contains('unread')) {
+        el.classList.remove('unread');
+        el.style.background = '#f8f9fa';
+        el.style.borderLeftColor = '#ddd';
+        el.style.fontWeight = '400';
+        const tipo = sessionStorage.getItem('guest_tipo');
+        if (tipo === 'genitore') {
+          const seen = JSON.parse(sessionStorage.getItem('yfm_notif_seen') || '[]');
+          if (!seen.includes(nid)) seen.push(nid);
+          sessionStorage.setItem('yfm_notif_seen', JSON.stringify(seen));
+        } else {
+          const guestToken = window.YFM.guestToken;
+          if (guestToken) {
+            apiFetch('/notifications/guest-read', {
+              method: 'PUT',
+              body: JSON.stringify({ ids: [nid], guest_token: guestToken })
+            }).catch(() => {});
+          }
+        }
+        // Aggiorna badge campanella
+        const badge = document.getElementById('guestBellBadge');
+        if (badge) {
+          const current = parseInt(badge.textContent) || 0;
+          if (current <= 1) badge.style.display = 'none';
+          else badge.textContent = current - 1;
+        }
+      }
     });
   });
 

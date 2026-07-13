@@ -317,61 +317,60 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
   });
 
   // ═══════════════════════════════════════════
-  // CHECK SCADENZE — genera notifiche per rate in scadenza (7gg)
-  // Chiamato al login segreteria/admin e apertura pagina Quote
+  // NOTIFICA QUOTE — invio manuale a guest link famiglia
   // ═══════════════════════════════════════════
-  router.post('/api/fees/check-scadenze', authMiddleware, async (req, res) => {
+  router.post('/api/fees/notify', authMiddleware, async (req, res) => {
     try {
-      const { workspace_id, team_id } = req.body;
-      if (!workspace_id || !team_id) return res.status(400).json({ error: 'workspace_id e team_id richiesti' });
+      const { notifications } = req.body; // [{player_id, messaggio, titolo}]
+      if (!notifications || !notifications.length) return res.status(400).json({ error: 'Nessuna notifica da inviare' });
 
-      const oggi = new Date();
-      const tra7gg = new Date(oggi);
-      tra7gg.setDate(tra7gg.getDate() + 7);
-      const oggiStr = oggi.toISOString().split('T')[0];
-      const tra7ggStr = tra7gg.toISOString().split('T')[0];
+      const playerIds = [...new Set(notifications.map(n => n.player_id))];
+      // Trova guest_token collegati ai player
+      const { data: tokens } = await supabase.from('guest_token')
+        .select('id, player_id, tipo')
+        .in('player_id', playerIds);
 
-      // Rate non pagate con scadenza entro 7 giorni
-      const { data: rateInScadenza } = await supabase.from('fee_installment')
-        .select('id, fee_id, importo, scadenza, scadenza_label, fee:fee_id(player_id, team_id)')
-        .eq('stato', 'da_pagare')
-        .gte('scadenza', oggiStr)
-        .lte('scadenza', tra7ggStr);
+      const tokenMap = {};
+      (tokens || []).forEach(t => {
+        if (!tokenMap[t.player_id]) tokenMap[t.player_id] = [];
+        tokenMap[t.player_id].push(t);
+      });
 
-      if (!rateInScadenza?.length) return res.json({ created: 0 });
+      const wsId = req.user.workspace_id;
+      const teamId = req.body.team_id;
+      const notifRows = [];
+      const noLink = [];
 
-      // Filtra per team_id
-      const rateTeam = rateInScadenza.filter(r => r.fee?.team_id === team_id);
-      if (!rateTeam.length) return res.json({ created: 0 });
-
-      // Controlla notifiche già create oggi per evitare duplicati
-      const { data: existing } = await supabase.from('notification')
-        .select('riferimento_id')
-        .eq('workspace_id', workspace_id)
-        .eq('tipo', 'scadenza_quota')
-        .gte('created_at', oggiStr + 'T00:00:00');
-      const existingIds = new Set((existing || []).map(n => n.riferimento_id));
-
-      // Crea notifiche per rate non ancora notificate
-      const notifiche = rateTeam
-        .filter(r => !existingIds.has(r.id))
-        .map(r => ({
-          workspace_id,
-          team_id,
-          tipo: 'scadenza_quota',
-          titolo: `Rata in scadenza: ${r.scadenza_label || 'Rata'} - €${parseFloat(r.importo).toFixed(2)}`,
-          messaggio: `Scadenza: ${new Date(r.scadenza).toLocaleDateString('it-IT')}`,
-          riferimento_id: r.id,
-          destinatario_tipo: ['genitore'],
+      notifications.forEach(n => {
+        const playerTokens = tokenMap[n.player_id];
+        if (!playerTokens || !playerTokens.length) {
+          noLink.push(n.player_id);
+          return;
+        }
+        // Crea una notifica per il guest (destinatario_tipo genitore/atleta)
+        notifRows.push({
+          workspace_id: wsId,
+          team_id: teamId,
+          tipo: 'promemoria_quota',
+          titolo: n.titolo,
+          messaggio: n.messaggio,
+          riferimento_id: n.fee_id || null,
+          destinatario_tipo: ['genitore', 'atleta'],
           destinatario_profilo: ['segreteria', 'admin'],
-          priorita: 'importante',
+          destinatario_player_id: n.player_id,
+          created_by: req.user.id,
           letto: false
-        }));
+        });
+      });
 
-      if (!notifiche.length) return res.json({ created: 0 });
-      const { error } = await supabase.from('notification').insert(notifiche);
-      if (error) return res.status(400).json({ error: error.message });
-      res.json({ created: notifiche.length });
+      let created = 0;
+      if (notifRows.length) {
+        const { error } = await supabase.from('notification').insert(notifRows);
+        if (error) return res.status(400).json({ error: error.message });
+        created = notifRows.length;
+      }
+
+      res.json({ created, noLink });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }

@@ -40,6 +40,33 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         userId: users.id, email: users.email, ruolo: users.ruolo, 
         workspace_id: users.workspace_id, is_superadmin: users.is_superadmin || false
       }, JWT_SECRET, { expiresIn: '7d' });
+
+      // Lazy cleanup notifiche (fire-and-forget)
+      if (users.workspace_id) {
+        (async () => {
+          try {
+            // 1. Elimina notifiche > 30 giorni
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            await supabase.from('notification').delete()
+              .eq('workspace_id', users.workspace_id)
+              .lt('created_at', thirtyDaysAgo.toISOString());
+
+            // 2. Elimina notifiche lette dal lunedì scorso (lun-dom → lunedì successivo pulisce)
+            const now = new Date();
+            const dayOfWeek = now.getDay(); // 0=dom, 1=lun...6=sab
+            const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const lastMonday = new Date(now);
+            lastMonday.setDate(lastMonday.getDate() - daysSinceMonday);
+            lastMonday.setHours(0, 0, 0, 0);
+            await supabase.from('notification').delete()
+              .eq('workspace_id', users.workspace_id)
+              .eq('letto', true)
+              .lt('created_at', lastMonday.toISOString());
+          } catch (e) { /* silent */ }
+        })();
+      }
+
       res.json({ 
         token, 
         user: { 
@@ -322,18 +349,23 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       let query = supabase.from('guest_token').select('*').order('created_at', { ascending: false });
       
       if (user.is_superadmin) {
-        // superadmin: filtra per categoria se specificata
-      } else if (user.ruolo === 'admin') {
-        const { data: wsUsers } = await supabase.from('users').select('id').eq('workspace_id', user.workspace_id);
-        const userIds = (wsUsers || []).map(u => u.id);
-        query = query.in('utente_id', userIds);
+        // superadmin: vede tutto
       } else if (user.workspace_id) {
-        // Staff con capability guest_links: mostra tutti i link del workspace
-        const { data: wsUsers } = await supabase.from('users').select('id').eq('workspace_id', user.workspace_id);
-        const userIds = (wsUsers || []).map(u => u.id);
-        query = query.in('utente_id', userIds);
+        // Filtra per categorie del workspace
+        if (!categoryId) {
+          // Senza filtro categoria: prendi tutte le categorie del workspace
+          const { data: cats } = await supabase.from('category').select('id').eq('workspace_id', user.workspace_id);
+          const catIds = (cats || []).map(c => c.id);
+          if (!catIds.length) return res.json({ links: [] });
+          // Filtra post-query (squadre_accesso è array, non filtrabile con .in)
+          const { data: allTokens, error: err2 } = await query;
+          if (err2) return res.status(400).json({ error: err2.message });
+          const filtered = (allTokens || []).filter(t => (t.squadre_accesso || []).some(id => catIds.includes(id)));
+          return finalize(filtered, res);
+        }
+        // Con categoryId: il filtro avviene sotto
       } else {
-        query = query.eq('utente_id', user.id);
+        return res.json({ links: [] });
       }
 
       // Filtra per stagione se specificata
@@ -345,34 +377,27 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       // Filtra per categoria se specificata
       let filtered = data || [];
       if (categoryId) {
-        filtered = filtered.filter(t => {
-          const acc = t.squadre_accesso || [];
-          return acc.includes(categoryId);
-        });
+        filtered = filtered.filter(t => (t.squadre_accesso || []).includes(categoryId));
       }
       
-      // Resolve player names + utente names in parallel
+      return await finalize(filtered, res);
+    } catch (err) {
+      res.status(500).json({ error: 'Errore server' });
+    }
+
+    async function finalize(filtered, res) {
       const playerIds = [...new Set(filtered.map(t => t.player_id).filter(Boolean))];
       const utenteIds = [...new Set(filtered.map(t => t.utente_id).filter(Boolean))];
-
       const [playersRes, utentiRes] = await Promise.all([
         playerIds.length > 0 ? supabase.from('player').select('id, nome, cognome').in('id', playerIds) : { data: [] },
         utenteIds.length > 0 ? supabase.from('users').select('id, nome, cognome').in('id', utenteIds) : { data: [] }
       ]);
-
       const playerMap = {};
       (playersRes.data || []).forEach(p => { playerMap[p.id] = { nome: p.nome, cognome: p.cognome }; });
       const utenteMap = {};
       (utentiRes.data || []).forEach(u => { utenteMap[u.id] = { nome: u.nome, cognome: u.cognome }; });
-      
-      const links = filtered.map(t => ({
-        ...t,
-        utente: utenteMap[t.utente_id] || null,
-        player: playerMap[t.player_id] || null
-      }));
-      res.json({ links });
-    } catch (err) {
-      res.status(500).json({ error: 'Errore server' });
+      const links = filtered.map(t => ({ ...t, utente: utenteMap[t.utente_id] || null, player: playerMap[t.player_id] || null }));
+      return res.json({ links });
     }
   });
 

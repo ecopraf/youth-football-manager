@@ -126,25 +126,29 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
   router.get('/api/notifications/:id/receipts', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      // Fetch notifica con letto_da e team_id
       const { data: notif, error } = await supabase.from('notification')
-        .select('id, team_id, letto_da, destinatario_tipo').eq('id', id).single();
+        .select('id, team_id, letto_da, destinatario_tipo, destinatario_player_id').eq('id', id).single();
       if (error || !notif) return res.status(404).json({ error: 'Notifica non trovata' });
 
-      // Solo se destinata ad atleti
       if (!notif.destinatario_tipo || !notif.destinatario_tipo.includes('atleta')) {
         return res.json({ receipts: [], total: 0, read: 0 });
       }
 
-      // Fetch guest_token atleta per questo team (via squadre_accesso contiene category)
       const { data: team } = await supabase.from('team').select('category_id').eq('id', notif.team_id).single();
       const catId = team?.category_id;
       if (!catId) return res.json({ receipts: [], total: 0, read: 0 });
 
-      const { data: tokens } = await supabase.from('guest_token')
+      let tokenQuery = supabase.from('guest_token')
         .select('token, player_id, player:player_id(nome, cognome)')
         .eq('tipo', 'atleta')
         .contains('squadre_accesso', [catId]);
+
+      // Se la notifica ha un destinatario specifico, filtra solo quel player
+      if (notif.destinatario_player_id) {
+        tokenQuery = tokenQuery.eq('player_id', notif.destinatario_player_id);
+      }
+
+      const { data: tokens } = await tokenQuery;
 
       const lettoDa = notif.letto_da || {};
       const receipts = (tokens || []).map(t => ({
@@ -213,9 +217,14 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       let filtered = data || [];
       if (tipoFilter) {
         filtered = filtered.filter(n => {
-          if (!n.destinatario_tipo || n.destinatario_tipo.length === 0) return true; // nessun filtro = tutti
+          if (!n.destinatario_tipo || n.destinatario_tipo.length === 0) return true;
           return n.destinatario_tipo.includes(tipoFilter);
         });
+      }
+      // Filtra per player_id: usa req.user.player_id (dal JWT guest) o query param
+      const playerId = req.user.player_id || req.query.player_id;
+      if (playerId) {
+        filtered = filtered.filter(n => !n.destinatario_player_id || n.destinatario_player_id === playerId);
       }
       res.json(filtered);
     } catch (err) { res.status(500).json({ error: err.message }); }

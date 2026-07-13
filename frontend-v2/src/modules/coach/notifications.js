@@ -18,8 +18,12 @@ export default async function loadNotifications() {
 }
 
 function renderPage(c, absences, comms, teamId) {
-  const unreadAbs = absences.filter(n => !n.letto).length;
-  const unreadComms = comms.filter(n => !n.letto).length;
+  const userId = window.YFM.getUser()?.id;
+  const sent = comms.filter(n => n.created_by === userId && n.titolo !== '⚠️ Convocato indisponibile');
+  const indisponibili = comms.filter(n => n.titolo === '⚠️ Convocato indisponibile');
+  const received = comms.filter(n => n.created_by !== userId && n.titolo !== '⚠️ Convocato indisponibile');
+  const unreadAbs = absences.filter(n => !n.letto).length + indisponibili.filter(n => !n.letto).length + received.filter(n => !n.letto).length;
+  const unreadComms = sent.filter(n => !n.letto).length;
 
   let html = `<style>
     .notif-tabs { display:flex; gap:0; margin-bottom:16px; border-bottom:2px solid #eee; }
@@ -60,10 +64,9 @@ function renderPage(c, absences, comms, teamId) {
     <div class="notif-tab" data-tab="absences">📥 Ricevute${unreadAbs > 0 ? `<span class="tab-badge">${unreadAbs}</span>` : ''}</div>
   </div>`;
 
-  html += `<div id="tabComms">${renderCommsTab(comms.filter(n => n.titolo !== '⚠️ Convocato indisponibile'))}</div>`;
-  // Ricevute: unisci assenze + indisponibilità convocati
-  const indisponibili = comms.filter(n => n.titolo === '⚠️ Convocato indisponibile');
-  html += `<div id="tabAbsences" style="display:none;">${renderRicevuteTab(absences, indisponibili)}</div>`;
+  html += `<div id="tabComms">${renderCommsTab(sent)}</div>`;
+  // Ricevute: unisci assenze + indisponibilità convocati + notifiche ricevute da altri
+  html += `<div id="tabAbsences" style="display:none;">${renderRicevuteTab(absences, [...indisponibili, ...received])}</div>`;
 
   c.innerHTML = html;
 
@@ -250,16 +253,18 @@ function renderRicevutaCard(item, isRead) {
     </div>`;
   }
 
-  // Indisponibilità convocazione
+  // Indisponibilità convocazione o altra notifica ricevuta
   const n = item.data;
   const markBtn = isRead
     ? '<div class="notif-done">✓</div>'
     : `<button class="notif-mark" data-mark-comm="${n.id}" title="Segna come letta">○</button>`;
-  // Estrai player_id dal messaggio (non disponibile direttamente, usiamo riferimento_id come match_id)
+  const isIndisponibile = n.titolo === '⚠️ Convocato indisponibile';
+  const icon = isIndisponibile ? '❌' : '📩';
+  const title = n.titolo || '⚠️ Convocato indisponibile';
   return `<div class="notif-card absence ${isRead ? 'read' : ''}">
-    <div class="notif-avatar">❌</div>
+    <div class="notif-avatar">${icon}</div>
     <div class="notif-body">
-      <div class="notif-name">⚠️ Convocato indisponibile</div>
+      <div class="notif-name">${title}</div>
       <div class="notif-meta">${timeAgo(n.created_at)}</div>
       ${n.messaggio ? `<div class="notif-msg">${n.messaggio}</div>` : ''}
     </div>

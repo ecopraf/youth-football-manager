@@ -71,7 +71,7 @@ const authMiddleware = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     if (decoded.isGuest) {
-      req.user = { isGuest: true, tipo: decoded.tipo, squadre_accesso: decoded.squadre_accesso || [], ruolo: 'guest', is_superadmin: false, permessi: {} };
+      req.user = { isGuest: true, tipo: decoded.tipo, squadre_accesso: decoded.squadre_accesso || [], ruolo: 'guest', is_superadmin: false, permessi: {}, player_id: decoded.player_id || null };
       // Validazione team_id → categoria per guest
       const teamId = req.params.teamId || req.query.team_id || req.body?.team_id;
       if (teamId) {

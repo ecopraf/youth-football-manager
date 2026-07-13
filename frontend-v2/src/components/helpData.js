@@ -187,11 +187,11 @@ export const PAGE_HELP = {
     title: '🔔 Centro Notifiche',
     desc: 'Comunicazioni in-app e segnalazioni assenze in un unico punto.',
     items: [
-      'Tab Comunicazioni: notifiche automatiche (es. convocazione salvata)',
-      'Tab Assenze: segnalazioni inviate dai genitori via link guest',
+      'Tab Inviate: comunicazioni create da te (convocazioni, promemoria quote, avvisi)',
+      'Tab Ricevute: segnalazioni assenze, indisponibilità, notifiche da altri utenti',
       'Click ○ per segnare come letta, click Apri per andare alla convocazione',
       'Badge campanella in header mostra il totale non lette',
-      'Visibile per: Segreteria, Dirigente, Osservatore'
+      'Cleanup automatico: notifiche >30gg eliminate, lette prima di lunedì rimosse'
     ]
   },
   convocazioni: {
@@ -242,8 +242,9 @@ export const PAGE_HELP = {
       '🔄 Rigenera: applica le modifiche della config alle quote già assegnate (preserva pagamenti)',
       '📋 Duplica: crea una copia della config come base per una nuova quota',
       '▶ Applica: genera quote per tutti i giocatori della rosa dalla config selezionata',
+      '📩 Notifica: invia promemoria alla famiglia (singolo o batch scaduti). Messaggio personalizzato modificabile',
       'Click su un giocatore per espandere il dettaglio rate con stato pagamento',
-      'Filtri per stato: Da pagare, Parziale, Pagata',
+      'Filtri per stato: Da pagare, Parziale, Pagata, Scadute, In scadenza',
       'Badge scadenze: ⚠️ scaduta, ⏳ in scadenza (7gg), 📅 prossima'
     ]
   }

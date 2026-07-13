@@ -63,12 +63,6 @@ export default async function loadFees() {
   }
   hideLoading();
   render(c, isAdmin);
-
-  // Check scadenze (fire & forget)
-  apiFetch('/fees/check-scadenze', { method: 'POST', body: JSON.stringify({
-    workspace_id: window.YFM.activeWorkspaceId,
-    team_id: window.YFM.squadraId
-  })}).catch(() => {});
 }
 
 function render(c, isAdmin) {
@@ -189,8 +183,11 @@ function renderTable(filter, isAdmin) {
         </div>
       </div>
       <div class="fee-group-body" data-cfg="${cfgId}" style="display:none;border-top:1px solid #e0e7ff;">
-        ${isAdmin ? `<div class="fee-select-bar" data-cfg="${cfgId}" style="display:flex;align-items:center;justify-content:space-between;padding:6px 16px;background:#f8f9fa;border-bottom:1px solid #eee;">
-          <button class="btn-fee-select-toggle" data-cfg="${cfgId}" style="font-size:11px;padding:4px 10px;background:white;border:1px solid #ddd;border-radius:6px;cursor:pointer;">☑️ Seleziona</button>
+        ${isAdmin ? `<div class="fee-select-bar" data-cfg="${cfgId}" style="display:flex;align-items:center;justify-content:space-between;padding:6px 16px;background:#f8f9fa;border-bottom:1px solid #eee;flex-wrap:wrap;gap:6px;">
+          <div style="display:flex;gap:6px;">
+            <button class="btn-fee-select-toggle" data-cfg="${cfgId}" style="font-size:11px;padding:4px 10px;background:white;border:1px solid #ddd;border-radius:6px;cursor:pointer;">☑️ Seleziona</button>
+            ${nScadute > 0 ? `<button class="btn-fee-notify-all" data-cfg="${cfgId}" style="font-size:11px;padding:4px 10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;font-weight:600;">📩 Notifica scaduti (${nScadute})</button>` : ''}
+          </div>
           <button class="btn-fee-del-selected" data-cfg="${cfgId}" style="display:none;font-size:11px;padding:4px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;cursor:pointer;color:#E74C3C;font-weight:600;">🗑️ Elimina selezionati</button>
         </div>` : ''}
         ${fees.map(f => {
@@ -223,6 +220,7 @@ function renderTable(filter, isAdmin) {
               <span class="fee-row-rate" style="font-size:12px;color:#888;">${pagate}/${insts.length} rate</span>
               <span style="font-size:13px;font-weight:600;min-width:50px;text-align:right;">€${parseFloat(f.importo_totale).toFixed(0)}</span>
               ${badge}
+              ${(hasScaduta || hasInScad) && f.stato !== 'pagata' ? `<button class="btn-fee-notify" data-id="${f.id}" data-player="${f.player_id}" style="font-size:10px;padding:3px 6px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;margin-left:4px;" title="Invia promemoria alla famiglia">📩</button>` : ''}
               ${isAdmin ? `<button class="btn-fee-del" data-id="${f.id}" style="font-size:10px;padding:3px 6px;background:#eee;border:none;border-radius:6px;cursor:pointer;margin-left:4px;">🗑️</button>` : ''}
             </div>
           </div>`;
@@ -293,6 +291,134 @@ function renderTable(filter, isAdmin) {
         loadFees();
       } catch (err) { showToast(err.message, 'error'); }
     });
+  });
+
+  // Notifica singola
+  container.querySelectorAll('.btn-fee-notify').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const fee = feesList.find(f => f.id === btn.dataset.id);
+      if (fee) showNotifyModal([fee]);
+    });
+  });
+
+  // Notifica bulk scaduti
+  container.querySelectorAll('.btn-fee-notify-all').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cfg = btn.dataset.cfg;
+      const today = new Date().toISOString().slice(0, 10);
+      const overdue = feesList.filter(f => f.fee_config_id === cfg && f.stato !== 'pagata' && (f.fee_installment || []).some(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < today));
+      if (overdue.length) showNotifyModal(overdue);
+    });
+  });
+}
+
+// ═══════════════════════════════════════════
+// MODAL: Notifica promemoria quota a famiglia
+// ═══════════════════════════════════════════
+function buildNotifyMessage(fee) {
+  const p = rosterMap[fee.player_id];
+  const cognome = p?.cognome || 'Atleta';
+  const insts = (fee.fee_installment || []).sort((a, b) => a.numero_rata - b.numero_rata);
+  const today = new Date().toISOString().slice(0, 10);
+  const cfg = feeConfigs.find(c => c.id === fee.fee_config_id);
+  const nomeQuota = cfg?.nome || 'Quota';
+
+  const scadute = insts.filter(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < today);
+  const residuo = insts.filter(i => i.stato !== 'pagata').reduce((s, i) => s + parseFloat(i.importo), 0);
+
+  let msg = `Gentile famiglia ${cognome}, `;
+  if (scadute.length === 1) {
+    const r = scadute[0];
+    const dt = new Date(r.scadenza).toLocaleDateString('it-IT');
+    msg += `si ricorda che la rata "${r.scadenza_label || 'Rata ' + r.numero_rata}" di \u20ac${parseFloat(r.importo).toFixed(2)} relativa a "${nomeQuota}" risulta scaduta dal ${dt}.`;
+  } else if (scadute.length > 1) {
+    msg += `si ricorda che ${scadute.length} rate relative a "${nomeQuota}" risultano scadute:`;
+    scadute.forEach(r => {
+      const dt = new Date(r.scadenza).toLocaleDateString('it-IT');
+      msg += `\n\u2022 ${r.scadenza_label || 'Rata ' + r.numero_rata}: \u20ac${parseFloat(r.importo).toFixed(2)} (scad. ${dt})`;
+    });
+  } else {
+    const prossima = insts.find(i => i.stato !== 'pagata' && i.scadenza);
+    if (prossima) {
+      const dt = new Date(prossima.scadenza).toLocaleDateString('it-IT');
+      msg += `si ricorda che la rata "${prossima.scadenza_label || 'Rata ' + prossima.numero_rata}" di \u20ac${parseFloat(prossima.importo).toFixed(2)} relativa a "${nomeQuota}" è in scadenza il ${dt}.`;
+    }
+  }
+  msg += `\nImporto residuo totale: \u20ac${residuo.toFixed(2)}.`;
+  msg += `\nGrazie per la collaborazione.`;
+  return msg;
+}
+
+function showNotifyModal(fees) {
+  const messages = fees.map(f => {
+    const p = rosterMap[f.player_id];
+    const nome = p ? `${p.cognome || ''} ${p.nome || ''}`.trim() : 'Atleta';
+    return { fee: f, nome, messaggio: buildNotifyMessage(f) };
+  });
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+  const isSingle = messages.length === 1;
+  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="text-align:center;font-size:28px;margin-bottom:8px;">📩</div>
+    <div style="text-align:center;font-weight:700;font-size:16px;margin-bottom:16px;">Invia promemoria${isSingle ? '' : ` (${messages.length} atleti)`}</div>
+    ${messages.map((m, i) => `
+      <div style="margin-bottom:12px;padding:10px;background:#f8f9fa;border-radius:10px;border:1px solid #eee;">
+        <div style="font-size:12px;font-weight:700;color:#4338ca;margin-bottom:6px;">🎽 ${m.nome}</div>
+        <textarea id="notifyMsg_${i}" style="width:100%;min-height:${isSingle ? '120' : '80'}px;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:vertical;box-sizing:border-box;font-family:inherit;">${m.messaggio}</textarea>
+      </div>
+    `).join('')}
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button id="notifyCancelBtn" class="btn btn-secondary" style="font-size:13px;">Annulla</button>
+      <button id="notifySendBtn" class="btn btn-primary" style="font-size:13px;">📩 Invia${isSingle ? '' : ` (${messages.length})`}</button>
+    </div>
+  </div>`;
+
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('#notifyCancelBtn').addEventListener('click', close);
+
+  overlay.querySelector('#notifySendBtn').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#notifySendBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Invio...';
+
+    const notifications = messages.map((m, i) => {
+      const textarea = overlay.querySelector(`#notifyMsg_${i}`);
+      const cfg = feeConfigs.find(c => c.id === m.fee.fee_config_id);
+      return {
+        player_id: m.fee.player_id,
+        fee_id: m.fee.id,
+        titolo: `💰 Promemoria: ${cfg?.nome || 'Quota'} — ${m.nome}`,
+        messaggio: textarea.value
+      };
+    });
+
+    try {
+      const res = await apiFetch('/fees/notify', {
+        method: 'POST',
+        body: JSON.stringify({ notifications, team_id: window.YFM.squadraId })
+      });
+      close();
+      if (res.noLink && res.noLink.length > 0) {
+        const nomi = res.noLink.map(pid => {
+          const p = rosterMap[pid];
+          return p ? `${p.cognome || ''} ${p.nome || ''}`.trim() : 'Sconosciuto';
+        }).join(', ');
+        showToast(`✅ ${res.created} notifiche inviate. ⚠️ Senza link guest: ${nomi}`, 'warning');
+      } else {
+        showToast(`✅ ${res.created} notifiche inviate alle famiglie`, 'success');
+      }
+    } catch (err) {
+      showToast('❌ Errore: ' + err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = '📩 Invia';
+    }
   });
 }
 
