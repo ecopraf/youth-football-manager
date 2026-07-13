@@ -324,6 +324,7 @@ I workspace attivi nel DB sono:
 - **Mai riutilizzare campi esistenti per scopi diversi** — se serve un nuovo dato, creare una colonna/tabella dedicata
 - **Preferire campi JSONB** per dati strutturati che non richiedono query dirette (metadati, configurazioni, layout)
 - **NON pushare senza conferma esplicita dell'utente**
+- **Eseguire senza fermarsi** se il task è chiaro e l'utente ha dato istruzioni esplicite (es. "fai release commit e push"). Chiedere conferma solo in caso di errore o ambiguità reale, mai per cautela generica su operazioni intermedie
 
 ---
 

@@ -1,6 +1,7 @@
 import { apiFetch } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
 import { BUILD_INFO } from '../../build-info';
+import { wsSortKey } from '../club/workspaceSwitcher';
 
 export default async function loadLogin() {
   const c = document.getElementById('pageContent');
@@ -259,6 +260,7 @@ export default async function loadLogin() {
 function showWorkspaceSelector(workspaces, user) {
   const c = document.getElementById('pageContent');
   const savedId = localStorage.getItem('yfm_active_workspace') || null;
+  workspaces = [...workspaces].sort((a, b) => wsSortKey(a.nome).localeCompare(wsSortKey(b.nome)));
 
   c.innerHTML = `
     <div class="login-container">

@@ -40,12 +40,17 @@ export function resetWorkspaceCache() {
  * Popola il <select id="workspaceSelect"> nella sidebar (solo superadmin)
  * e gestisce il cambio workspace
  */
+export function wsSortKey(nome) {
+  return nome.replace(/^(A\.?S\.?D\.?|S\.?S\.?D\.?|U\.?S\.?D?\.?|F\.?C\.?|A\.?C\.?|N\.?)\s+/i, '').toLowerCase();
+}
+
 export function populateWorkspaceSelect(workspaces) {
   const sel = document.getElementById('workspaceSelect');
   if (!sel || !workspaces || workspaces.length === 0) return;
 
+  const sorted = [...workspaces].sort((a, b) => wsSortKey(a.nome).localeCompare(wsSortKey(b.nome)));
   const currentId = window.YFM.activeWorkspaceId || getSavedWorkspaceId();
-  sel.innerHTML = workspaces.map(ws =>
+  sel.innerHTML = sorted.map(ws =>
     `<option value="${ws.id}" ${ws.id === currentId ? 'selected' : ''}>${ws.nome}</option>`
   ).join('');
 
