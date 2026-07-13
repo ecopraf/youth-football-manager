@@ -257,10 +257,11 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       else if (tipo === 'amichevoli') matches = matches.filter(m => m.tipo_competizione === 'Amichevole' || m.tipo_competizione === 'Torneo' || !m.tipo_competizione);
 
       let vittorie = 0, pareggi = 0, sconfitte = 0;
-      const perGiornata = matches.map(m => {
+      const perGiornata = [];
+      matches.forEach(m => {
         const gc = m.gol_casa || 0, go = m.gol_ospite || 0;
         if (gc > go) vittorie++; else if (gc === go) pareggi++; else sconfitte++;
-        return { giornata: m.giornata, golFatti: gc, golSubiti: go };
+        if (m.giornata) perGiornata.push({ giornata: m.giornata, golFatti: gc, golSubiti: go });
       });
 
       res.json({ risultati: { vittorie, pareggi, sconfitte }, perGiornata });

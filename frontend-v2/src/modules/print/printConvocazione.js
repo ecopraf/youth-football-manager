@@ -85,6 +85,10 @@ export default async function printConvocazione() {
       <style>${getPrintStyles()}</style>
     `;
 
+    // PDF filename
+    const dataStr = dt.toLocaleDateString('it-IT').replace(/\//g, '-');
+    document.title = `Convocazione_${(match?.avversario || 'TBD').replace(/\s+/g, '_')}_${dataStr}`;
+
     document.getElementById('printBackBtn').addEventListener('click', () => window.YFM.navigateTo('printCenter'));
     document.getElementById('printPrintBtn').addEventListener('click', () => window.print());
     document.getElementById('printShareBtn').addEventListener('click', sharePage);

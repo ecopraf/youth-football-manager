@@ -96,6 +96,11 @@ export default async function printDistinta() {
       container.innerHTML = renderFIGC(sorted, partita, dt, wsName, wsLogo, campoInfo, meta, staff);
     }
 
+    // PDF filename
+    const dataStr = dt.toLocaleDateString('it-IT').replace(/\//g, '-');
+    const giornataStr = partita.giornata ? `_G${partita.giornata}` : '';
+    document.title = `Distinta_${(partita.avversario || 'TBD').replace(/\s+/g, '_')}_${dataStr}${giornataStr}`;
+
     document.getElementById('printBackBtn').addEventListener('click', () => window.YFM.navigateTo('printCenter'));
     document.getElementById('printPrintBtn').addEventListener('click', () => window.print());
     document.getElementById('printShareBtn').addEventListener('click', () => { if (navigator.share) { navigator.share({ title: 'Documento', url: window.location.href }).catch(() => {}); } else { navigator.clipboard.writeText(window.location.href).then(() => { if (window.showToast) window.showToast('Link copiato!', 'success'); }).catch(() => {}); } });

@@ -31,9 +31,10 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
         return res.json(data || []);
       }
 
-      // Staff: filtra per destinatario_user_id o destinatario_profilo
+      // Staff: filtra per destinatario_user_id o destinatario_profilo o created_by
       const profilo = user.permessi?.profilo || ruolo;
       const filtered = (data || []).filter(n => {
+        if (n.created_by === user.id) return true;
         if (n.destinatario_user_id === user.id) return true;
         if (n.destinatario_profilo && (n.destinatario_profilo.includes(profilo) || n.destinatario_profilo.includes(ruolo))) return true;
         return false;
@@ -50,7 +51,7 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       const wsId = user.workspace_id;
       if (!wsId) return res.json({ unread: 0 });
 
-      const { data, error } = await supabase.from('notification').select('id, destinatario_user_id, destinatario_profilo')
+      const { data, error } = await supabase.from('notification').select('id, destinatario_user_id, destinatario_profilo, created_by')
         .eq('workspace_id', wsId)
         .eq('letto', false);
       if (error) return res.status(400).json({ error: error.message });
@@ -61,9 +62,10 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
         return res.json({ unread: (data || []).length });
       }
 
-      // Staff: filtra per destinatario
+      // Staff: filtra per destinatario (escludi created_by dal conteggio unread)
       const profilo = user.permessi?.profilo || ruolo;
       const count = (data || []).filter(n => {
+        if (n.created_by === user.id) return false;
         if (n.destinatario_user_id === user.id) return true;
         if (n.destinatario_profilo && (n.destinatario_profilo.includes(profilo) || n.destinatario_profilo.includes(ruolo))) return true;
         return false;
@@ -296,6 +298,44 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       const { error } = await supabase.from('notification').delete().in('id', ids);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true, deleted: ids.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // POST /api/notifications/sollecito-certificato — sollecito certificato medico
+  router.post('/api/notifications/sollecito-certificato', authMiddleware, async (req, res) => {
+    try {
+      const { player_ids, team_id } = req.body;
+      if (!player_ids?.length || !team_id) return res.status(400).json({ error: 'player_ids e team_id richiesti' });
+
+      const { data: team } = await supabase.from('team').select('season:season_id(workspace_id)').eq('id', team_id).single();
+      const workspace_id = team?.season?.workspace_id;
+
+      const { data: players } = await supabase.from('player').select('id, nome, cognome, data_visita_medica').in('id', player_ids);
+
+      const oggi = new Date();
+      const notifs = (players || []).map(p => {
+        const scadenza = p.data_visita_medica ? new Date(new Date(p.data_visita_medica).setFullYear(new Date(p.data_visita_medica).getFullYear() + 1)) : null;
+        const scaduto = scadenza && scadenza < oggi;
+        const dtLabel = scadenza ? scadenza.toLocaleDateString('it-IT') : null;
+        const msg = scaduto
+          ? `Il certificato medico risulta scaduto${dtLabel ? ' dal ' + dtLabel : ''}. Si prega di rinnovarlo al pi\u00f9 presto per poter continuare l'attivit\u00e0 sportiva.`
+          : dtLabel
+            ? `Il certificato medico scade il ${dtLabel}. Si prega di provvedere al rinnovo prima della scadenza.`
+            : `Manca il certificato medico. Si prega di consegnarlo per poter svolgere l'attivit\u00e0 sportiva.`;
+        return {
+          workspace_id, team_id, tipo: 'avviso',
+          titolo: '🏥 Certificato medico',
+          messaggio: msg,
+          destinatario_tipo: ['atleta', 'genitore'],
+          destinatario_player_id: p.id,
+          created_by: req.user.id, letto: false
+        };
+      });
+
+      if (!notifs.length) return res.json({ success: true, created: 0 });
+      const { error } = await supabase.from('notification').insert(notifs);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, created: notifs.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

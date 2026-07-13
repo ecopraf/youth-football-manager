@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 13 Luglio 2026 | Versione: v3.16 | Build: v3.16.53
+> Ultimo aggiornamento: 14 Luglio 2026 | Versione: v3.16 | Build: v3.16.54
 
 ---
 
@@ -45,6 +45,7 @@
 | Infortuni | ✅ | routes/player.js, modules/team/playerDetail.js, dashboard.js |
 | Visite Mediche | ✅ | utils/certificati.js, dashboard.js, convocazioni.js (badge+banner) |
 | Valutazioni | ⚠️ | Parziale (tabella esiste, UI incompleta) |
+| Tesseramento | ✅ | modules/club/registration.js, routes/registration.js, modules/print/printTesseramento.js, utils/capabilities.js (capability dedicata) |
 | Print Center | ✅ | modules/team/printCenter.js, modules/print/*.js (EPIC 16) |
 
 ---
@@ -822,6 +823,8 @@
 
 **Valore**: Le famiglie non devono ricordarsi di aprire il link — ricevono push automatiche. Differenziatore forte rispetto a gruppi WhatsApp.
 
+**Valore**: Le famiglie non devono ricordarsi di aprire il link — ricevono push automatiche. Differenziatore forte rispetto a gruppi WhatsApp.
+
 **Prerequisiti**: EPIC 12 completato (quote visibili nel guest), EPIC 11 completato (infrastruttura guest).
 
 #### Fase 1: Token Refresh & Persistenza Sessione (~2h)
@@ -868,6 +871,127 @@
 
 ---
 
+### EPIC 20: Modulo Tesseramento Atleti
+
+> Digitalizzare il processo di tesseramento: template modulo personalizzabile per società (logo, dati, clausole), generazione PDF pre-compilato con dati atleta, checklist documenti con tracking stato, vista aggregata per squadra. Ogni società configura il proprio template una volta, poi genera moduli per ogni atleta con un click.
+
+**Valore commerciale**: Elimina il lavoro manuale della segreteria (compilare moduli a mano per 20+ atleti). PDF professionale con logo società. Tracking chi ha consegnato cosa. Integrazione con Print Center.
+
+#### Fase 1: Schema DB e Template
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 20.1 | CREATE TABLE `registration_template` (id, workspace_id FK, titolo TEXT, intestazione TEXT, documenti_richiesti JSONB, clausole TEXT, note_aggiuntive TEXT, created_at, updated_at) | ✅ | — | migrazione SQL | ~3min |
+| 20.2 | CREATE TABLE `registration` (id, player_id FK, team_id FK, season_id FK, template_id FK, stato TEXT, dati_genitore JSONB, documenti_consegnati JSONB, data_tesseramento DATE, note TEXT, created_at, updated_at) | ✅ | 20.1 | migrazione SQL | ~3min |
+| 20.3 | Seed template default per workspace esistenti (documenti standard FIGC: foto, certificato medico, CF, stato famiglia, consenso privacy) | ✅ | 20.1 | migrazione SQL | ~3min |
+| 20.4 | Aggiornare DATABASE_SCHEMA.md con nuove tabelle | ✅ | 20.2 | .agents/knowledge/DATABASE_SCHEMA.md | ~2min |
+
+#### Fase 2: Backend CRUD
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 20.5 | Creare `routes/registration.js` — GET/PUT `/api/workspaces/:id/registration-template` (upsert template per workspace) | ✅ | 20.1 | routes/registration.js | ~10min |
+| 20.6 | Endpoint GET `/api/squadre/:teamId/registrations` (lista tesseramenti per squadra con stato e % completamento) | ✅ | 20.2 | routes/registration.js | ~8min |
+| 20.7 | Endpoint POST `/api/registrations` (crea tesseramento per player, auto-popola da template) | ✅ | 20.2, 20.5 | routes/registration.js | ~5min |
+| 20.8 | Endpoint PUT `/api/registrations/:id` (aggiorna stato, documenti consegnati, dati genitore) | ✅ | 20.7 | routes/registration.js | ~5min |
+| 20.9 | Endpoint POST `/api/squadre/:teamId/registrations-batch` (genera tesseramenti per tutta la rosa in un click) | ✅ | 20.7 | routes/registration.js | ~8min |
+| 20.10 | Endpoint GET `/api/registrations/:id/pdf` → print page standalone (non endpoint PDF server-side) | ✅ | 20.8 | modules/print/printTesseramento.js | ~15min |
+| 20.11 | Registrare router in `api/index.js` + authMiddleware | ✅ | 20.5 | api/index.js | ~3min |
+
+#### Fase 3: Frontend — Configurazione Template
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 20.12 | Creare `modules/club/registration.js` — pagina Tesseramento con tab "Template" e "Situazione" | ✅ | 20.5 | modules/club/registration.js | ~10min |
+| 20.13 | Tab Template: form configurazione (titolo, intestazione, lista documenti richiesti con add/remove, clausole, anteprima) | ✅ | 20.12 | modules/club/registration.js | ~12min |
+| 20.14 | Lista documenti: ogni item ha nome, obbligatorio (toggle), nota età (es. "se >12 anni: agonistico") | ✅ | 20.13 | modules/club/registration.js | ~5min |
+| 20.15 | Anteprima live: mostra come apparirà il modulo PDF con logo società e dati placeholder | ✅ | 20.13 | modules/club/registration.js | ~8min |
+
+#### Fase 4: Frontend — Situazione Tesseramenti per Squadra
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 20.16 | Tab Situazione: tabella giocatori con colonne stato, documenti (icone ✅/❌ per ogni doc), azioni | ✅ | 20.6 | modules/club/registration.js | ~12min |
+| 20.17 | Filtri: per stato (tutti/incompleti/completi/tesserati), ricerca nome | ✅ | 20.16 | modules/club/registration.js | ~5min |
+| 20.18 | Click su riga → espande dettaglio: checklist documenti (toggle consegnato), dati genitore (form inline), note | ✅ | 20.16 | modules/club/registration.js | ~10min |
+| 20.19 | Bottone "Genera per tutta la rosa" (batch) + conferma modale | ✅ | 20.9, 20.16 | modules/club/registration.js | ~5min |
+| 20.20 | Bottone "📄 Scarica PDF" per singolo atleta (chiama endpoint PDF) | ✅ | 20.10, 20.16 | modules/club/registration.js | ~5min |
+| 20.21 | Stato auto-calcolato: tutti i doc obbligatori consegnati → "Completo", altrimenti "Incompleto" | ✅ | 20.8 | routes/registration.js | ~3min |
+
+#### Fase 5: Generazione PDF
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 20.22 | Layout PDF A4: logo società (da workspace) + intestazione + dati atleta + dati genitore + lista documenti + clausole + spazi firma | ✅ | 20.10 | modules/print/printTesseramento.js | ~15min |
+| 20.23 | Dati atleta auto-compilati: nome, cognome, data nascita, luogo nascita, CF, indirizzo (da player) | ✅ | 20.22 | modules/print/printTesseramento.js | ~5min |
+| 20.24 | Dati genitore: nome, cognome, documento (tipo + numero + rilasciato il), parentela — da `registration.dati_genitore` JSONB | ✅ | 20.22 | modules/print/printTesseramento.js | ~5min |
+| 20.25 | Sezione documenti richiesti: lista con checkbox (✓ se consegnato, vuoto se no) + note età-specifiche | ✅ | 20.22 | modules/print/printTesseramento.js | ~3min |
+| 20.26 | Footer: luogo + data + spazi firma (genitore richiedente + ragazzo) | ✅ | 20.22 | modules/print/printTesseramento.js | ~3min |
+
+#### Fase 6: Integrazione e Finalizzazione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 20.27 | Sidebar: voce "📋 Tesseramento" sotto Club (capability: `tesseramento`) | ✅ | 20.12 | components/layout/sidebarNav.js | ~3min |
+| 20.28 | Router: registrare route `/tesseramento` | ✅ | 20.12 | router.js | ~2min |
+| 20.29 | Print Center: aggiungere card "Modulo Tesseramento" nella sezione Rosa (genera PDF per atleta selezionato) | ✅ | 20.10 | modules/team/printCenter.js | ~5min |
+| 20.30 | Dashboard widget: "Tesseramenti incompleti" (contatore + link) — visibile per segreteria/admin | ✅ | 20.6 | modules/team/dashboard.js | ~8min |
+| 20.31 | Player Detail: sezione "Tesseramento" con stato + documenti + link PDF | ⬜ | 20.8 | modules/team/playerDetail.js | ~8min |
+| 20.32 | Help in-app: aggiungere helpData per pagina Tesseramento | ⬜ | 20.12 | components/helpData.js | ~3min |
+| 20.33 | Test build completo + syntax check backend | ✅ | 20.32 | — | ~3min |
+| 20.34 | Aggiornare docs (DEVELOPMENT_PLAN, AGENTS.md, DATABASE_SCHEMA) | ✅ | 20.33 | .agents/ | ~3min |
+
+#### Fase 7: Accesso Guest (Link Famiglia)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 20.35 | Endpoint GET `/api/registrations/player/:playerId` (guest-safe: ritorna tesseramento + template del proprio figlio) | ✅ | 20.8 | routes/registration.js | ~5min |
+| 20.36 | Home Famiglia: sezione "📋 Tesseramento" con stato documenti + bottone "Scarica Modulo PDF" | ✅ | 20.35 | modules/auth/guestAtleta.js | ~8min |
+| 20.37 | Pagina print standalone `/print/tesseramento/:registrationId` (A4, accessibile da guest con JWT) | ✅ | 20.22 | modules/print/printTesseramento.js | ~10min |
+| 20.38 | Famiglia può compilare dati mancanti (nome genitore, cognome, documento) direttamente dalla home → PUT registration | ✅ | 20.36, 20.8 | modules/auth/guestAtleta.js | ~10min |
+| 20.39 | Capability `tesseramento` dedicata (write: admin/segreteria, read: allenatore/dirigente) | ✅ | 20.27 | utils/capabilities.js, api/helpers/capabilities.js | ~5min |
+| 20.40 | Auto-check certificato medico: se data_visita_medica valida → doc "Certificato medico" auto-smarcato nella risposta API | ✅ | 20.6 | routes/registration.js | ~5min |
+| 20.41 | Sollecito documenti mancanti: POST `/registrations/:id/sollecito` → notifica in-app alla famiglia | ✅ | 20.8 | routes/registration.js, modules/club/registration.js | ~8min |
+| 20.42 | Sollecito certificati medici: POST `/notifications/sollecito-certificato` (singolo + bulk) dalla card Certificati dashboard | ✅ | — | routes/notification.js, utils/certificati.js | ~10min |
+| 20.43 | Stato lettura inline per notifiche individuali (✅ Letta / ⏳ Non letta) nella tab Inviate | ✅ | — | modules/coach/notifications.js | ~5min |
+| 20.44 | Fix notifiche staff: `created_by` incluso nel filtro GET (staff vede proprie inviate), escluso da unread count | ✅ | — | routes/notification.js | ~3min |
+
+**Effort totale stimato**: ~4h (38 task)
+
+**Priorità implementazione**:
+1. Fase 1 (DB) — fondamenta, 11min
+2. Fase 2 (Backend CRUD) — API pronte, 54min
+3. Fase 3 (Template UI) — configurazione società, 35min
+4. Fase 4 (Situazione) — tracking operativo, 40min
+5. Fase 5 (PDF) — generazione documento, 31min
+6. Fase 6 (Integrazione) — polish e connessioni, 35min
+7. Fase 7 (Guest Famiglia) — accesso link famiglia, 33min
+
+**Note architetturali**:
+- `registration_template` è 1:1 per workspace (ogni società ha il suo template)
+- `registration` è 1:1 per player+team+season (un tesseramento per atleta per stagione)
+- `documenti_richiesti` nel template: `[{nome: "Foto tessera", obbligatorio: true, nota_eta: "2 foto se >8 anni, 1 se ≤8"}]`
+- `documenti_consegnati` nella registration: `[{nome: "Foto tessera", consegnato: true, data_consegna: "2025-07-10"}]`
+- `dati_genitore` JSONB: `{nome, cognome, parentela, documento_tipo, documento_numero, documento_rilasciato}`
+- `stato` enum: `non_iniziato`, `incompleto`, `completo`, `tesserato`
+- Il PDF usa una libreria server-side (es. `pdfkit` o HTML→PDF con `puppeteer-core`) — da valutare la più leggera per Vercel
+- Logo società: già disponibile in `workspace.logo` — incluso automaticamente nel PDF
+- Dati società: da `workspace` (nome, indirizzo da `facility` principale)
+- Integrazione con EPIC 12 (checklist): il tesseramento può essere un item della checklist stagione
+- Capability: riusa `rosa: write` (chi gestisce la rosa gestisce anche i tesseramenti) oppure nuova `tesseramento: write` se serve granularità
+- Nessuna dipendenza da altre Epic (standalone)
+- **Accesso guest Famiglia**: il link Famiglia (tipo=`atleta` nel DB, label "👨‍👩‍👦 Famiglia" nella UI) ha `player_id` → mostra il tesseramento del proprio figlio. Il link Ospite (tipo=`genitore`, senza player_id) NON vede il tesseramento
+- **Print Center guest**: la pagina `/print/tesseramento/:id` è accessibile con JWT guest (come le altre pagine print)
+
+**Evoluzione futura (v2)**:
+- Firma digitale (canvas touch per firma su mobile)
+- Archivio storico tesseramenti (cross-season)
+- Export batch PDF (ZIP con tutti i moduli della squadra)
+- Integrazione con portale FIGC (upload automatico — se API disponibile)
+- QR code sul modulo per verifica autenticità
+
+---
+
 ## 4. Dipendenze tra Epic
 
 ```
@@ -887,6 +1011,7 @@ EPIC 16 (Print Center) ──→ nessuna dipendenza (riusa endpoint e logica sta
 EPIC 17 (Piano Gara) ──→ nessuna dipendenza (usa Match Center e rosa esistenti)
 EPIC 18 (Refactoring Stagioni) ──→ nessuna dipendenza (refactoring logica esistente)
 EPIC 19 (PWA Guest Push) ──→ dipende da EPIC 11 (guest infrastruttura) + EPIC 12 (quote visibili)
+EPIC 20 (Tesseramento) ──→ nessuna dipendenza (standalone, usa workspace/player/team esistenti)
 ```
 
 Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
@@ -905,7 +1030,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 13. **EPIC 7** (tornei, 37min) → nice-to-have
 14. **EPIC 12** (club operations, ~10h) → valore società, post-EPIC 11
 15. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno, bassa priorità
-16. **EPIC 19** (PWA Guest Push, ~8h) → engagement famiglie, post-EPIC 12
+16. **EPIC 20** (Tesseramento, ~3h30) → digitalizzazione processo iscrizione, valore segreteria
+17. **EPIC 19** (PWA Guest Push, ~8h) → engagement famiglie, post-EPIC 12
 
 ---
 
@@ -938,6 +1064,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.54 | feat: EPIC 20 completata — Modulo Tesseramento con capability dedicata, auto-check certificato medico, sollecito documenti (singolo + bulk), sollecito certificati medici dalla dashboard (singolo + bulk), stato lettura inline notifiche individuali (✅/⏳), fix notifiche staff (created_by nel filtro, escluso da unread), rimossa pagina stats guest (filtro nella card home: Tutte/Campionato/Amichevoli), fix guest router per print-tesseramento |
 | v3.16.53 | feat: notifica quote manuale (singola/batch) con messaggio personalizzato, cleanup notifiche automatico (>30gg + lette pre-lunedì), fix tab Inviate/Ricevute (split per created_by), fix guest vede solo notifiche proprie (destinatario_player_id), fix receipts mostra solo destinatario specifico, rimosso check-scadenze automatico, sidebar UI migliorata (#1e3a5f, contrasto, icone univoche), fix guest links visibilità workspace, capability convocazioni separata da formazione |
 | v3.16.48 | feat: ordinamento alfabetico intelligente workspace (skip acronimi A.S.D., S.S.D., ecc.) |
 | v3.16.44 | feat: Quote — modale Configura Quote con ✏️ Modifica (nome/importo/rate/categoria), 📋 Duplica config, 🔄 Rigenera quote esistenti (batch ottimizzato, preserva pagamenti con logica residuo). Endpoint POST /fee-configs/:id/rigenera. Help in-app per pagina Quote. Fix showToast mancante |

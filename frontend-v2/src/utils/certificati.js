@@ -61,6 +61,8 @@ export function renderCertificatiCard(status) {
 
   const badgeStyle = (bg, color) => `display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;background:${bg};color:${color};cursor:pointer;transition:transform 0.1s;`;
 
+  const canNotify = window.YFM.isAdmin() || (window.YFM.canWrite && window.YFM.canWrite('quote'));
+
   const playerList = (players, type) => {
     if (!players.length) return '';
     return players.map(p => {
@@ -68,7 +70,10 @@ export function renderCertificatiCard(status) {
       let meta = '';
       if (type === 'mancanti') meta = '<span style="color:#888;font-size:11px;">nessuna visita</span>';
       else if (p._scadenza) meta = `<span style="font-size:11px;color:#888;">${type === 'scaduti' ? 'scaduto' : 'scade'} ${formatDate(p._scadenza)}</span>`;
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f5f5f5;"><span style="font-size:13px;">${nome}</span>${meta}</div>`;
+      const notifyBtn = canNotify && (type === 'scaduti' || type === 'inScadenza' || type === 'mancanti')
+        ? `<button class="btn-cert-notify" data-player-id="${p.id}" data-nome="${nome}" style="font-size:10px;padding:2px 6px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;margin-left:4px;" title="Invia sollecito">📩</button>`
+        : '';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f5f5f5;"><span style="font-size:13px;">${nome}</span><span style="display:flex;align-items:center;gap:4px;">${meta}${notifyBtn}</span></div>`;
     }).join('');
   };
 
@@ -87,10 +92,10 @@ export function renderCertificatiCard(status) {
       </div>
       <div class="cert-detail" style="display:none;margin-top:16px;">
         <div class="cert-grid">
-          ${scaduti.length ? `<div data-cert-section="scaduti" style="background:#FDEDEE;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#E74C3C;margin-bottom:8px;">🔴 SCADUTI (${scaduti.length})</div>${playerList(scaduti, 'scaduti')}</div>` : ''}
-          ${inScadenza.length ? `<div data-cert-section="inScadenza" style="background:#FFF8E1;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#F39C12;margin-bottom:8px;">🟡 IN SCADENZA (${inScadenza.length})</div>${playerList(inScadenza, 'inScadenza')}</div>` : ''}
+          ${scaduti.length ? `<div data-cert-section="scaduti" style="background:#FDEDEE;border-radius:10px;padding:12px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:12px;font-weight:700;color:#E74C3C;">🔴 SCADUTI (${scaduti.length})</span>${canNotify ? `<button class="btn-cert-notify-all" data-ids='${JSON.stringify(scaduti.map(p=>p.id))}' style="font-size:10px;padding:3px 8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;font-weight:600;">📩 Tutti</button>` : ''}</div>${playerList(scaduti, 'scaduti')}</div>` : ''}
+          ${inScadenza.length ? `<div data-cert-section="inScadenza" style="background:#FFF8E1;border-radius:10px;padding:12px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:12px;font-weight:700;color:#F39C12;">🟡 IN SCADENZA (${inScadenza.length})</span>${canNotify ? `<button class="btn-cert-notify-all" data-ids='${JSON.stringify(inScadenza.map(p=>p.id))}' style="font-size:10px;padding:3px 8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;font-weight:600;">📩 Tutti</button>` : ''}</div>${playerList(inScadenza, 'inScadenza')}</div>` : ''}
           ${validi.length ? `<div data-cert-section="validi" style="background:#E8F8F0;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#27AE60;margin-bottom:8px;">🟢 VALIDI (${validi.length})</div>${playerList(validi, 'validi')}</div>` : ''}
-          ${mancanti.length ? `<div data-cert-section="mancanti" style="background:#F5F5F5;border-radius:10px;padding:12px;"><div style="font-size:12px;font-weight:700;color:#666;margin-bottom:8px;">⚪ MANCANTI (${mancanti.length})</div>${playerList(mancanti, 'mancanti')}</div>` : ''}
+          ${mancanti.length ? `<div data-cert-section="mancanti" style="background:#F5F5F5;border-radius:10px;padding:12px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:12px;font-weight:700;color:#666;">⚪ MANCANTI (${mancanti.length})</span>${canNotify ? `<button class="btn-cert-notify-all" data-ids='${JSON.stringify(mancanti.map(p=>p.id))}' style="font-size:10px;padding:3px 8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;font-weight:600;">📩 Tutti</button>` : ''}</div>${playerList(mancanti, 'mancanti')}</div>` : ''}
         </div>
       </div>
     </div>`;
@@ -130,6 +135,54 @@ export function bindCertificatiToggle(container) {
         target.style.display = '';
         detail.style.display = 'block';
         btn.textContent = '▲ Nascondi';
+      }
+    });
+  });
+
+  // Bind bottoni sollecito certificato singolo
+  container.querySelectorAll('.btn-cert-notify').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const playerId = btn.dataset.playerId;
+      const nome = btn.dataset.nome;
+      const teamId = window.YFM.squadraId;
+      btn.disabled = true;
+      btn.textContent = '⏳';
+      try {
+        const { apiFetch } = await import('../services/api.js');
+        await apiFetch('/notifications/sollecito-certificato', {
+          method: 'POST', body: JSON.stringify({ player_ids: [playerId], team_id: teamId })
+        });
+        btn.textContent = '✅';
+        if (window.showToast) window.showToast(`Sollecito inviato a ${nome}`, 'success');
+      } catch (err) {
+        btn.textContent = '📩';
+        btn.disabled = false;
+        if (window.showToast) window.showToast(err.message, 'error');
+      }
+    });
+  });
+
+  // Bind bottoni sollecito bulk
+  container.querySelectorAll('.btn-cert-notify-all').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const ids = JSON.parse(btn.dataset.ids || '[]');
+      const teamId = window.YFM.squadraId;
+      btn.disabled = true;
+      const orig = btn.textContent;
+      btn.textContent = '⏳ Invio...';
+      try {
+        const { apiFetch } = await import('../services/api.js');
+        const res = await apiFetch('/notifications/sollecito-certificato', {
+          method: 'POST', body: JSON.stringify({ player_ids: ids, team_id: teamId })
+        });
+        btn.textContent = `✅ ${res.created}`;
+        if (window.showToast) window.showToast(`${res.created} solleciti inviati`, 'success');
+      } catch (err) {
+        btn.textContent = orig;
+        btn.disabled = false;
+        if (window.showToast) window.showToast(err.message, 'error');
       }
     });
   });

@@ -9,6 +9,9 @@ export function invalidateStatsCache() { statsCache = null; }
 
 export default async function loadStats(filterTipo) {
   const c = document.getElementById('pageContent');
+
+
+
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
 
   try {
@@ -177,3 +180,5 @@ async function renderCharts(statsArr, squadraId, tipo) {
     }
   } catch (e) { /* charts non bloccanti */ }
 }
+
+

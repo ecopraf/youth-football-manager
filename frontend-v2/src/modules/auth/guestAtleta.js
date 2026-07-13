@@ -20,14 +20,16 @@ export default async function loadGuestAtleta() {
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
 
   try {
-    const [notifications, futureMatches, trainings, stats, absences, fees] = await Promise.all([
+    const [notifications, futureMatches, trainings, absences, fees, registration] = await Promise.all([
       apiFetch(`/notifications/team/${teamId}?destinatario_tipo=atleta`).catch(() => []),
       apiFetch(`/squadre/${teamId}/partite-future`).catch(() => []),
       apiFetch(`/squadre/${teamId}/allenamenti-futuri`).catch(() => []),
-      apiFetch(`/statistiche/giocatore/${playerId}?team_id=${teamId}`).catch(() => null),
       apiFetch(`/absence/player/${playerId}`).catch(() => []),
-      apiFetch(`/fees?player_id=${playerId}&team_id=${teamId}`).catch(() => [])
+      apiFetch(`/fees?player_id=${playerId}&team_id=${teamId}`).catch(() => []),
+      apiFetch(`/registrations/player/${playerId}`).catch(() => null)
     ]);
+    // Career matches: usato sia per badge stats che per grafici (1 sola chiamata)
+    const careerMatches = await apiFetch(`/calciatori/${playerId}/career-matches?teamId=${teamId}`).catch(() => []);
     const motivi = ['Infortunio', 'Malattia', 'Impegni scolastici', 'Motivi familiari', 'Altro'];
 
     // Prossima partita (già ordinata asc dal backend)
@@ -48,13 +50,13 @@ export default async function loadGuestAtleta() {
     const absDates = (absences || []).map(a => a.data_allenamento).filter(Boolean);
     sessionStorage.setItem('yfm_abs_dates', JSON.stringify(absDates));
 
-    render(c, { playerName, playerId, teamId, notifications, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished, fees });
+    render(c, { playerName, playerId, teamId, notifications, trainings, careerMatches, motivi, myConvocation, nextMatch, convocationPublished, fees, registration });
   } catch (e) {
     c.innerHTML = `<div class="error-box">Errore: ${e.message}</div>`;
   }
 }
 
-function render(c, { playerName, playerId, teamId, notifications, trainings, stats, motivi, myConvocation, nextMatch, convocationPublished, fees }) {
+function render(c, { playerName, playerId, teamId, notifications, trainings, careerMatches, motivi, myConvocation, nextMatch, convocationPublished, fees, registration }) {
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
   const absDates = new Set(JSON.parse(sessionStorage.getItem('yfm_abs_dates') || '[]'));
@@ -144,18 +146,18 @@ function render(c, { playerName, playerId, teamId, notifications, trainings, sta
   }
 
 
-  // Stats personali
-  if (stats) {
-    const s = stats;
+  // Le mie Statistiche
+  if (careerMatches && careerMatches.length) {
     html += `<div class="ga-section">
-      <div class="ga-section-title">📊 Le Mie Statistiche</div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;">
-        ${statBadge('⚽', 'Gol', s.gol || s.goals || 0)}
-        ${statBadge('🅰️', 'Assist', s.assist || s.assists || 0)}
-        ${statBadge('📋', 'Presenze', s.presenze || s.appearances || 0)}
-        ${statBadge('🟡', 'Amm.', s.ammonizioni || s.yellow_cards || 0)}
-        ${statBadge('⏱️', 'Minuti', s.minuti || s.minutes || 0)}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div class="ga-section-title" style="margin-bottom:0;">📊 Le mie Statistiche</div>
+        <select id="gaStatsFilter" style="padding:4px 8px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;background:white;">
+          <option value="tutte">Tutte</option>
+          <option value="campionato">Campionato</option>
+          <option value="amichevoli">Amichevoli</option>
+        </select>
       </div>
+      <div id="gaStatsBody"></div>
     </div>`;
   }
 
@@ -193,6 +195,28 @@ function render(c, { playerName, playerId, teamId, notifications, trainings, sta
     </div>`;
   }
 
+  // Sezione Tesseramento
+  if (registration) {
+    const docs = registration.documenti_consegnati || [];
+    const consegnati = docs.filter(d => d.consegnato).length;
+    const stato = registration.stato || 'incompleto';
+    const gen = registration.dati_genitore || {};
+    const hasDatiGenitore = gen.cognome && gen.nome;
+    html += `<div class="ga-section">
+      <div class="ga-section-title">📋 Tesseramento</div>
+      <div style="font-size:13px;margin-bottom:8px;">Documenti consegnati: <strong>${consegnati}/${docs.length}</strong></div>
+      <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:10px;">
+        ${docs.map(d => `<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;background:${d.consegnato ? '#d1fae5' : '#f8f9fa'};font-size:12px;">
+          <span>${d.consegnato ? '✅' : '⬜'}</span><span>${d.nome}</span>
+        </div>`).join('')}
+      </div>
+      ${!hasDatiGenitore ? `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:10px;font-size:12px;margin-bottom:10px;">
+        ⚠️ Dati genitore mancanti — <a href="#" id="gaTessCompila" style="color:#667eea;font-weight:600;">Compila ora</a>
+      </div>` : `<div style="font-size:12px;color:#666;">Genitore: ${gen.cognome} ${gen.nome} (${gen.parentela || ''})</div>`}
+      <button id="gaTessPdf" class="btn btn-secondary" style="font-size:12px;margin-top:8px;">📄 Scarica Modulo PDF</button>
+    </div>`;
+  }
+
   html += `</div>`; // ga-container
 
   // Modal indisponibilità
@@ -215,6 +239,26 @@ function render(c, { playerName, playerId, teamId, notifications, trainings, sta
 
   c.innerHTML = html;
   bindEvents(c, playerId, teamId, motivi);
+
+  // Stats filter
+  if (careerMatches && careerMatches.length) {
+    renderStatsBody(careerMatches, 'tutte');
+    document.getElementById('gaStatsFilter')?.addEventListener('change', (e) => {
+      renderStatsBody(careerMatches, e.target.value);
+    });
+  }
+
+  // Tesseramento listeners
+  if (registration) {
+    document.getElementById('gaTessPdf')?.addEventListener('click', () => {
+      window.YFM.navigateTo('print-tesseramento', { id: registration.id });
+    });
+    document.getElementById('gaTessCompila')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      showTessGenitoreModal(registration, c, playerId, teamId);
+    });
+  }
+
 }
 
 function renderConvocationStatus(conv, match) {
@@ -567,4 +611,117 @@ function showBellPanel(notifs) {
     const badge = document.getElementById('guestBellBadge');
     if (badge) badge.style.display = 'none';
   }
+}
+
+function showTessGenitoreModal(registration, container, playerId, teamId) {
+  const gen = registration.dati_genitore || {};
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:360px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="text-align:center;font-size:28px;margin-bottom:8px;">📋</div>
+    <div style="text-align:center;font-weight:700;font-size:15px;margin-bottom:16px;">Dati Genitore</div>
+    <div style="display:grid;gap:10px;">
+      <input id="tgCognome" placeholder="Cognome *" value="${gen.cognome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+      <input id="tgNome" placeholder="Nome *" value="${gen.nome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+      <select id="tgParentela" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+        <option value="">Parentela *</option>
+        <option value="padre" ${gen.parentela === 'padre' ? 'selected' : ''}>Padre</option>
+        <option value="madre" ${gen.parentela === 'madre' ? 'selected' : ''}>Madre</option>
+        <option value="tutore" ${gen.parentela === 'tutore' ? 'selected' : ''}>Tutore legale</option>
+      </select>
+      <input id="tgTelefono" placeholder="Telefono" value="${gen.telefono || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+    </div>
+    <div id="tgError" style="color:#E74C3C;font-size:12px;margin-top:8px;display:none;"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button id="tgCancel" class="btn btn-secondary" style="flex:1;font-size:13px;">Annulla</button>
+      <button id="tgSave" class="btn btn-primary" style="flex:1;font-size:13px;">💾 Salva</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#tgCancel').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#tgSave').addEventListener('click', async () => {
+    const cognome = overlay.querySelector('#tgCognome').value.trim();
+    const nome = overlay.querySelector('#tgNome').value.trim();
+    const parentela = overlay.querySelector('#tgParentela').value;
+    const telefono = overlay.querySelector('#tgTelefono').value.trim();
+    const errEl = overlay.querySelector('#tgError');
+    if (!cognome || !nome || !parentela) {
+      errEl.textContent = 'Cognome, nome e parentela sono obbligatori';
+      errEl.style.display = 'block';
+      return;
+    }
+    try {
+      await apiFetch(`/registrations/${registration.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ dati_genitore: { ...gen, cognome, nome, parentela, telefono } })
+      });
+      overlay.remove();
+      if (window.showToast) window.showToast('Dati salvati', 'success');
+      // Reload page
+      const { default: load } = await import('./guestAtleta.js');
+      load();
+    } catch (e) {
+      errEl.textContent = e.message || 'Errore nel salvataggio';
+      errEl.style.display = 'block';
+    }
+  });
+}
+
+function renderStatsBody(allMatches, filter) {
+  const body = document.getElementById('gaStatsBody');
+  if (!body) return;
+  let matches = allMatches;
+  if (filter === 'campionato') matches = allMatches.filter(m => m.competizione && m.competizione !== 'Amichevole');
+  else if (filter === 'amichevoli') matches = allMatches.filter(m => !m.competizione || m.competizione === 'Amichevole');
+
+  if (!matches.length) {
+    body.innerHTML = '<p style="color:#999;font-size:13px;">Nessuna partita per questo filtro.</p>';
+    return;
+  }
+
+  const s = matches.reduce((acc, m) => {
+    acc.presenze++; acc.minuti += m.minuti || 0; acc.gol += m.gol || 0;
+    acc.assist += m.assist || 0; acc.gialli += m.cartellini_gialli || 0; acc.rossi += m.cartellini_rossi || 0;
+    return acc;
+  }, { presenze: 0, minuti: 0, gol: 0, assist: 0, gialli: 0, rossi: 0 });
+
+  const sorted = [...matches].sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+  const v = sorted.filter(m => m.risultato && parseInt(m.risultato) > parseInt(m.risultato.split('-')[1])).length;
+  const p = sorted.filter(m => m.risultato && m.risultato.split('-')[0] === m.risultato.split('-')[1]).length;
+  const sconf = sorted.length - v - p;
+  const withGiornata = sorted.filter(m => m.giornata);
+  const maxGol = Math.max(1, ...withGiornata.map(m => m.gol || 0));
+
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;text-align:center;gap:2px;">
+      <div style="flex:1;" title="Presenze"><div style="font-size:14px;">📋</div><div style="font-size:16px;font-weight:700;">${s.presenze}</div></div>
+      <div style="flex:1;" title="Minuti"><div style="font-size:14px;">⏱️</div><div style="font-size:16px;font-weight:700;">${s.minuti}'</div></div>
+      <div style="flex:1;" title="Gol"><div style="font-size:14px;">⚽</div><div style="font-size:16px;font-weight:700;">${s.gol}</div></div>
+      <div style="flex:1;" title="Assist"><div style="font-size:14px;">🅰️</div><div style="font-size:16px;font-weight:700;">${s.assist}</div></div>
+      <div style="flex:1;" title="Ammonizioni"><div style="font-size:14px;">🟡</div><div style="font-size:16px;font-weight:700;">${s.gialli}</div></div>
+      <div style="flex:1;" title="Espulsioni"><div style="font-size:14px;">🔴</div><div style="font-size:16px;font-weight:700;">${s.rossi}</div></div>
+    </div>
+    <div style="margin-top:14px;">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px;">Risultati (${sorted.length} partite)</div>
+      <div style="display:flex;height:18px;border-radius:8px;overflow:hidden;font-size:10px;font-weight:600;color:white;">
+        ${v ? `<div style="flex:${v};background:#27AE60;display:flex;align-items:center;justify-content:center;">${v}V</div>` : ''}
+        ${p ? `<div style="flex:${p};background:#F39C12;display:flex;align-items:center;justify-content:center;">${p}P</div>` : ''}
+        ${sconf ? `<div style="flex:${sconf};background:#E74C3C;display:flex;align-items:center;justify-content:center;">${sconf}S</div>` : ''}
+      </div>
+    </div>
+    ${withGiornata.length > 0 ? `<div style="margin-top:12px;">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px;">Gol x Giornata</div>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:50px;">
+        ${withGiornata.map(m => {
+          const h = m.gol ? Math.max(8, (m.gol / maxGol) * 50) : 4;
+          const bg = m.gol ? '#667eea' : '#e0e0e0';
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <span style="font-size:9px;font-weight:600;color:${m.gol ? '#333' : '#bbb'};">${m.gol || ''}</span>
+            <div style="width:100%;max-width:20px;height:${h}px;background:${bg};border-radius:3px;" title="G${m.giornata} vs ${m.avversario}: ${m.gol} gol"></div>
+            <span style="font-size:8px;color:#999;">${m.giornata}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}`;
 }

@@ -38,7 +38,9 @@ export function initRouter() {
     printPresenze: () => import('./modules/print/printPresenze.js'),
     printRosa: () => import('./modules/print/printRosa.js'),
     printScadenze: () => import('./modules/print/printScadenzeMediche.js'),
-    fees: () => import('./modules/club/fees.js')
+    fees: () => import('./modules/club/fees.js'),
+    registration: () => import('./modules/club/registration.js'),
+    'print-tesseramento': () => import('./modules/print/printTesseramento.js')
   };
 
   window.YFM.isAuthenticated = function() {
@@ -169,7 +171,7 @@ export function initRouter() {
     console.log('[ROUTER] navigateTo chiamato con:', page);
     
     const publicPages = ['login', 'guest'];
-    const guestAllowedPages = ['dashboard', 'calendar', 'stats', 'club', 'absence', 'matchCenter', 'guestAtleta', 'guestGenitore'];
+    const guestAllowedPages = ['dashboard', 'calendar', 'stats', 'club', 'absence', 'matchCenter', 'guestAtleta', 'guestGenitore', 'print-tesseramento'];
     
     if (!publicPages.includes(page)) {
       const isGuest = window.YFM.isGuest();

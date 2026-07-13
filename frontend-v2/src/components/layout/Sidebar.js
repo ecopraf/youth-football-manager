@@ -125,7 +125,7 @@ export function setupGuestLayout(tipo, playerName) {
       <nav class="sidebar-nav">
         <a href="#" class="active" data-page="${isAtleta ? 'guestAtleta' : 'guestGenitore'}">🏠 Home</a>
         <a href="#" data-page="calendar">📅 Calendario</a>
-        ${isAtleta ? '<a href="#" data-page="stats">📊 Statistiche</a>' : ''}
+
         <a href="#" data-page="club">🏢 Società</a>
       </nav>
       <div class="sidebar-user" style="display:flex;">

@@ -186,8 +186,18 @@ function renderCommCard(n, isRead) {
   const markBtn = isRead
     ? '<div class="notif-done">✓</div>'
     : `<button class="notif-mark" data-mark-comm="${n.id}" title="Segna come letta">○</button>`;
+  const isIndividual = !!n.destinatario_player_id;
   const hasAtleti = n.destinatario_tipo && n.destinatario_tipo.includes('atleta');
-  const receiptsBtn = hasAtleti ? `<button class="notif-action" data-receipts="${n.id}" title="Conferme di lettura" style="font-size:11px;">👁</button>` : '';
+  const lettoDa = n.letto_da || {};
+  const isReadByDest = Object.keys(lettoDa).length > 0;
+  let receiptsBtn = '';
+  if (isIndividual) {
+    receiptsBtn = isReadByDest
+      ? `<span style="font-size:10px;color:#27AE60;font-weight:600;" title="Letta dal destinatario">✅ Letta</span>`
+      : `<span style="font-size:10px;color:#F39C12;font-weight:600;" title="Non ancora letta">⏳ Non letta</span>`;
+  } else if (hasAtleti) {
+    receiptsBtn = `<button class="notif-action" data-receipts="${n.id}" title="Conferme di lettura" style="font-size:11px;">👁</button>`;
+  }
   const isAvviso = n.tipo === 'avviso';
   const editBtn = isAvviso ? `<button class="notif-action" data-edit-notif="${n.id}" data-titolo="${(n.titolo||'').replace(/"/g,'&quot;')}" data-msg="${(n.messaggio||'').replace(/"/g,'&quot;')}" data-priorita="${n.priorita||'info'}" title="Modifica" style="font-size:11px;background:#F39C12;">✏️</button>` : '';
   const delBtn = isAvviso ? `<button class="notif-action" data-del-notif="${n.id}" title="Elimina" style="font-size:11px;background:#E74C3C;">🗑️</button>` : '';

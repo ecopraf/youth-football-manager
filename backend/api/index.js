@@ -222,6 +222,9 @@ app.use(createFeesRouter({ supabase, authMiddleware }));
 const createDashboardRouter = require('./routes/dashboard');
 app.use(createDashboardRouter({ supabase, authMiddleware }));
 
+const registrationRouter = require('./routes/registration');
+app.use('/api', registrationRouter);
+
 module.exports = app;
 
 // Avvio server locale

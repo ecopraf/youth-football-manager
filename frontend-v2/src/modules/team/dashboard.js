@@ -553,6 +553,7 @@ export default async function loadDashboard() {
     '<div data-widget="injuries" id="dashInjuryWidget" style="display:none;"></div>' +
     '<div data-widget="certificati" id="dashCertificatiWidget" style="display:none;"></div>' +
     '<div data-widget="fees" id="dashFeesWidget" style="display:none;"></div>' +
+    '<div data-widget="tesseramento" id="dashTessWidget" style="display:none;"></div>' +
     '<div data-widget="convocazione" id="dashConvocazioneWidget" style="display:none;"></div>' +
     '<div data-widget="classifica" id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
     '<div data-widget="staff"><div class="staff-card" data-help="dashboard.staff"><h2 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h2><div>' + renderStaff() + '</div></div></div>' +
@@ -720,7 +721,25 @@ export default async function loadDashboard() {
     }).catch(() => {});
   }
 
-  // Lazy load: dati convocazione condivisi tra card prossima partita e card segreteria
+  // Widget Tesseramento (visibile per admin/segreteria)
+  const tessWidget = document.getElementById('dashTessWidget');
+  if (tessWidget && (window.YFM.canRead('tesseramento') || window.YFM.isAdmin())) {
+    apiFetch('/squadre/' + window.YFM.squadraId + '/registrations').then(regs => {
+      if (!regs?.length) return;
+      const incompleti = regs.filter(r => r.stato !== 'completo' && r.stato !== 'tesserato');
+      const completi = regs.filter(r => r.stato === 'completo' || r.stato === 'tesserato');
+      if (!incompleti.length && !completi.length) return;
+      tessWidget.style.display = '';
+      tessWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashTessCard">
+        <div style="font-size:14px;font-weight:600;margin-bottom:8px;">📋 Stato Tesseramenti</div>
+        <div style="display:flex;gap:12px;font-size:12px;flex-wrap:wrap;">
+          <span style="color:${incompleti.length ? '#E74C3C' : '#27AE60'};font-weight:500;">${incompleti.length} incompleti</span>
+          <span style="color:#27AE60;">${completi.length}/${regs.length} completati</span>
+        </div>
+      </div>`;
+      tessWidget.querySelector('#dashTessCard')?.addEventListener('click', () => window.YFM.navigateTo('registration'));
+    }).catch(() => {});
+  }
   if (prossimaPartita) {
     const convPromise = apiFetch('/partite/' + prossimaPartita.id + '/convocazioni').catch(() => []);
     const matchDateStr = prossimaPartita.data_ora ? prossimaPartita.data_ora.substring(0, 10) : '';

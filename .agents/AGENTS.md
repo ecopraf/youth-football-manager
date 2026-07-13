@@ -58,7 +58,7 @@ git status
 | **Backend** | Node.js/Express (18 router) + Supabase |
 | **Deploy** | Vercel (auto su push a main) |
 | **PWA** | Installabile (vite-plugin-pwa, Workbox precache, registerSW autoUpdate). Offline: solo asset statici. Offline-first API cache: EPIC 15 (planned). |
-| **Auth** | JWT + capabilities granulari per modulo (rosa, partite, formazione, allenamenti, statistiche, guest_links, import, report, quote). Livelli: `''` (nessuno), `'read'`, `'write'`. Admin/superadmin bypassano. Allenatore usa capabilities dal profilo (fallback legacy: tutto se nessun permesso). `quote` visibile solo per admin e segreteria di default. |
+| **Auth** | JWT + capabilities granulari per modulo (rosa, partite, formazione, allenamenti, statistiche, guest_links, import, report, quote, tesseramento). Livelli: `''` (nessuno), `'read'`, `'write'`. Admin/superadmin bypassano. Allenatore usa capabilities dal profilo (fallback legacy: tutto se nessun permesso). `quote` e `tesseramento` visibili solo per admin e segreteria (write), allenatore/dirigente (read). |
 | **Guest** | JWT guest (24h). Login risolve team_id + player_name. Tipo: `atleta` (home personale) o `genitore` (home squadra). Capabilities differenziate per tipo. |
 | **Notifiche** | Badge 🔔 aggiornato al login + polling 60s + cambio squadra. Centro Comunicazioni con tabs (📤 Inviate + 📥 Ricevute). Inviate: avvisi/convocazioni creati dall'utente (edit/delete). Ricevute: assenze + indisponibilità convocati (read-only + 💬 Rispondi). Convocazioni: salva separato da pubblica (notifica solo su Pubblica). |
 | **Help** | Sistema help interattivo contestuale (PageHelp.js + helpData.js) |
@@ -94,7 +94,7 @@ api/
 │   ├── dbErrors.js             — Traduzione errori DB (duplicate key → messaggi IT)
 │   ├── capabilities.js         — Profili/capabilities utente (mirror CommonJS)
 │   └── teamAccess.js           — Validazione accesso team (team→category resolution)
-└── routes/ (18 router)
+└── routes/ (19 router)
     ├── auth.js                 — Login, register, users CRUD, guest (batch delete/renew)
     ├── workspace.js            — Workspace, facility, stagioni, categorie, migrazione
     ├── team.js                 — Squadre CRUD, PUT stagioni, POST categorie/:catId/team
@@ -110,9 +110,10 @@ api/
     ├── importConfirm.js        — Confirm TC, formations batch, matches-without-formation
     ├── gazzettaRegionale.js    — Classifica, calendario, marcatori, loghi da GR API, wizard loghi
     ├── absence.js              — Segnalazione assenze atleti (notifiche, storico, motivi)
-    ├── notification.js         — Comunicazioni in-app (convocazioni, avvisi) per profili destinatari
+    ├── notification.js         — Comunicazioni in-app (convocazioni, avvisi, solleciti), conferme lettura, sollecito-certificato
     ├── dashboard.js            — Endpoint aggregato dashboard (stats+top+partite+allenamenti+injuries+certificati)
     ├── fees.js                 — Fee config CRUD, quote generate, installments, pagamenti, rigenera batch
+    ├── registration.js         — Tesseramento: template CRUD, registrations CRUD/batch, sollecito documenti, auto-check certificato
     └── tournament.js           — Tornei CRUD (disabilitato in sidebar)
 ```
 
