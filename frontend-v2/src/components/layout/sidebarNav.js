@@ -30,11 +30,11 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
   let html = '';
 
   // Dashboard — sempre visibile
-  html += navItem('dashboard', '📊', 'Dashboard', 'Panoramica: statistiche, prossima partita, top players', true);
+  html += navItem('dashboard', '🏠', 'Dashboard', 'Panoramica: statistiche, prossima partita, top players', true);
 
   // Team
-  html += sectionTitle('👥 Team');
-  if (hasCap('rosa')) html += navItem('roster', '👥', 'Rosa', 'Lista giocatori, statistiche individuali, storico');
+  html += sectionTitle('⚽ Team');
+  if (hasCap('rosa')) html += navItem('roster', '🎽', 'Rosa', 'Lista giocatori, statistiche individuali, storico');
   if (hasCap('partite')) html += navItem('calendar', '📅', 'Calendario', 'Calendario partite, risultati, archiviazione');
 
   // Coach
@@ -57,23 +57,23 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
   }
 
   // Club
-  html += sectionTitle('🏢 Club');
+  html += sectionTitle('🏛️ Club');
   html += navItem('club', '🏢', 'Società', 'Organigramma, staff e riferimenti società');
   if (showForRole(['admin', 'allenatore'])) html += navItem('staff', '👔', 'Staff', 'Staff tecnico e societario');
   if (showForRole(['admin']) || hasCap('quote')) html += navItem('fees', '💰', 'Quote', 'Gestione quote economiche');
 
   // Import Center — visibile a chi ha capability import
   if (hasCap('import') && !showForRole(['admin'])) {
-    html += sectionTitle('📥 Strumenti');
+    html += sectionTitle('🔧 Strumenti');
     html += navItem('importCenter', '📥', 'Import Center', 'Import dati da fonti esterne');
   }
 
   // Amministrazione
   if (showForRole(['admin'])) {
     html += sectionTitle('🔐 Amministrazione');
-    html += navItem('seasonsCategories', '📅', 'Stagioni', 'Gestione stagioni e categorie');
+    html += navItem('seasonsCategories', '🗓️', 'Stagioni', 'Gestione stagioni e categorie');
     if (hasCap('import')) html += navItem('importCenter', '📥', 'Import Center', 'Import dati da fonti esterne');
-    if (isSuperadmin) html += navItem('workspaces', '🏢', 'Workspace', 'Gestione workspace/società');
+    if (isSuperadmin) html += navItem('workspaces', '🌐', 'Workspace', 'Gestione workspace/società');
     html += navItem('users', '👥', 'Utenti', 'Gestione utenti e permessi');
   }
 
@@ -85,11 +85,11 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
 
 function buildGuestNav() {
   let html = '';
-  html += navItem('dashboard', '📊', 'Dashboard', 'Panoramica', true);
-  html += sectionTitle('👥 Team');
-  html += navItem('roster', '👥', 'Rosa', 'Lista giocatori');
+  html += navItem('dashboard', '🏠', 'Dashboard', 'Panoramica', true);
+  html += sectionTitle('⚽ Team');
+  html += navItem('roster', '🎽', 'Rosa', 'Lista giocatori');
   html += navItem('calendar', '📅', 'Calendario', 'Calendario partite');
-  html += sectionTitle('🏢 Club');
+  html += sectionTitle('🏛️ Club');
   html += navItem('club', '🏢', 'Società', 'Riferimenti società');
   return html;
 }
