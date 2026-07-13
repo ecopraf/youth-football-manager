@@ -6,7 +6,8 @@
 const CAPABILITIES = [
   { id: 'rosa', label: 'Rosa' },
   { id: 'partite', label: 'Partite' },
-  { id: 'formazione', label: 'Formazione' },
+  { id: 'convocazioni', label: 'Convocazioni' },
+  { id: 'formazione', label: 'Match Center' },
   { id: 'allenamenti', label: 'Allenamenti' },
   { id: 'statistiche', label: 'Statistiche' },
   { id: 'guest_links', label: 'Link Guest' },
@@ -18,15 +19,15 @@ const CAPABILITIES = [
 const PROFILI = {
   segreteria: {
     label: 'Segreteria',
-    capabilities: { rosa: 'write', partite: 'read', formazione: 'write', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write' }
+    capabilities: { rosa: 'write', partite: 'read', convocazioni: 'write', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write' }
   },
   atleta: {
     label: 'Atleta',
-    capabilities: { rosa: '', partite: 'read', formazione: 'read', allenamenti: 'read', statistiche: 'read', guest_links: '', import: '', report: '' }
+    capabilities: { rosa: '', partite: 'read', convocazioni: 'read', formazione: 'read', allenamenti: 'read', statistiche: 'read', guest_links: '', import: '', report: '' }
   },
   genitore: {
     label: 'Genitore',
-    capabilities: { rosa: '', partite: 'read', formazione: 'read', allenamenti: '', statistiche: 'read', guest_links: '', import: '', report: '' }
+    capabilities: { rosa: '', partite: 'read', convocazioni: 'read', formazione: '', allenamenti: '', statistiche: 'read', guest_links: '', import: '', report: '' }
   }
 };
 

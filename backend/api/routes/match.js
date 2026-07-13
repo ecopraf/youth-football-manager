@@ -199,7 +199,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  router.post('/api/partite/:matchId/convocazioni', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
+  router.post('/api/partite/:matchId/convocazioni', authMiddleware, requirePermission('convocazioni', 'write'), async (req, res) => {
     try {
       const { calciatoreId, presente } = req.body;
       const { data: tp } = await supabase.from('team_player').select('id').eq('player_id', calciatoreId).limit(1).single();
@@ -217,7 +217,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  router.post('/api/partite/:matchId/convocazioni-batch', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
+  router.post('/api/partite/:matchId/convocazioni-batch', authMiddleware, requirePermission('convocazioni', 'write'), async (req, res) => {
     try {
       const { convocazioni } = req.body;
       if (!convocazioni || !Array.isArray(convocazioni)) return res.status(400).json({ error: 'Dati mancanti' });
@@ -265,7 +265,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
   });
 
   // ── PUBBLICA CONVOCAZIONE (invia notifiche) ──
-  router.post('/api/partite/:matchId/convocazioni-pubblica', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
+  router.post('/api/partite/:matchId/convocazioni-pubblica', authMiddleware, requirePermission('convocazioni', 'write'), async (req, res) => {
     try {
       const { data: convs } = await supabase.from('convocation').select('id, team_player_id').eq('match_id', req.params.matchId).eq('presente', true);
       const convocatiCount = convs?.length || 0;
@@ -605,7 +605,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  router.put('/api/partite/:matchId/distinta-meta', authMiddleware, requirePermission('formazione', 'write'), async (req, res) => {
+  router.put('/api/partite/:matchId/distinta-meta', authMiddleware, requirePermission('convocazioni', 'write'), async (req, res) => {
     try {
       const { distinta_meta } = req.body;
       const { error } = await supabase.from('match').update({ distinta_meta }).eq('id', req.params.matchId);

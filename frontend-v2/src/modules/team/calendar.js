@@ -570,15 +570,19 @@ export function renderMatchCard(m, stats, isNext = false) {
   // === PULSANTI AZIONE ===
   let actionsHtml = '';
   const convLabel = isPast ? '📋 Conv.' : '📋 Convoca';
+  const canConv = window.YFM.canRead('convocazioni');
+  const canMC = window.YFM.canRead('formazione');
   if (!isArchiviata) {
-    actionsHtml += makeBtn(convLabel, `window.YFM.openConvocation('${m.id}',${isPast})`, false);
-    actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
-    const mcGlow = isLive ? ' btn-live-glow' : '';
-    actionsHtml += `<button class="btn btn-secondary btn-small${mcGlow}" onclick="event.stopPropagation();window.YFM.openMatchCenter('${m.id}')">${isLive ? '<span class="pallino-blink"></span>' : ''}⚽ Match Center</button>`;
+    if (canConv) actionsHtml += makeBtn(convLabel, `window.YFM.openConvocation('${m.id}',${isPast})`, false);
+    if (canConv) actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
+    if (canMC) {
+      const mcGlow = isLive ? ' btn-live-glow' : '';
+      actionsHtml += `<button class="btn btn-secondary btn-small${mcGlow}" onclick="event.stopPropagation();window.YFM.openMatchCenter('${m.id}')">${isLive ? '<span class="pallino-blink"></span>' : ''}⚽ Match Center</button>`;
+    }
   } else {
-    actionsHtml += makeBtn('📋 Conv.', `window.YFM.openConvocation('${m.id}',true)`, false);
-    actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
-    actionsHtml += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openMatchCenter('${m.id}')">⚽ Match Center</button>`;
+    if (canConv) actionsHtml += makeBtn('📋 Conv.', `window.YFM.openConvocation('${m.id}',true)`, false);
+    if (canConv) actionsHtml += makeBtn('📄 Distinta', `window.YFM.openDistinta('${m.id}')`, false);
+    if (canMC) actionsHtml += `<button class="btn btn-secondary btn-small" onclick="event.stopPropagation();window.YFM.openMatchCenter('${m.id}')">⚽ Match Center</button>`;
   }
 
   // === EDIT/DELETE/ARCHIVIA (solo admin) ===

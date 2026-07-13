@@ -393,8 +393,12 @@ function renderCapabilitiesGrid() {
   });
   // Se in edit, carica capabilities pendenti
   if (window._pendingCaps) {
+    // Merge con default profilo per capabilities aggiunte dopo la creazione utente
+    const profilo = document.getElementById('userProfilo')?.value;
+    const profiloDefaults = (profilo && profilo !== 'custom' && PROFILI[profilo]) ? PROFILI[profilo].capabilities : {};
     CAPABILITIES.forEach(cap => {
-      setCapabilityValue(cap.id, window._pendingCaps[cap.id] || '');
+      const val = window._pendingCaps[cap.id] !== undefined ? window._pendingCaps[cap.id] : (profiloDefaults[cap.id] || '');
+      setCapabilityValue(cap.id, val || '');
     });
     window._pendingCaps = null;
   }

@@ -6,7 +6,8 @@
 export const CAPABILITIES = [
   { id: 'rosa', label: 'Rosa', icon: '📋', desc: 'Gestione giocatori' },
   { id: 'partite', label: 'Partite', icon: '📅', desc: 'Calendario e risultati' },
-  { id: 'formazione', label: 'Formazione', icon: '🏟️', desc: 'Convocazioni, formazione, distinta' },
+  { id: 'convocazioni', label: 'Convocazioni', icon: '📣', desc: 'Convocazioni e distinta' },
+  { id: 'formazione', label: 'Match Center', icon: '🏟️', desc: 'Formazione, live, note partita' },
   { id: 'allenamenti', label: 'Allenamenti', icon: '🏋️', desc: 'Sedute, presenze, config' },
   { id: 'statistiche', label: 'Statistiche', icon: '📊', desc: 'Visualizzazione stats' },
   { id: 'guest_links', label: 'Link Guest', icon: '🔗', desc: 'Generare link accesso' },
@@ -19,37 +20,37 @@ export const PROFILI = {
   admin: {
     label: 'Admin',
     icon: '🔑',
-    capabilities: { rosa: 'write', partite: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write' }
+    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write' }
   },
   allenatore: {
     label: 'Allenatore',
     icon: '⚽',
-    capabilities: { rosa: 'write', partite: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: 'write', report: 'read' }
+    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: 'write', report: 'read' }
   },
   vice_allenatore: {
     label: 'Vice Allenatore',
     icon: '🤝',
-    capabilities: { rosa: 'read', partite: 'read', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: '', report: 'read' }
+    capabilities: { rosa: 'read', partite: 'read', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: '', report: 'read' }
   },
   dirigente: {
     label: 'Dirigente',
     icon: '👔',
-    capabilities: { rosa: 'read', partite: 'read', formazione: 'read', allenamenti: '', statistiche: 'read', guest_links: 'write', import: '', report: 'read' }
+    capabilities: { rosa: 'read', partite: 'read', convocazioni: 'read', formazione: 'read', allenamenti: '', statistiche: 'read', guest_links: 'write', import: '', report: 'read' }
   },
   preparatore: {
     label: 'Preparatore Atletico',
     icon: '💪',
-    capabilities: { rosa: 'read', partite: '', formazione: '', allenamenti: 'write', statistiche: 'read', guest_links: '', import: '', report: '' }
+    capabilities: { rosa: 'read', partite: '', convocazioni: '', formazione: '', allenamenti: 'write', statistiche: 'read', guest_links: '', import: '', report: '' }
   },
   osservatore: {
     label: 'Osservatore',
     icon: '👁️',
-    capabilities: { rosa: 'read', partite: 'read', formazione: '', allenamenti: '', statistiche: 'read', guest_links: '', import: '', report: 'read' }
+    capabilities: { rosa: 'read', partite: 'read', convocazioni: '', formazione: '', allenamenti: '', statistiche: 'read', guest_links: '', import: '', report: 'read' }
   },
   segreteria: {
     label: 'Segreteria',
     icon: '📎',
-    capabilities: { rosa: 'write', partite: 'read', formazione: 'write', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write' }
+    capabilities: { rosa: 'write', partite: 'read', convocazioni: 'write', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write' }
   },
   custom: {
     label: 'Personalizzato',

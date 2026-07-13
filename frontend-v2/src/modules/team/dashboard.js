@@ -103,13 +103,13 @@ export default async function loadDashboard() {
   
   const isGuest = !!(window.YFM.guestSquadreAccesso && window.YFM.guestSquadreAccesso.length > 0);
   const hasEditAccess = !isGuest && window.YFM.canWrite('partite');
-  const matchCenterBtn = hasEditAccess && prossimaPartita
+  const matchCenterBtn = !isGuest && window.YFM.canRead('formazione') && prossimaPartita
     ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;" onclick="window.YFM.openMatchCenter(\'' + prossimaPartita.id + '\')">⚽ Match Center</button>'
     : '';
-  const distintaBtn = hasEditAccess && prossimaPartita
+  const distintaBtn = !isGuest && window.YFM.canRead('convocazioni') && prossimaPartita
     ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;" onclick="window.YFM.openDistinta(\'' + prossimaPartita.id + '\')">📄 Distinta</button>'
     : '';
-  const convButton = hasEditAccess && prossimaPartita 
+  const convButton = !isGuest && window.YFM.canRead('convocazioni') && prossimaPartita 
     ? '<button style="background:rgba(255,255,255,0.2);color:white;border:none;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600;" onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')">👥 Convoca</button>'
     : '';
   
