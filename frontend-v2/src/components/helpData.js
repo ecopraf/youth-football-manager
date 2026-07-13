@@ -247,6 +247,44 @@ export const PAGE_HELP = {
       'Filtri per stato: Da pagare, Parziale, Pagata, Scadute, In scadenza',
       'Badge scadenze: ⚠️ scaduta, ⏳ in scadenza (7gg), 📅 prossima'
     ]
+  },
+  registration: {
+    title: '📋 Tesseramento',
+    desc: 'Gestione del processo di tesseramento atleti: template modulo, documenti richiesti, stato consegna e generazione PDF.',
+    items: [
+      'Tab Template: configura intestazione, documenti richiesti e clausole del modulo società',
+      'Tab Situazione: vista aggregata per squadra con stato documenti per ogni atleta',
+      'Click su un giocatore per espandere checklist documenti e dati genitore',
+      '▶ Genera per tutta la rosa: crea tesseramenti batch in un click',
+      '📄 Scarica PDF: modulo pre-compilato con dati atleta e logo società',
+      '📩 Sollecito: invia notifica alla famiglia per documenti mancanti',
+      'Auto-check: certificato medico smarcato automaticamente se data_visita_medica valida',
+      'Filtri: Tutti, Incompleti, Completi, Tesserati + ricerca per nome'
+    ]
+  },
+  guestAtleta: {
+    title: '⚽ Home Atleta',
+    desc: 'La tua area personale: convocazioni, allenamenti, partite e statistiche.',
+    items: [
+      '📣 Notifiche: comunicazioni dalla società e convocazioni in evidenza',
+      '❌ Comunica indisponibilità: segnala assenza per una data specifica (prima della convocazione)',
+      '📅 Prossimi allenamenti e partite con orario e luogo',
+      '📊 Le tue statistiche personali (gol, assist, presenze) con filtro per competizione',
+      '🏆 Classifica del girone aggiornata',
+      '📋 Tesseramento: stato documenti e scarica modulo PDF'
+    ]
+  },
+  guestGenitore: {
+    title: '👨‍👩‍👦 Home Famiglia',
+    desc: 'Area dedicata alla famiglia: comunicazioni, convocazioni, calendario e situazione quote.',
+    items: [
+      '📣 Comunicazioni dalla società con badge priorità (🟡 importante, 🔴 urgente)',
+      '📅 Calendario partite e risultati della squadra',
+      '⚽ Convocazione: stato del figlio (convocato/non convocato) per la prossima partita',
+      '🏆 Classifica del girone aggiornata',
+      '💰 Situazione quote: rate pagate e scadute',
+      '📋 Tesseramento: documenti consegnati e modulo PDF scaricabile'
+    ]
   }
 };
 

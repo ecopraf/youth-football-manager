@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 14 Luglio 2026 | Versione: v3.16 | Build: v3.16.54
+> Ultimo aggiornamento: 14 Luglio 2026 | Versione: v3.16 | Build: v3.16.56
 
 ---
 
@@ -936,8 +936,8 @@
 | 20.28 | Router: registrare route `/tesseramento` | ✅ | 20.12 | router.js | ~2min |
 | 20.29 | Print Center: aggiungere card "Modulo Tesseramento" nella sezione Rosa (genera PDF per atleta selezionato) | ✅ | 20.10 | modules/team/printCenter.js | ~5min |
 | 20.30 | Dashboard widget: "Tesseramenti incompleti" (contatore + link) — visibile per segreteria/admin | ✅ | 20.6 | modules/team/dashboard.js | ~8min |
-| 20.31 | Player Detail: sezione "Tesseramento" con stato + documenti + link PDF | ⬜ | 20.8 | modules/team/playerDetail.js | ~8min |
-| 20.32 | Help in-app: aggiungere helpData per pagina Tesseramento | ⬜ | 20.12 | components/helpData.js | ~3min |
+| 20.31 | Player Detail: sezione "Tesseramento" con stato + documenti + link PDF | ✅ | 20.8 | modules/team/playerDetail.js | ~8min |
+| 20.32 | Help in-app: aggiungere helpData per pagina Tesseramento | ✅ | 20.12 | components/helpData.js | ~3min |
 | 20.33 | Test build completo + syntax check backend | ✅ | 20.32 | — | ~3min |
 | 20.34 | Aggiornare docs (DEVELOPMENT_PLAN, AGENTS.md, DATABASE_SCHEMA) | ✅ | 20.33 | .agents/ | ~3min |
 
@@ -1065,6 +1065,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | Commit | Descrizione |
 |--------|-------------|
 | v3.16.54 | feat: EPIC 20 completata — Modulo Tesseramento con capability dedicata, auto-check certificato medico, sollecito documenti (singolo + bulk), sollecito certificati medici dalla dashboard (singolo + bulk), stato lettura inline notifiche individuali (✅/⏳), fix notifiche staff (created_by nel filtro, escluso da unread), rimossa pagina stats guest (filtro nella card home: Tutte/Campionato/Amichevoli), fix guest router per print-tesseramento |
+| v3.16.55 | feat: playerDetail collapsible cards (valutazioni, infortuni, quote, tesseramento, carriera) con summary header, sezione Tesseramento visibile anche se non generato, fix spacing card, carriera ordinata per stagione desc, help in-app per pagine guest (Atleta + Famiglia) e Tesseramento, fix capability tesseramento per utenti esistenti |
 | v3.16.53 | feat: notifica quote manuale (singola/batch) con messaggio personalizzato, cleanup notifiche automatico (>30gg + lette pre-lunedì), fix tab Inviate/Ricevute (split per created_by), fix guest vede solo notifiche proprie (destinatario_player_id), fix receipts mostra solo destinatario specifico, rimosso check-scadenze automatico, sidebar UI migliorata (#1e3a5f, contrasto, icone univoche), fix guest links visibilità workspace, capability convocazioni separata da formazione |
 | v3.16.48 | feat: ordinamento alfabetico intelligente workspace (skip acronimi A.S.D., S.S.D., ecc.) |
 | v3.16.44 | feat: Quote — modale Configura Quote con ✏️ Modifica (nome/importo/rate/categoria), 📋 Duplica config, 🔄 Rigenera quote esistenti (batch ottimizzato, preserva pagamenti con logica residuo). Endpoint POST /fee-configs/:id/rigenera. Help in-app per pagina Quote. Fix showToast mancante |

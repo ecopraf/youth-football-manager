@@ -50,8 +50,18 @@ export async function loadPlayerDetail(container, playerId) {
       }
     }
 
+    let registration = null;
+    const canSeeReg = window.YFM.canRead('tesseramento') || window.YFM.getUser()?.ruolo === 'admin' || window.YFM.getUser()?.is_superadmin;
+    if (canSeeReg) {
+      try {
+        registration = await apiFetch('/registrations/player/' + playerId);
+      } catch (e) {
+        registration = null;
+      }
+    }
+
     hideLoading();
-    renderPlayerDetail(container, { player, career, valutazioni, injuries, fees });
+    renderPlayerDetail(container, { player, career, valutazioni, injuries, fees, registration });
   } catch (e) {
     console.error(e);
     hideLoading();
@@ -60,7 +70,7 @@ export async function loadPlayerDetail(container, playerId) {
 }
 
 function renderPlayerDetail(container, data) {
-  const { player, career, valutazioni, injuries, fees } = data;
+  const { player, career, valutazioni, injuries, fees, registration } = data;
 
   if (!player) {
     container.innerHTML = '<div class="error-box">Giocatore non trovato.</div>';
@@ -94,8 +104,12 @@ function renderPlayerDetail(container, data) {
 
   // Sezione valutazioni
   const valutazioniSection = valutazioni && valutazioni.partiteValutate > 0 ? `
-    <div class="card" data-help="player.valutazioni" style="background:linear-gradient(135deg,#667eea10,#764ba210);border:1px solid #667eea30;">
-      <h3 class="section-title" style="color:#667eea;">⭐ Valutazioni</h3>
+    <div class="card" data-help="player.valutazioni" style="margin-top:16px;background:linear-gradient(135deg,#667eea10,#764ba210);border:1px solid #667eea30;">
+      <div class="pd-collapse-header pd-open" data-collapse="valutazioni">
+        <h3 class="section-title" style="color:#667eea;margin:0;">⭐ Valutazioni <span style="font-size:12px;font-weight:400;color:#666;">(media ${valutazioni.media} · ${valutazioni.partiteValutate} partite)</span></h3>
+        <span class="pd-chevron">▼</span>
+      </div>
+      <div class="pd-collapse-body pd-visible" style="margin-top:12px;">
       <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
         <div style="text-align:center;">
           <div style="font-size:32px;font-weight:bold;color:#667eea;">${valutazioni.media}</div>
@@ -114,16 +128,23 @@ function renderPlayerDetail(container, data) {
           ${valutazioni.storico.slice(0, 8).map(v => `<span style="padding:4px 10px;background:white;border-radius:12px;font-size:12px;border:1px solid #eee;"><strong>${v.voto}</strong> ${v.partita ? '(' + v.partita + ')' : ''}</span>`).join('')}
         </div>
       </div>` : ''}
+      </div>
     </div>` : '';
 
-  // Sezione carriera
   // Sezione infortuni
+  const injCount = (injuries || []).length;
+  const injOpen = (injuries || []).some(i => !i.data_rientro_effettiva);
+  const injSummary = injCount > 0 ? `(${injCount} registrati${injOpen ? ' · <span style="color:#E74C3C;">' + (injuries || []).filter(i => !i.data_rientro_effettiva).length + ' attivi</span>' : ''})` : '(nessuno)';
   const injuriesSection = `
-    <div class="card" style="margin-top:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h3 class="section-title" style="margin:0;">🏥 Infortuni</h3>
-        ${isAdmin ? '<button class="btn btn-primary" id="btnAddInjury" style="font-size:12px;padding:6px 12px;">+ Aggiungi</button>' : ''}
+    <div class="card" style="margin-top:16px;">
+      <div class="pd-collapse-header${injOpen ? ' pd-open' : ''}" data-collapse="injuries">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <h3 class="section-title" style="margin:0;">🏥 Infortuni <span style="font-size:12px;font-weight:400;color:#666;">${injSummary}</span></h3>
+          ${isAdmin ? '<button class="btn btn-primary" id="btnAddInjury" style="font-size:12px;padding:6px 12px;" onclick="event.stopPropagation()">+ Aggiungi</button>' : ''}
+        </div>
+        <span class="pd-chevron">▼</span>
       </div>
+      <div class="pd-collapse-body ${injOpen ? 'pd-visible' : 'pd-hidden'}" style="margin-top:12px;">
       ${(injuries || []).length > 0 ? `
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
         <table class="pd-table" style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;">
@@ -148,6 +169,7 @@ function renderPlayerDetail(container, data) {
           }).join('')}</tbody>
         </table>
       </div>` : '<p style="color:var(--gray);font-size:13px;">Nessun infortunio registrato.</p>'}
+      </div>
     </div>`;
 
   // Sezione carriera — raggruppata per tipo competizione
@@ -251,14 +273,26 @@ function renderPlayerDetail(container, data) {
       if (!byTipo[t]) byTipo[t] = [];
       byTipo[t].push(s);
     });
+    // Ordina ogni gruppo per stagione decrescente (più recente prima)
+    Object.values(byTipo).forEach(arr => arr.sort((a, b) => (b.stagione || '').localeCompare(a.stagione || '')));
     const sections = tipoOrder.filter(t => byTipo[t]?.length).map(t => `
       <div style="margin-bottom:16px;">
         <div style="font-size:13px;font-weight:700;color:${tipoColors[t]};margin-bottom:8px;">${tipoLabels[t]}</div>
         ${buildCareerTable(byTipo[t])}
       </div>`).join('');
-    careerSection = `<div class="card" data-help="player.carriera"><h3 class="section-title">Carriera</h3>${sections}</div>`;
+    const totPartite = career.reduce((s, c) => s + (c.partite || 0), 0);
+    const totGol = career.reduce((s, c) => s + (c.gol || 0), 0);
+    const totAssist = career.reduce((s, c) => s + (c.assist || 0), 0);
+    const careerSummary = `(${totPartite} PG · ${totGol} gol · ${totAssist} assist)`;
+    careerSection = `<div class="card" style="margin-top:16px;" data-help="player.carriera">
+      <div class="pd-collapse-header pd-open" data-collapse="career">
+        <h3 class="section-title" style="margin:0;">📊 Carriera <span style="font-size:12px;font-weight:400;color:#666;">${careerSummary}</span></h3>
+        <span class="pd-chevron">▼</span>
+      </div>
+      <div class="pd-collapse-body pd-visible" style="margin-top:12px;">${sections}</div>
+    </div>`;
   } else {
-    careerSection = '<div class="card"><h3 class="section-title">Carriera</h3><p style="color:var(--gray);">Nessun dato carriera disponibile.</p></div>';
+    careerSection = '<div class="card" style="margin-top:16px;"><div class="pd-collapse-header pd-open" data-collapse="career"><h3 class="section-title" style="margin:0;">📊 Carriera</h3><span class="pd-chevron">▼</span></div><div class="pd-collapse-body pd-visible" style="margin-top:12px;"><p style="color:var(--gray);">Nessun dato carriera disponibile.</p></div></div>';
   }
 
   const shortDate = (d) => { if (!d) return '-'; try { const dt = new Date(d); return (dt.getDate()+'').padStart(2,'0')+'/'+(dt.getMonth()+1+'').padStart(2,'0')+'/'+String(dt.getFullYear()).slice(2); } catch(e) { return '-'; } };
@@ -392,6 +426,7 @@ function renderPlayerDetail(container, data) {
     ${valutazioniSection}
     ${injuriesSection}
     <div id="feesSection"></div>
+    <div id="tesseramentoSection"></div>
     ${careerSection}
   `;
 
@@ -401,8 +436,28 @@ function renderPlayerDetail(container, data) {
     else if (window.navigateTo) window.navigateTo('roster');
   });
 
+  // Collapsible cards toggle
+  container.querySelectorAll('.pd-collapse-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const body = header.nextElementSibling;
+      if (!body) return;
+      const isOpen = header.classList.contains('pd-open');
+      if (isOpen) {
+        body.style.maxHeight = body.scrollHeight + 'px';
+        requestAnimationFrame(() => { body.classList.remove('pd-visible'); body.classList.add('pd-hidden'); });
+        header.classList.remove('pd-open');
+      } else {
+        body.classList.remove('pd-hidden'); body.classList.add('pd-visible');
+        body.style.maxHeight = body.scrollHeight + 'px';
+        setTimeout(() => { body.style.maxHeight = 'none'; }, 260);
+        header.classList.add('pd-open');
+      }
+    });
+  });
+
   // Render sezione quote economiche
   renderFeesSection(document.getElementById('feesSection'), fees, player, isAdmin);
+  renderTesseramentoSection(document.getElementById('tesseramentoSection'), registration, player);
 
   // Fascia inline edit
   const fasciaField = document.getElementById('fasciaField');
@@ -902,19 +957,32 @@ export function loadNewPlayerForm(container) {
 
 function renderFeesSection(el, fees, player, isAdmin) {
   if (!el) return;
+  if (!fees || !fees.length) {
+    el.innerHTML = `<div class="card" style="margin-top:16px;">
+      <div class="pd-collapse-header" data-collapse="fees">
+        <h3 class="section-title" style="margin:0;">💰 Situazione Economica <span style="font-size:12px;font-weight:400;color:#888;">(nessuna quota)</span></h3>
+        <span class="pd-chevron">▼</span>
+      </div>
+      <div class="pd-collapse-body pd-hidden"><p style="color:var(--gray);font-size:13px;margin-top:12px;">Nessuna quota registrata.</p></div>
+    </div>`;
+    bindCollapseIn(el);
+    return;
+  }
   const STATI_COLORS = { da_pagare: '#E74C3C', parziale: '#F39C12', pagata: '#27AE60' };
   const STATI_LABELS = { da_pagare: 'Da pagare', parziale: 'Parziale', pagata: 'Pagata' };
-
   const totDovuto = fees.reduce((s, f) => s + parseFloat(f.importo_totale), 0);
   const totPagato = fees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato === 'pagata').reduce((ps, i) => ps + parseFloat(i.importo), 0), 0);
   const totResiduo = totDovuto - totPagato;
+  const hasPending = fees.some(f => f.stato !== 'pagata');
+  const summary = `(€${totDovuto.toFixed(0)}${totResiduo > 0 ? ' · residuo €' + totResiduo.toFixed(0) : ' · tutto pagato'})`;
 
   el.innerHTML = `
-    <div class="card" style="margin-top:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h3 class="section-title" style="margin:0;">💰 Situazione Economica</h3>
+    <div class="card" style="margin-top:16px;">
+      <div class="pd-collapse-header${hasPending ? ' pd-open' : ''}" data-collapse="fees">
+        <h3 class="section-title" style="margin:0;">💰 Situazione Economica <span style="font-size:12px;font-weight:400;color:#666;">${summary}</span></h3>
+        <span class="pd-chevron">▼</span>
       </div>
-      ${fees.length > 0 ? `
+      <div class="pd-collapse-body ${hasPending ? 'pd-visible' : 'pd-hidden'}" style="margin-top:12px;">
       <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;">
         <div style="padding:8px 14px;background:#f0fdf4;border-radius:8px;font-size:12px;">Totale: <strong>€${totDovuto.toFixed(2)}</strong></div>
         <div style="padding:8px 14px;background:#eef2ff;border-radius:8px;font-size:12px;">Pagato: <strong>€${totPagato.toFixed(2)}</strong></div>
@@ -935,6 +1003,78 @@ function renderFeesSection(el, fees, player, isAdmin) {
             </div>`).join('')}
           </div>
         </div>`;
-      }).join('')}` : '<p style="color:var(--gray);font-size:13px;">Nessuna quota registrata.</p>'}
+      }).join('')}
+      </div>
     </div>`;
+  bindCollapseIn(el);
+}
+
+function renderTesseramentoSection(el, registration, player) {
+  if (!el) return;
+  const canSee = window.YFM.canRead('tesseramento') || window.YFM.getUser()?.ruolo === 'admin' || window.YFM.getUser()?.is_superadmin;
+  if (!canSee) return;
+
+  if (!registration) {
+    el.innerHTML = `<div class="card" style="margin-top:16px;">
+      <div class="pd-collapse-header" data-collapse="tess">
+        <h3 class="section-title" style="margin:0;">📋 Tesseramento <span style="font-size:12px;font-weight:400;color:#888;">(non generato)</span></h3>
+        <span class="pd-chevron">▼</span>
+      </div>
+      <div class="pd-collapse-body pd-hidden"><p style="color:var(--gray);font-size:13px;margin-top:12px;">Tesseramento non ancora generato. Vai alla pagina Tesseramento per generarlo.</p></div>
+    </div>`;
+    bindCollapseIn(el);
+    return;
+  }
+
+  const STATI_COLORS = { non_iniziato: '#888', incompleto: '#F39C12', completo: '#27AE60', tesserato: '#667eea' };
+  const STATI_LABELS = { non_iniziato: 'Non iniziato', incompleto: 'Incompleto', completo: 'Completo', tesserato: 'Tesserato' };
+  const stato = registration.stato || 'non_iniziato';
+  const color = STATI_COLORS[stato] || '#888';
+  const docs = registration.documenti_consegnati || [];
+  const template = registration.template || {};
+  const docsRichiesti = template.documenti_richiesti || [];
+  const consegnati = docs.filter(d => d.consegnato).length;
+  const totDocs = docsRichiesti.length || docs.length;
+  const isIncomplete = stato === 'incompleto' || stato === 'non_iniziato';
+  const summary = `(${STATI_LABELS[stato]}${totDocs > 0 ? ' · ' + consegnati + '/' + totDocs + ' doc' : ''})`;
+
+  el.innerHTML = `
+    <div class="card" style="margin-top:16px;">
+      <div class="pd-collapse-header${isIncomplete ? ' pd-open' : ''}" data-collapse="tess">
+        <h3 class="section-title" style="margin:0;">📋 Tesseramento <span style="font-size:12px;font-weight:400;color:${color};">${summary}</span></h3>
+        <span class="pd-chevron">▼</span>
+      </div>
+      <div class="pd-collapse-body ${isIncomplete ? 'pd-visible' : 'pd-hidden'}" style="margin-top:12px;">
+      ${totDocs > 0 ? `
+      <div style="display:grid;gap:4px;">
+        ${(docs.length > 0 ? docs : docsRichiesti.map(d => ({ nome: d.nome, consegnato: false }))).map(d => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:${d.consegnato ? '#f0fdf4' : '#fafafa'};border-radius:6px;font-size:12px;">
+            <span>${d.consegnato ? '✅' : '⬜'} ${d.nome}</span>
+            ${d.data_consegna ? '<span style="color:#888;font-size:11px;">' + new Date(d.data_consegna).toLocaleDateString('it-IT') + '</span>' : ''}
+          </div>`).join('')}
+      </div>` : ''}
+      ${registration.id ? `<div style="margin-top:12px;text-align:right;"><a href="#/print/tesseramento/${registration.id}" style="font-size:12px;color:#667eea;text-decoration:none;">📄 Scarica PDF</a></div>` : ''}
+      </div>
+    </div>`;
+  bindCollapseIn(el);
+}
+
+function bindCollapseIn(el) {
+  el.querySelectorAll('.pd-collapse-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const body = header.nextElementSibling;
+      if (!body) return;
+      const isOpen = header.classList.contains('pd-open');
+      if (isOpen) {
+        body.style.maxHeight = body.scrollHeight + 'px';
+        requestAnimationFrame(() => { body.classList.remove('pd-visible'); body.classList.add('pd-hidden'); });
+        header.classList.remove('pd-open');
+      } else {
+        body.classList.remove('pd-hidden'); body.classList.add('pd-visible');
+        body.style.maxHeight = body.scrollHeight + 'px';
+        setTimeout(() => { body.style.maxHeight = 'none'; }, 260);
+        header.classList.add('pd-open');
+      }
+    });
+  });
 }

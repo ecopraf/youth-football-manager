@@ -615,3 +615,11 @@ body.sidebar-open::before {
   .sidebar-nav { padding: 0 8px; }
   .sidebar-nav a { padding: 8px 12px; font-size: 13px; }
 }
+
+/* Collapsible cards (playerDetail) */
+.pd-collapse-header { display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; }
+.pd-collapse-header .pd-chevron { transition:transform 0.2s; font-size:14px; color:#888; }
+.pd-collapse-header.pd-open .pd-chevron { transform:rotate(180deg); }
+.pd-collapse-body { overflow:hidden; transition:max-height 0.25s ease, opacity 0.2s; }
+.pd-collapse-body.pd-hidden { max-height:0 !important; opacity:0; padding-top:0 !important; margin-top:0 !important; }
+.pd-collapse-body.pd-visible { opacity:1; }
