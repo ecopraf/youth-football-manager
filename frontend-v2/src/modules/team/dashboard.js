@@ -38,7 +38,7 @@ export function invalidateDashboardCache() {
 export default async function loadDashboard() {
   const c = document.getElementById('pageContent');
   const squadraId = window.YFM.squadraId;
-  let currentTipo = 'campionato';
+  let currentTipo = 'tutte';
   
   let stats, top, topValutazioni, partiteFuture, nextTrainings;
   let classificaData = { classifica: null };
@@ -65,6 +65,14 @@ export default async function loadDashboard() {
     return { stats: data.stats, top: data.topPlayers };
   }
   
+  // Load saved competition filter preference
+  try {
+    const prefs = await apiFetch('/users/preferences').catch(() => ({}));
+    if (prefs?.competizione_filtro) currentTipo = prefs.competizione_filtro;
+    window._dashPrefs = prefs; // reuse later for layout
+    window.YFM.competizioneFiltro = currentTipo;
+  } catch(e) {}
+
   try {
     const dashData = await fetchDashboardData(currentTipo);
     stats = dashData.stats;
@@ -564,6 +572,8 @@ export default async function loadDashboard() {
   if (filterEl) {
     filterEl.onchange = async () => {
       currentTipo = filterEl.value;
+      window.YFM.competizioneFiltro = currentTipo;
+      apiFetch('/users/preferences', { method: 'PUT', body: JSON.stringify({ competizione_filtro: currentTipo }) }).catch(() => {});
       const filtered = await fetchFiltered(currentTipo);
       stats = filtered.stats;
       top = filtered.top;
@@ -843,13 +853,11 @@ export default async function loadDashboard() {
     });
   }
 
-  // Load and apply user preferences + onboarding
-  apiFetch('/users/preferences').then(prefs => {
-    if (prefs && prefs.dashboard_layout) applyLayout(prefs.dashboard_layout);
-    else applyLayout({ order: DEFAULT_ORDER, hidden: DEFAULT_HIDDEN });
-    // Welcome card onboarding
-    if (!prefs || !prefs.onboarding_dismissed) renderWelcomeCard();
-  }).catch(() => applyLayout({ order: DEFAULT_ORDER, hidden: DEFAULT_HIDDEN }));
+  // Load and apply user preferences + onboarding (reuse prefetched prefs)
+  const _prefs = window._dashPrefs || {};
+  if (_prefs.dashboard_layout) applyLayout(_prefs.dashboard_layout);
+  else applyLayout({ order: DEFAULT_ORDER, hidden: DEFAULT_HIDDEN });
+  if (!_prefs.onboarding_dismissed) renderWelcomeCard();
 
   // --- Welcome Onboarding Card ---
   function renderWelcomeCard() {

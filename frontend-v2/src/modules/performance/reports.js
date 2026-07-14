@@ -446,16 +446,28 @@ function renderSeasonalReport(report) {
         <div style="width:70px;text-align:right;"><img src="/img/logo-lnd.png" style="height:60px;object-fit:contain;" onerror="this.style.display='none'"></div>
       </div>
       
-      <!-- Stats Squadra compatte -->
-      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;">
-        <span style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;">${report.punti || 0} Punti</span>
-        <span style="background:#f0f0f0;padding:6px 12px;border-radius:6px;font-size:12px;">${report.partiteGiocate || 0} PG</span>
-        <span style="background:#d4edda;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;color:#28a745;">${report.vittorie || 0} V</span>
-        <span style="background:#fff3cd;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;color:#856404;">${report.pareggi || 0} P</span>
-        <span style="background:#f8d7da;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;color:#dc3545;">${report.sconfitte || 0} S</span>
-        <span style="background:#e8f5e9;padding:6px 12px;border-radius:6px;font-size:12px;">GF <strong>${report.golFatti || 0}</strong></span>
-        <span style="background:#fce4ec;padding:6px 12px;border-radius:6px;font-size:12px;">GS <strong>${report.golSubiti || 0}</strong></span>
-        <span style="background:#f0f0f0;padding:6px 12px;border-radius:6px;font-size:12px;">DR <strong>${report.differenzaReti > 0 ? '+' : ''}${report.differenzaReti || 0}</strong></span>
+      <!-- Stats Squadra — Ufficiali + Amichevoli -->
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11px;font-weight:700;color:#333;">🏆 Ufficiali:</span>
+          <span style="background:#f0f0f0;padding:4px 10px;border-radius:6px;font-size:11px;">${report.ufficiali?.pg || 0} PG</span>
+          <span style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">${report.ufficiali?.punti || 0} Pt</span>
+          <span style="background:#d4edda;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#28a745;">${report.ufficiali?.v || 0}V</span>
+          <span style="background:#fff3cd;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#856404;">${report.ufficiali?.p || 0}P</span>
+          <span style="background:#f8d7da;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#dc3545;">${report.ufficiali?.s || 0}S</span>
+          <span style="background:#e8f5e9;padding:4px 10px;border-radius:6px;font-size:11px;">GF <strong>${report.ufficiali?.gf || 0}</strong></span>
+          <span style="background:#fce4ec;padding:4px 10px;border-radius:6px;font-size:11px;">GS <strong>${report.ufficiali?.gs || 0}</strong></span>
+          <span style="background:#f0f0f0;padding:4px 10px;border-radius:6px;font-size:11px;">DR <strong>${(report.ufficiali?.dr || 0) > 0 ? '+' : ''}${report.ufficiali?.dr || 0}</strong></span>
+        </div>
+        ${report.amichevoli?.pg ? `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <span style="font-size:11px;font-weight:700;color:#333;">⚽ Amichevoli:</span>
+          <span style="background:#f0f0f0;padding:4px 10px;border-radius:6px;font-size:11px;">${report.amichevoli.pg} PG</span>
+          <span style="background:#d4edda;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#28a745;">${report.amichevoli.v}V</span>
+          <span style="background:#fff3cd;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#856404;">${report.amichevoli.p}P</span>
+          <span style="background:#f8d7da;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#dc3545;">${report.amichevoli.s}S</span>
+          <span style="background:#e8f5e9;padding:4px 10px;border-radius:6px;font-size:11px;">GF <strong>${report.amichevoli.gf}</strong></span>
+          <span style="background:#fce4ec;padding:4px 10px;border-radius:6px;font-size:11px;">GS <strong>${report.amichevoli.gs}</strong></span>
+        </div>` : ''}
       </div>
       
       <!-- Calendario Stagionale -->

@@ -410,11 +410,21 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       }
 
       let v = 0, p = 0, s = 0, gf = 0, gs = 0;
+      let vUff = 0, pUff = 0, sUff = 0, gfUff = 0, gsUff = 0;
+      let vAm = 0, pAm = 0, sAm = 0, gfAm = 0, gsAm = 0;
       const partiteList = (partite || []).map(m => {
         const gc = m.gol_casa || 0, go = m.gol_ospite || 0;
         gf += gc; gs += go;
         if (gc > go) v++; else if (gc === go) p++; else s++;
-        return { competizione: m.tipo_competizione || 'Campionato', giornata: m.giornata, data: m.data_ora, avversario: m.avversario, luogo: m.luogo, golCasa: gc, golOspiti: go, logo: findLogo(m.avversario) };
+        const isAmichevole = !m.tipo_competizione || m.tipo_competizione === 'Amichevole';
+        if (isAmichevole) {
+          gfAm += gc; gsAm += go;
+          if (gc > go) vAm++; else if (gc === go) pAm++; else sAm++;
+        } else {
+          gfUff += gc; gsUff += go;
+          if (gc > go) vUff++; else if (gc === go) pUff++; else sUff++;
+        }
+        return { competizione: m.tipo_competizione || 'Amichevole', giornata: m.giornata, data: m.data_ora, avversario: m.avversario, luogo: m.luogo, golCasa: gc, golOspiti: go, logo: findLogo(m.avversario) };
       });
 
       // Top players
@@ -439,13 +449,17 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       }
 
       const pg = (partite || []).length;
+      const pgUff = vUff + pUff + sUff;
+      const pgAm = vAm + pAm + sAm;
       res.json({
         societa: ws?.nome || '',
         squadra: { categoria: team?.category?.nome || team?.nome || '' },
         stagione: team?.season?.nome || '',
-        punti: v * 3 + p,
+        punti: vUff * 3 + pUff,
         partiteGiocate: pg, vittorie: v, pareggi: p, sconfitte: s,
         golFatti: gf, golSubiti: gs, differenzaReti: gf - gs,
+        ufficiali: { pg: pgUff, punti: vUff * 3 + pUff, v: vUff, p: pUff, s: sUff, gf: gfUff, gs: gsUff, dr: gfUff - gsUff },
+        amichevoli: { pg: pgAm, v: vAm, p: pAm, s: sAm, gf: gfAm, gs: gsAm },
         topMarcatori, topAssist, topPresenze,
         partite: partiteList
       });

@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 14 Luglio 2026 | Versione: v3.16 | Build: v3.16.56
+> Ultimo aggiornamento: 14 Luglio 2026 | Versione: v3.16 | Build: v3.16.59
 
 ---
 
@@ -1064,6 +1064,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.59 | feat: report stagionale separa ufficiali/amichevoli (punti solo su ufficiali), filtro competizione salvato per utente (preferenze_ui.competizione_filtro) con default "tutte", stats.js usa stessa preferenza, fees.js "☑ Tutti" in modalità selezione. Fix: updateNotifBadge check UUID (no 400 con superadmin), training template created_by null per superadmin (fix uuid parse error) |
 | v3.16.54 | feat: EPIC 20 completata — Modulo Tesseramento con capability dedicata, auto-check certificato medico, sollecito documenti (singolo + bulk), sollecito certificati medici dalla dashboard (singolo + bulk), stato lettura inline notifiche individuali (✅/⏳), fix notifiche staff (created_by nel filtro, escluso da unread), rimossa pagina stats guest (filtro nella card home: Tutte/Campionato/Amichevoli), fix guest router per print-tesseramento |
 | v3.16.55 | feat: playerDetail collapsible cards (valutazioni, infortuni, quote, tesseramento, carriera) con summary header, sezione Tesseramento visibile anche se non generato, fix spacing card, carriera ordinata per stagione desc, help in-app per pagine guest (Atleta + Famiglia) e Tesseramento, fix capability tesseramento per utenti esistenti |
 | v3.16.53 | feat: notifica quote manuale (singola/batch) con messaggio personalizzato, cleanup notifiche automatico (>30gg + lette pre-lunedì), fix tab Inviate/Ricevute (split per created_by), fix guest vede solo notifiche proprie (destinatario_player_id), fix receipts mostra solo destinatario specifico, rimosso check-scadenze automatico, sidebar UI migliorata (#1e3a5f, contrasto, icone univoche), fix guest links visibilità workspace, capability convocazioni separata da formazione |

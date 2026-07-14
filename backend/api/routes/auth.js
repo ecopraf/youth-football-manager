@@ -550,7 +550,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
 
   router.put('/api/users/preferences', authMiddleware, async (req, res) => {
     try {
-      const { dashboard_layout, onboarding_dismissed } = req.body;
+      const { dashboard_layout, onboarding_dismissed, competizione_filtro } = req.body;
       let userId = req.user.id;
       // Superadmin hardcoded: resolve real DB id
       if (userId === 'superadmin') {
@@ -562,6 +562,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       const merged = { ...(current?.preferenze_ui || {}) };
       if (dashboard_layout !== undefined) merged.dashboard_layout = dashboard_layout;
       if (onboarding_dismissed !== undefined) merged.onboarding_dismissed = onboarding_dismissed;
+      if (competizione_filtro !== undefined) merged.competizione_filtro = competizione_filtro;
       await supabase.from('users').update({ preferenze_ui: merged }).eq('id', userId);
       res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Errore server' }); }

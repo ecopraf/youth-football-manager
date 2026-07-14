@@ -194,6 +194,7 @@ function renderTable(filter, isAdmin) {
             ${nScadute > 0 ? `<button class="btn-fee-notify-all" data-cfg="${cfgId}" style="font-size:11px;padding:4px 10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;font-weight:600;">📩 Notifica scaduti (${nScadute})</button>` : ''}
           </div>
           <button class="btn-fee-del-selected" data-cfg="${cfgId}" style="display:none;font-size:11px;padding:4px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;cursor:pointer;color:#E74C3C;font-weight:600;">🗑️ Elimina selezionati</button>
+          <button class="btn-fee-sel-all" data-cfg="${cfgId}" style="display:none;font-size:11px;padding:4px 10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;font-weight:500;">☑ Tutti</button>
         </div>` : ''}
         ${fees.map(f => {
           const p = rosterMap[f.player_id];
@@ -278,8 +279,22 @@ function renderTable(filter, isAdmin) {
       const active = cbs[0]?.style.display !== 'none';
       cbs.forEach(cb => { cb.style.display = active ? 'none' : 'inline-block'; cb.checked = false; });
       const delBtn = body.querySelector('.btn-fee-del-selected');
+      const selAllBtn = body.querySelector('.btn-fee-sel-all');
       delBtn.style.display = active ? 'none' : 'inline-block';
+      if (selAllBtn) selAllBtn.style.display = active ? 'none' : 'inline-block';
       btn.textContent = active ? '☑️ Seleziona' : '❌ Annulla';
+    });
+  });
+
+  // Seleziona tutti (toggle)
+  container.querySelectorAll('.btn-fee-sel-all').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cfg = btn.dataset.cfg;
+      const body = container.querySelector(`.fee-group-body[data-cfg="${cfg}"]`);
+      const cbs = body.querySelectorAll('.fee-sel-cb');
+      const allChecked = [...cbs].every(cb => cb.checked);
+      cbs.forEach(cb => { cb.checked = !allChecked; });
+      btn.textContent = allChecked ? '☑ Tutti' : '☐ Nessuno';
     });
   });
 

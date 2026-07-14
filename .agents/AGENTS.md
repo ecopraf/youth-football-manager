@@ -608,6 +608,12 @@ Tutte le variabili globali disponibili nel frontend dopo il login e la selezione
 | `window.YFM.guestPlayerName` | String | Nome giocatore (solo tipo atleta) |
 | `window.YFM.guestSquadreAccesso` | Array | category_id accessibili |
 
+### Preferenze utente (settate in `modules/team/dashboard.js`)
+
+| Variabile | Tipo | Descrizione |
+|-----------|------|-------------|
+| `window.YFM.competizioneFiltro` | String | Filtro competizione salvato (`'tutte'`, `'campionato'`, `'ufficiali'`, `'amichevoli'`). Usato da dashboard e stats come default. Salvato in `users.preferenze_ui.competizione_filtro` |
+
 ### ⚠️ Errori comuni da evitare
 
 | ❌ Sbagliato | ✅ Corretto | Note |

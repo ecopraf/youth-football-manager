@@ -9,6 +9,8 @@ export function invalidateStatsCache() { statsCache = null; }
 
 export default async function loadStats(filterTipo) {
   const c = document.getElementById('pageContent');
+  // Use saved preference as default if no explicit filter
+  if (!filterTipo) filterTipo = window.YFM.competizioneFiltro || 'tutte';
 
 
 
@@ -16,7 +18,7 @@ export default async function loadStats(filterTipo) {
 
   try {
     const squadraId = window.YFM.squadraId;
-    const tipo = filterTipo || 'ufficiali';
+    const tipo = filterTipo || 'tutte';
     const cacheKey = squadraId + '_' + tipo;
     if (statsCache && statsCache.id === cacheKey && Date.now() - statsCache.ts < CACHE_TTL) {
       var { stats, partiteGiocate } = statsCache.data;

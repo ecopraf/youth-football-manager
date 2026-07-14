@@ -295,8 +295,9 @@ function timeAgo(dateStr) {
 export async function updateNotifBadge(teamId) {
   try {
     const tid = teamId || window.YFM.squadraId;
+    const isUuid = tid && /^[0-9a-f]{8}-/.test(tid);
     const [absRes, commRes] = await Promise.all([
-      tid ? apiFetch('/absence/unread/' + tid).catch(() => ({ unread: 0, weekTotal: 0 })) : { unread: 0, weekTotal: 0 },
+      isUuid ? apiFetch('/absence/unread/' + tid).catch(() => ({ unread: 0, weekTotal: 0 })) : { unread: 0, weekTotal: 0 },
       apiFetch('/notifications/unread').catch(() => ({ unread: 0 }))
     ]);
     const totalUnread = (absRes.unread || 0) + (commRes.unread || 0);
