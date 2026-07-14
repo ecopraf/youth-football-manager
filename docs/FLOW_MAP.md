@@ -367,7 +367,7 @@ flowchart LR
     PRINT --> P7[🏥 Scadenze Mediche]
     PRINT --> P8[📝 Tesseramento]
 
-    P1 & P2 & P3 & P4 & P5 & P6 & P7 & P8 --> RENDER_PDF[Render HTML<br/>→ window.print()]
+    P1 & P2 & P3 & P4 & P5 & P6 & P7 & P8 --> RENDER_PDF["Render HTML<br/>→ window.print()"]
 ```
 
 ---
