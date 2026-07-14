@@ -250,14 +250,16 @@ export const PAGE_HELP = {
   },
   registration: {
     title: '📋 Tesseramento',
-    desc: 'Gestione del processo di tesseramento atleti: template modulo, documenti richiesti, stato consegna e generazione PDF.',
+    desc: 'Gestione del processo di tesseramento atleti: template modulo, documenti richiesti, stato consegna e generazione PDF. La famiglia può compilare i dati mancanti dal proprio link fino alla chiusura.',
     items: [
       'Tab Template: configura intestazione, documenti richiesti e clausole del modulo società',
+      '🖨️ Stampa modulo vuoto: genera il PDF del template senza dati atleta (da compilare a mano)',
       'Tab Situazione: vista aggregata per squadra con stato documenti per ogni atleta',
       'Click su un giocatore per espandere checklist documenti e dati genitore',
       '▶ Genera per tutta la rosa: crea tesseramenti batch in un click',
       '📄 Scarica PDF: modulo pre-compilato con dati atleta e logo società',
       '📩 Sollecito: invia notifica alla famiglia per documenti mancanti',
+      '✅ Tesserato: chiude il tesseramento e invia notifica alla famiglia (modulo diventa read-only)',
       'Auto-check: certificato medico smarcato automaticamente se data_visita_medica valida',
       'Filtri: Tutti, Incompleti, Completi, Tesserati + ricerca per nome'
     ]
@@ -271,19 +273,19 @@ export const PAGE_HELP = {
       '📅 Prossimi allenamenti e partite con orario e luogo',
       '📊 Le tue statistiche personali (gol, assist, presenze) con filtro per competizione',
       '🏆 Classifica del girone aggiornata',
-      '📋 Tesseramento: stato documenti e scarica modulo PDF'
+      '📋 Tesseramento: compila dati genitore (documento, parentela) + dati atleta (residenza, CF). Dopo la chiusura diventa solo consultabile'
     ]
   },
   guestGenitore: {
     title: '👨‍👩‍👦 Home Famiglia',
     desc: 'Area dedicata alla famiglia: comunicazioni, convocazioni, calendario e situazione quote.',
     items: [
-      '📣 Comunicazioni dalla società con badge priorità (🟡 importante, 🔴 urgente)',
+      '📣 Comunicazioni dalla società con badge priorità',
       '📅 Calendario partite e risultati della squadra',
       '⚽ Convocazione: stato del figlio (convocato/non convocato) per la prossima partita',
       '🏆 Classifica del girone aggiornata',
       '💰 Situazione quote: rate pagate e scadute',
-      '📋 Tesseramento: documenti consegnati e modulo PDF scaricabile'
+      '📋 Tesseramento: compila dati mancanti, vedi documenti consegnati, scarica modulo PDF'
     ]
   }
 };

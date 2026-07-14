@@ -201,20 +201,38 @@ function render(c, { playerName, playerId, teamId, notifications, trainings, car
     const consegnati = docs.filter(d => d.consegnato).length;
     const stato = registration.stato || 'incompleto';
     const gen = registration.dati_genitore || {};
+    const player = registration.player || {};
+    const isLocked = stato === 'tesserato';
     const hasDatiGenitore = gen.cognome && gen.nome;
-    html += `<div class="ga-section">
-      <div class="ga-section-title">📋 Tesseramento</div>
-      <div style="font-size:13px;margin-bottom:8px;">Documenti consegnati: <strong>${consegnati}/${docs.length}</strong></div>
-      <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:10px;">
-        ${docs.map(d => `<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;background:${d.consegnato ? '#d1fae5' : '#f8f9fa'};font-size:12px;">
-          <span>${d.consegnato ? '✅' : '⬜'}</span><span>${d.nome}</span>
-        </div>`).join('')}
-      </div>
-      ${!hasDatiGenitore ? `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:10px;font-size:12px;margin-bottom:10px;">
-        ⚠️ Dati genitore mancanti — <a href="#" id="gaTessCompila" style="color:#667eea;font-weight:600;">Compila ora</a>
-      </div>` : `<div style="font-size:12px;color:#666;">Genitore: ${gen.cognome} ${gen.nome} (${gen.parentela || ''})</div>`}
-      <button id="gaTessPdf" class="btn btn-secondary" style="font-size:12px;margin-top:8px;">📄 Scarica Modulo PDF</button>
-    </div>`;
+    const hasDatiAtleta = player.residenza && player.codice_fiscale;
+    const datiCompleti = hasDatiGenitore && hasDatiAtleta;
+
+    if (isLocked) {
+      html += `<div class="ga-section">
+        <div class="ga-section-title">📋 Tesseramento</div>
+        <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:14px;text-align:center;margin-bottom:10px;">
+          <div style="font-size:24px;margin-bottom:4px;">✅</div>
+          <div style="font-weight:700;font-size:14px;color:#065f46;">Tesseramento completato</div>
+          <div style="font-size:12px;color:#047857;margin-top:4px;">Tutti i documenti sono stati consegnati e verificati dalla segreteria.</div>
+        </div>
+        <div style="font-size:12px;color:#666;">Genitore: ${gen.cognome || ''} ${gen.nome || ''} (${gen.parentela || ''})</div>
+        <button id="gaTessPdf" class="btn btn-secondary" style="font-size:12px;margin-top:8px;">📄 Scarica Modulo PDF</button>
+      </div>`;
+    } else {
+      html += `<div class="ga-section">
+        <div class="ga-section-title">📋 Tesseramento</div>
+        <div style="font-size:13px;margin-bottom:8px;">Documenti consegnati: <strong>${consegnati}/${docs.length}</strong></div>
+        <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:10px;">
+          ${docs.map(d => `<div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;background:${d.consegnato ? '#d1fae5' : '#f8f9fa'};font-size:12px;">
+            <span>${d.consegnato ? '✅' : '⬜'}</span><span>${d.nome}</span>
+          </div>`).join('')}
+        </div>
+        ${!datiCompleti ? `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:10px;font-size:12px;margin-bottom:10px;">
+          ⚠️ Dati incompleti — <a href="#" id="gaTessCompila" style="color:#667eea;font-weight:600;">Compila ora</a>
+        </div>` : `<div style="font-size:12px;color:#666;margin-bottom:8px;">Genitore: ${gen.cognome} ${gen.nome} (${gen.parentela || ''}) — <a href="#" id="gaTessCompila" style="color:#667eea;">Modifica</a></div>`}
+        <button id="gaTessPdf" class="btn btn-secondary" style="font-size:12px;margin-top:8px;">📄 Scarica Modulo PDF</button>
+      </div>`;
+    }
   }
 
   html += `</div>`; // ga-container
@@ -615,21 +633,50 @@ function showBellPanel(notifs) {
 
 function showTessGenitoreModal(registration, container, playerId, teamId) {
   const gen = registration.dati_genitore || {};
+  const player = registration.player || {};
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:360px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
     <div style="text-align:center;font-size:28px;margin-bottom:8px;">📋</div>
-    <div style="text-align:center;font-weight:700;font-size:15px;margin-bottom:16px;">Dati Genitore</div>
-    <div style="display:grid;gap:10px;">
-      <input id="tgCognome" placeholder="Cognome *" value="${gen.cognome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
-      <input id="tgNome" placeholder="Nome *" value="${gen.nome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
-      <select id="tgParentela" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
-        <option value="">Parentela *</option>
-        <option value="padre" ${gen.parentela === 'padre' ? 'selected' : ''}>Padre</option>
-        <option value="madre" ${gen.parentela === 'madre' ? 'selected' : ''}>Madre</option>
-        <option value="tutore" ${gen.parentela === 'tutore' ? 'selected' : ''}>Tutore legale</option>
-      </select>
-      <input id="tgTelefono" placeholder="Telefono" value="${gen.telefono || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+    <div style="text-align:center;font-weight:700;font-size:15px;margin-bottom:16px;">Compila Dati Tesseramento</div>
+    <div style="font-size:12px;font-weight:600;color:#667eea;margin-bottom:8px;">👤 DATI GENITORE/TUTORE</div>
+    <div style="display:grid;gap:10px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <input id="tgCognome" placeholder="Cognome *" value="${gen.cognome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+        <input id="tgNome" placeholder="Nome *" value="${gen.nome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <select id="tgParentela" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+          <option value="">Parentela *</option>
+          <option value="padre" ${gen.parentela === 'padre' ? 'selected' : ''}>Padre</option>
+          <option value="madre" ${gen.parentela === 'madre' ? 'selected' : ''}>Madre</option>
+          <option value="tutore" ${gen.parentela === 'tutore' ? 'selected' : ''}>Tutore legale</option>
+        </select>
+        <input id="tgTelefono" placeholder="Telefono" value="${gen.telefono || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <select id="tgDocTipo" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+          <option value="">Tipo documento</option>
+          <option value="CI" ${gen.documento_tipo === 'CI' ? 'selected' : ''}>Carta d'identità</option>
+          <option value="Patente" ${gen.documento_tipo === 'Patente' ? 'selected' : ''}>Patente</option>
+          <option value="Passaporto" ${gen.documento_tipo === 'Passaporto' ? 'selected' : ''}>Passaporto</option>
+        </select>
+        <input id="tgDocNumero" placeholder="N° documento" value="${gen.documento_numero || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+      </div>
+      <input id="tgDocRilasciato" placeholder="Rilasciato il (gg/mm/aaaa)" value="${gen.documento_rilasciato || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+    </div>
+    <div style="font-size:12px;font-weight:600;color:#667eea;margin-bottom:8px;">⚽ DATI ATLETA</div>
+    <div style="display:grid;gap:10px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <input id="tgPlNome" placeholder="Nome atleta" value="${player.nome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+        <input id="tgPlCognome" placeholder="Cognome atleta" value="${player.cognome || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <input id="tgDataNascita" type="date" value="${player.data_nascita ? player.data_nascita.slice(0,10) : ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+        <input id="tgLuogoNascita" placeholder="Luogo di nascita" value="${player.luogo_nascita || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+      </div>
+      <input id="tgCF" placeholder="Codice Fiscale" value="${player.codice_fiscale || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:monospace;text-transform:uppercase;">
+      <input id="tgResidenza" placeholder="Residenza (indirizzo completo)" value="${player.residenza || ''}" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
     </div>
     <div id="tgError" style="color:#E74C3C;font-size:12px;margin-top:8px;display:none;"></div>
     <div style="display:flex;gap:8px;margin-top:16px;">
@@ -645,6 +692,15 @@ function showTessGenitoreModal(registration, container, playerId, teamId) {
     const nome = overlay.querySelector('#tgNome').value.trim();
     const parentela = overlay.querySelector('#tgParentela').value;
     const telefono = overlay.querySelector('#tgTelefono').value.trim();
+    const documento_tipo = overlay.querySelector('#tgDocTipo').value;
+    const documento_numero = overlay.querySelector('#tgDocNumero').value.trim();
+    const documento_rilasciato = overlay.querySelector('#tgDocRilasciato').value.trim();
+    const residenza = overlay.querySelector('#tgResidenza').value.trim();
+    const luogo_nascita = overlay.querySelector('#tgLuogoNascita').value.trim();
+    const codice_fiscale = overlay.querySelector('#tgCF').value.trim().toUpperCase();
+    const plNome = overlay.querySelector('#tgPlNome').value.trim();
+    const plCognome = overlay.querySelector('#tgPlCognome').value.trim();
+    const data_nascita = overlay.querySelector('#tgDataNascita').value || null;
     const errEl = overlay.querySelector('#tgError');
     if (!cognome || !nome || !parentela) {
       errEl.textContent = 'Cognome, nome e parentela sono obbligatori';
@@ -652,13 +708,16 @@ function showTessGenitoreModal(registration, container, playerId, teamId) {
       return;
     }
     try {
+      // Salva dati genitore sulla registration
       await apiFetch(`/registrations/${registration.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ dati_genitore: { ...gen, cognome, nome, parentela, telefono } })
+        body: JSON.stringify({ dati_genitore: { ...gen, cognome, nome, parentela, telefono, documento_tipo, documento_numero, documento_rilasciato } })
       });
+      // Salva dati atleta
+      const playerUpdate = { residenza: residenza || null, luogo_nascita: luogo_nascita || null, codice_fiscale: codice_fiscale || null, nome: plNome || null, cognome: plCognome || null, data_nascita };
+      await apiFetch(`/registrations/player/${playerId}/anagrafica`, { method: 'PUT', body: JSON.stringify(playerUpdate) }).catch(() => {});
       overlay.remove();
       if (window.showToast) window.showToast('Dati salvati', 'success');
-      // Reload page
       const { default: load } = await import('./guestAtleta.js');
       load();
     } catch (e) {

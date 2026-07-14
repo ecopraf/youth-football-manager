@@ -221,9 +221,16 @@ async function openDetail(regId, canWrite) {
       <h3 style="margin:0;">📋 ${p.cognome} ${p.nome}</h3>
       <button id="closeDetail" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
     </div>
-    <div style="font-size:12px;color:#666;margin-bottom:12px;">
-      ${p.data_nascita ? `Nato il ${new Date(p.data_nascita).toLocaleDateString('it-IT')}` : ''}
-      ${p.codice_fiscale ? ` · CF: ${p.codice_fiscale}` : ''}
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:600;color:#555;">Dati Atleta</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+        <input id="plNome" placeholder="Nome" value="${p.nome || ''}" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" ${canWrite ? '' : 'disabled'}>
+        <input id="plCognome" placeholder="Cognome" value="${p.cognome || ''}" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" ${canWrite ? '' : 'disabled'}>
+        <input id="plDataNascita" type="date" value="${p.data_nascita ? p.data_nascita.slice(0,10) : ''}" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" ${canWrite ? '' : 'disabled'}>
+        <input id="plLuogoNascita" placeholder="Luogo di nascita" value="${p.luogo_nascita || ''}" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" ${canWrite ? '' : 'disabled'}>
+        <input id="plCF" placeholder="Codice Fiscale" value="${p.codice_fiscale || ''}" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:monospace;text-transform:uppercase;" ${canWrite ? '' : 'disabled'}>
+        <input id="plResidenza" placeholder="Residenza" value="${p.residenza || ''}" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;grid-column:span 2;" ${canWrite ? '' : 'disabled'}>
+      </div>
     </div>
     <div style="margin-bottom:16px;">
       <label style="font-size:12px;font-weight:600;color:#555;">Documenti</label>
@@ -253,6 +260,7 @@ async function openDetail(regId, canWrite) {
     ${canWrite ? `<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
       <button id="btnDeleteReg" class="btn btn-secondary" style="font-size:13px;color:#E74C3C;">🗑️</button>
       ${docs.some(d => !d.consegnato) ? `<button id="btnSollecitoReg" class="btn btn-secondary" style="font-size:13px;">📩 Sollecita</button>` : ''}
+      ${reg.stato !== 'tesserato' ? `<button id="btnTesserato" class="btn btn-secondary" style="font-size:13px;background:#667eea20;color:#667eea;border-color:#667eea;">✅ Tesserato</button>` : ''}
       <button id="btnSaveReg" class="btn btn-primary" style="font-size:13px;">💾 Salva</button>
       <button id="btnPdfReg" class="btn btn-secondary" style="font-size:13px;">📄 PDF</button>
     </div>` : ''}
@@ -291,12 +299,31 @@ async function openDetail(regId, canWrite) {
       const tuttiConsegnati = obbligatori.every(nome => updatedDocs.find(d => d.nome === nome && d.consegnato));
       const stato = tuttiConsegnati ? 'completo' : (updatedDocs.some(d => d.consegnato) ? 'incompleto' : 'non_iniziato');
 
+      // Dati atleta
+      const playerUpdate = {
+        nome: overlay.querySelector('#plNome').value.trim(),
+        cognome: overlay.querySelector('#plCognome').value.trim(),
+        data_nascita: overlay.querySelector('#plDataNascita').value || null,
+        luogo_nascita: overlay.querySelector('#plLuogoNascita').value.trim() || null,
+        codice_fiscale: overlay.querySelector('#plCF').value.trim().toUpperCase() || null,
+        residenza: overlay.querySelector('#plResidenza').value.trim() || null
+      };
+
       try {
         await apiFetch(`/registrations/${regId}`, {
           method: 'PUT', body: JSON.stringify({ documenti_consegnati: updatedDocs, dati_genitore, stato })
         });
+        // Salva dati atleta
+        if (reg.player_id) {
+          await apiFetch(`/calciatori/${reg.player_id}`, { method: 'PUT', body: JSON.stringify(playerUpdate) }).catch(() => {});
+        }
         const idx = registrations.findIndex(r => r.id === regId);
-        if (idx >= 0) { registrations[idx].documenti_consegnati = updatedDocs; registrations[idx].dati_genitore = dati_genitore; registrations[idx].stato = stato; }
+        if (idx >= 0) {
+          registrations[idx].documenti_consegnati = updatedDocs;
+          registrations[idx].dati_genitore = dati_genitore;
+          registrations[idx].stato = stato;
+          if (registrations[idx].player) Object.assign(registrations[idx].player, playerUpdate);
+        }
         showToast('Salvato', 'success');
         overlay.remove();
         const listEl = document.querySelector('#regList');
@@ -313,6 +340,41 @@ async function openDetail(regId, canWrite) {
       try {
         const res = await apiFetch(`/registrations/${regId}/sollecito`, { method: 'POST' });
         showToast(`Sollecito inviato a ${res.atleta} (${res.mancanti} doc mancanti)`, 'success');
+      } catch (e) { showToast(e.message, 'error'); }
+    });
+
+    overlay.querySelector('#btnTesserato')?.addEventListener('click', async () => {
+      // Validazione: tutti i doc obbligatori consegnati + dati genitore
+      const checkboxes = overlay.querySelectorAll('#docsList input[type=checkbox]');
+      const currentDocs = docs.map((d, i) => ({ ...d, consegnato: checkboxes[i].checked }));
+      const obbligatori = template?.documenti_richiesti?.filter(d => d.obbligatorio).map(d => d.nome) || [];
+      const docMancanti = obbligatori.filter(nome => !currentDocs.find(d => d.nome === nome && d.consegnato));
+      const genNome = overlay.querySelector('#genNome').value.trim();
+      const genCognome = overlay.querySelector('#genCognome').value.trim();
+      if (docMancanti.length > 0) {
+        showToast(`Documenti obbligatori mancanti: ${docMancanti.join(', ')}`, 'error');
+        return;
+      }
+      if (!genNome || !genCognome) {
+        showToast('Dati genitore incompleti (nome e cognome obbligatori)', 'error');
+        return;
+      }
+      try {
+        await apiFetch(`/registrations/${regId}`, { method: 'PUT', body: JSON.stringify({ stato: 'tesserato' }) });
+        // Invia notifica alla famiglia
+        const teamId = window.YFM.squadraId;
+        const playerName = reg.player ? `${reg.player.cognome} ${reg.player.nome}` : '';
+        await apiFetch('/notifications', { method: 'POST', body: JSON.stringify({
+          team_id: teamId, tipo: 'avviso', titolo: '✅ Tesseramento completato',
+          messaggio: `Il tesseramento di ${playerName} è stato completato e confermato dalla segreteria.`,
+          destinatario_tipo: ['atleta', 'genitore'], destinatario_player_id: reg.player_id
+        }) }).catch(() => {});
+        const idx = registrations.findIndex(r => r.id === regId);
+        if (idx >= 0) registrations[idx].stato = 'tesserato';
+        showToast('Tesseramento confermato + notifica inviata', 'success');
+        overlay.remove();
+        const listEl = document.querySelector('#regList');
+        if (listEl) renderRegList(listEl, canWrite);
       } catch (e) { showToast(e.message, 'error'); }
     });
   }

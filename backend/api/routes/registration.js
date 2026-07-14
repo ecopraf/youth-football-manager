@@ -48,7 +48,7 @@ function autoCheckCertificato(reg) {
 router.get('/squadre/:teamId/registrations', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('registration')
-      .select('*, player:player_id(id, nome, cognome, data_nascita, codice_fiscale, luogo_nascita, data_visita_medica)')
+      .select('*, player:player_id(id, nome, cognome, data_nascita, codice_fiscale, luogo_nascita, residenza, data_visita_medica)')
       .eq('team_id', req.params.teamId);
     if (error) return res.status(400).json({ error: error.message });
     (data || []).forEach(r => autoCheckCertificato(r));
@@ -157,6 +157,24 @@ router.get('/registrations/player/:playerId', authMiddleware, async (req, res) =
     if (error) return res.status(400).json({ error: error.message });
     if (data) autoCheckCertificato(data);
     res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT dati atleta da guest (solo campi anagrafici limitati)
+router.put('/registrations/player/:playerId/anagrafica', authMiddleware, async (req, res) => {
+  try {
+    const { residenza, luogo_nascita, codice_fiscale, nome, cognome, data_nascita } = req.body;
+    const update = {};
+    if (residenza !== undefined) update.residenza = residenza;
+    if (luogo_nascita !== undefined) update.luogo_nascita = luogo_nascita;
+    if (codice_fiscale !== undefined) update.codice_fiscale = codice_fiscale ? codice_fiscale.toUpperCase() : null;
+    if (nome !== undefined) update.nome = nome;
+    if (cognome !== undefined) update.cognome = cognome;
+    if (data_nascita !== undefined) update.data_nascita = data_nascita;
+    if (Object.keys(update).length === 0) return res.json({ success: true });
+    const { error } = await supabase.from('player').update(update).eq('id', req.params.playerId);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

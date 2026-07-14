@@ -178,7 +178,7 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
   // POST /api/notifications — crea comunicazione
   router.post('/api/notifications', authMiddleware, async (req, res) => {
     try {
-      const { team_id, titolo, messaggio, priorita, destinatario_tipo } = req.body;
+      const { team_id, titolo, messaggio, priorita, destinatario_tipo, destinatario_player_id } = req.body;
       if (!team_id || !titolo) return res.status(400).json({ error: 'team_id e titolo richiesti' });
 
       // Resolve workspace_id from team
@@ -186,7 +186,7 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       if (!team) return res.status(404).json({ error: 'Team non trovato' });
       const workspace_id = team.season?.workspace_id;
 
-      const { data, error } = await supabase.from('notification').insert({
+      const insert = {
         workspace_id,
         team_id,
         tipo: 'avviso',
@@ -197,7 +197,10 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
         destinatario_profilo: ['allenatore', 'admin'],
         created_by: (req.user.id && req.user.id !== 'superadmin') ? req.user.id : null,
         letto: false
-      }).select().single();
+      };
+      if (destinatario_player_id) insert.destinatario_player_id = destinatario_player_id;
+
+      const { data, error } = await supabase.from('notification').insert(insert).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.status(201).json({ success: true, notification: data });
     } catch (err) { res.status(500).json({ error: err.message }); }
