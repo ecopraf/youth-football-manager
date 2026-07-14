@@ -186,6 +186,8 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       if (!team) return res.status(404).json({ error: 'Team non trovato' });
       const workspace_id = team.season?.workspace_id;
 
+      // Se destinato a atleta/genitore → notifica per famiglie, non per staff
+      const isForFamily = Array.isArray(destinatario_tipo) && destinatario_tipo.some(t => ['atleta', 'genitore'].includes(t));
       const insert = {
         workspace_id,
         team_id,
@@ -194,7 +196,7 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
         messaggio: messaggio || null,
         priorita: priorita || 'info',
         destinatario_tipo: destinatario_tipo || [],
-        destinatario_profilo: ['allenatore', 'admin'],
+        destinatario_profilo: isForFamily ? ['segreteria'] : ['allenatore', 'admin'],
         created_by: (req.user.id && req.user.id !== 'superadmin') ? req.user.id : null,
         letto: false
       };

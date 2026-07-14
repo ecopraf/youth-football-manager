@@ -177,7 +177,7 @@ function renderPlayerDetail(container, data) {
   const tipoLabels = { Campionato: '🏆 Campionato', Coppa: '🏅 Coppa', Amichevole: '⚽ Amichevoli', Altro: '📋 Altro' };
   const tipoColors = { Campionato: '#667eea', Coppa: '#F39C12', Amichevole: '#27AE60', Altro: '#888' };
 
-  function buildCareerTable(rows) {
+  function buildCareerTable(rows, tipo) {
     const totals = rows.reduce((t, s) => {
       t.partite += s.partite || 0; t.minuti += s.minuti || 0;
       t.gol += s.gol || 0; t.assist += s.assist || 0;
@@ -222,7 +222,7 @@ function renderPlayerDetail(container, data) {
     const statLine = (r) => `<div class="dg-card-stats" style="margin-top:2px;"><span class="dg-card-stat">PG <strong>${r.partite}</strong></span><span class="dg-card-stat">🕐 <strong>${r.minuti}</strong></span><span class="dg-card-stat" style="color:#27AE60;">⚽ <strong>${r.gol}</strong></span><span class="dg-card-stat" style="color:#2980B9;">🅰️ <strong>${r.assist}</strong></span><span class="dg-card-stat" style="color:#F39C12;">🟨 <strong>${r.ammonizioni}</strong></span><span class="dg-card-stat" style="color:#E74C3C;">🟥 <strong>${r.espulsioni}</strong></span></div>`;
     const mobileHtml = grouped.map(g => {
       const header = `<div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;padding:8px 14px 4px;">${logoImg(g)} ${g.squadra}</div>`;
-      const seasonRows = g.rows.map((r, ri) => `<div class="dg-card career-season-row" data-team-id="${r.team_id}" data-player-id="${player.id}" style="padding:4px 14px 8px;cursor:pointer;"><div style="font-size:11px;color:#666;margin-bottom:2px;">📅 ${r.stagione} <span style="font-size:10px;color:#667eea;">▶</span></div>${statLine(r)}<div class="career-expand-mobile" style="display:none;margin-top:8px;"></div></div>`).join('');
+      const seasonRows = g.rows.map((r, ri) => `<div class="dg-card career-season-row" data-team-id="${r.team_id}" data-player-id="${player.id}" data-tipo="${tipo}" style="padding:4px 14px 8px;cursor:pointer;"><div style="font-size:11px;color:#666;margin-bottom:2px;">📅 ${r.stagione} <span style="font-size:10px;color:#667eea;">▶</span></div>${statLine(r)}<div class="career-expand-mobile" style="display:none;margin-top:8px;"></div></div>`).join('');
       return header + seasonRows;
     }).join('');
     const footerMobile = `<div class="dg-card dg-card-footer"><div style="font-weight:700;font-size:12px;color:#667eea;margin-bottom:4px;">TOTALE</div>${statLine(totals)}</div>`;
@@ -242,6 +242,7 @@ function renderPlayerDetail(container, data) {
         tr.style.cursor = 'pointer';
         tr.dataset.teamId = mappedRows[i].team_id;
         tr.dataset.playerId = player.id;
+        tr.dataset.tipo = tipo;
         tr.dataset.idx = i;
         // Add expand arrow to first cell
         const firstTd = tr.querySelector('td');
@@ -256,6 +257,7 @@ function renderPlayerDetail(container, data) {
         expandDiv.dataset.idx = i;
         expandDiv.dataset.teamId = mappedRows[i].team_id;
         expandDiv.dataset.playerId = player.id;
+        expandDiv.dataset.tipo = tipo;
         expandDiv.style.cssText = 'display:none;';
         expandContainer.appendChild(expandDiv);
       });
@@ -278,7 +280,7 @@ function renderPlayerDetail(container, data) {
     const sections = tipoOrder.filter(t => byTipo[t]?.length).map(t => `
       <div style="margin-bottom:16px;">
         <div style="font-size:13px;font-weight:700;color:${tipoColors[t]};margin-bottom:8px;">${tipoLabels[t]}</div>
-        ${buildCareerTable(byTipo[t])}
+        ${buildCareerTable(byTipo[t], t)}
       </div>`).join('');
     const totPartite = career.reduce((s, c) => s + (c.partite || 0), 0);
     const totGol = career.reduce((s, c) => s + (c.gol || 0), 0);
@@ -517,13 +519,14 @@ function renderPlayerDetail(container, data) {
     containerEl.innerHTML = dgDiv.innerHTML;
   }
 
-  async function toggleCareerExpand(teamId, playerId, detailEl) {
+  async function toggleCareerExpand(teamId, playerId, detailEl, tipo) {
     if (detailEl.style.display !== 'none') { detailEl.style.display = 'none'; return false; }
     detailEl.style.display = 'block';
     if (detailEl.dataset.loaded) return true;
     detailEl.innerHTML = '<div style="padding:10px;text-align:center;color:#888;font-size:12px;">Caricamento partite...</div>';
     try {
-      const matches = await apiFetch('/calciatori/' + playerId + '/career-matches?teamId=' + teamId);
+      const url = '/calciatori/' + playerId + '/career-matches?teamId=' + teamId + (tipo ? '&tipo=' + encodeURIComponent(tipo) : '');
+      const matches = await apiFetch(url);
       detailEl.dataset.loaded = '1';
       buildMatchesExpand(matches, detailEl);
     } catch (err) {
@@ -547,7 +550,7 @@ function renderPlayerDetail(container, data) {
       if (isClosing) return;
       // Open this one
       const arrow = tr.querySelector('.career-arrow');
-      toggleCareerExpand(tr.dataset.teamId, tr.dataset.playerId, expandDiv).then(() => {
+      toggleCareerExpand(tr.dataset.teamId, tr.dataset.playerId, expandDiv, tr.dataset.tipo).then(() => {
         tr.style.background = '#f0f4ff';
         if (arrow) arrow.textContent = '▼';
       });
@@ -566,7 +569,7 @@ function renderPlayerDetail(container, data) {
       if (isClosing) return;
       // Open this one
       const arrow = card.querySelector('span[style*="color:#667eea"]');
-      toggleCareerExpand(card.dataset.teamId, card.dataset.playerId, detailEl).then(() => {
+      toggleCareerExpand(card.dataset.teamId, card.dataset.playerId, detailEl, card.dataset.tipo).then(() => {
         if (arrow) arrow.textContent = '▼';
       });
     });

@@ -1,6 +1,29 @@
 import { apiFetch } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
 
+// Calcola anno nascita atteso basato su categoria e stagione
+function getExpectedBirthYear() {
+  const cat = window.YFM.getSquadraName?.() || '';
+  const match = cat.match(/(?:under|u)\s*(\d+)/i);
+  if (!match) return null;
+  const eta = parseInt(match[1]);
+  const seasons = window.YFM.accessibleSeasons || [];
+  const current = seasons.find(s => s.id === window.YFM.currentSeasonId);
+  const sName = current?.nome || '';
+  const yearMatch = sName.match(/(\d{4})\/(\d{2,4})/);
+  const annoFinale = yearMatch ? (yearMatch[2].length === 2 ? 2000 + parseInt(yearMatch[2]) : parseInt(yearMatch[2])) : new Date().getFullYear();
+  return annoFinale - eta;
+}
+
+function getBirthPlaceholder() {
+  const yr = getExpectedBirthYear();
+  if (!yr) return null;
+  const today = new Date();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yr}-${mm}-${dd}`;
+}
+
 function showToast(msg, type = 'info') {
   const colors = { success: '#27AE60', error: '#E74C3C', warning: '#F39C12', info: '#667eea' };
   const t = document.createElement('div');
@@ -270,6 +293,16 @@ async function openDetail(regId, canWrite) {
   overlay.querySelector('#closeDetail').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 
+  // Date picker: posiziona sull'anno atteso se campo vuoto
+  const birthInput = overlay.querySelector('#plDataNascita');
+  if (birthInput && !birthInput.value) {
+    const placeholder = getBirthPlaceholder();
+    if (placeholder) {
+      birthInput.addEventListener('focus', function() { if (!this.value) this.value = placeholder; }, { once: true });
+      birthInput.addEventListener('change', function() { if (this.value === placeholder) this.value = ''; });
+    }
+  }
+
   if (canWrite) {
     overlay.querySelector('#btnDeleteReg').addEventListener('click', async () => {
       if (!confirm(`Eliminare il tesseramento di ${p.cognome} ${p.nome}?`)) return;
@@ -297,7 +330,9 @@ async function openDetail(regId, canWrite) {
       // Auto-calcola stato
       const obbligatori = template?.documenti_richiesti?.filter(d => d.obbligatorio).map(d => d.nome) || [];
       const tuttiConsegnati = obbligatori.every(nome => updatedDocs.find(d => d.nome === nome && d.consegnato));
-      const stato = tuttiConsegnati ? 'completo' : (updatedDocs.some(d => d.consegnato) ? 'incompleto' : 'non_iniziato');
+      const genComplete = !!(genitore.nome && genitore.cognome && genitore.documento_tipo && genitore.documento_numero);
+      const resComplete = !!overlay.querySelector('#plResidenza').value.trim();
+      const stato = (tuttiConsegnati && genComplete && resComplete) ? 'completo' : (updatedDocs.some(d => d.consegnato) || genitore.nome || resComplete ? 'incompleto' : 'non_iniziato');
 
       // Dati atleta
       const playerUpdate = {
@@ -344,19 +379,30 @@ async function openDetail(regId, canWrite) {
     });
 
     overlay.querySelector('#btnTesserato')?.addEventListener('click', async () => {
-      // Validazione: tutti i doc obbligatori consegnati + dati genitore
+      // Validazione: tutti i doc obbligatori consegnati + dati genitore + residenza + documento
       const checkboxes = overlay.querySelectorAll('#docsList input[type=checkbox]');
       const currentDocs = docs.map((d, i) => ({ ...d, consegnato: checkboxes[i].checked }));
       const obbligatori = template?.documenti_richiesti?.filter(d => d.obbligatorio).map(d => d.nome) || [];
       const docMancanti = obbligatori.filter(nome => !currentDocs.find(d => d.nome === nome && d.consegnato));
       const genNome = overlay.querySelector('#genNome').value.trim();
       const genCognome = overlay.querySelector('#genCognome').value.trim();
+      const genDocTipo = overlay.querySelector('#genDocTipo').value.trim();
+      const genDocNumero = overlay.querySelector('#genDocNumero').value.trim();
+      const residenza = overlay.querySelector('#plResidenza').value.trim();
       if (docMancanti.length > 0) {
         showToast(`Documenti obbligatori mancanti: ${docMancanti.join(', ')}`, 'error');
         return;
       }
       if (!genNome || !genCognome) {
         showToast('Dati genitore incompleti (nome e cognome obbligatori)', 'error');
+        return;
+      }
+      if (!genDocTipo || !genDocNumero) {
+        showToast('Documento genitore mancante (tipo e numero obbligatori)', 'error');
+        return;
+      }
+      if (!residenza) {
+        showToast('Residenza atleta mancante', 'error');
         return;
       }
       try {
@@ -394,6 +440,7 @@ function openNewPlayerModal(teamId, seasonId, parentContainer) {
       <input id="npCognome" placeholder="Cognome *" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
       <input id="npNome" placeholder="Nome *" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
       <input id="npDataNascita" type="date" placeholder="Data nascita *" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+      <input id="npTelefono" type="tel" placeholder="Telefono genitore *" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
       <input id="npLuogoNascita" placeholder="Luogo di nascita" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
       <input id="npCF" placeholder="Codice Fiscale" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;text-transform:uppercase;">
     </div>
@@ -409,16 +456,25 @@ function openNewPlayerModal(teamId, seasonId, parentContainer) {
   overlay.querySelector('#npCancel').addEventListener('click', () => overlay.remove());
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 
+  // Date picker: posiziona sull'anno atteso
+  const npBirth = overlay.querySelector('#npDataNascita');
+  const npPlaceholder = getBirthPlaceholder();
+  if (npBirth && npPlaceholder) {
+    npBirth.addEventListener('focus', function() { if (!this.value) this.value = npPlaceholder; }, { once: true });
+    npBirth.addEventListener('change', function() { if (this.value === npPlaceholder) this.value = ''; });
+  }
+
   overlay.querySelector('#npConfirm').addEventListener('click', async () => {
     const cognome = overlay.querySelector('#npCognome').value.trim();
     const nome = overlay.querySelector('#npNome').value.trim();
     const data_nascita = overlay.querySelector('#npDataNascita').value;
+    const telefono = overlay.querySelector('#npTelefono').value.trim();
     const luogo_nascita = overlay.querySelector('#npLuogoNascita').value.trim();
     const codice_fiscale = overlay.querySelector('#npCF').value.trim().toUpperCase() || null;
     const errEl = overlay.querySelector('#npError');
 
-    if (!cognome || !nome || !data_nascita) {
-      errEl.textContent = 'Cognome, nome e data di nascita sono obbligatori';
+    if (!cognome || !nome || !data_nascita || !telefono) {
+      errEl.textContent = 'Cognome, nome, data di nascita e telefono genitore sono obbligatori';
       errEl.style.display = 'block';
       return;
     }
@@ -441,7 +497,7 @@ function openNewPlayerModal(teamId, seasonId, parentContainer) {
       // Crea player + team_player in un colpo
       const player = await apiFetch(`/squadre/${teamId}/calciatori`, {
         method: 'POST',
-        body: JSON.stringify({ cognome, nome, data_nascita, luogo_nascita, codice_fiscale })
+        body: JSON.stringify({ cognome, nome, data_nascita, luogo_nascita, codice_fiscale, telefono })
       });
       // Crea tesseramento
       await apiFetch('/registrations', {

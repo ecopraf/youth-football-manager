@@ -671,6 +671,12 @@ function getLiveButton() {
 
 function getQuickActions(mid) {
   if (isReadOnly) return '';
+  // Block events if match not started and not past
+  const meta = match?.live_meta;
+  if (!meta?.stato) {
+    const isPast = match?.data_ora && new Date(match.data_ora).getTime() < Date.now() - 60 * 60 * 1000;
+    if (!isPast) return `<div class="mc-qa-card" style="text-align:center;padding:16px;color:#888;font-size:13px;">⏳ Avvia la partita per registrare eventi</div>`;
+  }
   const actions = [
     { icon: '⚽', label: 'Gol', tipo: 'GOAL' },
     { icon: '🟨', label: 'Ammonizione', tipo: 'YELLOW' },

@@ -305,6 +305,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     try {
       const playerId = req.params.id;
       const teamId = req.query.teamId;
+      const tipo = req.query.tipo || null;
       if (!teamId) return res.status(400).json({ error: 'teamId richiesto' });
 
       const { data: tps } = await supabase.from('team_player').select('id').eq('player_id', playerId).eq('team_id', teamId);
@@ -316,8 +317,13 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       if (!formations?.length) return res.json([]);
       const matchIds = [...new Set(formations.map(f => f.match_id))];
 
+      let matchQuery = supabase.from('match').select('id, avversario, data_ora, gol_casa, gol_ospite, luogo, tipo_competizione, giornata').in('id', matchIds).order('data_ora', { ascending: false });
+      if (tipo) {
+        if (tipo === 'Amichevole') matchQuery = matchQuery.or('tipo_competizione.is.null,tipo_competizione.eq.Amichevole');
+        else matchQuery = matchQuery.eq('tipo_competizione', tipo);
+      }
       const [{ data: matches }, { data: events }, { data: statsRows }, { data: logos }] = await Promise.all([
-        supabase.from('match').select('id, avversario, data_ora, gol_casa, gol_ospite, luogo, tipo_competizione, giornata').in('id', matchIds).order('data_ora', { ascending: false }),
+        matchQuery,
         supabase.from('match_event').select('match_id, tipo_evento').eq('player_id', playerId).in('match_id', matchIds),
         supabase.from('match_statistics').select('match_id, minuti_giocati').in('team_player_id', tpIds).in('match_id', matchIds),
         supabase.from('team_logo').select('nome, nome_normalizzato, logo_path')
