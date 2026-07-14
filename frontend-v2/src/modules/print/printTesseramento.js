@@ -4,20 +4,22 @@ export default async function printTesseramento() {
   const container = document.getElementById('pageContent');
   const params = window.YFM.pageParams || {};
   const regId = params.id;
+  const isBlank = params.blank === 'true' || params.blank === true;
 
-  if (!regId) { container.innerHTML = '<p>ID tesseramento mancante</p>'; return; }
+  if (!regId && !isBlank) { container.innerHTML = '<p>ID tesseramento mancante</p>'; return; }
   container.innerHTML = '<div class="print-page"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>';
 
   try {
-    const reg = await apiFetch(`/registrations/${regId}`).catch(() => null);
-    if (!reg) { container.innerHTML = '<p>Tesseramento non trovato</p>'; return; }
+    let reg = null;
+    if (regId) reg = await apiFetch(`/registrations/${regId}`).catch(() => null);
+    if (!reg && !isBlank) { container.innerHTML = '<p>Tesseramento non trovato</p>'; return; }
 
-    const workspaceId = window.YFM.activeWorkspaceId || reg.workspace_id;
+    const workspaceId = window.YFM.activeWorkspaceId || (reg && reg.workspace_id);
     let tpl = null;
     if (workspaceId) tpl = await apiFetch(`/workspaces/${workspaceId}/registration-template`).catch(() => null);
 
-    let player = reg.player;
-    if (!player && reg.player_id) player = await apiFetch(`/calciatori/${reg.player_id}`).catch(() => null);
+    let player = reg ? reg.player : null;
+    if (!player && reg && reg.player_id) player = await apiFetch(`/calciatori/${reg.player_id}`).catch(() => null);
 
     const wsInfo = window.YFM.workspaceInfo || {};
     const wsName = wsInfo.nome || window.YFM.getSocietaName() || '';
@@ -30,8 +32,8 @@ export default async function printTesseramento() {
     const currentSeason = seasons.find(s => s.id === window.YFM.currentSeasonId);
     const stagioneLabel = currentSeason?.nome || '________';
 
-    const gen = reg.dati_genitore || {};
-    const docs = reg.documenti_consegnati || tpl?.documenti_richiesti || [];
+    const gen = reg ? (reg.dati_genitore || {}) : {};
+    const docs = (reg && reg.documenti_consegnati) || tpl?.documenti_richiesti || [];
     const dataNascita = player?.data_nascita ? new Date(player.data_nascita).toLocaleDateString('it-IT') : '';
     const cognome = (player?.cognome || '').toUpperCase();
     const nome = player?.nome || '';

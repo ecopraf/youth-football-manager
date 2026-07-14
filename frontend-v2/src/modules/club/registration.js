@@ -428,13 +428,20 @@ function renderTemplate(container, workspaceId) {
         <label style="font-size:12px;font-weight:600;color:#555;">Clausole / Privacy</label>
         <textarea id="tplClausole" rows="3" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;margin-top:4px;box-sizing:border-box;resize:vertical;">${template?.clausole || ''}</textarea>
       </div>
-      <button id="btnSaveTpl" class="btn btn-primary" style="font-size:13px;">💾 Salva Template</button>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button id="btnSaveTpl" class="btn btn-primary" style="font-size:13px;">💾 Salva Template</button>
+        <button id="btnPrintBlank" class="btn btn-secondary" style="font-size:13px;">🖨️ Stampa modulo vuoto</button>
+      </div>
     </div>
   `;
 
   container.querySelector('#btnAddDoc').addEventListener('click', () => {
     docs.push({ nome: '', obbligatorio: false, nota_eta: null });
     renderTemplate(container, workspaceId);
+  });
+
+  container.querySelector('#btnPrintBlank').addEventListener('click', () => {
+    window.YFM.navigateTo('print-tesseramento', { blank: 'true' });
   });
 
   container.querySelectorAll('.btn-remove-doc').forEach(btn => {
