@@ -94,7 +94,7 @@ api/
 │   ├── dbErrors.js             — Traduzione errori DB (duplicate key → messaggi IT)
 │   ├── capabilities.js         — Profili/capabilities utente (mirror CommonJS)
 │   └── teamAccess.js           — Validazione accesso team (team→category resolution)
-└── routes/ (19 router)
+└── routes/ (20 router)
     ├── auth.js                 — Login, register, users CRUD, guest (batch delete/renew)
     ├── workspace.js            — Workspace, facility, stagioni, categorie, migrazione
     ├── team.js                 — Squadre CRUD, PUT stagioni, POST categorie/:catId/team
@@ -113,6 +113,7 @@ api/
     ├── notification.js         — Comunicazioni in-app (convocazioni, avvisi, solleciti), conferme lettura, sollecito-certificato
     ├── dashboard.js            — Endpoint aggregato dashboard (stats+top+partite+allenamenti+injuries+certificati)
     ├── fees.js                 — Fee config CRUD, quote generate, installments, pagamenti, rigenera batch
+    ├── kit.js                  — Kit templates CRUD, stock generate/restock, assignments singoli e batch
     ├── registration.js         — Tesseramento: template CRUD, registrations CRUD/batch, sollecito documenti, auto-check certificato
     └── tournament.js           — Tornei CRUD (disabilitato in sidebar)
 ```
@@ -196,7 +197,10 @@ frontend-v2/src/
     │   ├── seasonsCategories.js — Stagioni e categorie (wizard)
     │   ├── settings.js        — Impostazioni
     │   ├── workspace.js       — Dettaglio workspace
-    │   └── workspaceSwitcher.js — Switch workspace (superadmin)
+    │   ├── workspaceSwitcher.js — Switch workspace (superadmin)
+    │   ├── fees.js            — Quote economiche (config, assegnazione, pagamenti)
+    │   ├── kit.js             — Kit sportivo (template, stock, assegnazioni, auto-assign batch)
+    │   └── registration.js    — Tesseramento atleti
     └── import/
         └── importCenter.js    — Hub import (XLS, PDF, TC)
 ```

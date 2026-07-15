@@ -218,6 +218,9 @@ app.use(createNotificationRouter({ supabase, authMiddleware }));
 
 const createFeesRouter = require('./routes/fees');
 app.use(createFeesRouter({ supabase, authMiddleware }));
+const kitModule = require('./routes/kit');
+kitModule.init(supabase);
+app.use(kitModule.router);
 
 const createDashboardRouter = require('./routes/dashboard');
 app.use(createDashboardRouter({ supabase, authMiddleware }));

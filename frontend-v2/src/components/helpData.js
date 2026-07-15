@@ -248,6 +248,19 @@ export const PAGE_HELP = {
       'Badge scadenze: ⚠️ scaduta, ⏳ in scadenza (7gg), 📅 prossima'
     ]
   },
+  kit: {
+    title: '👕 Kit Sportivo',
+    desc: 'Gestione magazzino kit della società: template configurabili, generazione stock per taglia, assegnazione ai giocatori.',
+    items: [
+      '➕ Nuovo Kit: crea template con articoli precompilati (maglia, tuta, zaino...) e settore (Scuola Calcio / Settore Giovanile)',
+      '+ Stock: genera pezzi per taglia e quantità (il magazzino è condiviso tra categorie)',
+      '🎯 Auto: assegna automaticamente kit a tutti i giocatori che hanno la taglia impostata nel profilo e stock disponibile',
+      'Click su un giocatore per assegnare manualmente articoli specifici',
+      'Filtri: Tutti / Incompleti / Completi per monitorare lo stato consegne',
+      'Pallino stato: 🟢 completo, 🟡 parziale, 🔴 nessun articolo assegnato',
+      'Badge taglia: blu (da kit assegnato), grigio (dal profilo giocatore)'
+    ]
+  },
   registration: {
     title: '📋 Tesseramento',
     desc: 'Gestione del processo di tesseramento atleti: template modulo, documenti richiesti, stato consegna e generazione PDF. La famiglia può compilare i dati mancanti dal proprio link fino alla chiusura.',

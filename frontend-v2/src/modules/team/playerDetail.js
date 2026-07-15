@@ -5,6 +5,22 @@ import { calcolaCodiceFiscale, cercaComune } from '../../utils/codiceFiscale.js'
 import { DataGrid } from '../../components/DataGrid.js';
 import { invalidateDashboardCache } from './dashboard.js';
 
+function getTaglieOptsPD(current) {
+  const nome = (window.YFM.getSquadraName() || '').toLowerCase();
+  const isSG = /u(?:nder)?\s*(?:1[4-9]|[2-9]\d)|juniores|primavera|allievi|giovanissimi/i.test(nome);
+  const sg = ['XS','S','M','L','XL','XXL'];
+  const sc = ['116','122','128','134','140','146','152','158'];
+  if (isSG) {
+    return '<option value="">--</option>' + sg.map(t => `<option value="${t}"${current === t ? ' selected' : ''}>${t}</option>`).join('');
+  }
+  let html = '<option value="">--</option>';
+  html += sc.map(t => `<option value="${t}"${current === t ? ' selected' : ''}>${t}</option>`).join('');
+  html += `<optgroup label="\ud83d\udcd0 Taglie adulte">`;
+  html += sg.map(t => `<option value="${t}"${current === t ? ' selected' : ''}>${t}</option>`).join('');
+  html += '</optgroup>';
+  return html;
+}
+
 export async function loadPlayerDetail(container, playerId) {
   if (!container) {
     console.error('Container non trovato per loadPlayerDetail');
@@ -83,6 +99,7 @@ function renderPlayerDetail(container, data) {
   const initials = (nome[0] || '') + (cognome[0] || '');
   const ruolo = player.ruolo || '-';
   const numero = player.numero_maglia != null ? player.numero_maglia : '';
+  const taglia = player.taglia || '-';
   const piede = player.piede_preferito || 'n/d';
   const dataMorte = player.data_nascita ? safeFormatDate(player.data_nascita) : 'n/d';
   const certificato = player.data_visita_medica ? safeFormatDate(player.data_visita_medica) : 'n/d';
@@ -337,7 +354,8 @@ function renderPlayerDetail(container, data) {
           <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:10px;">⚽ DATI SPORTIVI</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div><span style="font-size:12px;color:#888;">Ruolo</span><div style="font-size:14px;">${ruolo}</div></div>
-            <div><span style="font-size:12px;color:#888;">N. Maglia</span><div style="font-size:14px;">#${numero}</div></div>
+            <div><span style="font-size:12px;color:#888;">N. Maglia ⭐</span><div style="font-size:14px;">#${numero}</div></div>
+            <div><span style="font-size:12px;color:#888;">Taglia</span><div style="font-size:14px;">${taglia}</div></div>
             <div><span style="font-size:12px;color:#888;">Piede Preferito</span><div style="font-size:14px;">${piede}</div></div>
             <div><span style="font-size:12px;color:#888;">Stato</span><div style="font-size:14px;"><span class="badge ${stato === 'Attivo' ? 'badge-green' : 'badge-red'}">${stato}</span></div></div>
             <div><span style="font-size:12px;color:#888;">Altezza (cm)</span><div style="font-size:14px;">${altezza}</div></div>
@@ -383,7 +401,8 @@ function renderPlayerDetail(container, data) {
           <div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:10px;">⚽ DATI SPORTIVI</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Ruolo</label><select id="editRuolo" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="" ${!ruolo || ruolo === '-' ? 'selected' : ''}>-- Seleziona --</option><option value="Portiere" ${ruolo === 'Portiere' ? 'selected' : ''}>Portiere</option><option value="Difensore" ${ruolo === 'Difensore' ? 'selected' : ''}>Difensore</option><option value="Centrocampista" ${ruolo === 'Centrocampista' ? 'selected' : ''}>Centrocampista</option><option value="Attaccante" ${ruolo === 'Attaccante' ? 'selected' : ''}>Attaccante</option></select></div>
-            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia</label><input id="editNumMaglia" type="number" value="${numero}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia <span title="Numero preferito dal giocatore" style="cursor:help;">⭐</span></label><input id="editNumMaglia" type="number" value="${numero}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+            <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Taglia</label><select id="editTaglia" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;">${getTaglieOptsPD(taglia)}</select></div>
             <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Piede Preferito</label><select id="editPiede" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="" ${!player.piede_preferito ? 'selected' : ''}>-- Seleziona --</option><option value="Destro" ${player.piede_preferito === 'Destro' ? 'selected' : ''}>Destro</option><option value="Sinistro" ${player.piede_preferito === 'Sinistro' ? 'selected' : ''}>Sinistro</option><option value="Ambidestro" ${player.piede_preferito === 'Ambidestro' ? 'selected' : ''}>Ambidestro</option></select></div>
             <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Stato</label><select id="editStato" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="Attivo" ${stato === 'Attivo' ? 'selected' : ''}>Attivo</option><option value="Infortunato" ${stato === 'Infortunato' ? 'selected' : ''}>Infortunato</option><option value="Svincolato" ${stato === 'Svincolato' ? 'selected' : ''}>Svincolato</option></select></div>
             <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Altezza (cm)</label><input id="editAltezza" type="number" value="${altezza !== '-' ? altezza : ''}" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
@@ -736,6 +755,7 @@ function renderPlayerDetail(container, data) {
         data_nascita: dataNascita,
         ruolo: document.getElementById('editRuolo').value,
         numero_maglia: document.getElementById('editNumMaglia').value ? parseInt(document.getElementById('editNumMaglia').value) : null,
+        taglia: document.getElementById('editTaglia').value || null,
         piede_preferito: document.getElementById('editPiede').value || null,
         peso: document.getElementById('editPeso').value ? parseFloat(document.getElementById('editPeso').value) : null,
         altezza: document.getElementById('editAltezza').value ? parseInt(document.getElementById('editAltezza').value) : null,
@@ -933,6 +953,7 @@ export function loadNewPlayerForm(container) {
       nome, cognome, data_nascita: dataNascita,
       ruolo: document.getElementById('editRuolo').value || null,
       numero_maglia: document.getElementById('editNumMaglia').value ? parseInt(document.getElementById('editNumMaglia').value) : null,
+      taglia: document.getElementById('editTaglia').value || null,
       piede_preferito: document.getElementById('editPiede').value || null,
       peso: document.getElementById('editPeso').value ? parseFloat(document.getElementById('editPeso').value) : null,
       altezza: document.getElementById('editAltezza').value ? parseInt(document.getElementById('editAltezza').value) : null,

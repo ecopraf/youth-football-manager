@@ -14,6 +14,7 @@ export const CAPABILITIES = [
   { id: 'import', label: 'Import', icon: '📥', desc: 'Import da TC/GR/PDF' },
   { id: 'report', label: 'Report', icon: '📄', desc: 'Report PDF' },
   { id: 'quote', label: 'Quote', icon: '💰', desc: 'Gestione quote economiche' },
+  { id: 'kit', label: 'Kit', icon: '👕', desc: 'Gestione kit sportivo' },
   { id: 'tesseramento', label: 'Tesseramento', icon: '📋', desc: 'Iscrizioni e documenti atleti' }
 ];
 
@@ -21,12 +22,12 @@ export const PROFILI = {
   admin: {
     label: 'Admin',
     icon: '🔑',
-    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', tesseramento: 'write' }
+    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write' }
   },
   allenatore: {
     label: 'Allenatore',
     icon: '⚽',
-    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: 'write', report: 'read', tesseramento: 'read' }
+    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: 'write', report: 'read', kit: '', tesseramento: 'read' }
   },
   vice_allenatore: {
     label: 'Vice Allenatore',
@@ -51,7 +52,7 @@ export const PROFILI = {
   segreteria: {
     label: 'Segreteria',
     icon: '📎',
-    capabilities: { rosa: 'write', partite: 'read', convocazioni: 'write', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', tesseramento: 'write' }
+    capabilities: { rosa: 'write', partite: 'read', convocazioni: 'write', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write' }
   },
   custom: {
     label: 'Personalizzato',

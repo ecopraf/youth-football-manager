@@ -8,6 +8,26 @@ import { calcCertificatiStatus, renderCertificatiCard, bindCertificatiToggle } f
 
 export { openPlayerForm, filterRoster, updateRosterGrid };
 
+function isSettoreGiovanile() {
+  const nome = (window.YFM.getSquadraName() || '');
+  return /u(?:nder)?\s*(?:1[4-9]|[2-9]\d)|juniores|primavera|allievi|giovanissimi/i.test(nome);
+}
+
+function getTaglieOptions(current) {
+  const sg = ['XS','S','M','L','XL','XXL'];
+  const sc = ['116','122','128','134','140','146','152','158'];
+  if (isSettoreGiovanile()) {
+    return '<option value="">--</option>' + sg.map(t => `<option value="${t}"${current === t ? ' selected' : ''}>${t}</option>`).join('');
+  }
+  // SC: taglie bambino + optgroup adulte (visibile solo se current è adulta o utente espande)
+  let html = '<option value="">--</option>';
+  html += sc.map(t => `<option value="${t}"${current === t ? ' selected' : ''}>${t}</option>`).join('');
+  html += `<optgroup label="📐 Taglie adulte">`;
+  html += sg.map(t => `<option value="${t}"${current === t ? ' selected' : ''}>${t}</option>`).join('');
+  html += '</optgroup>';
+  return html;
+}
+
 let allPlayers = [];
 let svincolati = [];
 let selectedPlayers = new Set();
@@ -542,9 +562,10 @@ function openPlayerForm(pid) {
   modal.style = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;';
   modal.innerHTML = '<div style="background:white;border-radius:12px;max-width:650px;width:90%;max-height:90vh;overflow-y:auto;"><div style="padding:16px 20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">' + (p ? 'Modifica' : 'Nuovo') + ' Calciatore</h2><button id="modalCloseX" style="background:none;border:none;font-size:24px;cursor:pointer;">×</button></div><div style="padding:20px;">' +
     '<div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;">👥 SQUADRA</div>' +
-    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;">' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Ruolo</label><select id="pfR" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"><option value=""' + (!p?.ruolo ? ' selected' : '') + '>-- Seleziona --</option><option value="Portiere"' + (p?.ruolo === 'Portiere' ? ' selected' : '') + '>Portiere</option><option value="Difensore"' + (p?.ruolo === 'Difensore' ? ' selected' : '') + '>Difensore</option><option value="Centrocampista"' + (p?.ruolo === 'Centrocampista' ? ' selected' : '') + '>Centrocampista</option><option value="Attaccante"' + (p?.ruolo === 'Attaccante' ? ' selected' : '') + '>Attaccante</option></select></div>' +
-    '<div><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia</label><input id="pfM" type="number" value="' + (p ? p.numero_maglia || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia <span title="Numero preferito dal giocatore (non assegnazione fissa)" style="cursor:help;">⭐</span></label><input id="pfM" type="number" value="' + (p ? p.numero_maglia || '' : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
+    '<div><label style="font-size:12px;font-weight:600;color:#666;">Taglia</label><select id="pfTaglia" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;">' + getTaglieOptions(p?.taglia) + '</select></div></div>' +
     '<div style="font-size:12px;font-weight:700;color:#667eea;margin-bottom:8px;">👤 DATI PERSONALI</div>' +
     '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;">' +
     '<div><label style="font-size:12px;font-weight:600;color:#666;">Nome *</label><input id="pfN" value="' + (p ? p.nome : '') + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"></div>' +
@@ -661,6 +682,8 @@ function openPlayerForm(pid) {
       data_visita_medica: document.getElementById('pfVM').value || null,
       ruolo: document.getElementById('pfR').value || null,
       numero_maglia: document.getElementById('pfM').value ? parseInt(document.getElementById('pfM').value) : null,
+      taglia: document.getElementById('pfTaglia').value || null,
+      team_id: window.YFM.squadraId,
       matricola_figc: document.getElementById('pfFigc').value || null,
       tipo_documento: document.getElementById('pfTD').value || null,
       numero_documento: document.getElementById('pfND').value || null,

@@ -61,6 +61,7 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
   html += navItem('club', '🏢', 'Società', 'Organigramma, staff e riferimenti società');
   if (showForRole(['admin', 'allenatore'])) html += navItem('staff', '👔', 'Staff', 'Staff tecnico e societario');
   if (showForRole(['admin']) || hasCap('quote')) html += navItem('fees', '💰', 'Quote', 'Gestione quote economiche');
+  if (showForRole(['admin']) || hasCap('kit')) html += navItem('kit', '👕', 'Kit', 'Gestione kit sportivo');
   if (showForRole(['admin']) || hasCap('tesseramento')) html += navItem('registration', '📋', 'Tesseramento', 'Iscrizioni e documenti');
 
   // Import Center — visibile a chi ha capability import

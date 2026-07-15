@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 14 Luglio 2026 | Versione: v3.16 | Build: v3.16.60
+> Ultimo aggiornamento: 15 Luglio 2026 | Versione: v3.16 | Build: v3.16.62
 
 ---
 
@@ -12,7 +12,7 @@
 | Versione | v3.16 |
 | Target MVP | 15 Settembre 2026 |
 | Frontend | Vite + JS ES Modules → Vercel |
-| Backend | Node.js/Express (17 router) → Vercel |
+| Backend | Node.js/Express (20 router) → Vercel |
 | Database | Supabase PostgreSQL |
 | Workspace attivi | Albalonga, DF Academy, Polisportiva Ciampino |
 
@@ -301,45 +301,103 @@
 
 #### Fase 2: Kit Sportivo
 
+> Gestione magazzino kit della società (condiviso tra categorie) con assegnazione per giocatore. Template configurabile per settore (scuola calcio con taglie bambino 116-158 + numerazione sequenziale, settore giovanile con taglie adulto XS-XXL + numerazione libera/nessuna). Taglia giocatore salvata su `team_player` (aggiornabile per stagione).
+
+##### Fase 2a: Taglia giocatore nel roster (~20min)
+
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 12.8 | CREATE TABLE `kit_order` (player_id, team_id, season_id, stato, note) + `kit_item` (kit_order_id, articolo, taglia, personalizzazione_nome, personalizzazione_numero, consegnato, data_consegna) | ⬜ | — | migrazione SQL | ~5min |
-| 12.9 | Endpoint CRUD `/api/kit` (GET per team/player, POST ordine con items, PUT item consegnato, DELETE) | ⬜ | 12.8 | routes/kit.js | ~10min |
-| 12.10 | UI ordine kit — auto-proposta cognome da player + numero da team_player.numero_maglia, lista articoli configurabile | ⬜ | 12.9 | modules/club/kit.js | ~15min |
-| 12.11 | Vista consegne per squadra (chi ha ritirato cosa, filtro per articolo/stato) | ⬜ | 12.9 | modules/club/kit.js | ~10min |
-| 12.12 | Widget "Kit da consegnare" in dashboard segreteria | ⬜ | 12.9 | modules/team/dashboard.js | ~5min |
-| 12.13 | Configurazione articoli kit per workspace (template: quali articoli compongono il kit base) | ⬜ | 12.8 | routes/kit.js, modules/club/kit.js | ~10min |
+| 12.8 | ALTER TABLE `team_player` ADD COLUMN `taglia TEXT` | ✅ | — | migrazione SQL | ~3min |
+| 12.9 | Endpoint PUT `/api/team-player/:id` — aggiornare taglia (già esistente? estendere) | ✅ | 12.8 | routes/player.js | ~5min |
+| 12.10 | Roster: mostrare colonna taglia (editabile inline con select) | ✅ | 12.9 | modules/team/roster.js | ~7min |
+| 12.11 | Player detail: campo taglia nella sezione anagrafica | ✅ | 12.9 | modules/team/playerDetail.js | ~5min |
+
+##### Fase 2b: DB + Backend Kit (~35min)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 12.12 | CREATE TABLE `kit_template` (workspace_id, nome, settore, articoli JSONB, numerazione, numerazione_start, taglie JSONB, attivo) | ✅ | — | migrazione SQL | ~5min |
+| 12.13 | CREATE TABLE `kit_stock` (workspace_id, template_id, articolo, taglia, numero, stato, note) | ✅ | 12.12 | migrazione SQL | ~3min |
+| 12.14 | CREATE TABLE `kit_assignment` (kit_stock_id, player_id, team_id, season_id, data_assegnazione) | ✅ | 12.13 | migrazione SQL | ~3min |
+| 12.15 | Endpoint CRUD `/api/kit-templates` (GET per workspace, POST, PUT, DELETE) | ✅ | 12.12 | routes/kit.js (nuovo) | ~10min |
+| 12.16 | Endpoint POST `/api/kit-stock/generate` — genera stock da template (taglia × quantità, numeri sequenziali se configurato) | ✅ | 12.13 | routes/kit.js | ~10min |
+| 12.17 | Endpoint GET `/api/kit-stock?workspace_id=X&template_id=Y` — vista magazzino con conteggi per taglia/stato | ✅ | 12.13 | routes/kit.js | ~5min |
+| 12.18 | Endpoint POST `/api/kit-assignments` — assegna pezzo a giocatore (stock.stato → assegnato) | ✅ | 12.14 | routes/kit.js | ~5min |
+| 12.19 | Endpoint GET `/api/kit-assignments?team_id=X&season_id=Y` — assegnazioni per categoria | ✅ | 12.14 | routes/kit.js | ~5min |
+| 12.20 | Endpoint POST `/api/kit-stock/restock` — aggiungere stock (nuovo ordine parziale) | ✅ | 12.13 | routes/kit.js | ~5min |
+
+##### Fase 2c: UI Pagina Kit (~50min)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 12.21 | Pagina kit.js — struttura base con card collassabili per template (header: nome, stato assegnazioni, magazzino disponibile) | ✅ | 12.17, 12.19 | modules/club/kit.js (nuovo) | ~15min |
+| 12.22 | Modale configurazione template — nome, settore (radio SC/SG → taglie auto), lista articoli (ha_taglia/ha_numero toggle), regola numerazione | ✅ | 12.15 | modules/club/kit.js | ~15min |
+| 12.23 | Modale genera stock — griglia taglia × quantità, preview numeri se sequenziale, bottone genera | ✅ | 12.16 | modules/club/kit.js | ~10min |
+| 12.24 | Modale assegnazione giocatore — select giocatore (taglia pre-proposta da team_player), select taglia/numero disponibili, conferma | ✅ | 12.18 | modules/club/kit.js | ~10min |
+| 12.24b | Auto-assign batch — bottone "🎯 Auto" assegna kit a tutti i giocatori con taglia impostata e stock disponibile (endpoint batch + UI) | ✅ | 12.24 | routes/kit.js, modules/club/kit.js | ~10min |
+
+##### Fase 2d: Vista magazzino + consegne (~30min)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 12.25 | Tab/sezione Magazzino — griglia taglia × disponibili/assegnati/ordinati per template, evidenzia esauriti, bottone "+ Ordina" | ⬜ | 12.17 | modules/club/kit.js | ~15min |
+| 12.26 | Lista assegnazioni per categoria — giocatori con pallino stato, articoli assegnati, filtri (Tutti/Incompleti/Completi) | ⬜ | 12.19 | modules/club/kit.js | ~10min |
+| 12.27 | Widget dashboard "Kit" — riga per template con alert + contatori, click → pagina Kit | ⬜ | 12.19 | modules/team/dashboard.js | ~5min |
+
+##### Fase 2e: Integrazione (~15min)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 12.28 | Router + sidebar: voce "👕 Kit" sotto Club per admin/segreteria | ✅ | 12.21 | router.js, sidebarNav.js | ~5min |
+| 12.29 | Migrazione stagione: copiare taglia da team_player precedente come default | ⬜ | 12.8 | routes/workspace.js | ~5min |
+| 12.30 | Test build + aggiornare AGENTS.md e DATABASE_SCHEMA.md | ⬜ | 12.28 | docs | ~5min |
+
+**Effort totale Fase 2**: ~2h30 (23 task)
+
+**Taglie per settore (default)**:
+- Scuola Calcio: 116, 122, 128, 134, 140, 146, 152, 158, XS Adulto
+- Settore Giovanile: XS, S, M, L, XL, XXL
+
+**Regole numerazione**:
+- `nessuna`: articoli senza numero (K-way, borsa, tuta...)
+- `libera`: numero scelto manualmente (o auto da numero_maglia)
+- `sequenziale`: numeri assegnati automaticamente partendo da `numerazione_start` (default 13), per taglia
 
 #### Fase 3: Checklist Stagione
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 12.14 | CREATE TABLE `registration_checklist` (player_id, team_id, season_id, items JSONB, completamento_pct INT) | ⬜ | — | migrazione SQL | ~3min |
-| 12.15 | Configurazione template checklist per workspace (quali step: iscrizione, certificato, GDPR, quota, kit, foto, tesseramento) | ⬜ | 12.14 | routes/workspace.js | ~5min |
-| 12.16 | Endpoint GET/PUT `/api/checklist` (per player + per team aggregato) | ⬜ | 12.14 | routes/checklist.js | ~10min |
-| 12.17 | UI checklist per giocatore (toggle items + barra progresso) | ⬜ | 12.16 | modules/club/checklist.js | ~10min |
-| 12.18 | Vista aggregata "Situazione squadra" (tutti i giocatori con % completamento, filtro per item mancante) | ⬜ | 12.16 | modules/club/checklist.js | ~10min |
-| 12.19 | Auto-generazione checklist su migrazione stagione (hook in endpoint migra) | ⬜ | 12.15, 12.16 | routes/workspace.js | ~5min |
-| 12.20 | Widget "Iscrizioni incomplete" in dashboard segreteria (giocatori con checklist < 100%) | ⬜ | 12.16 | modules/team/dashboard.js | ~5min |
+| 12.31 | CREATE TABLE `registration_checklist` (player_id, team_id, season_id, items JSONB, completamento_pct INT) | ⬜ | — | migrazione SQL | ~3min |
+| 12.32 | Configurazione template checklist per workspace (quali step: iscrizione, certificato, GDPR, quota, kit, foto, tesseramento) | ⬜ | 12.31 | routes/workspace.js | ~5min |
+| 12.33 | Endpoint GET/PUT `/api/checklist` (per player + per team aggregato) | ⬜ | 12.31 | routes/checklist.js | ~10min |
+| 12.34 | UI checklist per giocatore (toggle items + barra progresso) | ⬜ | 12.33 | modules/club/checklist.js | ~10min |
+| 12.35 | Vista aggregata "Situazione squadra" (tutti i giocatori con % completamento, filtro per item mancante) | ⬜ | 12.33 | modules/club/checklist.js | ~10min |
+| 12.36 | Auto-generazione checklist su migrazione stagione (hook in endpoint migra) | ⬜ | 12.32, 12.33 | routes/workspace.js | ~5min |
+| 12.37 | Widget "Iscrizioni incomplete" in dashboard segreteria (giocatori con checklist < 100%) | ⬜ | 12.33 | modules/team/dashboard.js | ~5min |
 
 #### Fase 4: Dashboard Segreteria Action-Driven
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 12.21 | Endpoint aggregato `/api/club-operations/summary` (quote pendenti + kit da consegnare + certificati scadenza + checklist incomplete) | ⬜ | 12.2, 12.9, 12.16 | routes/clubOperations.js | ~10min |
-| 12.22 | Dashboard segreteria con card action-driven (contatori + link diretto all'azione) | ⬜ | 12.21 | modules/team/dashboard.js | ~10min |
-| 12.23 | Sidebar: voce "Club Operations" con sotto-menu (Quote, Kit, Checklist) visibile per segreteria/admin | ⬜ | 12.4, 12.10, 12.17 | components/layout/sidebarNav.js | ~5min |
-| 12.24 | Test build completo + aggiornare docs | ⬜ | 12.23 | DEVELOPMENT_PLAN.md, AGENTS.md | ~5min |
+| 12.38 | Endpoint aggregato `/api/club-operations/summary` (quote pendenti + kit da consegnare + certificati scadenza + checklist incomplete) | ⬜ | 12.2, 12.17, 12.33 | routes/clubOperations.js | ~10min |
+| 12.39 | Dashboard segreteria con card action-driven (contatori + link diretto all'azione) | ⬜ | 12.38 | modules/team/dashboard.js | ~10min |
+| 12.40 | Sidebar: voce "Club Operations" con sotto-menu (Quote, Kit, Checklist) visibile per segreteria/admin | ⬜ | 12.4, 12.21, 12.34 | components/layout/sidebarNav.js | ~5min |
+| 12.41 | Test build completo + aggiornare docs | ⬜ | 12.40 | DEVELOPMENT_PLAN.md, AGENTS.md | ~5min |
 
-**Effort totale stimato**: ~10h (24 task)
+**Effort totale stimato EPIC 12**: ~15h (41 task)
 
 **Note architetturali**:
-- Le tabelle `fee`, `kit_order`, `registration_checklist` sono tutte legate a `player_id` + `team_id` + `season_id` → dati per stagione
-- La configurazione (template kit, template checklist) è per workspace → riutilizzabile tra stagioni
+- `fee`, `kit_assignment`, `registration_checklist` sono legate a `player_id` + `team_id` + `season_id` → dati per stagione
+- `kit_stock` è per workspace (magazzino condiviso tra categorie), le assegnazioni sono per team/categoria
+- `team_player.taglia` è per stagione (copiata in migrazione stagione come default)
+- La configurazione (template kit, template checklist, fee_config) è per workspace → riutilizzabile tra stagioni
 - I widget dashboard segreteria si aggiungono ai widget esistenti (visibili solo per profilo segreteria/admin)
-- La voce sidebar "Club Operations" richiede capability `club_operations: read/write` da aggiungere ai profili
+- La voce sidebar "Club Operations" richiede capability `club_operations: read/write`
 - Le notifiche scadenza quote (12.7) dipendono da EPIC 11 (destinatario_tipo genitore)
-- Fase futura (v4.0): Ricevute PDF, Centro Documentale, Workflow iscrizione completo, Magazzino
+- Taglie scuola calcio: 116, 122, 128, 134, 140, 146, 152, 158, XS Adulto
+- Taglie settore giovanile: XS, S, M, L, XL, XXL
+- Numerazione kit: nessuna (default) | libera (manuale) | sequenziale (auto da N)
+- Fase futura (v4.0): Ricevute PDF, Ordini fornitore con tracking, Storico magazzino multi-stagione
 
 ---
 
@@ -992,6 +1050,128 @@
 
 ---
 
+### EPIC 21: Pagamento Quote — Bonifico + Upload Ricevuta + Stripe (futuro)
+
+> Permettere ai genitori di pagare le quote tramite bonifico bancario con upload ricevuta, notifica automatica alla segreteria, e conferma pagamento. Supabase Storage per i file. Archiviazione stagionale per gestione spazio. Fase futura: pagamento online via Stripe Connect.
+
+**Valore commerciale**: Elimina il passaparola "hai pagato?", dà trasparenza ai genitori (vedono rate e scadenze), riduce lavoro segreteria (notifica + conferma in 1 click), storico pagamenti con prova documentale.
+
+#### Fase 1: Setup Storage + Config Bonifico
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 21.1 | Creare bucket `ricevute` su Supabase Storage (privato, max 5MB/file) | ⬜ | — | script migrazione | ~3min |
+| 21.2 | ALTER TABLE `fee_config`: ADD `iban TEXT`, `intestatario_conto TEXT`, `causale_template TEXT` | ⬜ | — | migrazione SQL | ~3min |
+| 21.3 | ALTER TABLE `fee_installment`: ADD `ricevuta_path TEXT`, `ricevuta_uploaded_at TIMESTAMPTZ`, `conferma_user_id UUID`, `pagato_online BOOLEAN DEFAULT false` | ⬜ | — | migrazione SQL | ~3min |
+| 21.4 | Aggiornare DATABASE_SCHEMA.md con nuove colonne | ⬜ | 21.2, 21.3 | .agents/knowledge/DATABASE_SCHEMA.md | ~2min |
+
+#### Fase 2: Backend — Upload e Conferma
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 21.5 | Endpoint PUT `/api/fee-config/:id/payment-info` — salva IBAN, intestatario, causale template | ⬜ | 21.2 | routes/fees.js | ~5min |
+| 21.6 | Endpoint POST `/api/fees/installments/:id/upload-ricevuta` — multer upload + salva su Supabase Storage + aggiorna `ricevuta_path` + crea notification per segreteria | ⬜ | 21.1, 21.3 | routes/fees.js | ~12min |
+| 21.7 | Endpoint GET `/api/fees/installments/:id/ricevuta` — genera signed URL (1h) per download/preview | ⬜ | 21.6 | routes/fees.js | ~5min |
+| 21.8 | Endpoint PUT `/api/fees/installments/:id/conferma-pagamento` — segreteria conferma, aggiorna stato rata + `conferma_user_id` | ⬜ | 21.6 | routes/fees.js | ~5min |
+| 21.9 | Endpoint GET `/api/guest/fees` — rate del giocatore (guest atleta/genitore) con info bonifico | ⬜ | 21.5 | routes/fees.js | ~8min |
+
+#### Fase 3: Frontend Guest — Vista Quote + Upload
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 21.10 | Card "💰 Le mie quote" nella home genitore — lista rate con stato, scadenza, importo | ⬜ | 21.9 | modules/auth/guestGenitore.js | ~10min |
+| 21.11 | Dettaglio rata: mostra estremi bonifico (IBAN, intestatario, causale pre-compilata con nome atleta + tipo quota + numero rata) | ⬜ | 21.10 | modules/auth/guestGenitore.js | ~8min |
+| 21.12 | Bottone "📎 Carica ricevuta" — input file (JPG/PNG/PDF, max 5MB) + upload + feedback toast | ⬜ | 21.6, 21.11 | modules/auth/guestGenitore.js | ~10min |
+| 21.13 | Stato visivo rata: 🔴 scaduta, 🟡 in scadenza, 🟢 pagata, 📎 ricevuta caricata (in attesa conferma) | ⬜ | 21.10 | modules/auth/guestGenitore.js | ~5min |
+| 21.14 | Card "💰 Le mie quote" anche nella home atleta (read-only, senza upload) | ⬜ | 21.9 | modules/auth/guestAtleta.js | ~5min |
+
+#### Fase 4: Frontend Segreteria — Notifica + Conferma
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 21.15 | Notifica in Centro Comunicazioni: "Rossi Marco ha caricato ricevuta per Rata 2 - Kit" con link diretto | ⬜ | 21.6 | modules/coach/notifications.js | ~8min |
+| 21.16 | Click notifica → modale preview ricevuta (immagine/PDF inline) + bottoni "✅ Conferma" / "❌ Rifiuta" | ⬜ | 21.7, 21.15 | modules/club/fees.js | ~10min |
+| 21.17 | Se rifiutata: notifica al genitore "Ricevuta non valida — ricaricare" + reset `ricevuta_path` | ⬜ | 21.16 | routes/fees.js | ~5min |
+| 21.18 | Vista quote admin: badge "📎" su rate con ricevuta caricata in attesa di conferma | ⬜ | 21.16 | modules/club/fees.js | ~5min |
+
+#### Fase 5: Config Bonifico — UI Segreteria
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 21.19 | Sezione "Estremi pagamento" nella pagina Fee Config — form IBAN + intestatario + causale template | ⬜ | 21.5 | modules/club/fees.js | ~8min |
+| 21.20 | Anteprima causale: mostra esempio compilato (es. "Iscrizione 2025-26 Rata 2 - Rossi Marco") | ⬜ | 21.19 | modules/club/fees.js | ~3min |
+
+#### Fase 6: Archiviazione Stagionale
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 21.21 | Endpoint POST `/api/fees/archivio-ricevute` — genera ZIP con tutte le ricevute della stagione (organizzate per giocatore/quota) + riepilogo CSV | ⬜ | 21.6 | routes/fees.js | ~15min |
+| 21.22 | Endpoint DELETE `/api/fees/ricevute-stagione` — elimina file da Storage dopo conferma download | ⬜ | 21.21 | routes/fees.js | ~5min |
+| 21.23 | Frontend: bottone "📦 Archivia ricevute stagione" in pagina Quote (solo admin) — download ZIP + conferma pulizia | ⬜ | 21.21 | modules/club/fees.js | ~8min |
+| 21.24 | Dopo pulizia: rate con `ricevuta_path` mostrano "📁 Archiviata" invece del link download | ⬜ | 21.22 | modules/club/fees.js | ~3min |
+
+#### Fase 7 (Futura): Stripe Connect — Pagamento Online
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 21.25 | Setup Stripe Connect: ogni workspace collega il proprio account Stripe | ⬜ | 21.9 | routes/payments.js (nuovo) | ~15min |
+| 21.26 | Endpoint POST `/api/fees/installments/:id/checkout` — crea Stripe Checkout Session (importo + commissione) | ⬜ | 21.25 | routes/payments.js | ~10min |
+| 21.27 | Endpoint POST `/api/webhooks/stripe` — webhook payment_intent.succeeded → aggiorna rata automaticamente | ⬜ | 21.26 | routes/payments.js | ~10min |
+| 21.28 | Frontend guest: bottone "💳 Paga online" accanto a "📎 Carica ricevuta" — redirect a Stripe | ⬜ | 21.26 | modules/auth/guestGenitore.js | ~5min |
+| 21.29 | Frontend admin: badge "💳 Online" vs "🏦 Bonifico" vs "💵 Contanti" nella vista quote | ⬜ | 21.27 | modules/club/fees.js | ~5min |
+| 21.30 | Config workspace: sezione Stripe (connect account, test/live mode toggle) | ⬜ | 21.25 | modules/club/settings.js | ~8min |
+
+#### Fase 8: Finalizzazione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 21.31 | Help in-app: aggiungere helpData per flusso pagamento (guest + segreteria) | ⬜ | 21.18 | components/helpData.js | ~5min |
+| 21.32 | Test build completo + syntax check backend | ⬜ | 21.24 | — | ~3min |
+| 21.33 | Aggiornare docs (DEVELOPMENT_PLAN, AGENTS.md, DATABASE_SCHEMA) | ⬜ | 21.32 | .agents/ | ~3min |
+
+**Effort totale stimato**: Fase 1-5 (bonifico): ~8-10h | Fase 6 (archiviazione): ~3h | Fase 7 (Stripe): ~5-6h
+
+**Dipendenze esterne**: Fase 7 richiede account Stripe della società + verifica legale/fiscale ASD.
+
+---
+
+### EPIC 22: Refactoring Capabilities — Gruppi Espandibili + Profili Custom
+
+> Ristrutturare il sistema capabilities con gruppi funzionali (es. "Segreteria", "Tecnico", "Dirigenza") che fungono da preset espandibili. Ogni gruppo contiene le singole capabilities. Per profili custom: espandi il gruppo e abilita/disabilita le singole voci. UX wizard migliorata con card espandibili.
+
+**Valore**: Flessibilità totale nella configurazione permessi. Società con ruoli ibridi (es. dirigente che fa anche segreteria) possono comporre il profilo perfetto senza dover scegliere un preset rigido.
+
+#### Fase 1: Modello dati e struttura gruppi
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 22.1 | Definire struttura CAPABILITY_GROUPS (array di gruppi, ogni gruppo ha id, label, icon, capabilities[]) | ⬜ | — | capabilities.js | ~5min |
+| 22.2 | Raggruppare capabilities esistenti: Tecnico (rosa, partite, convocazioni, formazione, allenamenti, statistiche), Segreteria (quote, kit, tesseramento, import, guest_links), Comunicazione (report) | ⬜ | 22.1 | capabilities.js | ~5min |
+| 22.3 | Aggiornare backend mirror capabilities.js | ⬜ | 22.2 | api/helpers/capabilities.js | ~3min |
+
+#### Fase 2: UI Wizard Permessi
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 22.4 | Refactoring wizard utenti — card per gruppo con header (nome + icona + toggle "tutto") | ⬜ | 22.2 | modules/admin/ | ~15min |
+| 22.5 | Click su header gruppo → espande lista singole capabilities con toggle read/write/none | ⬜ | 22.4 | modules/admin/ | ~10min |
+| 22.6 | Preset profili (Allenatore, Segreteria, ecc.) → pre-seleziona i gruppi corretti, utente può poi personalizzare | ⬜ | 22.5 | modules/admin/ | ~10min |
+| 22.7 | Salvataggio: se profilo modificato rispetto al preset → salva come "custom" con capabilities esplicite | ⬜ | 22.6 | modules/admin/ | ~5min |
+| 22.8 | Retrocompatibilità: utenti esistenti con vecchio formato permessi continuano a funzionare | ⬜ | 22.4 | capabilities.js | ~5min |
+
+#### Fase 3: Sidebar e controlli accesso
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 22.9 | Sidebar: raggruppare voci per gruppo capability (separatori visivi opzionali) | ⬜ | 22.2 | sidebarNav.js | ~10min |
+| 22.10 | Test completo: creare utente custom, verificare sidebar + accesso pagine + backend permission | ⬜ | 22.9 | — | ~10min |
+
+**Effort totale stimato**: ~1h 20min
+
+**Dipendenze**: Nessuna (standalone, refactoring puro)
+
+---
+
 ## 4. Dipendenze tra Epic
 
 ```
@@ -1028,7 +1208,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 11. **EPIC 6** (polish, 33min) → UX
 12. **EPIC 9** (workspace hub, ~57min) → gestione superadmin
 13. **EPIC 7** (tornei, 37min) → nice-to-have
-14. **EPIC 12** (club operations, ~10h) → valore società, post-EPIC 11
+14. **EPIC 12** (club operations, ~15h) → valore società, post-EPIC 11
 15. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno, bassa priorità
 16. **EPIC 20** (Tesseramento, ~3h30) → digitalizzazione processo iscrizione, valore segreteria
 17. **EPIC 19** (PWA Guest Push, ~8h) → engagement famiglie, post-EPIC 12
@@ -1064,6 +1244,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.62 | feat: EPIC 12 Kit — auto-assign batch (🎯 Auto button), assegna kit a tutti i giocatori con taglia impostata in un click (endpoint POST /kit-assignments-batch), help in-app pagina Kit, capability dedicata `kit`, UX card (expanded state, inline assign, taglia badges, conteggio assegnati nella riga info), fix taglia in team_player (GET/PUT), taglie per settore (SG: XS-XXL, SC: 116-158 + adulte) |
 | v3.16.60 | feat: carriera filtra per tipo competizione (expand mostra solo partite del tipo selezionato), date picker smart per data nascita (posiziona su anno atteso da categoria), Match Center blocca eventi prima di avvio partita, tesseramento validazione rafforzata (stato Completo richiede residenza + documento genitore), nuovo giocatore richiede telefono genitore obbligatorio. Fix: notifiche tesseramento non più visibili ad allenatore (destinatario_profilo segreteria per notifiche famiglia), minutaggio amichevoli U14/U15 corretto (60→70, 30→35 per partite importate con durata errata) |
 | v3.16.59 | feat: report stagionale separa ufficiali/amichevoli (punti solo su ufficiali), filtro competizione salvato per utente (preferenze_ui.competizione_filtro) con default "tutte", stats.js usa stessa preferenza, fees.js "☑ Tutti" in modalità selezione. Fix: updateNotifBadge check UUID (no 400 con superadmin), training template created_by null per superadmin (fix uuid parse error) |
 | v3.16.54 | feat: EPIC 20 completata — Modulo Tesseramento con capability dedicata, auto-check certificato medico, sollecito documenti (singolo + bulk), sollecito certificati medici dalla dashboard (singolo + bulk), stato lettura inline notifiche individuali (✅/⏳), fix notifiche staff (created_by nel filtro, escluso da unread), rimossa pagina stats guest (filtro nella card home: Tutte/Campionato/Amichevoli), fix guest router per print-tesseramento |
@@ -1144,7 +1325,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 - Se un task supera 15min → spezzarlo in sotto-task
 
 ### Aggiungere nuovi EPIC
-- Il numero EPIC è **progressivo** (prossimo: EPIC 20)
+- Il numero EPIC è **progressivo** (prossimo: EPIC 23)
 - Inserire SEMPRE in ordine numerico nella sezione "3. Epics & Micro-Task"
 - Mai inserire un EPIC tra due esistenti con numero inferiore/superiore (es. non mettere EPIC 19 tra EPIC 4 e EPIC 6)
 - Aggiornare la sezione "4. Dipendenze tra Epic" se il nuovo EPIC ha dipendenze

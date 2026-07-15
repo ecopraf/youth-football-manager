@@ -237,6 +237,34 @@ I workspace attivi nel DB sono:
 - Workspace demo `ASD Green Academy` (ID: `00000000-...`) — eliminato
 - Workspace `SSD New Team` (ID: `22222222-...`) — eliminato
 
+## Regole Colonne team_player (OBBLIGATORIO)
+
+Quando si aggiunge una colonna a `team_player`, va aggiunta in **TUTTI** gli endpoint che joinano quella tabella:
+
+1. `GET /api/squadre/:id/calciatori` — select + mapping nella risposta
+2. `GET /api/calciatori/:id` — select nel join team_player + assegnazione a `data.*` (ENTRAMBI i rami: con e senza `squadraId`)
+3. `PUT /api/calciatori/:id` — gestione nel blocco `tpUpdate`
+
+**Checklist nuova colonna team_player:**
+- [ ] Aggiunta colonna nel DB (migrazione)
+- [ ] `GET /squadre/:id/calciatori` → aggiunta nel `.select()` E nel `.map()` della risposta
+- [ ] `GET /calciatori/:id` → aggiunta nel `.select()` del join E nel `data.campo = tp.campo` (2 punti: con squadraId e senza)
+- [ ] `PUT /calciatori/:id` → gestione in `tpUpdate` con condizione `!== undefined`
+- [ ] Frontend: form di modifica (roster + playerDetail) include il campo
+- [ ] Frontend: visualizzazione (griglia roster, dettaglio) mostra il campo
+
+## Nomi Categorie nel DB
+
+Le categorie nel DB usano il formato **abbreviato**: `U14`, `U15`, `U16` (NON "Under 14", "Under 15").
+
+Quando si scrive logica basata sul nome categoria, usare regex che copra entrambi i formati:
+```javascript
+/u(?:nder)?\s*(?:1[4-9]|[2-9]\d)|juniores|primavera/i
+```
+
+**Settore Giovanile Agonistico**: da U14 in su (U14, U15, U16, U17, U18, U19, Juniores, Primavera)
+**Scuola Calcio**: tutto il resto (Piccoli Amici, Pulcini, Esordienti, U8-U13)
+
 ## Relazioni chiave nel DB
 
 - `convocation` usa `team_player_id` (NON `player_id`)

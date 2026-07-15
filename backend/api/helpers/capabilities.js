@@ -14,13 +14,14 @@ const CAPABILITIES = [
   { id: 'import', label: 'Import' },
   { id: 'report', label: 'Report' },
   { id: 'quote', label: 'Quote' },
+  { id: 'kit', label: 'Kit' },
   { id: 'tesseramento', label: 'Tesseramento' }
 ];
 
 const PROFILI = {
   segreteria: {
     label: 'Segreteria',
-    capabilities: { rosa: 'write', partite: 'read', convocazioni: 'write', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', tesseramento: 'write' }
+    capabilities: { rosa: 'write', partite: 'read', convocazioni: 'write', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write' }
   },
   atleta: {
     label: 'Atleta',

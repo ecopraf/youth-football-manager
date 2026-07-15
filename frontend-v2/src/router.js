@@ -39,6 +39,7 @@ export function initRouter() {
     printRosa: () => import('./modules/print/printRosa.js'),
     printScadenze: () => import('./modules/print/printScadenzeMediche.js'),
     fees: () => import('./modules/club/fees.js'),
+    kit: () => import('./modules/club/kit.js'),
     registration: () => import('./modules/club/registration.js'),
     'print-tesseramento': () => import('./modules/print/printTesseramento.js')
   };

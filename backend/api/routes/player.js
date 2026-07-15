@@ -36,7 +36,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     try {
       const includiSvincolati = req.query.includi_svincolati === '1';
       let query = supabase.from('team_player')
-        .select('id, calciatore:player_id(*), numero_maglia, ruolo_preferito, stato, aggregato, capitano, vice_capitano')
+        .select('id, calciatore:player_id(*), numero_maglia, ruolo_preferito, stato, aggregato, capitano, vice_capitano, taglia')
         .eq('team_id', req.params.squadraId);
       if (!includiSvincolati) {
         query = query.neq('stato', 'Svincolato');
@@ -51,6 +51,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         contatti_genitori: r.calciatore.contatti_genitori || [],
         numero_maglia: r.numero_maglia, ruolo: r.ruolo_preferito, stato: r.stato,
         aggregato: r.aggregato || false, capitano: r.capitano || false, vice_capitano: r.vice_capitano || false,
+        taglia: r.taglia || null,
         team_player_id: r.id
       })));
     } catch (err) {
@@ -130,11 +131,11 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       // Join team_player per numero_maglia e ruolo_preferito
       const squadraId = req.query.squadraId;
       if (squadraId) {
-        const { data: tp } = await supabase.from('team_player').select('id, numero_maglia, ruolo_preferito, stato, capitano, vice_capitano').eq('player_id', req.params.id).eq('team_id', squadraId).single();
-        if (tp) { data.numero_maglia = tp.numero_maglia; data.ruolo = tp.ruolo_preferito; data.stato = tp.stato; data.capitano = tp.capitano; data.vice_capitano = tp.vice_capitano; data.team_player_id = tp.id; }
+        const { data: tp } = await supabase.from('team_player').select('id, numero_maglia, ruolo_preferito, stato, capitano, vice_capitano, taglia').eq('player_id', req.params.id).eq('team_id', squadraId).single();
+        if (tp) { data.numero_maglia = tp.numero_maglia; data.ruolo = tp.ruolo_preferito; data.stato = tp.stato; data.capitano = tp.capitano; data.vice_capitano = tp.vice_capitano; data.team_player_id = tp.id; data.taglia = tp.taglia; }
       } else {
-        const { data: tp } = await supabase.from('team_player').select('id, numero_maglia, ruolo_preferito, stato, capitano, vice_capitano').eq('player_id', req.params.id).limit(1).single();
-        if (tp) { data.numero_maglia = tp.numero_maglia; data.ruolo = tp.ruolo_preferito; data.stato = tp.stato; data.capitano = tp.capitano; data.vice_capitano = tp.vice_capitano; data.team_player_id = tp.id; }
+        const { data: tp } = await supabase.from('team_player').select('id, numero_maglia, ruolo_preferito, stato, capitano, vice_capitano, taglia').eq('player_id', req.params.id).limit(1).single();
+        if (tp) { data.numero_maglia = tp.numero_maglia; data.ruolo = tp.ruolo_preferito; data.stato = tp.stato; data.capitano = tp.capitano; data.vice_capitano = tp.vice_capitano; data.team_player_id = tp.id; data.taglia = tp.taglia; }
       }
       res.json(data);
     } catch (err) {
@@ -175,12 +176,16 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const { data, error } = await supabase.from('player').update(updateData).eq('id', req.params.id).select().single();
       if (error) return handleDbError(error, res);
 
-      if (c.numero_maglia !== undefined || c.ruolo || c.stato) {
-        await supabase.from('team_player').update({
-          numero_maglia: c.numero_maglia != null ? c.numero_maglia : null,
-          ruolo_preferito: c.ruolo || null,
-          stato: c.stato || null
-        }).eq('player_id', req.params.id);
+      const tpUpdate = {};
+      if (c.numero_maglia !== undefined) tpUpdate.numero_maglia = c.numero_maglia != null ? c.numero_maglia : null;
+      if (c.ruolo !== undefined) tpUpdate.ruolo_preferito = c.ruolo || null;
+      if (c.stato !== undefined) tpUpdate.stato = c.stato || null;
+      if (c.taglia !== undefined) tpUpdate.taglia = c.taglia || null;
+      if (Object.keys(tpUpdate).length > 0) {
+        const teamId = c.team_id || req.query.team_id;
+        let q = supabase.from('team_player').update(tpUpdate).eq('player_id', req.params.id);
+        if (teamId) q = q.eq('team_id', teamId);
+        await q;
       }
 
       res.json(data);
