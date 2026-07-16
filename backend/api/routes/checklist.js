@@ -2,14 +2,21 @@ const express = require('express');
 const router = express.Router();
 
 const DEFAULT_ITEMS = [
-  { key: 'iscrizione', label: 'Iscrizione società' },
-  { key: 'certificato', label: 'Certificato medico' },
-  { key: 'gdpr', label: 'Consenso GDPR' },
-  { key: 'quota', label: 'Quota stagionale' },
-  { key: 'kit', label: 'Kit sportivo' },
-  { key: 'foto', label: 'Foto tessera' },
-  { key: 'tesseramento', label: 'Tesseramento FIGC' }
+  { key: 'iscrizione',        label: 'Modulo iscrizione + quota versata', tipo: 'manual' },
+  { key: 'certificato',       label: 'Certificato medico valido',         tipo: 'auto'   },
+  { key: 'gdpr',              label: 'Consenso GDPR firmato',             tipo: 'manual' },
+  { key: 'foto',              label: 'Foto tessera consegnata',           tipo: 'manual' },
+  { key: 'kit',               label: 'Kit sportivo assegnato',            tipo: 'auto'   },
+  { key: 'quota',             label: 'Quote stagionali pagate',           tipo: 'auto'   },
+  { key: 'tesseramento_figc', label: 'Tesseramento FIGC confermato',      tipo: 'manual' }
 ];
+
+// Mappa item auto → link pagina (usata dal frontend)
+const AUTO_ITEM_LINKS = {
+  certificato: '/roster',
+  kit:         '/kit',
+  quota:       '/fees'
+};
 
 module.exports = function createChecklistRouter({ supabase, authMiddleware }) {
 
@@ -19,7 +26,12 @@ module.exports = function createChecklistRouter({ supabase, authMiddleware }) {
     if (!workspace_id) return res.status(400).json({ error: 'workspace_id richiesto' });
     const { data } = await supabase.from('workspace')
       .select('checklist_template').eq('id', workspace_id).single();
-    res.json(data?.checklist_template || DEFAULT_ITEMS);
+    const items = (data?.checklist_template || DEFAULT_ITEMS).map(i => ({
+      ...i,
+      tipo: i.tipo || 'manual',
+      link: AUTO_ITEM_LINKS[i.key] || null
+    }));
+    res.json(items);
   });
 
   // PUT template checklist per workspace
@@ -61,6 +73,50 @@ module.exports = function createChecklistRouter({ supabase, authMiddleware }) {
     const { data, error } = await supabase.from('registration_checklist')
       .upsert({ player_id: req.params.playerId, team_id, season_id, items, completamento_pct, updated_at: new Date().toISOString() },
         { onConflict: 'player_id,team_id,season_id' }).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data);
+  });
+
+  // POST /api/checklist/:playerId/sync — ricalcola item auto dai dati reali
+  router.post('/api/checklist/:playerId/sync', authMiddleware, async (req, res) => {
+    const { team_id, season_id } = req.body;
+    if (!team_id || !season_id) return res.status(400).json({ error: 'team_id e season_id richiesti' });
+    const playerId = req.params.playerId;
+
+    // Fetch checklist corrente
+    const { data: chk } = await supabase.from('registration_checklist')
+      .select('*').eq('player_id', playerId).eq('team_id', team_id).eq('season_id', season_id).single();
+    if (!chk) return res.status(404).json({ error: 'Checklist non trovata' });
+
+    // Fetch dati reali in parallelo
+    const [{ data: player }, { data: kitAssigns }, { data: fees }] = await Promise.all([
+      supabase.from('player').select('data_visita_medica').eq('id', playerId).single(),
+      supabase.from('kit_assignment').select('id').eq('player_id', playerId).eq('season_id', season_id).limit(1),
+      supabase.from('fee').select('stato').eq('player_id', playerId).eq('season_id', season_id)
+    ]);
+
+    // Calcola stato item auto
+    const today = new Date();
+    const certOk = player?.data_visita_medica ? new Date(player.data_visita_medica) > today : false;
+    const kitOk  = (kitAssigns || []).length > 0;
+    const quotaOk = (fees || []).length > 0 && fees.every(f => f.stato === 'pagata');
+
+    const autoState = { certificato: certOk, kit: kitOk, quota: quotaOk };
+
+    // Aggiorna solo gli item auto, preserva i manual
+    const updatedItems = chk.items.map(item => {
+      if (item.tipo === 'auto' && autoState[item.key] !== undefined)
+        return { ...item, done: autoState[item.key] };
+      return item;
+    });
+
+    const completamento_pct = updatedItems.length
+      ? Math.round(updatedItems.filter(i => i.done).length / updatedItems.length * 100) : 0;
+
+    const { data, error } = await supabase.from('registration_checklist')
+      .update({ items: updatedItems, completamento_pct, updated_at: new Date().toISOString() })
+      .eq('player_id', playerId).eq('team_id', team_id).eq('season_id', season_id)
+      .select().single();
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);
   });

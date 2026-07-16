@@ -282,11 +282,13 @@ export const PAGE_HELP = {
   },
   checklist: {
     title: '✅ Checklist Stagione',
-    desc: 'Traccia il completamento degli adempimenti di inizio stagione per ogni giocatore. Template personalizzabile per workspace.',
+    desc: 'Traccia il completamento degli adempimenti di inizio stagione per ogni giocatore. Gli item si dividono in due tipi: automatici (aggiornati dai dati reali dell\'app) e manuali (spunta della segreteria).',
     items: [
+      '🔄 Item automatici: Certificato medico, Kit sportivo, Quote stagionali — aggiornati automaticamente dai dati reali al caricamento della pagina',
+      '✅ Item manuali: Modulo iscrizione, GDPR, Foto tessera, Tesseramento FIGC — spuntati manualmente dalla segreteria',
+      'Click su un giocatore per aprire la checklist: gli item automatici mostrano lo stato con link diretto alla pagina dedicata',
       '🔄 Genera per tutti: crea la checklist per tutta la rosa in un click',
-      '⚙️ Template: personalizza gli item della checklist (iscrizione, certificato, GDPR, quota, kit, foto, tesseramento)',
-      'Click su un giocatore per aprire la checklist e spuntare gli item completati',
+      '⚙️ Template: personalizza gli item della checklist per il tuo workspace',
       'Filtri: Tutti, Incompleti, Completi + filtro per singolo item mancante',
       'Barra progresso: mostra la media di completamento della squadra',
       'Widget dashboard: mostra incompleti e percentuale media'

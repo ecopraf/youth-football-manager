@@ -84,7 +84,8 @@ function renderCards(filter) {
   }
 
   const teamId = window.YFM.squadraId;
-  const rosterPlayers = Object.values(rosterMap);
+  const rosterPlayers = Object.values(rosterMap).sort((a, b) =>
+    `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`));
 
   let html = '';
   templates.filter(t => t.attivo !== false).forEach(tmpl => {

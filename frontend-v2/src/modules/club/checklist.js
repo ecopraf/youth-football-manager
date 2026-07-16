@@ -30,6 +30,12 @@ export default async function loadChecklist() {
     templateItems = tmpl || [];
     rosterMap = {};
     (roster || []).forEach(p => { rosterMap[p.id] = p; });
+
+    // Sync automatico item auto per tutti i giocatori con checklist esistente
+    const syncPromises = checklistData
+      .filter(c => c.items?.some(i => i.tipo === 'auto'))
+      .map(c => syncPlayerChecklist(c.player_id));
+    await Promise.all(syncPromises);
   } catch (e) { hideLoading(); c.innerHTML = '<div class="error-box">Errore caricamento</div>'; return; }
   hideLoading();
   render(c);
@@ -131,6 +137,43 @@ function render(c) {
   import('../../components/PageHelp.js').then(m => m.injectPageHelp('checklist')).catch(() => {});
 }
 
+function renderItemRow(item, idx) {
+  const isAuto = item.tipo === 'auto';
+  const bg = item.done ? '#f0fdf4' : '#fafafa';
+  const border = item.done ? '#bbf7d0' : '#eee';
+  if (isAuto) {
+    const badge = item.done
+      ? `<span style="font-size:11px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:10px;padding:1px 7px;">✅ Completato</span>`
+      : `<span style="font-size:11px;background:#fef2f2;color:#E74C3C;border:1px solid #fecaca;border-radius:10px;padding:1px 7px;">⏳ Non completato</span>`;
+    const link = item.link
+      ? `<a href="#" data-nav="${item.link}" style="font-size:11px;color:#667eea;text-decoration:none;white-space:nowrap;">→ Vai alla pagina</a>`
+      : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${bg};border:1px solid ${border};border-radius:8px;">
+      <span style="font-size:16px;">🔄</span>
+      <span style="font-size:13px;flex:1;${item.done ? 'color:#888;' : ''}">${item.label}</span>
+      ${badge}
+      ${link}
+    </div>`;
+  }
+  return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${bg};border:1px solid ${border};border-radius:8px;cursor:pointer;">
+    <input type="checkbox" class="chk-item" data-idx="${idx}" ${item.done ? 'checked' : ''} style="width:18px;height:18px;accent-color:#27AE60;">
+    <span style="font-size:13px;${item.done ? 'text-decoration:line-through;color:#888;' : ''}">${item.label}</span>
+  </label>`;
+}
+
+async function syncPlayerChecklist(playerId) {
+  try {
+    const updated = await apiFetch('/checklist/' + playerId + '/sync', {
+      method: 'POST',
+      body: JSON.stringify({ team_id: window.YFM.squadraId, season_id: window.YFM.currentSeasonId })
+    });
+    // Aggiorna checklistData in memoria
+    const idx = checklistData.findIndex(c => c.player_id === playerId);
+    if (idx >= 0) checklistData[idx] = updated;
+    else checklistData.push(updated);
+  } catch (e) { /* sync silenzioso */ }
+}
+
 function showPlayerChecklist(playerId, container) {
   const player = rosterMap[playerId];
   if (!player) return;
@@ -140,13 +183,11 @@ function showPlayerChecklist(playerId, container) {
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
-  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
-    <div style="font-size:16px;font-weight:600;margin-bottom:16px;">📋 ${nome}</div>
+  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:420px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">📋 ${nome}</div>
+    <div style="font-size:11px;color:#888;margin-bottom:16px;">🔄 = aggiornato automaticamente &nbsp;|&nbsp; ☑ = spunta manuale</div>
     <div id="chkItems" style="display:grid;gap:8px;">
-      ${items.map((item, i) => `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${item.done ? '#f0fdf4' : '#fafafa'};border:1px solid ${item.done ? '#bbf7d0' : '#eee'};border-radius:8px;cursor:pointer;">
-        <input type="checkbox" class="chk-item" data-idx="${i}" ${item.done ? 'checked' : ''} style="width:18px;height:18px;accent-color:#27AE60;">
-        <span style="font-size:13px;${item.done ? 'text-decoration:line-through;color:#888;' : ''}">${item.label}</span>
-      </label>`).join('')}
+      ${items.map((item, i) => renderItemRow(item, i)).join('')}
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
       <button class="btn btn-secondary" id="chkClose">Chiudi</button>
@@ -155,15 +196,26 @@ function showPlayerChecklist(playerId, container) {
   </div>`;
   document.body.appendChild(overlay);
 
+  // Link navigazione pagine dedicate
+  overlay.querySelectorAll('[data-nav]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      overlay.remove();
+      window.YFM.navigateTo(a.dataset.nav.replace('/', ''));
+    });
+  });
+
   const close = () => overlay.remove();
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
   overlay.querySelector('#chkClose').addEventListener('click', close);
 
   overlay.querySelector('#chkSave').addEventListener('click', async () => {
-    const updated = items.map((item, i) => ({
-      ...item,
-      done: overlay.querySelector(`.chk-item[data-idx="${i}"]`).checked
-    }));
+    // Aggiorna solo item manual (auto non hanno checkbox)
+    const updated = items.map((item, i) => {
+      if (item.tipo === 'auto') return item;
+      const cb = overlay.querySelector(`.chk-item[data-idx="${i}"]`);
+      return { ...item, done: cb ? cb.checked : item.done };
+    });
     try {
       await apiFetch('/checklist/' + playerId, { method: 'PUT', body: JSON.stringify({
         team_id: window.YFM.squadraId, season_id: window.YFM.currentSeasonId, items: updated
