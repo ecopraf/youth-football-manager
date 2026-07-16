@@ -40,6 +40,7 @@ export function initRouter() {
     printScadenze: () => import('./modules/print/printScadenzeMediche.js'),
     fees: () => import('./modules/club/fees.js'),
     kit: () => import('./modules/club/kit.js'),
+    checklist: () => import('./modules/club/checklist.js'),
     registration: () => import('./modules/club/registration.js'),
     'print-tesseramento': () => import('./modules/print/printTesseramento.js')
   };

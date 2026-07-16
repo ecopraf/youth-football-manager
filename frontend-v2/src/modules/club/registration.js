@@ -70,7 +70,7 @@ function render(c, teamId, workspaceId, seasonId) {
         <h2 style="margin:0;">📋 Tesseramento</h2>
         ${totale > 0 ? `<span style="font-size:13px;color:#666;">${completi}/${totale} completati</span>` : ''}
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <div class="tab-bar">
         <button class="tab-btn ${activeTab === 'situazione' ? 'active' : ''}" data-tab="situazione">📊 Situazione</button>
         <button class="tab-btn ${activeTab === 'template' ? 'active' : ''}" data-tab="template">⚙️ Template</button>
       </div>
@@ -211,7 +211,12 @@ function renderRegList(listEl, canWrite, searchTerm = '', filterStato = '') {
     const docs = r.documenti_consegnati || [];
     const consegnati = docs.filter(d => d.consegnato).length;
     const totDocs = docs.length;
-    const pct = totDocs > 0 ? Math.round(consegnati / totDocs * 100) : 0;
+    const gen = r.dati_genitore || {};
+    const genComplete = !!(gen.nome && gen.cognome && gen.documento_tipo && gen.documento_numero) ? 1 : 0;
+    const resComplete = !!(p.residenza) ? 1 : 0;
+    const totItems = totDocs + 2; // +genitore +residenza
+    const doneItems = consegnati + genComplete + resComplete;
+    const pct = totItems > 0 ? Math.round(doneItems / totItems * 100) : 0;
 
     return `<div class="reg-card" data-id="${r.id}" style="background:white;border:1px solid #eee;border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:box-shadow 0.2s;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
@@ -275,7 +280,14 @@ async function openDetail(regId, canWrite) {
           <option value="madre" ${reg.dati_genitore?.parentela === 'madre' ? 'selected' : ''}>Madre</option>
           <option value="tutore" ${reg.dati_genitore?.parentela === 'tutore' ? 'selected' : ''}>Tutore</option>
         </select>
-        <input id="genDocTipo" placeholder="Tipo documento" value="${reg.dati_genitore?.documento_tipo || ''}" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" ${canWrite ? '' : 'disabled'}>
+        <select id="genDocTipo" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" ${canWrite ? '' : 'disabled'}>
+          <option value="">Tipo documento</option>
+          <option value="Carta d'identità" ${reg.dati_genitore?.documento_tipo === "Carta d'identità" ? 'selected' : ''}>Carta d'identità</option>
+          <option value="Passaporto" ${reg.dati_genitore?.documento_tipo === 'Passaporto' ? 'selected' : ''}>Passaporto</option>
+          <option value="Patente" ${reg.dati_genitore?.documento_tipo === 'Patente' ? 'selected' : ''}>Patente</option>
+          <option value="Permesso di soggiorno" ${reg.dati_genitore?.documento_tipo === 'Permesso di soggiorno' ? 'selected' : ''}>Permesso di soggiorno</option>
+          <option value="Tessera sanitaria" ${reg.dati_genitore?.documento_tipo === 'Tessera sanitaria' ? 'selected' : ''}>Tessera sanitaria</option>
+        </select>
         <input id="genDocNumero" placeholder="N° documento" value="${reg.dati_genitore?.documento_numero || ''}" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" ${canWrite ? '' : 'disabled'}>
         <input id="genDocRilascio" type="date" value="${reg.dati_genitore?.documento_rilasciato || ''}" style="padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;" ${canWrite ? '' : 'disabled'}>
       </div>
@@ -330,9 +342,9 @@ async function openDetail(regId, canWrite) {
       // Auto-calcola stato
       const obbligatori = template?.documenti_richiesti?.filter(d => d.obbligatorio).map(d => d.nome) || [];
       const tuttiConsegnati = obbligatori.every(nome => updatedDocs.find(d => d.nome === nome && d.consegnato));
-      const genComplete = !!(genitore.nome && genitore.cognome && genitore.documento_tipo && genitore.documento_numero);
+      const genComplete = !!(dati_genitore.nome && dati_genitore.cognome && dati_genitore.documento_tipo && dati_genitore.documento_numero);
       const resComplete = !!overlay.querySelector('#plResidenza').value.trim();
-      const stato = (tuttiConsegnati && genComplete && resComplete) ? 'completo' : (updatedDocs.some(d => d.consegnato) || genitore.nome || resComplete ? 'incompleto' : 'non_iniziato');
+      const stato = (tuttiConsegnati && genComplete && resComplete) ? 'completo' : (updatedDocs.some(d => d.consegnato) || dati_genitore.nome || resComplete ? 'incompleto' : 'non_iniziato');
 
       // Dati atleta
       const playerUpdate = {

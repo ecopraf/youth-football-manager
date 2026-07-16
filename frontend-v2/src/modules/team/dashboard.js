@@ -561,6 +561,8 @@ export default async function loadDashboard() {
     '<div data-widget="injuries" id="dashInjuryWidget" style="display:none;"></div>' +
     '<div data-widget="certificati" id="dashCertificatiWidget" style="display:none;"></div>' +
     '<div data-widget="fees" id="dashFeesWidget" style="display:none;"></div>' +
+    '<div data-widget="kit" id="dashKitWidget" style="display:none;"></div>' +
+    '<div data-widget="checklist" id="dashChecklistWidget" style="display:none;"></div>' +
     '<div data-widget="tesseramento" id="dashTessWidget" style="display:none;"></div>' +
     '<div data-widget="convocazione" id="dashConvocazioneWidget" style="display:none;"></div>' +
     '<div data-widget="classifica" id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
@@ -652,7 +654,7 @@ export default async function loadDashboard() {
   const injWidget = document.getElementById('dashInjuryWidget');
   if (injWidget && activeInjuries.length > 0) {
     const today = new Date();
-    injWidget.style.display = '';
+    if (injWidget.dataset.userHidden !== '1') injWidget.style.display = '';
     injWidget.innerHTML = '<div style="background:#FFF3F3;border:1px solid #FDCECE;border-radius:12px;padding:14px;">' +
       '<h3 style="margin:0 0 10px 0;font-size:13px;color:#E74C3C;">🏥 Infortunati (' + activeInjuries.length + ')</h3>' +
       activeInjuries.map(inj => {
@@ -672,7 +674,7 @@ export default async function loadDashboard() {
     // Costruisci status compatibile con renderCertificatiCard (mappa scadenza → _scadenza)
     const mapDetail = (arr) => (arr || []).map(d => ({ ...d, _scadenza: d.scadenza ? new Date(d.scadenza) : null }));
     const status = { scaduti: mapDetail(certData.dettaglio?.filter(d => d.stato === 'scaduto')), inScadenza: mapDetail(certData.dettaglio?.filter(d => d.stato === 'in_scadenza')), validi: mapDetail(certData.dettaglio?.filter(d => d.stato === 'valido')), mancanti: mapDetail(certData.dettaglio?.filter(d => d.stato === 'mancante')) };
-    certWidget.style.display = '';
+    if (certWidget.dataset.userHidden !== '1') certWidget.style.display = '';
     certWidget.innerHTML = '<div style="background:#FFF9F0;border:1px solid #FDE8C8;border-radius:12px;padding:14px;">' + renderCertificatiCard(status) + '</div>';
     bindCertificatiToggle(certWidget);
   }
@@ -717,7 +719,7 @@ export default async function loadDashboard() {
       const scadute = fees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < oggi).length, 0);
       const saldati = fees.filter(f => f.stato === 'pagata').length;
 
-      feesWidget.style.display = '';
+      if (feesWidget.dataset.userHidden !== '1') feesWidget.style.display = '';
       feesWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashFeesCard">
         <div style="font-size:14px;font-weight:600;margin-bottom:10px;">💰 Situazione Quote</div>
         <div style="font-size:12px;display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">${rowsHtml}</div>
@@ -731,15 +733,94 @@ export default async function loadDashboard() {
     }).catch(() => {});
   }
 
+  // Widget Kit (visibile per admin/segreteria)
+  const kitWidget = document.getElementById('dashKitWidget');
+  const _isAdminUser = u => u?.ruolo === 'admin' || u?.is_superadmin;
+  if (kitWidget && (window.YFM.canRead('kit') || _isAdminUser(window.YFM.getUser()))) {
+    const _wsId = window.YFM.activeWorkspaceId || window.YFM.workspaceId || window.YFM.workspaceInfo?.id;
+    if (!_wsId) { console.warn('[kit widget] activeWorkspaceId non disponibile'); }
+    Promise.all([
+      apiFetch('/kit-templates?workspace_id=' + _wsId),
+      apiFetch('/kit-stock?workspace_id=' + _wsId),
+      apiFetch('/kit-assignments?team_id=' + window.YFM.squadraId + '&season_id=' + window.YFM.currentSeasonId)
+    ]).then(([tmpls, stk, assigns]) => {
+      const activeTmpls = (tmpls || []).filter(t => t.attivo !== false);
+      const isAdminUser = _isAdminUser(window.YFM.getUser());
+      if (!activeTmpls.length) {
+        if (!isAdminUser) return; // utenti normali: nascondi se nessun template
+        // admin: mostra widget con invito a configurare
+        if (kitWidget.dataset.userHidden !== '1') kitWidget.style.display = '';
+        kitWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashKitCard">
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px;">👕 Kit Sportivo</div>
+          <div style="font-size:12px;color:#999;">Nessun template configurato. Clicca per configurare.</div>
+        </div>`;
+        kitWidget.querySelector('#dashKitCard')?.addEventListener('click', () => window.YFM.navigateTo('kit'));
+        return;
+      }
+      let rowsHtml = '';
+      activeTmpls.forEach(tmpl => {
+        const tmplStock = (stk || []).filter(s => s.template_id === tmpl.id);
+        const tmplAssigns = (assigns || []).filter(a => a.kit_stock?.template_id === tmpl.id);
+        const nArticoli = (tmpl.articoli || []).length || 1;
+        const disponibili = tmplStock.filter(s => s.stato === 'disponibile').length;
+        const kitDisp = Math.floor(disponibili / nArticoli);
+        const playersWithKit = new Set(tmplAssigns.map(a => a.player_id)).size;
+        let alert = '';
+        if (kitDisp === 0 && tmplStock.length > 0) alert = '<span style="color:#E74C3C;font-size:11px;">(⚠️ esaurito)</span>';
+        else if (kitDisp <= 3 && kitDisp > 0) alert = `<span style="color:#d97706;font-size:11px;">(⏳ ${kitDisp} rimasti)</span>`;
+        rowsHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
+          <span style="font-weight:500;">${tmpl.nome} ${alert}</span>
+          <span>${playersWithKit} assegnati</span>
+        </div>`;
+      });
+      if (kitWidget.dataset.userHidden !== '1') kitWidget.style.display = '';
+      kitWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashKitCard">
+        <div style="font-size:14px;font-weight:600;margin-bottom:10px;">👕 Kit Sportivo</div>
+        <div style="font-size:12px;display:flex;flex-direction:column;gap:4px;">${rowsHtml}</div>
+      </div>`;
+      kitWidget.querySelector('#dashKitCard')?.addEventListener('click', () => window.YFM.navigateTo('kit'));
+    }).catch(err => {
+      console.error('[kit widget] errore:', err);
+      if (_isAdminUser(window.YFM.getUser()) && kitWidget.dataset.userHidden !== '1') {
+        kitWidget.style.display = '';
+        kitWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashKitCard"><div style="font-size:14px;font-weight:600;margin-bottom:8px;">👕 Kit Sportivo</div><div style="font-size:12px;color:#999;">Clicca per gestire il kit.</div></div>`;
+        kitWidget.querySelector('#dashKitCard')?.addEventListener('click', () => window.YFM.navigateTo('kit'));
+      }
+    });
+  }
+
+  // Widget Checklist (visibile per admin/segreteria)
+  const chkWidget = document.getElementById('dashChecklistWidget');
+  if (chkWidget && (window.YFM.canRead('tesseramento') || _isAdminUser(window.YFM.getUser()))) {
+    apiFetch('/checklist?team_id=' + window.YFM.squadraId + '&season_id=' + window.YFM.currentSeasonId).then(chks => {
+      if (!chks?.length) return;
+      const incompleti = chks.filter(c => c.completamento_pct < 100);
+      if (!incompleti.length) return;
+      const avgPct = Math.round(chks.reduce((s, c) => s + c.completamento_pct, 0) / chks.length);
+      if (chkWidget.dataset.userHidden !== '1') chkWidget.style.display = '';
+      chkWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashChkCard">
+        <div style="font-size:14px;font-weight:600;margin-bottom:8px;">✅ Checklist Stagione</div>
+        <div style="font-size:12px;display:flex;justify-content:space-between;align-items:center;">
+          <span>${incompleti.length} incompleti su ${chks.length}</span>
+          <span style="font-weight:600;color:${avgPct >= 80 ? '#27AE60' : avgPct >= 50 ? '#d97706' : '#E74C3C'};">${avgPct}%</span>
+        </div>
+        <div style="margin-top:6px;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${avgPct}%;background:${avgPct >= 80 ? '#27AE60' : '#667eea'};border-radius:3px;"></div>
+        </div>
+      </div>`;
+      chkWidget.querySelector('#dashChkCard')?.addEventListener('click', () => window.YFM.navigateTo('checklist'));
+    }).catch(() => {});
+  }
+
   // Widget Tesseramento (visibile per admin/segreteria)
   const tessWidget = document.getElementById('dashTessWidget');
-  if (tessWidget && (window.YFM.canRead('tesseramento') || window.YFM.isAdmin())) {
+  if (tessWidget && (window.YFM.canRead('tesseramento') || _isAdminUser(window.YFM.getUser()))) {
     apiFetch('/squadre/' + window.YFM.squadraId + '/registrations').then(regs => {
       if (!regs?.length) return;
       const incompleti = regs.filter(r => r.stato !== 'completo' && r.stato !== 'tesserato');
       const completi = regs.filter(r => r.stato === 'completo' || r.stato === 'tesserato');
       if (!incompleti.length && !completi.length) return;
-      tessWidget.style.display = '';
+      if (tessWidget.dataset.userHidden !== '1') tessWidget.style.display = '';
       tessWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashTessCard">
         <div style="font-size:14px;font-weight:600;margin-bottom:8px;">📋 Stato Tesseramenti</div>
         <div style="display:flex;gap:12px;font-size:12px;flex-wrap:wrap;">
@@ -794,7 +875,7 @@ export default async function loadDashboard() {
           if (totAssenti > 0) alertHtml += '<span style="background:#fff3e0;color:#e65100;padding:3px 8px;border-radius:6px;font-weight:600;">❌ ' + totAssenti + ' assent' + (totAssenti === 1 ? 'e' : 'i') + '</span>';
           alertHtml += '</div>';
         }
-        convWidget.style.display = '';
+        if (convWidget.dataset.userHidden !== '1') convWidget.style.display = '';
         convWidget.innerHTML = '<div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:12px;padding:14px;">' +
           '<h3 style="margin:0 0 10px 0;font-size:13px;color:#4338ca;">📋 Prossima Convocazione</h3>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
@@ -827,24 +908,53 @@ export default async function loadDashboard() {
   // --- Dashboard Organize ---
   const WIDGET_LABELS = { next_training: '🏋️ Prossimo Allenamento', next_match: '⏱ Prossima Partita', stats_widgets: '📊 Statistiche', top_players: '🏆 Top Giocatori', results: '📋 Ultimi Risultati', injuries: '🏥 Infortuni', staff: '👥 Staff', classifica: '🏆 Classifica & GR', certificati: '🏥 Certificati Medici', convocazione: '📋 Prossima Convocazione' };
   const userProfilo = window.YFM.getUser()?.permessi?.profilo || '';
-  const DEFAULT_ORDER = userProfilo === 'segreteria'
-    ? ['certificati', 'convocazione', 'next_match', 'injuries', 'staff']
-    : ['next_training', 'next_match', 'stats_widgets', 'top_players', 'results', 'injuries', 'classifica', 'staff', 'certificati', 'convocazione'];
+  const _user = window.YFM.getUser();
+  const _isAdmin = _user?.is_superadmin || _user?.ruolo === 'admin';
+  const DEFAULT_ORDER = _isAdmin
+    ? ['next_training', 'next_match', 'stats_widgets', 'top_players', 'results', 'injuries', 'fees', 'kit', 'checklist', 'tesseramento', 'classifica', 'staff', 'certificati', 'convocazione']
+    : userProfilo === 'segreteria'
+      ? ['checklist', 'tesseramento', 'fees', 'kit', 'certificati', 'injuries', 'next_training', 'next_match', 'convocazione', 'stats_widgets', 'top_players', 'results', 'classifica', 'staff']
+      : ['next_training', 'next_match', 'stats_widgets', 'top_players', 'results', 'injuries', 'fees', 'kit', 'checklist', 'tesseramento', 'classifica', 'staff', 'certificati', 'convocazione'];
 
-  // Default hidden per profilo
-  const DEFAULT_HIDDEN = userProfilo === 'segreteria'
-    ? ['next_training', 'stats_widgets', 'top_players', 'results', 'classifica']
-    : ['certificati', 'convocazione'];
+  const _societari = new Set(['direttore_sportivo', 'direttore_tecnico', 'direttore_generale', 'presidente']);
+  const DEFAULT_HIDDEN = _isAdmin
+    ? []
+    : userProfilo === 'segreteria'
+      ? ['stats_widgets', 'top_players']
+      : _societari.has(userProfilo) || userProfilo === 'dirigente'
+        ? ['allenamenti', 'stats_widgets', 'top_players']
+        : ['fees', 'kit', 'checklist', 'tesseramento'];
 
   function applyLayout(layout) {
     const container = document.getElementById('dashWidgetsContainer');
     if (!container) return;
-    const order = layout.order || DEFAULT_ORDER;
+    const isSuperAdmin = window.YFM.getUser()?.is_superadmin;
+    const allWidgetIds = [...container.querySelectorAll('[data-widget]')].map(el => el.dataset.widget);
+    // Superadmin: merge nuovi widget non ancora in order salvato
+    let order = layout.order || DEFAULT_ORDER;
+    if (isSuperAdmin) {
+      const missing = allWidgetIds.filter(id => !order.includes(id));
+      if (missing.length) order = [...order, ...missing];
+    }
     const hidden = layout.hidden || [];
-    // Append in order, hide hidden
+    const lazyWidgets = new Set(['injuries', 'certificati', 'fees', 'kit', 'checklist', 'tesseramento', 'convocazione']);
+    // Append in order
     order.forEach(id => {
       const el = container.querySelector('[data-widget="' + id + '"]');
-      if (el) { el.style.display = hidden.includes(id) ? 'none' : ''; container.appendChild(el); }
+      if (!el) return;
+      if (lazyWidgets.has(id)) {
+        // Per i lazy: se esplicitamente nascosto dall'utente, forza display:none e marca
+        // altrimenti lascia che la Promise gestisca la visibilità
+        if (hidden.includes(id)) {
+          el.style.display = 'none';
+          el.dataset.userHidden = '1';
+        } else {
+          el.dataset.userHidden = '0';
+        }
+      } else {
+        el.style.display = hidden.includes(id) ? 'none' : '';
+      }
+      container.appendChild(el);
     });
     // Any new widgets not in order go at end
     container.querySelectorAll('[data-widget]').forEach(el => {
@@ -858,6 +968,20 @@ export default async function loadDashboard() {
   if (_prefs.dashboard_layout) applyLayout(_prefs.dashboard_layout);
   else applyLayout({ order: DEFAULT_ORDER, hidden: DEFAULT_HIDDEN });
   if (!_prefs.onboarding_dismissed) renderWelcomeCard();
+
+  // Banner anagrafica incompleta (admin/segreteria, persiste finché non compilata)
+  if (window.YFM.canWrite('rosa') || _isAdmin) {
+    apiFetch('/workspaces/' + window.YFM.activeWorkspaceId + '/anagrafica').then(ag => {
+      if (ag && (ag.matricola_figc || ag.p_iva)) return; // già compilata
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;';
+      banner.innerHTML = '<span style="font-size:13px;color:#92400e;">📋 <strong>Completa i riferimenti societari</strong> — aggiungi P.IVA, Matricola FIGC e contatti ufficiali.</span>' +
+        '<button style="border:none;background:#d97706;color:white;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Vai a Società →</button>';
+      banner.querySelector('button').onclick = () => window.YFM.navigateTo('club');
+      const container = document.getElementById('dashWidgetsContainer');
+      if (container) container.insertBefore(banner, container.firstChild);
+    }).catch(() => {});
+  }
 
   // --- Welcome Onboarding Card ---
   function renderWelcomeCard() {
@@ -890,6 +1014,7 @@ export default async function loadDashboard() {
 
   function getOnboardingSteps(profilo) {
     if (profilo === 'segreteria') return [
+      { icon: '🏢', title: 'Riferimenti Societari', desc: 'Completa i dati fiscali e i contatti della società', route: 'club' },
       { icon: '📋', title: 'Rosa', desc: 'Gestisci i giocatori della squadra', route: 'roster' },
       { icon: '🔗', title: 'Link Guest', desc: 'Genera link per genitori e atleti', route: 'guestLinks' },
       { icon: '📅', title: 'Calendario', desc: 'Visualizza partite e impegni', route: 'calendar' }
@@ -918,54 +1043,116 @@ export default async function loadDashboard() {
   if (orgBtn) orgBtn.onclick = () => {
     const container = document.getElementById('dashWidgetsContainer');
     if (!container) return;
+    // Widget lazy gestiti dalle Promise — non toccare il loro display
+    const lazyWidgets = new Set(['injuries', 'certificati', 'fees', 'kit', 'checklist', 'tesseramento', 'convocazione']);
     // Get current order from DOM
     const currentWidgets = [...container.querySelectorAll('[data-widget]')];
     let order = currentWidgets.map(el => el.dataset.widget);
-    let hidden = order.filter(id => { const el = container.querySelector('[data-widget="' + id + '"]'); return el && el.style.display === 'none'; });
+    // Per i widget lazy, lo stato hidden viene letto dalle preferenze salvate (non dal display DOM)
+    const savedLayout = (window._dashPrefs || {}).dashboard_layout || {};
+    const savedHidden = savedLayout.hidden || DEFAULT_HIDDEN;
+    let hidden = order.filter(id => {
+      if (lazyWidgets.has(id)) return savedHidden.includes(id);
+      const el = container.querySelector('[data-widget="' + id + '"]');
+      return el && el.style.display === 'none';
+    });
 
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;';
 
+    let selectedOrgId = null; // two-tap state
+    const isMobile = window.innerWidth <= 768;
+
     function renderList() {
-      return order.map((id, i) => {
+      return order.map((id) => {
         const isHidden = hidden.includes(id);
+        const isSelected = selectedOrgId === id;
         const label = WIDGET_LABELS[id] || id;
-        return '<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;min-height:44px;background:' + (isHidden ? '#f9fafb' : '#fff') + ';border:1px solid #e5e7eb;border-radius:10px;margin-bottom:6px;opacity:' + (isHidden ? '0.5' : '1') + ';">' +
-          '<div style="display:flex;flex-direction:column;gap:2px;">' +
-          '<button data-move="up" data-idx="' + i + '" style="border:none;background:none;cursor:pointer;font-size:12px;padding:0;line-height:1;' + (i === 0 ? 'opacity:0.3;pointer-events:none;' : '') + '">▲</button>' +
-          '<button data-move="down" data-idx="' + i + '" style="border:none;background:none;cursor:pointer;font-size:12px;padding:0;line-height:1;' + (i === order.length - 1 ? 'opacity:0.3;pointer-events:none;' : '') + '">▼</button></div>' +
-          '<span style="flex:1;font-size:13px;font-weight:' + (isHidden ? '400' : '600') + ';color:' + (isHidden ? '#9ca3af' : '#1f2937') + ';">' + label + '</span>' +
+        const bg = isSelected ? '#eef2ff' : (isHidden ? '#f9fafb' : '#fff');
+        const border = isSelected ? '2px solid #667eea' : '1px solid #e5e7eb';
+        return '<div data-id="' + id + '" draggable="true" style="display:flex;align-items:center;gap:8px;padding:12px 14px;min-height:44px;background:' + bg + ';border:' + border + ';border-radius:10px;margin-bottom:6px;opacity:' + (isHidden && !isSelected ? '0.5' : '1') + ';cursor:' + (isMobile ? 'pointer' : 'grab') + ';transition:box-shadow 0.15s,border 0.15s;">' +
+          '<span style="color:' + (isSelected ? '#667eea' : '#9ca3af') + ';font-size:14px;margin-right:2px;">' + (isSelected ? '✦' : '⠿') + '</span>' +
+          '<span style="flex:1;font-size:13px;font-weight:' + (isHidden ? '400' : '600') + ';color:' + (isSelected ? '#667eea' : (isHidden ? '#9ca3af' : '#1f2937')) + ';">' + label + '</span>' +
           '<button data-toggle="' + id + '" style="border:none;background:' + (isHidden ? '#e5e7eb' : '#667eea') + ';color:' + (isHidden ? '#6b7280' : 'white') + ';border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:600;">' + (isHidden ? 'Mostra' : 'Nascondi') + '</button></div>';
       }).join('');
+    }
+
+    function bindInteractions(listEl) {
+      listEl.querySelectorAll('[data-id]').forEach(row => {
+        // Two-tap (mobile + desktop click)
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('[data-toggle]')) return; // handled separately
+          const id = row.dataset.id;
+          if (!selectedOrgId) {
+            // Primo tap: seleziona
+            selectedOrgId = id;
+            renderModal();
+          } else if (selectedOrgId === id) {
+            // Tap sulla stessa: deseleziona
+            selectedOrgId = null;
+            renderModal();
+          } else {
+            // Secondo tap: swap posizione
+            const si = order.indexOf(selectedOrgId), di = order.indexOf(id);
+            if (si >= 0 && di >= 0) { order.splice(si, 1); order.splice(di, 0, selectedOrgId); }
+            selectedOrgId = null;
+            renderModal();
+          }
+        });
+        // Drag & drop (desktop)
+        if (!isMobile) {
+          row.addEventListener('dragstart', e => {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', row.dataset.id);
+            setTimeout(() => row.style.opacity = '0.4', 0);
+          });
+          row.addEventListener('dragend', () => {
+            row.style.opacity = '';
+            listEl.querySelectorAll('[data-id]').forEach(r => r.style.boxShadow = '');
+          });
+          row.addEventListener('dragover', e => {
+            e.preventDefault();
+            listEl.querySelectorAll('[data-id]').forEach(r => r.style.boxShadow = '');
+            if (row.dataset.id !== e.dataTransfer.getData('text/plain')) row.style.boxShadow = '0 -2px 0 #667eea';
+          });
+          row.addEventListener('drop', e => {
+            e.preventDefault();
+            const srcId = e.dataTransfer.getData('text/plain');
+            const dstId = row.dataset.id;
+            if (!srcId || srcId === dstId) return;
+            const si = order.indexOf(srcId), di = order.indexOf(dstId);
+            if (si >= 0 && di >= 0) { order.splice(si, 1); order.splice(di, 0, srcId); }
+            renderModal();
+          });
+        }
+      });
     }
 
     function renderModal() {
       overlay.innerHTML = '<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:scale-in 0.2s;">' +
         '<h2 style="margin:0 0 4px 0;font-size:16px;font-weight:600;">⚙️ Organizza Dashboard</h2>' +
-        '<p style="margin:0 0 16px 0;font-size:12px;color:#6b7280;">Riordina e nascondi le sezioni</p>' +
+        '<p style="margin:0 0 16px 0;font-size:12px;color:#6b7280;">' + (isMobile ? 'Tocca per selezionare, tocca di nuovo per spostare' : 'Trascina per riordinare') + '</p>' +
         '<div id="orgList">' + renderList() + '</div>' +
         '<div style="display:flex;gap:8px;margin-top:16px;">' +
         '<button id="orgReset" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:10px;background:#f9fafb;cursor:pointer;font-size:13px;font-weight:600;">↺ Reset</button>' +
         '<button id="orgSave" style="flex:1;padding:10px;border:none;border-radius:10px;background:#667eea;color:white;cursor:pointer;font-size:13px;font-weight:600;">✓ Salva</button></div></div>';
 
       overlay.querySelector('#orgList').onclick = (e) => {
-        const moveBtn = e.target.closest('[data-move]');
         const toggleBtn = e.target.closest('[data-toggle]');
-        if (moveBtn) {
-          const idx = +moveBtn.dataset.idx;
-          const dir = moveBtn.dataset.move === 'up' ? -1 : 1;
-          const newIdx = idx + dir;
-          if (newIdx >= 0 && newIdx < order.length) { [order[idx], order[newIdx]] = [order[newIdx], order[idx]]; renderModal(); }
-        } else if (toggleBtn) {
+        if (toggleBtn) {
           const id = toggleBtn.dataset.toggle;
           hidden = hidden.includes(id) ? hidden.filter(h => h !== id) : [...hidden, id];
           renderModal();
         }
       };
+      bindInteractions(overlay.querySelector('#orgList'));
       overlay.querySelector('#orgReset').onclick = () => { order = [...DEFAULT_ORDER]; hidden = [...DEFAULT_HIDDEN]; renderModal(); };
       overlay.querySelector('#orgSave').onclick = () => {
         const layout = { order, hidden };
         applyLayout(layout);
+        // Aggiorna le prefs in memoria per coerenza con il modal
+        if (!window._dashPrefs) window._dashPrefs = {};
+        window._dashPrefs.dashboard_layout = layout;
         apiFetch('/users/preferences', { method: 'PUT', body: JSON.stringify({ dashboard_layout: layout }) }).catch(() => {});
         overlay.remove();
       };

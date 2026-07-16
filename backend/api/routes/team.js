@@ -33,23 +33,28 @@ module.exports = function createTeamRouter({ supabase, authMiddleware }) {
         filteredData = filteredData.filter(t => !t.category_id || req.user.squadre_accesso.includes(t.category_id));
       }
 
-      for (const team of filteredData) {
-        const { data: staffAssign } = await supabase.from('team_staff').select('ruolo_squadra, staff:staff_id(nome, cognome)').eq('team_id', team.id);
-        team._staff_count = (staffAssign || []).length;
-        team._staff = (staffAssign || []).map(sa => ({ nome: sa.staff ? sa.staff.nome + ' ' + sa.staff.cognome : '', ruolo: sa.ruolo_squadra || '' })).filter(s => s.nome);
-        // Rosa count (non svincolati)
-        const { count: rosaCount } = await supabase.from('team_player').select('id', { count: 'exact', head: true }).eq('team_id', team.id).neq('stato', 'Svincolato');
-        team._rosa_count = rosaCount || 0;
-        if (staffAssign && staffAssign.length > 0) {
+      if (filteredData.length > 0) {
+        const teamIds = filteredData.map(t => t.id);
+        const [{ data: allStaff }, { data: allRosa }] = await Promise.all([
+          supabase.from('team_staff').select('team_id, ruolo_squadra, staff:staff_id(nome, cognome)').in('team_id', teamIds),
+          supabase.from('team_player').select('team_id').in('team_id', teamIds).neq('stato', 'Svincolato')
+        ]);
+        const staffByTeam = {};
+        (allStaff || []).forEach(sa => { if (!staffByTeam[sa.team_id]) staffByTeam[sa.team_id] = []; staffByTeam[sa.team_id].push(sa); });
+        const rosaByTeam = {};
+        (allRosa || []).forEach(tp => { rosaByTeam[tp.team_id] = (rosaByTeam[tp.team_id] || 0) + 1; });
+
+        for (const team of filteredData) {
+          const staffAssign = staffByTeam[team.id] || [];
+          team._staff_count = staffAssign.length;
+          team._staff = staffAssign.map(sa => ({ nome: sa.staff ? sa.staff.nome + ' ' + sa.staff.cognome : '', ruolo: sa.ruolo_squadra || '' })).filter(s => s.nome);
+          team._rosa_count = rosaByTeam[team.id] || 0;
           staffAssign.forEach(sa => {
             const nome = sa.staff ? sa.staff.nome + ' ' + sa.staff.cognome : '';
             const ruolo = (sa.ruolo_squadra || '').toLowerCase();
             if ((ruolo.includes('allenatore') || ruolo.includes('capo allenatore')) && !ruolo.includes('portieri')) team.allenatore = team.allenatore || nome;
             else if (ruolo.includes('portieri')) team.allenatore_portieri = team.allenatore_portieri || nome;
-            else if (ruolo === 'dirigente') {
-              if (!team.dirigente) team.dirigente = nome;
-              else if (!team.dirigente2) team.dirigente2 = nome;
-            }
+            else if (ruolo === 'dirigente') { if (!team.dirigente) team.dirigente = nome; else if (!team.dirigente2) team.dirigente2 = nome; }
             else if (ruolo.includes('preparatore')) team.preparatore_atletico = team.preparatore_atletico || nome;
           });
         }
@@ -188,18 +193,22 @@ module.exports = function createTeamRouter({ supabase, authMiddleware }) {
   router.delete('/api/squadre/:id', authMiddleware, async (req, res) => {
     try {
       const sid = req.params.id;
-      const { data: partite } = await supabase.from('match').select('id').eq('team_id', sid);
-      for (const p of (partite || [])) {
-        await supabase.from('match_formation').delete().eq('match_id', p.id);
-        await supabase.from('convocation').delete().eq('match_id', p.id);
-        await supabase.from('match_event').delete().eq('match_id', p.id);
-      }
-      await supabase.from('match').delete().eq('team_id', sid);
-      const { data: trainings } = await supabase.from('training').select('id').eq('team_id', sid);
-      for (const t of (trainings || [])) {
-        await supabase.from('training_attendance').delete().eq('training_id', t.id);
-      }
-      await supabase.from('training').delete().eq('team_id', sid);
+      const [{ data: partite }, { data: trainings }] = await Promise.all([
+        supabase.from('match').select('id').eq('team_id', sid),
+        supabase.from('training').select('id').eq('team_id', sid)
+      ]);
+      const matchIds = (partite || []).map(p => p.id);
+      const trainingIds = (trainings || []).map(t => t.id);
+      await Promise.all([
+        matchIds.length ? supabase.from('match_formation').delete().in('match_id', matchIds) : Promise.resolve(),
+        matchIds.length ? supabase.from('convocation').delete().in('match_id', matchIds) : Promise.resolve(),
+        matchIds.length ? supabase.from('match_event').delete().in('match_id', matchIds) : Promise.resolve(),
+        trainingIds.length ? supabase.from('training_attendance').delete().in('training_id', trainingIds) : Promise.resolve()
+      ]);
+      await Promise.all([
+        supabase.from('match').delete().eq('team_id', sid),
+        supabase.from('training').delete().eq('team_id', sid)
+      ]);
       await supabase.from('team_player').delete().eq('team_id', sid);
       await supabase.from('team').delete().eq('id', sid);
       res.json({ success: true });

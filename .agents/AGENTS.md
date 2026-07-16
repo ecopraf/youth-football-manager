@@ -96,7 +96,7 @@ api/
 │   └── teamAccess.js           — Validazione accesso team (team→category resolution)
 └── routes/ (20 router)
     ├── auth.js                 — Login, register, users CRUD, guest (batch delete/renew)
-    ├── workspace.js            — Workspace, facility, stagioni, categorie, migrazione
+    ├── workspace.js            — Workspace (nome/logo/nome_breve), workspace_anagrafica (dati societari), facility, stagioni, categorie, migrazione
     ├── team.js                 — Squadre CRUD, PUT stagioni, POST categorie/:catId/team
     ├── training.js             — Config, presenze, templates, programma, allenamenti-futuri
     ├── match.js                — Partite CRUD, convocazioni, formazione, eventi, live-action
@@ -114,6 +114,8 @@ api/
     ├── dashboard.js            — Endpoint aggregato dashboard (stats+top+partite+allenamenti+injuries+certificati)
     ├── fees.js                 — Fee config CRUD, quote generate, installments, pagamenti, rigenera batch
     ├── kit.js                  — Kit templates CRUD, stock generate/restock, assignments singoli e batch
+    ├── checklist.js            — Checklist stagione: template per workspace, CRUD per player/team, generazione batch
+    ├── clubOperations.js       — Endpoint aggregato /api/club-operations/summary (quote+kit+checklist+certificati)
     ├── registration.js         — Tesseramento: template CRUD, registrations CRUD/batch, sollecito documenti, auto-check certificato
     └── tournament.js           — Tornei CRUD (disabilitato in sidebar)
 ```
@@ -199,7 +201,8 @@ frontend-v2/src/
     │   ├── workspace.js       — Dettaglio workspace
     │   ├── workspaceSwitcher.js — Switch workspace (superadmin)
     │   ├── fees.js            — Quote economiche (config, assegnazione, pagamenti)
-    │   ├── kit.js             — Kit sportivo (template, stock, assegnazioni, auto-assign batch)
+    │   ├── kit.js             — Kit sportivo (template, stock, assegnazioni, auto-assign batch, vista magazzino)
+    │   ├── checklist.js       — Checklist stagione (toggle items, barra progresso, filtri per item, template config)
     │   └── registration.js    — Tesseramento atleti
     └── import/
         └── importCenter.js    — Hub import (XLS, PDF, TC)

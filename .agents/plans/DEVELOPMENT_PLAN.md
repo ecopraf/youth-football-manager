@@ -291,13 +291,13 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 12.1 | CREATE TABLE `fee` (player_id, team_id, season_id, tipo, importo, scadenza, stato, metodo_pagamento, data_pagamento, note) + `fee_payment` (fee_id, importo, data, metodo, ricevuta_numero) | ⬜ | — | migrazione SQL | ~5min |
-| 12.2 | Endpoint CRUD `/api/fees` (GET per team/player, POST, PUT, DELETE) + `/api/fees/:id/payments` (POST pagamento parziale) | ⬜ | 12.1 | routes/fees.js | ~10min |
-| 12.3 | Sezione "Situazione economica" in playerDetail (lista quote + stato + storico pagamenti) | ⬜ | 12.2 | modules/team/playerDetail.js | ~10min |
-| 12.4 | Vista quote per squadra (tabella: giocatore, tipo, importo, scadenza, stato — filtri per stato/tipo) | ⬜ | 12.2 | modules/club/fees.js | ~15min |
-| 12.5 | Widget "Quote pendenti" in dashboard segreteria (conteggio + importo totale da incassare) | ⬜ | 12.2 | modules/team/dashboard.js | ~5min |
-| 12.6 | Creazione quote batch (applica stessa quota a tutta la squadra in un click) | ⬜ | 12.2 | routes/fees.js, modules/club/fees.js | ~10min |
-| 12.7 | Notifica automatica scadenza quote (7gg prima → notification per genitore) | ⬜ | 12.2, 11.11 | routes/fees.js | ~5min |
+| 12.1 | CREATE TABLE `fee`, `fee_config`, `fee_installment` (schema con rate configurabili per workspace/categoria) | ✅ | — | migrazione SQL | ~5min |
+| 12.2 | Endpoint CRUD `/api/fee-configs`, `/api/fees`, `/api/fees-generate`, `/api/fee-installments/:id/pay|unpay`, `/api/fees-batch` | ✅ | 12.1 | routes/fees.js | ~10min |
+| 12.3 | Sezione "Situazione economica" in playerDetail (lista quote + stato + storico pagamenti) | ✅ | 12.2 | modules/team/playerDetail.js | ~10min |
+| 12.4 | Vista quote per squadra (pagina fees.js con config, generazione, pagamenti per rata) | ✅ | 12.2 | modules/club/fees.js | ~15min |
+| 12.5 | Widget "Quote" in dashboard (raggruppato per config, incassato/totale, alert scadenze) | ✅ | 12.2 | modules/team/dashboard.js | ~5min |
+| 12.6 | Creazione quote batch (`/api/fees-generate` + rigenerazione da config aggiornata) | ✅ | 12.2 | routes/fees.js, modules/club/fees.js | ~10min |
+| 12.7 | Notifica scadenza quote (`/api/fees/notify` — manuale da UI) | ✅ | 12.2 | routes/fees.js | ~5min |
 
 #### Fase 2: Kit Sportivo
 
@@ -335,22 +335,23 @@
 | 12.23 | Modale genera stock — griglia taglia × quantità, preview numeri se sequenziale, bottone genera | ✅ | 12.16 | modules/club/kit.js | ~10min |
 | 12.24 | Modale assegnazione giocatore — select giocatore (taglia pre-proposta da team_player), select taglia/numero disponibili, conferma | ✅ | 12.18 | modules/club/kit.js | ~10min |
 | 12.24b | Auto-assign batch — bottone "🎯 Auto" assegna kit a tutti i giocatori con taglia impostata e stock disponibile (endpoint batch + UI) | ✅ | 12.24 | routes/kit.js, modules/club/kit.js | ~10min |
+| 12.24c | Prompt "Vuoi creare una quota per il kit?" dopo salvataggio template — link diretto a pagina Quote | ✅ | 12.24 | modules/club/kit.js | ~5min |
 
 ##### Fase 2d: Vista magazzino + consegne (~30min)
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 12.25 | Tab/sezione Magazzino — griglia taglia × disponibili/assegnati/ordinati per template, evidenzia esauriti, bottone "+ Ordina" | ⬜ | 12.17 | modules/club/kit.js | ~15min |
-| 12.26 | Lista assegnazioni per categoria — giocatori con pallino stato, articoli assegnati, filtri (Tutti/Incompleti/Completi) | ⬜ | 12.19 | modules/club/kit.js | ~10min |
-| 12.27 | Widget dashboard "Kit" — riga per template con alert + contatori, click → pagina Kit | ⬜ | 12.19 | modules/team/dashboard.js | ~5min |
+| 12.25 | Tab/sezione Magazzino — griglia taglia × disponibili/assegnati/ordinati per template, evidenzia esauriti, bottone "+ Ordina" | ✅ | 12.17 | modules/club/kit.js | ~15min |
+| 12.26 | Lista assegnazioni per categoria — giocatori con pallino stato, articoli assegnati, filtri (Tutti/Incompleti/Completi) | ✅ | 12.19 | modules/club/kit.js | ~10min |
+| 12.27 | Widget dashboard "Kit" — riga per template con alert + contatori, click → pagina Kit | ✅ | 12.19 | modules/team/dashboard.js | ~5min |
 
 ##### Fase 2e: Integrazione (~15min)
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
 | 12.28 | Router + sidebar: voce "👕 Kit" sotto Club per admin/segreteria | ✅ | 12.21 | router.js, sidebarNav.js | ~5min |
-| 12.29 | Migrazione stagione: copiare taglia da team_player precedente come default | ⬜ | 12.8 | routes/workspace.js | ~5min |
-| 12.30 | Test build + aggiornare AGENTS.md e DATABASE_SCHEMA.md | ⬜ | 12.28 | docs | ~5min |
+| 12.29 | Migrazione stagione: copiare taglia da team_player precedente come default | ✅ | 12.8 | routes/workspace.js | ~5min |
+| 12.30 | Test build + aggiornare AGENTS.md e DATABASE_SCHEMA.md | ✅ | 12.28 | docs | ~5min |
 
 **Effort totale Fase 2**: ~2h30 (23 task)
 
@@ -367,27 +368,28 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 12.31 | CREATE TABLE `registration_checklist` (player_id, team_id, season_id, items JSONB, completamento_pct INT) | ⬜ | — | migrazione SQL | ~3min |
-| 12.32 | Configurazione template checklist per workspace (quali step: iscrizione, certificato, GDPR, quota, kit, foto, tesseramento) | ⬜ | 12.31 | routes/workspace.js | ~5min |
-| 12.33 | Endpoint GET/PUT `/api/checklist` (per player + per team aggregato) | ⬜ | 12.31 | routes/checklist.js | ~10min |
-| 12.34 | UI checklist per giocatore (toggle items + barra progresso) | ⬜ | 12.33 | modules/club/checklist.js | ~10min |
-| 12.35 | Vista aggregata "Situazione squadra" (tutti i giocatori con % completamento, filtro per item mancante) | ⬜ | 12.33 | modules/club/checklist.js | ~10min |
-| 12.36 | Auto-generazione checklist su migrazione stagione (hook in endpoint migra) | ⬜ | 12.32, 12.33 | routes/workspace.js | ~5min |
-| 12.37 | Widget "Iscrizioni incomplete" in dashboard segreteria (giocatori con checklist < 100%) | ⬜ | 12.33 | modules/team/dashboard.js | ~5min |
+| 12.31 | CREATE TABLE `registration_checklist` (player_id, team_id, season_id, items JSONB, completamento_pct INT) | ✅ | — | migrazione SQL | ~3min |
+| 12.32 | Configurazione template checklist per workspace (colonna `checklist_template` JSONB su workspace + endpoint GET/PUT) | ✅ | 12.31 | routes/checklist.js | ~5min |
+| 12.33 | Endpoint GET/PUT `/api/checklist` (per player + per team aggregato) + POST `/api/checklist-generate` (batch) | ✅ | 12.31 | routes/checklist.js | ~10min |
+| 12.34 | UI checklist per giocatore (toggle items + barra progresso) | ✅ | 12.33 | modules/club/checklist.js | ~10min |
+| 12.35 | Vista aggregata "Situazione squadra" (tutti i giocatori con % completamento, filtro per item mancante) | ✅ | 12.33 | modules/club/checklist.js | ~10min |
+| 12.36 | Auto-generazione checklist su migrazione stagione (hook in endpoint migra) | ✅ | 12.32, 12.33 | routes/workspace.js | ~5min |
+| 12.37 | Widget "Checklist" in dashboard (incompleti + barra progresso media, click → pagina) | ✅ | 12.33 | modules/team/dashboard.js | ~5min |
 
 #### Fase 4: Dashboard Segreteria Action-Driven
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 12.38 | Endpoint aggregato `/api/club-operations/summary` (quote pendenti + kit da consegnare + certificati scadenza + checklist incomplete) | ⬜ | 12.2, 12.17, 12.33 | routes/clubOperations.js | ~10min |
-| 12.39 | Dashboard segreteria con card action-driven (contatori + link diretto all'azione) | ⬜ | 12.38 | modules/team/dashboard.js | ~10min |
-| 12.40 | Sidebar: voce "Club Operations" con sotto-menu (Quote, Kit, Checklist) visibile per segreteria/admin | ⬜ | 12.4, 12.21, 12.34 | components/layout/sidebarNav.js | ~5min |
-| 12.41 | Test build completo + aggiornare docs | ⬜ | 12.40 | DEVELOPMENT_PLAN.md, AGENTS.md | ~5min |
+| 12.38 | Endpoint aggregato `/api/club-operations/summary` (quote pendenti + kit da consegnare + certificati scadenza + checklist incomplete) | ✅ | 12.33 | routes/clubOperations.js | ~10min |
+| 12.39 | Dashboard segreteria con card action-driven (widget individuali Quote/Kit/Checklist/Certificati con click → pagina) | ✅ | 12.38 | modules/team/dashboard.js | ~10min |
+| 12.40 | Sidebar: voci Quote, Kit, Checklist visibili per segreteria/admin (individualmente) | ✅ | 12.34 | components/layout/sidebarNav.js | ~5min |
+| 12.41 | Test build completo + aggiornare docs | ✅ | 12.40 | DEVELOPMENT_PLAN.md, AGENTS.md | ~5min |
 
-**Effort totale stimato EPIC 12**: ~15h (41 task)
+**Effort totale stimato EPIC 12**: ~15h (42 task)
 
 **Note architetturali**:
 - `fee`, `kit_assignment`, `registration_checklist` sono legate a `player_id` + `team_id` + `season_id` → dati per stagione
+- Collegamento Kit ↔ Quote: dopo creazione template kit, prompt chiede se creare quota dedicata (tipico SC: quota kit separata; SG: kit incluso in quota stagionale). Il link porta alla pagina Quote per configurare la fee_config
 - `kit_stock` è per workspace (magazzino condiviso tra categorie), le assegnazioni sono per team/categoria
 - `team_player.taglia` è per stagione (copiata in migrazione stagione come default)
 - La configurazione (template kit, template checklist, fee_config) è per workspace → riutilizzabile tra stagioni
@@ -1244,6 +1246,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.63 | feat: workspace_anagrafica — dati societari separati da workspace. DB: nuova tabella con colori_sociali, sponsor_tecnico, nome_campo, indirizzo_campo, iban (migrati da workspace/facility). Backend: POST/PUT /workspaces solo nome/logo/nome_breve, GET/PUT /workspaces/:id/anagrafica aggiornato. Frontend workspaces.js: modale creazione semplificata, parser unificato parseSocietaText() TC+testo libero con preview campo per campo + flusso conferma prima di applicare. Frontend club.js: card mostra colori/sponsor/campo/iban, modal con sezioni Società/Contatti/Campo, bottone incolla dati con parser. Dashboard: fix kit widget (rosterMap undefined, workspace_id fallback, display X assegnati). Docs: DATABASE_SCHEMA, AGENTS.md, project-rules, helpData aggiornati |
 | v3.16.62 | feat: EPIC 12 Kit — auto-assign batch (🎯 Auto button), assegna kit a tutti i giocatori con taglia impostata in un click (endpoint POST /kit-assignments-batch), help in-app pagina Kit, capability dedicata `kit`, UX card (expanded state, inline assign, taglia badges, conteggio assegnati nella riga info), fix taglia in team_player (GET/PUT), taglie per settore (SG: XS-XXL, SC: 116-158 + adulte) |
 | v3.16.60 | feat: carriera filtra per tipo competizione (expand mostra solo partite del tipo selezionato), date picker smart per data nascita (posiziona su anno atteso da categoria), Match Center blocca eventi prima di avvio partita, tesseramento validazione rafforzata (stato Completo richiede residenza + documento genitore), nuovo giocatore richiede telefono genitore obbligatorio. Fix: notifiche tesseramento non più visibili ad allenatore (destinatario_profilo segreteria per notifiche famiglia), minutaggio amichevoli U14/U15 corretto (60→70, 30→35 per partite importate con durata errata) |
 | v3.16.59 | feat: report stagionale separa ufficiali/amichevoli (punti solo su ufficiali), filtro competizione salvato per utente (preferenze_ui.competizione_filtro) con default "tutte", stats.js usa stessa preferenza, fees.js "☑ Tutti" in modalità selezione. Fix: updateNotifBadge check UUID (no 400 con superadmin), training template created_by null per superadmin (fix uuid parse error) |

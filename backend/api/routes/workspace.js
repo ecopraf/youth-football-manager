@@ -35,9 +35,9 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   router.post('/api/workspaces', authMiddleware, async (req, res) => {
     try {
       if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin può creare workspace' });
-      const { nome, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico } = req.body;
+      const { nome, logo_url } = req.body;
       if (!nome) return res.status(400).json({ error: 'Nome richiesto' });
-      const { data, error } = await supabase.from('workspace').insert({ nome, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico }).select().single();
+      const { data, error } = await supabase.from('workspace').insert({ nome, logo_url }).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.status(201).json(data);
     } catch (err) {
@@ -48,13 +48,41 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   router.put('/api/workspaces/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { nome, nome_breve, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico } = req.body;
-      const { data, error } = await supabase.from('workspace').update({ nome, nome_breve, logo_url, indirizzo, telefono, email, sito_web, colori_sociali, sponsor_tecnico }).eq('id', id).select().single();
+      const { nome, nome_breve, logo_url } = req.body;
+      const { data, error } = await supabase.from('workspace').update({ nome, nome_breve, logo_url }).eq('id', id).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.json(data);
-    } catch (err) {
-      res.status(500).json({ error: 'Errore server' });
-    }
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
+  // GET anagrafica societaria
+  router.get('/api/workspaces/:id/anagrafica', authMiddleware, async (req, res) => {
+    try {
+      const { data } = await supabase.from('workspace_anagrafica').select('*').eq('workspace_id', req.params.id).single();
+      res.json(data || {});
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
+  // PUT anagrafica societaria (admin/segreteria)
+  router.put('/api/workspaces/:id/anagrafica', authMiddleware, async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user.is_superadmin && user.ruolo !== 'admin') {
+        const caps = user.permessi?.capabilities || user.permessi || {};
+        if (caps.tesseramento !== 'write' && caps.rosa !== 'write') return res.status(403).json({ error: 'Non autorizzato' });
+      }
+      const { forma_giuridica, matricola_figc, p_iva, codice_fiscale, sdi, indirizzo, telefono, email, sito_web, facebook, instagram, colori_sociali, sponsor_tecnico, nome_campo, indirizzo_campo, iban } = req.body;
+      const fields = { forma_giuridica, matricola_figc, p_iva, codice_fiscale, sdi, indirizzo, telefono, email, sito_web, facebook, instagram, colori_sociali, sponsor_tecnico, nome_campo, indirizzo_campo, iban, updated_at: new Date().toISOString() };
+      const { data: existing } = await supabase.from('workspace_anagrafica').select('id').eq('workspace_id', req.params.id).single();
+      let result;
+      if (existing) {
+        result = await supabase.from('workspace_anagrafica').update(fields).eq('workspace_id', req.params.id).select().single();
+      } else {
+        result = await supabase.from('workspace_anagrafica').insert({ workspace_id: req.params.id, ...fields }).select().single();
+      }
+      if (result.error) return res.status(400).json({ error: result.error.message });
+      res.json(result.data);
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
   });
 
   // ── RECAP per cascade delete ──
@@ -375,13 +403,14 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
 
           if (migra_rosa) {
             const { data: oldPlayers } = await supabase.from('team_player')
-              .select('player_id, numero_maglia, ruolo_preferito, stato')
+              .select('player_id, numero_maglia, ruolo_preferito, stato, taglia')
               .eq('team_id', oldTeamId).in('stato', ['Attivo', 'Infortunato']);
             if (oldPlayers?.length) {
               const inserts = oldPlayers.map(p => ({
                 team_id: newTeam.id, player_id: p.player_id,
                 numero_maglia: p.numero_maglia, ruolo_preferito: p.ruolo_preferito,
-                stato: p.stato === 'Infortunato' ? 'Infortunato' : 'Attivo', aggregato: false
+                stato: p.stato === 'Infortunato' ? 'Infortunato' : 'Attivo', aggregato: false,
+                taglia: p.taglia || null
               }));
               const { data: inserted } = await supabase.from('team_player').insert(inserts).select();
               result.rosa += (inserted || []).length;
@@ -391,6 +420,12 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
                 await supabase.from('injury').update({ team_id: newTeam.id })
                   .eq('team_id', oldTeamId).in('player_id', injPlayerIds).is('data_rientro_effettiva', null);
               }
+              // Auto-genera checklist per i giocatori migrati
+              const { data: ws } = await supabase.from('workspace').select('checklist_template').eq('id', workspaceId).single();
+              const defaultItems = [{ key: 'iscrizione', label: 'Iscrizione società' }, { key: 'certificato', label: 'Certificato medico' }, { key: 'gdpr', label: 'Consenso GDPR' }, { key: 'quota', label: 'Quota stagionale' }, { key: 'kit', label: 'Kit sportivo' }, { key: 'foto', label: 'Foto tessera' }, { key: 'tesseramento', label: 'Tesseramento FIGC' }];
+              const chkItems = (ws?.checklist_template || defaultItems).map(i => ({ ...i, done: false }));
+              const chkInserts = oldPlayers.map(p => ({ player_id: p.player_id, team_id: newTeam.id, season_id: req.params.id, items: chkItems, completamento_pct: 0 }));
+              await supabase.from('registration_checklist').insert(chkInserts).select('id');
             }
           }
 
@@ -426,10 +461,10 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
             if (!oldTeam) continue;
             if (migra_rosa) {
               const { data: oldPlayers } = await supabase.from('team_player')
-                .select('player_id, numero_maglia, ruolo_preferito, stato')
+                .select('player_id, numero_maglia, ruolo_preferito, stato, taglia')
                 .eq('team_id', oldTeam.id).in('stato', ['Attivo', 'Infortunato']);
               if (oldPlayers?.length) {
-                const inserts = oldPlayers.map(p => ({ team_id: newTeam.id, player_id: p.player_id, numero_maglia: p.numero_maglia, ruolo_preferito: p.ruolo_preferito, stato: p.stato === 'Infortunato' ? 'Infortunato' : 'Attivo', aggregato: false }));
+                const inserts = oldPlayers.map(p => ({ team_id: newTeam.id, player_id: p.player_id, numero_maglia: p.numero_maglia, ruolo_preferito: p.ruolo_preferito, stato: p.stato === 'Infortunato' ? 'Infortunato' : 'Attivo', aggregato: false, taglia: p.taglia || null }));
                 const { data: inserted } = await supabase.from('team_player').insert(inserts).select();
                 result.rosa += (inserted || []).length;
                 // Migrare infortuni aperti al nuovo team

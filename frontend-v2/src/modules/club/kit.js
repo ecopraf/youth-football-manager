@@ -56,6 +56,8 @@ function render(c) {
       <button class="btn btn-secondary btn-kit-filter active" data-filter="all" style="font-size:12px;padding:6px 12px;">Tutti</button>
       <button class="btn btn-secondary btn-kit-filter" data-filter="incompleto" style="font-size:12px;padding:6px 12px;">Incompleti</button>
       <button class="btn btn-secondary btn-kit-filter" data-filter="completo" style="font-size:12px;padding:6px 12px;">Completi</button>
+      <span style="border-left:1px solid #ddd;margin:0 4px;"></span>
+      <button class="btn btn-secondary btn-kit-filter" data-filter="magazzino" style="font-size:12px;padding:6px 12px;">📦 Magazzino</button>
     </div>
     <div id="kitContainer"></div>
   `;
@@ -66,7 +68,8 @@ function render(c) {
     btn.addEventListener('click', () => {
       c.querySelectorAll('.btn-kit-filter').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      renderCards(btn.dataset.filter);
+      if (btn.dataset.filter === 'magazzino') renderMagazzino();
+      else renderCards(btn.dataset.filter);
     });
   });
 
@@ -221,6 +224,101 @@ function renderCards(filter) {
       if (!confirm('Eliminare questo template kit?')) return;
       await apiFetch('/kit-templates/' + btn.dataset.tmpl, { method: 'DELETE' });
       loadKit();
+    });
+  });
+}
+
+// ═══════════════════════════════════════════
+// VISTA MAGAZZINO
+// ═══════════════════════════════════════════
+function renderMagazzino() {
+  const container = document.getElementById('kitContainer');
+  if (!templates.length) {
+    container.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template configurato.</p>';
+    return;
+  }
+
+  let html = '';
+  templates.filter(t => t.attivo !== false).forEach(tmpl => {
+    const tmplStock = stock.filter(s => s.template_id === tmpl.id);
+    const taglie = tmpl.taglie || (tmpl.settore === 'scuola_calcio' ? TAGLIE_SC : TAGLIE_SG);
+    const articoli = (tmpl.articoli || []).map(a => a.nome);
+
+    // Griglia: per ogni taglia, conteggio kit completi disponibili/assegnati
+    const rows = taglie.map(t => {
+      const byTaglia = tmplStock.filter(s => s.taglia === t);
+      const nArt = articoli.length || 1;
+      // Kit assegnati = giocatori con TUTTI gli articoli assegnati per questa taglia
+      const assignsByTaglia = assignments.filter(a => a.kit_stock?.template_id === tmpl.id && a.kit_stock?.taglia === t);
+      const playerArtMap = {};
+      assignsByTaglia.forEach(a => {
+        const pid = a.player_id;
+        if (!playerArtMap[pid]) playerArtMap[pid] = new Set();
+        playerArtMap[pid].add(a.kit_stock?.articolo);
+      });
+      const kitAssegnati = Object.values(playerArtMap).filter(arts => arts.size >= nArt).length;
+      const kitParziali = Object.values(playerArtMap).filter(arts => arts.size > 0 && arts.size < nArt).length;
+      // Kit disponibili = floor(pezzi disponibili / nArticoli)
+      const pezziDisp = byTaglia.filter(s => s.stato === 'disponibile').length;
+      const kitDisponibili = Math.floor(pezziDisp / nArt);
+      const pezziExtra = pezziDisp % nArt; // pezzi sfusi non sufficienti per un kit completo
+      const esaurito = kitDisponibili === 0 && byTaglia.length > 0;
+      return { taglia: t, kitDisponibili, kitAssegnati, kitParziali, pezziExtra, totale: byTaglia.length, esaurito };
+    });
+
+    const totDisp = rows.reduce((s, r) => s + r.kitDisponibili, 0);
+    const totAss = rows.reduce((s, r) => s + r.kitAssegnati, 0);
+    const totParz = rows.reduce((s, r) => s + r.kitParziali, 0);
+    const hasEsauriti = rows.some(r => r.esaurito);
+
+    html += `<div style="margin-bottom:16px;background:white;border-radius:12px;border:1px solid #eee;overflow:hidden;">
+      <div style="padding:12px 16px;background:linear-gradient(135deg,#eef2ff,#e0e7ff);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span style="font-weight:700;font-size:14px;color:#4338ca;">📦 ${tmpl.nome}</span>
+          <div style="display:flex;gap:10px;font-size:11px;color:#666;">
+            <span>✅ ${totAss} kit assegnati</span>
+            <span>📦 ${totDisp} kit disponibili</span>
+            ${totParz > 0 ? `<span style="color:#d97706;">⚠️ ${totParz} incompleti</span>` : ''}
+            ${hasEsauriti ? '<span style="color:#E74C3C;">⚠️ Esauriti</span>' : ''}
+          </div>
+        </div>
+        <div style="font-size:11px;color:#666;margin-top:4px;">Articoli: ${articoli.join(', ')}</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#f8fafc;">
+            <th style="text-align:left;padding:8px 12px;font-weight:600;color:#374151;">Taglia</th>
+            <th style="text-align:right;padding:8px 12px;font-weight:600;color:#374151;">Kit assegnati</th>
+            <th style="text-align:right;padding:8px 12px;font-weight:600;color:#374151;">Kit disponibili</th>
+            <th style="text-align:right;padding:8px 12px;font-weight:600;color:#374151;">Pezzi sfusi</th>
+          </tr></thead>
+          <tbody>${rows.filter(r => r.totale > 0).map(r => `<tr style="border-top:1px solid #f0f0f0;${r.esaurito ? 'background:#fef2f2;' : ''}">
+            <td style="padding:8px 12px;font-weight:500;">${r.taglia}${r.esaurito ? ' <span style="color:#E74C3C;font-size:10px;">esaurito</span>' : ''}${r.kitParziali > 0 ? ` <span style="color:#d97706;font-size:10px;" title="${r.kitParziali} kit con articoli mancanti">⚠️ incompleti</span>` : ''}</td>
+            <td style="text-align:right;padding:8px 12px;">${r.kitAssegnati}</td>
+            <td style="text-align:right;padding:8px 12px;color:${r.kitDisponibili > 0 ? '#166534' : '#999'};font-weight:${r.kitDisponibili > 0 ? '600' : '400'};">${r.kitDisponibili}</td>
+            <td style="text-align:right;padding:8px 12px;color:${r.pezziExtra > 0 ? '#d97706' : '#ccc'};font-size:11px;" title="Pezzi disponibili non sufficienti per un kit completo">${r.pezziExtra > 0 ? r.pezziExtra + ' pz' : '—'}</td>
+          </tr>`).join('')}
+          <tr style="border-top:2px solid #e0e7ff;background:#f8fafc;font-weight:600;">
+            <td style="padding:8px 12px;">Totale</td>
+            <td style="text-align:right;padding:8px 12px;">${totAss}</td>
+            <td style="text-align:right;padding:8px 12px;color:#166534;">${totDisp}</td>
+            <td style="text-align:right;padding:8px 12px;"></td>
+          </tr></tbody>
+        </table>
+      </div>
+      ${totParz > 0 ? `<div style="padding:8px 14px;background:#fef9ec;border-top:1px solid #fde68a;font-size:11px;color:#92400e;">⚠️ ${totParz} kit con articoli mancanti — alcuni kit sono stati parzialmente smontati per fornire pezzi singoli agli atleti.</div>` : ''}
+      ${isAdmin ? `<div style="padding:8px 12px;border-top:1px solid #f0f0f0;text-align:right;">
+        <button class="btn-restock" data-tmpl="${tmpl.id}" style="font-size:11px;padding:5px 12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;">+ Ordina stock</button>
+      </div>` : ''}
+    </div>`;
+  });
+
+  container.innerHTML = html;
+
+  container.querySelectorAll('.btn-restock').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tmpl = templates.find(t => t.id === btn.dataset.tmpl);
+      if (tmpl) showGenerateStockModal(tmpl);
     });
   });
 }

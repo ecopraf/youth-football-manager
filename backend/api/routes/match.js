@@ -295,18 +295,24 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         const tpToPlayer = {};
         (tpData || []).forEach(tp => { tpToPlayer[tp.id] = tp.player_id; });
 
-        for (const c of convs) {
+        // Raggruppa per motivo e aggiorna in batch per gruppo
+        const toUpdate = convs.reduce((acc, c) => {
           const pid = tpToPlayer[c.team_player_id];
           if (pid && absentPlayerIds.has(pid)) {
-            const abs = absences.find(a => a.player_id === pid);
-            await supabase.from('convocation').update({
-              risposta: 'indisponibile',
-              risposta_motivo: abs?.motivo || 'Assenza già segnalata',
-              risposta_at: new Date().toISOString()
-            }).eq('id', c.id);
+            const motivo = absences.find(a => a.player_id === pid)?.motivo || 'Assenza già segnalata';
+            if (!acc[motivo]) acc[motivo] = [];
+            acc[motivo].push(c.id);
             autoIndisponibili++;
           }
-        }
+          return acc;
+        }, {});
+        await Promise.all(Object.entries(toUpdate).map(([motivo, ids]) =>
+          supabase.from('convocation').update({
+            risposta: 'indisponibile',
+            risposta_motivo: motivo,
+            risposta_at: new Date().toISOString()
+          }).in('id', ids)
+        ));
       }
 
       const dataStr = new Date(match.data_ora).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -517,7 +523,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
 
   router.post('/api/partite/:matchId/eventi-batch', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
     try {
-      const { eventi } = req.body;
+      const { eventi, match_stato } = req.body;
       if (!eventi || !Array.isArray(eventi)) return res.status(400).json({ error: 'Dati mancanti' });
       await supabase.from('match_event').delete().eq('match_id', req.params.matchId);
       if (eventi.length > 0) {
@@ -529,7 +535,6 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
             player_id_secondario: e.tipo === 'SUB' ? (e.assist_id || null) : null,
             note: e.autogol ? 'autogol' : (e.rigore ? 'rigore' : null)
           });
-          // Se GOAL con assist, crea evento ASSIST separato
           if (e.tipo === 'GOAL' && e.assist_id) {
             inserts.push({
               match_id: req.params.matchId, tipo_evento: 'ASSIST', minuto: parseInt(e.minuto) || null,
@@ -540,9 +545,8 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         const { error } = await supabase.from('match_event').insert(inserts);
         if (error) return res.status(400).json({ error: error.message });
       }
-      // Recalculate minutes if match is already Terminata
-      const { data: mCheck } = await supabase.from('match').select('stato').eq('id', req.params.matchId).single();
-      if (mCheck?.stato === 'Terminata') {
+      // Recalculate minutes if match is already Terminata (stato dal body, zero query extra)
+      if (match_stato === 'Terminata') {
         try { await calcAndSaveMinutes(req.params.matchId, supabase); } catch(e) { /* non-blocking */ }
       }
       res.json({ success: true, saved: eventi.length });

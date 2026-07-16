@@ -225,6 +225,12 @@ app.use(kitModule.router);
 const createDashboardRouter = require('./routes/dashboard');
 app.use(createDashboardRouter({ supabase, authMiddleware }));
 
+const createChecklistRouter = require('./routes/checklist');
+app.use(createChecklistRouter({ supabase, authMiddleware }));
+
+const createClubOpsRouter = require('./routes/clubOperations');
+app.use(createClubOpsRouter({ supabase, authMiddleware }));
+
 const registrationRouter = require('./routes/registration');
 app.use('/api', registrationRouter);
 

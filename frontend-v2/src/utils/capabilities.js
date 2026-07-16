@@ -18,55 +18,69 @@ export const CAPABILITIES = [
   { id: 'tesseramento', label: 'Tesseramento', icon: '📋', desc: 'Iscrizioni e documenti atleti' }
 ];
 
+// categoria: 'gestione' | 'campo' | 'societario' | 'guest'
 export const PROFILI = {
+  // ── GESTIONE ──────────────────────────────────────────────────────────────
   admin: {
-    label: 'Admin',
-    icon: '🔑',
+    label: 'Admin', icon: '🔑', categoria: 'gestione',
     capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write' }
   },
-  allenatore: {
-    label: 'Allenatore',
-    icon: '⚽',
-    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: 'write', report: 'read', kit: '', tesseramento: 'read' }
-  },
-  vice_allenatore: {
-    label: 'Vice Allenatore',
-    icon: '🤝',
-    capabilities: { rosa: 'read', partite: 'read', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: '', report: 'read', tesseramento: '' }
-  },
-  dirigente: {
-    label: 'Dirigente',
-    icon: '👔',
-    capabilities: { rosa: 'read', partite: 'read', convocazioni: 'read', formazione: 'read', allenamenti: '', statistiche: 'read', guest_links: 'write', import: '', report: 'read', tesseramento: 'read' }
-  },
-  preparatore: {
-    label: 'Preparatore Atletico',
-    icon: '💪',
-    capabilities: { rosa: 'read', partite: '', convocazioni: '', formazione: '', allenamenti: 'write', statistiche: 'read', guest_links: '', import: '', report: '', tesseramento: '' }
-  },
-  osservatore: {
-    label: 'Osservatore',
-    icon: '👁️',
-    capabilities: { rosa: 'read', partite: 'read', convocazioni: '', formazione: '', allenamenti: '', statistiche: 'read', guest_links: '', import: '', report: 'read', tesseramento: '' }
-  },
   segreteria: {
-    label: 'Segreteria',
-    icon: '📎',
+    label: 'Segreteria', icon: '📎', categoria: 'gestione',
     capabilities: { rosa: 'write', partite: 'read', convocazioni: 'write', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write' }
   },
   custom: {
-    label: 'Personalizzato',
-    icon: '⚙️',
+    label: 'Personalizzato', icon: '⚙️', categoria: 'gestione',
     capabilities: {}
   },
+
+  // ── STAFF DI CAMPO ────────────────────────────────────────────────────────
+  allenatore: {
+    label: 'Allenatore', icon: '⚽', categoria: 'campo',
+    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: 'write', report: 'read', quote: '', kit: '', tesseramento: 'read' }
+  },
+  vice_allenatore: {
+    label: 'Vice Allenatore', icon: '🤝', categoria: 'campo',
+    capabilities: { rosa: 'read', partite: 'read', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: '', report: 'read', quote: '', kit: '', tesseramento: '' }
+  },
+  preparatore: {
+    label: 'Preparatore Atletico', icon: '💪', categoria: 'campo',
+    capabilities: { rosa: 'read', partite: '', convocazioni: '', formazione: '', allenamenti: 'write', statistiche: 'read', guest_links: '', import: '', report: '', quote: '', kit: '', tesseramento: '' }
+  },
+  osservatore: {
+    label: 'Osservatore', icon: '👁️', categoria: 'campo',
+    capabilities: { rosa: 'read', partite: 'read', convocazioni: '', formazione: '', allenamenti: '', statistiche: 'read', guest_links: '', import: '', report: 'read', quote: '', kit: '', tesseramento: '' }
+  },
+  dirigente: {
+    label: 'Dirigente', icon: '🦺', categoria: 'campo',
+    capabilities: { rosa: 'read', partite: 'read', convocazioni: 'write', formazione: 'read', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: '', report: 'read', quote: '', kit: '', tesseramento: '' }
+  },
+
+  // ── DIRIGENZA SOCIETARIA ──────────────────────────────────────────────────
+  direttore_sportivo: {
+    label: 'Direttore Sportivo', icon: '🏅', categoria: 'societario',
+    capabilities: { rosa: 'write', partite: 'read', convocazioni: '', formazione: '', allenamenti: '', statistiche: 'read', guest_links: '', import: '', report: 'read', quote: 'read', kit: 'read', tesseramento: 'read' }
+  },
+  direttore_tecnico: {
+    label: 'Direttore Tecnico', icon: '📐', categoria: 'societario',
+    capabilities: { rosa: 'write', partite: 'read', convocazioni: '', formazione: 'read', allenamenti: 'read', statistiche: 'read', guest_links: '', import: '', report: 'read', quote: '', kit: '', tesseramento: 'read' }
+  },
+  direttore_generale: {
+    label: 'Direttore Generale', icon: '🏢', categoria: 'societario',
+    capabilities: { rosa: 'read', partite: 'read', convocazioni: 'read', formazione: 'read', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: '', report: 'read', quote: 'read', kit: 'read', tesseramento: 'read' }
+  },
+  presidente: {
+    label: 'Presidente', icon: '👑', categoria: 'societario',
+    capabilities: { rosa: 'read', partite: 'read', convocazioni: 'read', formazione: 'read', allenamenti: 'read', statistiche: 'read', guest_links: '', import: '', report: 'read', quote: 'read', kit: 'read', tesseramento: 'read' }
+  },
+
+  // ── GUEST ─────────────────────────────────────────────────────────────────
   atleta: {
-    label: 'Atleta',
-    icon: '🏃',
+    label: 'Atleta', icon: '🏃', categoria: 'guest',
     capabilities: { rosa: '', partite: 'read', formazione: 'read', allenamenti: 'read', statistiche: 'read', guest_links: '', import: '', report: '' }
   },
   genitore: {
-    label: 'Genitore',
-    icon: '👨‍👩‍👦',
+    label: 'Genitore', icon: '👨‍👩‍👦', categoria: 'guest',
     capabilities: { rosa: '', partite: 'read', formazione: 'read', allenamenti: '', statistiche: 'read', guest_links: '', import: '', report: '' }
   }
 };

@@ -150,10 +150,13 @@ export const PAGE_HELP = {
   },
   club: {
     title: '🏢 Società',
-    desc: 'Informazioni sulla società, organigramma e riferimenti.',
+    desc: 'Informazioni sulla società, organigramma, riferimenti societari e campo di casa.',
     items: [
       'Visualizza staff e ruoli',
-      'Modifica dati società (admin)'
+      'Riferimenti Societari: P.IVA, C.F., matricola FIGC, SDI, indirizzo, contatti, colori, sponsor',
+      'Campo di Casa: nome impianto e indirizzo',
+      'Modifica dati (admin/segreteria): bottone \u270F\uFE0F Modifica nella card',
+      'Import rapido: incolla testo da Tuttocampo o documento ufficiale \u2192 i campi vengono precompilati automaticamente'
     ]
   },
   seasonsCategories: {
@@ -275,6 +278,18 @@ export const PAGE_HELP = {
       '✅ Tesserato: chiude il tesseramento e invia notifica alla famiglia (modulo diventa read-only)',
       'Auto-check: certificato medico smarcato automaticamente se data_visita_medica valida',
       'Filtri: Tutti, Incompleti, Completi, Tesserati + ricerca per nome'
+    ]
+  },
+  checklist: {
+    title: '✅ Checklist Stagione',
+    desc: 'Traccia il completamento degli adempimenti di inizio stagione per ogni giocatore. Template personalizzabile per workspace.',
+    items: [
+      '🔄 Genera per tutti: crea la checklist per tutta la rosa in un click',
+      '⚙️ Template: personalizza gli item della checklist (iscrizione, certificato, GDPR, quota, kit, foto, tesseramento)',
+      'Click su un giocatore per aprire la checklist e spuntare gli item completati',
+      'Filtri: Tutti, Incompleti, Completi + filtro per singolo item mancante',
+      'Barra progresso: mostra la media di completamento della squadra',
+      'Widget dashboard: mostra incompleti e percentuale media'
     ]
   },
   guestAtleta: {

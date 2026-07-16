@@ -779,7 +779,7 @@ function renderPlayerDetail(container, data) {
       };
       showLoading('Salvataggio...');
       try {
-        await apiFetch('/calciatori/' + player.id, { method: 'PUT', body: JSON.stringify(d) });
+        await apiFetch('/calciatori/' + player.id + '?team_id=' + window.YFM.squadraId, { method: 'PUT', body: JSON.stringify({ ...d, season_id: window.YFM.currentSeasonId }) });
         invalidateDashboardCache();
         // Ricarica la scheda
         loadPlayerDetail(container, player.id);

@@ -117,6 +117,8 @@ router.post('/squadre/:teamId/registrations-batch', authMiddleware, async (req, 
 });
 
 // PUT aggiorna tesseramento
+const { checklistAutoUpdate } = require('../helpers/checklistAutoUpdate');
+
 router.put('/registrations/:id', authMiddleware, async (req, res) => {
   try {
     const { stato, dati_genitore, documenti_consegnati, data_tesseramento, note } = req.body;
@@ -130,6 +132,12 @@ router.put('/registrations/:id', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('registration')
       .update(update).eq('id', req.params.id).select().single();
     if (error) return res.status(400).json({ error: error.message });
+
+    // Auto-aggiorna checklist item 'tesseramento'
+    if (stato !== undefined) {
+      checklistAutoUpdate(supabase, data.player_id, data.team_id, data.season_id, 'tesseramento', stato === 'tesserato');
+    }
+
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

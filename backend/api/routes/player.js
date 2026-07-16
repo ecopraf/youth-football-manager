@@ -188,6 +188,18 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         await q;
       }
 
+      // Auto-aggiorna checklist item 'certificato' se data_visita_medica cambiata
+      if (c.data_visita_medica !== undefined) {
+        const oggi = new Date().toISOString().split('T')[0];
+        const certValido = !!(c.data_visita_medica && c.data_visita_medica.trim() && c.data_visita_medica.trim() >= oggi);
+        const teamId = c.team_id || req.query.team_id;
+        const seasonId = c.season_id;
+        if (teamId && seasonId) {
+          const { checklistAutoUpdate } = require('../helpers/checklistAutoUpdate');
+          checklistAutoUpdate(supabase, req.params.id, teamId, seasonId, 'certificato', certValido);
+        }
+      }
+
       res.json(data);
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -494,9 +506,9 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const { playerIds } = req.body;
       if (!playerIds || !playerIds.length) return res.status(400).json({ error: 'Nessun giocatore selezionato' });
 
-      // Validazione anno nascita per ogni giocatore
-      for (const pid of playerIds) {
-        const { data: player } = await supabase.from('player').select('data_nascita').eq('id', pid).single();
+      // Validazione anno nascita — fetch batch
+      const { data: playersData } = await supabase.from('player').select('id, data_nascita').in('id', playerIds);
+      for (const player of (playersData || [])) {
         if (player?.data_nascita) {
           const birthErr = await validateBirthYear(player.data_nascita, req.params.squadraId);
           if (birthErr) return res.status(400).json({ error: birthErr });
@@ -529,37 +541,39 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       const { data: destTeam } = await supabase.from('team').select('category:category_id(anno_da, nome)').eq('id', req.params.squadraId).single();
       if (!destTeam?.category) return res.status(400).json({ error: 'Categoria destinazione non trovata' });
 
-      // Validazione: il giocatore deve essere più giovane (anno nascita > anno_da della categoria)
-      for (const pid of playerIds) {
-        const { data: player } = await supabase.from('player').select('data_nascita, nome, cognome').eq('id', pid).single();
+      // Validazione batch: fetch tutti i player + team_player esistenti in 2 query
+      const [{ data: playersData }, { data: existingTps }] = await Promise.all([
+        supabase.from('player').select('id, data_nascita, nome, cognome').in('id', playerIds),
+        supabase.from('team_player').select('player_id').in('player_id', playerIds).eq('team_id', req.params.squadraId)
+      ]);
+      const existingSet = new Set((existingTps || []).map(tp => tp.player_id));
+      for (const player of (playersData || [])) {
         if (!player?.data_nascita) continue;
         const year = parseInt(player.data_nascita.split('-')[0]);
         if (year <= destTeam.category.anno_da) {
           return res.status(400).json({ error: `${player.nome} ${player.cognome} (${year}) non pu\u00F2 essere aggregato a ${destTeam.category.nome} (${destTeam.category.anno_da}) - solo categorie superiori` });
         }
-        // Verifica non sia gi\u00E0 nel team
-        const { data: existing } = await supabase.from('team_player').select('id').eq('player_id', pid).eq('team_id', req.params.squadraId);
-        if (existing && existing.length > 0) {
+        if (existingSet.has(player.id)) {
           return res.status(400).json({ error: `${player.nome} ${player.cognome} \u00E8 gi\u00E0 nella rosa` });
         }
       }
 
-      // Crea team_player con aggregato=true, copiando ruolo dal team originale
-      const inserts = [];
-      for (const pid of playerIds) {
-        const { data: origTp } = await supabase.from('team_player')
-          .select('ruolo_preferito, numero_maglia')
-          .eq('player_id', pid).eq('stato', 'Attivo').eq('aggregato', false).limit(1).single();
-        inserts.push({
-          team_id: req.params.squadraId,
-          player_id: pid,
-          stato: 'Attivo',
-          aggregato: true,
-          ruolo_preferito: origTp?.ruolo_preferito || null,
-          numero_maglia: origTp?.numero_maglia || null,
-          data_assegnazione: new Date().toISOString().split('T')[0]
-        });
-      }
+      // Fetch ruoli originali in batch
+      const { data: origTps } = await supabase.from('team_player')
+        .select('player_id, ruolo_preferito, numero_maglia')
+        .in('player_id', playerIds).eq('stato', 'Attivo').eq('aggregato', false);
+      const origTpMap = {};
+      (origTps || []).forEach(tp => { origTpMap[tp.player_id] = tp; });
+
+      const inserts = playerIds.map(pid => ({
+        team_id: req.params.squadraId,
+        player_id: pid,
+        stato: 'Attivo',
+        aggregato: true,
+        ruolo_preferito: origTpMap[pid]?.ruolo_preferito || null,
+        numero_maglia: origTpMap[pid]?.numero_maglia || null,
+        data_assegnazione: new Date().toISOString().split('T')[0]
+      }));
       const { error } = await supabase.from('team_player').insert(inserts);
       if (error) return res.status(400).json({ error: error.message });
       res.json({ success: true, count: playerIds.length });

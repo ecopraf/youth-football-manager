@@ -272,7 +272,7 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
         metodo_pagamento: metodo_pagamento || null,
         ricevuta_numero: ricevuta_numero || null,
         note: note || null
-      }).eq('id', req.params.id).select().single();
+      }).eq('id', req.params.id).select('*, fee:fee_id(player_id, team_id, season_id)').single();
       if (error) return handleDbError(error, res);
 
       // Aggiorna stato fee e importo_pagato in base alle rate
@@ -283,6 +283,12 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
       const nuovoStato = tuttePagate ? 'pagata' : almenaUnaPagata ? 'parziale' : 'da_pagare';
       const importoPagato = (allInst || []).filter(i => i.stato === 'pagata').reduce((s, i) => s + parseFloat(i.importo), 0);
       await supabase.from('fee').update({ stato: nuovoStato, importo_pagato: importoPagato, updated_at: new Date().toISOString() }).eq('id', inst.fee_id);
+
+      // Auto-aggiorna checklist item 'quota' se fee completamente pagata (dati già in inst.fee)
+      if (tuttePagate && inst.fee) {
+        const { checklistAutoUpdate } = require('../helpers/checklistAutoUpdate');
+        checklistAutoUpdate(supabase, inst.fee.player_id, inst.fee.team_id, inst.fee.season_id, 'quota', true);
+      }
 
       res.json({ ...inst, fee_stato: nuovoStato });
     } catch (err) {

@@ -41,16 +41,43 @@ WORKSPACE (società sportiva)
 | id | uuid | NO | gen_random_uuid() | PK |
 | nome | varchar(100) | NO | | Es: "Albalonga" |
 | logo_url | varchar(255) | SI | | |
-| indirizzo | text | SI | | |
-| telefono | varchar(50) | SI | | |
-| email | varchar(255) | SI | | |
-| sito_web | varchar(255) | SI | | |
-| colori_sociali | varchar(100) | SI | | |
-| sponsor_tecnico | varchar(100) | SI | | |
 | nome_breve | text | SI | | Nome compatto per UI (sidebar, dashboard) |
+| checklist_template | jsonb | SI | | Template items checklist |
 | data_creazione | timestamptz | SI | now() | |
 
-**Tabelle figlie dirette:** season, category, facility, staff, users, import_log, tournament
+> ⚠️ I campi `indirizzo`, `telefono`, `email`, `sito_web`, `colori_sociali`, `sponsor_tecnico` sono stati migrati in `workspace_anagrafica`.
+
+**Tabelle figlie dirette:** season, category, facility, staff, users, import_log, tournament, workspace_anagrafica
+
+---
+
+### WORKSPACE_ANAGRAFICA — Dati societari (modificabili da admin/segreteria)
+
+| Colonna | Tipo | Null | Default | Note |
+|---------|------|------|---------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| workspace_id | uuid | NO | | FK → workspace.id (UNIQUE) |
+| forma_giuridica | text | SI | | Es: SSD, ASD |
+| matricola_figc | text | SI | | |
+| p_iva | text | SI | | |
+| codice_fiscale | text | SI | | |
+| sdi | text | SI | | Codice destinatario fatturazione |
+| indirizzo | text | SI | | Sede legale |
+| telefono | text | SI | | |
+| email | text | SI | | |
+| sito_web | text | SI | | |
+| facebook | text | SI | | |
+| instagram | text | SI | | |
+| colori_sociali | text | SI | | Migrato da workspace |
+| sponsor_tecnico | text | SI | | Migrato da workspace |
+| nome_campo | text | SI | | Campo di casa (migrato da facility) |
+| indirizzo_campo | text | SI | | Indirizzo campo di casa |
+| iban | text | SI | | IBAN per pagamenti |
+| updated_at | timestamptz | SI | | |
+
+**Endpoint:** `GET/PUT /api/workspaces/:id/anagrafica`  
+**Permessi modifica:** admin, superadmin, write-rosa, write-tesseramento  
+**Parser import:** `parseSocietaText()` in `club.js` e `workspaces.js` — unificato TC + testo libero
 
 ---
 
@@ -789,6 +816,25 @@ users.id
 | punti | bigint | 3V + 1P |
 
 **Source**: `match` JOIN `team` WHERE stato='Terminata' OR archiviata=true
+
+---
+
+### registration_checklist — Checklist inizio stagione per giocatore
+
+| Colonna | Tipo | Note |
+|---------|------|------|
+| id | UUID PK | |
+| player_id | UUID FK player | |
+| team_id | UUID FK team | |
+| season_id | UUID FK season | |
+| items | JSONB | Array di `{key, label, done}` |
+| completamento_pct | INT | 0-100, calcolato da items |
+| created_at | TIMESTAMPTZ | |
+| updated_at | TIMESTAMPTZ | |
+
+**UNIQUE**: `(player_id, team_id, season_id)`
+
+**Note**: Il template degli items è configurabile per workspace (`workspace.checklist_template` JSONB). Default: iscrizione, certificato, GDPR, quota, kit, foto, tesseramento.
 
 ---
 

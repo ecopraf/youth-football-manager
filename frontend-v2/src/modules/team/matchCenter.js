@@ -1722,7 +1722,7 @@ async function saveAll(mid) {
     // Save events
     await apiFetch('/partite/' + mid + '/eventi-batch', {
       method: 'POST',
-      body: JSON.stringify({ eventi })
+      body: JSON.stringify({ eventi, match_stato: match?.stato })
     });
 
     // Save result from events count (or manual score if no goal events)

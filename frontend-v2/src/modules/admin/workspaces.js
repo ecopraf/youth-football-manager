@@ -30,11 +30,13 @@ export default async function loadWorkspaces() {
   render(c);
 }
 
-// ── TC PARSER ──
-function parseTCText(text) {
+// ── UNIFIED PARSER (TC + testo libero) ──
+function parseSocietaText(text) {
   const result = {};
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  const mapping = {
+
+  // ── TC structured keys ──
+  const tcMapping = {
     'nome completo': 'nome',
     'colori sociali': 'colori_sociali',
     'sede': 'indirizzo',
@@ -42,8 +44,7 @@ function parseTCText(text) {
     'sito web': 'sito_web',
     'sponsor tecnico': 'sponsor_tecnico'
   };
-
-  const allKeys = [...Object.keys(mapping), 'categoria', 'stadio', 'regione', 'fax', 'email secondaria', 'email', 'facebook', 'instagram'];
+  const allKeys = [...Object.keys(tcMapping), 'categoria', 'stadio', 'regione', 'fax', 'email secondaria', 'email', 'facebook', 'instagram'];
   let stadioLines = [];
   let inStadio = false;
 
@@ -51,77 +52,89 @@ function parseTCText(text) {
     const line = lines[i];
     const lineLow = line.toLowerCase();
 
-    // Handle "Stadio" which can span multiple lines
     if (inStadio) {
-      const isKey = allKeys.some(k => lineLow.startsWith(k));
-      if (isKey) {
-        inStadio = false;
-      } else {
-        stadioLines.push(line);
-        continue;
-      }
+      if (allKeys.some(k => lineLow.startsWith(k))) { inStadio = false; }
+      else { stadioLines.push(line); continue; }
     }
-
     if (/^stadio/i.test(line)) {
       const val = line.replace(/^stadio\s*/i, '').replace(/^\t+/, '').trim();
       if (val) stadioLines.push(val);
-      inStadio = true;
-      continue;
+      inStadio = true; continue;
     }
-
-    // Skip "email secondaria" — non ci interessa
     if (lineLow.startsWith('email secondaria')) continue;
-
-    // Email (solo quella principale)
     if (lineLow.startsWith('email')) {
       let val = line.substring(5).replace(/^\t+/, '').trim();
-      if (!val && i + 1 < lines.length && !allKeys.some(k => lines[i+1].toLowerCase().startsWith(k))) {
-        val = lines[++i].trim();
-      }
-      if (val && val !== '-') result.email = val;
-      continue;
+      if (!val && i + 1 < lines.length && !allKeys.some(k => lines[i+1].toLowerCase().startsWith(k))) val = lines[++i].trim();
+      if (val && val !== '-') result.email = val; continue;
     }
-
-    // Facebook
     if (lineLow.startsWith('facebook')) {
       let val = line.substring(8).replace(/^\t+/, '').trim();
-      if (!val && i + 1 < lines.length && !allKeys.some(k => lines[i+1].toLowerCase().startsWith(k))) {
-        val = lines[++i].trim();
-      }
-      if (val && val !== '-') result.facebook = val;
-      continue;
+      if (!val && i + 1 < lines.length && !allKeys.some(k => lines[i+1].toLowerCase().startsWith(k))) val = lines[++i].trim();
+      if (val && val !== '-') result.facebook = val; continue;
     }
-
-    // Instagram
     if (lineLow.startsWith('instagram')) {
       let val = line.substring(9).replace(/^\t+/, '').trim();
-      if (!val && i + 1 < lines.length && !allKeys.some(k => lines[i+1].toLowerCase().startsWith(k))) {
-        val = lines[++i].trim();
-      }
-      if (val && val !== '-') result.instagram = val;
-      continue;
+      if (!val && i + 1 < lines.length && !allKeys.some(k => lines[i+1].toLowerCase().startsWith(k))) val = lines[++i].trim();
+      if (val && val !== '-') result.instagram = val; continue;
     }
-
-    for (const [key, field] of Object.entries(mapping)) {
+    let matched = false;
+    for (const [key, field] of Object.entries(tcMapping)) {
       if (lineLow.startsWith(key)) {
         let val = line.substring(key.length).replace(/^\t+/, '').trim();
-        if (!val && i + 1 < lines.length) {
-          const next = lines[i + 1];
-          if (!allKeys.some(k => next.toLowerCase().startsWith(k))) {
-            val = next.trim();
-            i++;
-          }
-        }
+        if (!val && i + 1 < lines.length && !allKeys.some(k => lines[i+1].toLowerCase().startsWith(k))) { val = lines[++i].trim(); }
         if (val && val !== '-') result[field] = val;
-        break;
+        matched = true; break;
       }
     }
+    if (matched) continue;
   }
-
-  // Parse stadio into facility fields
   if (stadioLines.length > 0) {
     result._stadio_nome = stadioLines[0];
     if (stadioLines.length > 1) result._stadio_indirizzo = stadioLines.slice(1).join(', ');
+  }
+
+  // ── Generic regex patterns (free text fallback) ──
+  const full = text;
+  if (!result.matricola_figc) {
+    const m = full.match(/matricola\s+f\.?i\.?g\.?c\.?\s*[:\-]?\s*(\d+)/i);
+    if (m) result.matricola_figc = m[1];
+  }
+  if (!result.p_iva) {
+    const m = full.match(/p\.?\s*iva\s*[:\-]?\s*(\d{11})/i);
+    if (m) result.p_iva = m[1];
+  }
+  if (!result.codice_fiscale) {
+    const m = full.match(/c\.?\s*f\.?\s*[:\-]?\s*([A-Z0-9]{11,16})/i);
+    if (m && m[1] !== result.p_iva) result.codice_fiscale = m[1];
+  }
+  if (!result.sdi) {
+    const m = full.match(/\bsdi\s*[:\-]?\s*([A-Z0-9]{6,7})\b/i);
+    if (m) result.sdi = m[1].toUpperCase();
+  }
+  if (!result.telefono) {
+    const m = full.match(/tel\.?\s*[:\-]?\s*([0-9][\d\s\/\-]{5,14})/i);
+    if (m) result.telefono = m[1].trim();
+  }
+  if (!result.email) {
+    const m = full.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+    if (m) result.email = m[0];
+  }
+  if (!result.sito_web) {
+    const m = full.match(/https?:\/\/[^\s,;]+/i);
+    if (m) result.sito_web = m[0];
+  }
+  if (!result.indirizzo) {
+    const m = full.match(/(?:sede|indirizzo|via|viale|piazza|corso|loc\.?)\s+[^,\n]{5,50},\s*[^,\n]{3,30}/i);
+    if (m) result.indirizzo = m[0].replace(/^(?:sede legale[^:]*:|indirizzo\s*:?)/i, '').trim();
+  }
+  if (!result.nome) {
+    // First line that looks like a society name (contains ASD/SSD/APS/POLISPORTIVA etc.)
+    const m = text.match(/^(.{5,60}(?:asd|ssd|aps|polisportiva|calcio|football|academy|sport)[^\n]*)/im);
+    if (m) result.nome = m[1].trim();
+  }
+  if (!result.forma_giuridica) {
+    const m = text.match(/\b(s\.?s\.?d\.?|a\.?s\.?d\.?|s\.?r\.?l\.?|a\.?r\.?l\.?|s\.?p\.?a\.?|a\.?p\.?s\.?)\b/i);
+    if (m) result.forma_giuridica = m[1].toUpperCase().replace(/\./g, '');
   }
 
   return result;
@@ -165,40 +178,16 @@ function render(c) {
         <div id="tcPasteSection" style="margin-bottom:16px;">
           <button type="button" class="btn btn-secondary" id="btnTogglePaste" style="width:100%;font-size:13px;">📋 Incolla dati da Tuttocampo</button>
           <div id="tcPasteArea" style="display:none;margin-top:10px;">
-            <textarea id="tcPasteInput" rows="6" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:12px;font-family:monospace;" placeholder="Incolla qui la scheda società da Tuttocampo..."></textarea>
+            <textarea id="tcPasteInput" rows="6" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:12px;font-family:monospace;" placeholder="Incolla qui i dati della società (da Tuttocampo, documento ufficiale, email...)..."></textarea>
             <button type="button" class="btn btn-primary" id="btnParsePaste" style="margin-top:8px;font-size:12px;">⚡ Analizza e precompila</button>
           </div>
+          <div id="parseRecap" style="display:none;"></div>
         </div>
 
         <form id="wsForm">
           <div class="form-group"><label>Nome *</label><input id="wsNome" required></div>
           <div class="form-group"><label>Nome Breve</label><input id="wsNomeBreve" placeholder="es. DF Academy (mostrato in sidebar/dashboard)"></div>
           <div id="logoPreview" style="margin:12px 0;text-align:center;"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div class="form-group"><label>Colori Sociali</label><input id="wsColori" placeholder="es. Nero/Azzurro"></div>
-            <div class="form-group"><label>Sponsor Tecnico</label><input id="wsSponsor" placeholder="es. Nike"></div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div class="form-group"><label>Indirizzo sede</label><input id="wsIndirizzo"></div>
-            <div class="form-group"><label>Telefono</label><input id="wsTelefono"></div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div class="form-group"><label>Email</label><input id="wsEmail" type="email"></div>
-            <div class="form-group"><label>Sito web</label><input id="wsSitoWeb" placeholder="https://..."></div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div class="form-group"><label>Facebook</label><input id="wsFacebook" placeholder="URL o nome pagina"></div>
-            <div class="form-group"><label>Instagram</label><input id="wsInstagram" placeholder="URL o @username"></div>
-          </div>
-
-          <div style="background:#f8f9fa;border-radius:10px;padding:14px;margin-top:12px;">
-            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:8px;">🏟️ Campo di Casa (Facility)</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              <div class="form-group"><label>Nome Impianto</label><input id="wsFacNome" placeholder="es. Centro Sportivo"></div>
-              <div class="form-group"><label>Indirizzo Campo</label><input id="wsFacIndirizzo" placeholder="es. Via dello Sport 1"></div>
-            </div>
-          </div>
-
           <input type="hidden" id="wsId">
           <input type="hidden" id="wsLogoUrl">
           <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:20px;">
@@ -270,8 +259,7 @@ function render(c) {
 function renderGrid() {
   const grid = document.getElementById('wsGrid');
   grid.innerHTML = workspaces.map(ws => {
-    const infoParts = [ws.indirizzo, ws.telefono, ws.email].filter(Boolean);
-    return `
+  return `
       <div class="ws-card" data-ws="${ws.id}" style="cursor:pointer;">
         <div class="ws-card-header">
           <img class="ws-card-logo" src="${ws.logo_url || '/assets/app-icon.png'}" onerror="this.src='/assets/app-icon.png'">
@@ -280,7 +268,6 @@ function renderGrid() {
             <div class="ws-card-meta">${[ws.colori_sociali, ws.sponsor_tecnico].filter(Boolean).join(' · ') || ''}</div>
           </div>
         </div>
-        ${infoParts.length ? `<div class="ws-card-info">${infoParts.join(' · ')}</div>` : ''}
         <div class="ws-card-actions">
           <button class="btn btn-small" data-edit="${ws.id}">✏️ Modifica</button>
           <button class="btn btn-small btn-danger" data-del="${ws.id}" style="background:#E74C3C;color:white;">🗑️ Elimina</button>
@@ -372,13 +359,7 @@ function renderTabInfo() {
     ['Nome', ws.nome],
     ['Nome Breve', ws.nome_breve],
     ['Colori Sociali', ws.colori_sociali],
-    ['Sponsor Tecnico', ws.sponsor_tecnico],
-    ['Indirizzo', ws.indirizzo],
-    ['Telefono', ws.telefono],
-    ['Email', ws.email],
-    ['Sito Web', ws.sito_web],
-    ['Facebook', ws.facebook],
-    ['Instagram', ws.instagram]
+    ['Sponsor Tecnico', ws.sponsor_tecnico]
   ].filter(([, v]) => v);
 
   const container = document.getElementById('wsTabContent');
@@ -397,9 +378,6 @@ function renderTabInfo() {
 
 async function renderTabInfoEdit() {
   const ws = selectedWs;
-  let facility = null;
-  try { facility = await apiFetch(`/workspaces/${ws.id}/facility`); } catch (e) {}
-
   const container = document.getElementById('wsTabContent');
   container.innerHTML = `
     <div style="background:white;border-radius:12px;padding:20px;border:1px solid #eee;">
@@ -416,25 +394,6 @@ async function renderTabInfoEdit() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div class="form-group"><label>Colori Sociali</label><input id="infoColori" value="${ws.colori_sociali || ''}"></div>
           <div class="form-group"><label>Sponsor Tecnico</label><input id="infoSponsor" value="${ws.sponsor_tecnico || ''}"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="form-group"><label>Indirizzo</label><input id="infoIndirizzo" value="${ws.indirizzo || ''}"></div>
-          <div class="form-group"><label>Telefono</label><input id="infoTelefono" value="${ws.telefono || ''}"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="form-group"><label>Email</label><input id="infoEmail" type="email" value="${ws.email || ''}"></div>
-          <div class="form-group"><label>Sito Web</label><input id="infoSitoWeb" value="${ws.sito_web || ''}"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div class="form-group"><label>Facebook</label><input id="infoFacebook" value="${ws.facebook || ''}"></div>
-          <div class="form-group"><label>Instagram</label><input id="infoInstagram" value="${ws.instagram || ''}"></div>
-        </div>
-        <div style="background:#f8f9fa;border-radius:10px;padding:14px;margin-top:12px;">
-          <label style="font-weight:600;font-size:13px;display:block;margin-bottom:8px;">🏟️ Campo di Casa</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div class="form-group"><label>Nome Impianto</label><input id="infoFacNome" value="${facility?.nome || ''}"></div>
-            <div class="form-group"><label>Indirizzo Campo</label><input id="infoFacIndirizzo" value="${facility?.indirizzo || ''}"></div>
-          </div>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:20px;">
           <button type="button" class="btn btn-secondary" id="btnInfoCancel">Annulla</button>
@@ -499,27 +458,13 @@ async function handleInfoSave(e) {
     nome_breve: document.getElementById('infoNomeBreve').value.trim() || null,
     logo_url: document.getElementById('infoLogoUrl').value || null,
     colori_sociali: document.getElementById('infoColori').value.trim() || null,
-    sponsor_tecnico: document.getElementById('infoSponsor').value.trim() || null,
-    indirizzo: document.getElementById('infoIndirizzo').value.trim() || null,
-    telefono: document.getElementById('infoTelefono').value.trim() || null,
-    email: document.getElementById('infoEmail').value.trim() || null,
-    sito_web: document.getElementById('infoSitoWeb').value.trim() || null,
-    facebook: document.getElementById('infoFacebook').value.trim() || null,
-    instagram: document.getElementById('infoInstagram').value.trim() || null
+    sponsor_tecnico: document.getElementById('infoSponsor').value.trim() || null
   };
   if (!body.nome) return;
 
   showLoading('Salvataggio...');
   try {
     await apiFetch(`/workspaces/${ws.id}`, { method: 'PUT', body: JSON.stringify(body) });
-
-    const facNome = document.getElementById('infoFacNome').value.trim();
-    const facIndirizzo = document.getElementById('infoFacIndirizzo').value.trim();
-    if (facNome || facIndirizzo) {
-      await apiFetch(`/workspaces/${ws.id}/facility`, {
-        method: 'PUT', body: JSON.stringify({ nome: facNome, indirizzo: facIndirizzo, citta: '' })
-      });
-    }
 
     // Refresh workspace data
     workspaces = await apiFetch('/auth/workspaces');
@@ -1229,39 +1174,72 @@ function handleParse() {
   const text = document.getElementById('tcPasteInput').value.trim();
   if (!text) { alert('Incolla prima i dati dalla scheda Tuttocampo'); return; }
 
-  const parsed = parseTCText(text);
+  const parsed = parseSocietaText(text);
 
   // Fill form fields (only if currently empty or user confirms overwrite)
-  const fields = {
-    wsNome: parsed.nome,
-    wsColori: parsed.colori_sociali,
-    wsSponsor: parsed.sponsor_tecnico,
-    wsIndirizzo: parsed.indirizzo,
-    wsTelefono: parsed.telefono,
-    wsEmail: parsed.email,
-    wsSitoWeb: parsed.sito_web,
-    wsFacebook: parsed.facebook,
-    wsInstagram: parsed.instagram,
-    wsFacNome: parsed._stadio_nome,
-    wsFacIndirizzo: parsed._stadio_indirizzo
-  };
+  // Populate workspace fields (nome only in form)
+  if (parsed.nome) document.getElementById('wsNome').value = parsed.nome;
+  if (parsed.nome) document.getElementById('wsNomeBreve').value = parsed.nome;
 
-  for (const [id, val] of Object.entries(fields)) {
-    if (val) document.getElementById(id).value = val;
-  }
-
-  // Auto-match logo based on parsed name
+  // Auto-match logo
   if (parsed.nome) {
     const logo = findLogo(parsed.nome);
-    if (logo) {
-      document.getElementById('wsLogoUrl').value = logo;
-      renderLogoPreview(logo, true);
-    }
+    if (logo) { document.getElementById('wsLogoUrl').value = logo; renderLogoPreview(logo, true); }
   }
 
-  // Collapse paste area and show success
+  // Store parsed anagrafica for save
+  window._parsedAnagrafica = {
+    colori_sociali: parsed.colori_sociali || null,
+    sponsor_tecnico: parsed.sponsor_tecnico || null,
+    indirizzo: parsed.indirizzo || null,
+    telefono: parsed.telefono || null,
+    email: parsed.email || null,
+    sito_web: parsed.sito_web || null,
+    facebook: parsed.facebook || null,
+    instagram: parsed.instagram || null,
+    matricola_figc: parsed.matricola_figc || null,
+    p_iva: parsed.p_iva || null,
+    codice_fiscale: parsed.codice_fiscale || null,
+    sdi: parsed.sdi || null,
+    forma_giuridica: parsed.forma_giuridica || null,
+    nome_campo: parsed._stadio_nome || null,
+    indirizzo_campo: parsed._stadio_indirizzo || null
+  };
+
+  // Show visual recap
+  const labels = [
+    ['\uD83C\uDFE2 Nome', parsed.nome],
+    ['\uD83C\uDFA8 Colori', parsed.colori_sociali],
+    ['\uD83D\uDC55 Sponsor', parsed.sponsor_tecnico],
+    ['\uD83D\uDCCB Matricola FIGC', parsed.matricola_figc],
+    ['\uD83D\uDCCD Indirizzo', parsed.indirizzo],
+    ['\uD83D\uDCDE Telefono', parsed.telefono],
+    ['\u2709\uFE0F Email', parsed.email],
+    ['\uD83D\uDCB3 P.IVA', parsed.p_iva],
+    ['\uD83C\uDD94 C.F.', parsed.codice_fiscale],
+    ['\uD83D\uDCE8 SDI', parsed.sdi],
+    ['\uD83C\uDF10 Sito web', parsed.sito_web],
+    ['\uD83C\uDFDF\uFE0F Campo', parsed._stadio_nome],
+    ['\uD83D\uDCCD Indirizzo campo', parsed._stadio_indirizzo]
+  ];
+  const rows = labels.map(([label, val]) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0f0;">
+      <span style="color:#555;font-size:12px;">${label}</span>
+      ${val
+        ? `<span style="font-size:12px;font-weight:500;color:#1a1a1a;max-width:200px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${val}">${val}</span>`
+        : `<span style="font-size:11px;color:#bbb;">non trovato</span>`}
+    </div>`
+  ).join('');
+  const recap = document.getElementById('parseRecap');
+  recap.innerHTML = `
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;margin-top:10px;">
+      <div style="font-size:12px;font-weight:600;color:#166534;margin-bottom:8px;">\u2705 Dati estratti</div>
+      ${rows}
+    </div>`;
+  recap.style.display = 'block';
+
   document.getElementById('tcPasteArea').style.display = 'none';
-  document.getElementById('btnTogglePaste').innerHTML = '✅ Dati importati da Tuttocampo';
+  document.getElementById('btnTogglePaste').innerHTML = '\u2705 Dati importati';
   document.getElementById('btnTogglePaste').style.background = '#d4edda';
   document.getElementById('btnTogglePaste').style.color = '#155724';
 }
@@ -1338,11 +1316,12 @@ async function openModal(wsId = null) {
   document.getElementById('logoPreview').innerHTML = '';
   document.getElementById('tcPasteInput').value = '';
   document.getElementById('tcPasteArea').style.display = 'none';
-  document.getElementById('btnTogglePaste').innerHTML = '📋 Incolla dati da Tuttocampo';
+  document.getElementById('btnTogglePaste').innerHTML = '\uD83D\uDCCB Incolla dati societ\u00e0';
+  const recapEl = document.getElementById('parseRecap');
+  if (recapEl) { recapEl.innerHTML = ''; recapEl.style.display = 'none'; }
+  window._parsedAnagrafica = null;
   document.getElementById('btnTogglePaste').style.background = '';
   document.getElementById('btnTogglePaste').style.color = '';
-  document.getElementById('wsFacNome').value = '';
-  document.getElementById('wsFacIndirizzo').value = '';
 
   if (wsId) {
     const ws = workspaces.find(w => w.id === wsId);
@@ -1351,25 +1330,8 @@ async function openModal(wsId = null) {
     document.getElementById('wsId').value = ws.id;
     document.getElementById('wsNome').value = ws.nome || '';
     document.getElementById('wsNomeBreve').value = ws.nome_breve || '';
-    document.getElementById('wsColori').value = ws.colori_sociali || '';
-    document.getElementById('wsSponsor').value = ws.sponsor_tecnico || '';
-    document.getElementById('wsIndirizzo').value = ws.indirizzo || '';
-    document.getElementById('wsTelefono').value = ws.telefono || '';
-    document.getElementById('wsEmail').value = ws.email || '';
-    document.getElementById('wsSitoWeb').value = ws.sito_web || '';
-    document.getElementById('wsFacebook').value = ws.facebook || '';
-    document.getElementById('wsInstagram').value = ws.instagram || '';
     document.getElementById('wsLogoUrl').value = ws.logo_url || '';
     if (ws.logo_url) renderLogoPreview(ws.logo_url, true);
-
-    // Load facility
-    try {
-      const fac = await apiFetch(`/workspaces/${wsId}/facility`);
-      if (fac) {
-        document.getElementById('wsFacNome').value = fac.nome || '';
-        document.getElementById('wsFacIndirizzo').value = fac.indirizzo || '';
-      }
-    } catch (e) {}
   } else {
     document.getElementById('wsModalTitle').textContent = 'Nuovo Workspace';
   }
@@ -1387,15 +1349,7 @@ async function handleSave(e) {
   const body = {
     nome: document.getElementById('wsNome').value.trim(),
     nome_breve: document.getElementById('wsNomeBreve').value.trim() || null,
-    logo_url: document.getElementById('wsLogoUrl').value || null,
-    colori_sociali: document.getElementById('wsColori').value.trim() || null,
-    sponsor_tecnico: document.getElementById('wsSponsor').value.trim() || null,
-    indirizzo: document.getElementById('wsIndirizzo').value.trim() || null,
-    telefono: document.getElementById('wsTelefono').value.trim() || null,
-    email: document.getElementById('wsEmail').value.trim() || null,
-    sito_web: document.getElementById('wsSitoWeb').value.trim() || null,
-    facebook: document.getElementById('wsFacebook').value.trim() || null,
-    instagram: document.getElementById('wsInstagram').value.trim() || null
+    logo_url: document.getElementById('wsLogoUrl').value || null
   };
   if (!body.nome) { alert('Nome obbligatorio'); return; }
 
@@ -1409,14 +1363,12 @@ async function handleSave(e) {
       wsId = created.id;
     }
 
-    // Save facility if provided
-    const facNome = document.getElementById('wsFacNome').value.trim();
-    const facIndirizzo = document.getElementById('wsFacIndirizzo').value.trim();
-    if (facNome || facIndirizzo) {
-      await apiFetch(`/workspaces/${wsId}/facility`, {
-        method: 'PUT',
-        body: JSON.stringify({ nome: facNome, indirizzo: facIndirizzo, citta: '' })
-      });
+    // Save anagrafica if parsed data available
+    if (window._parsedAnagrafica) {
+      try {
+        await apiFetch(`/workspaces/${wsId}/anagrafica`, { method: 'PUT', body: JSON.stringify(window._parsedAnagrafica) });
+      } catch (e) { /* non bloccante */ }
+      window._parsedAnagrafica = null;
     }
 
     workspaces = await apiFetch('/auth/workspaces');

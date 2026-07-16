@@ -158,15 +158,18 @@ Dopo ogni task completato, l'agente DEVE aggiornare:
    - **Nuove variabili `window.YFM.*` o helper functions** → aggiornare sezione "Frontend Global State"
    - **Rinomina/rimozione variabili globali** → aggiornare tabella "Errori comuni da evitare"
    - **Nuove tabelle nella gerarchia dati** → aggiornare albero "Gerarchia dati (DB → Frontend)"
+4. **`frontend-v2/src/components/helpData.js`** — **OBBLIGATORIO** se la modifica aggiunge una nuova pagina o funzionalità visibile all'utente. Aggiungere entry con chiave = nome pagina nel router.
 
 > ⚠️ I file `PROJECT_STATUS.md` e `.agents/knowledge/ROADMAP.md` sono deprecati.
 > La fonte di verità unica è `DEVELOPMENT_PLAN.md`.
 > ⚠️ **AGENTS.md** deve essere aggiornato contestualmente ad ogni modifica che cambia struttura file, endpoint, dipendenze o architettura (nuovi router, nuovi helper, nuovi moduli frontend, nuove tabelle DB).
+> ⚠️ **Tutti gli aggiornamenti docs/help vanno fatti NELLO STESSO task**, non come step separato da confermare. Sono parte integrante dell'implementazione.
+> ⚠️ **Il changelog in DEVELOPMENT_PLAN.md va aggiornato NELLO STESSO COMMIT** dei file modificati — mai in un commit separato. Il messaggio di commit e la riga changelog devono essere coerenti. Se si dimentica, aggiornare nel commit successivo prima del push.
 
 ## Schema Database (Fonte di verità)
 
 Le tabelle reali nel DB Supabase sono:
-- `workspace`, `season`, `category`, `competition`, `facility`
+- `workspace`, `workspace_anagrafica`, `season`, `category`, `competition`, `facility`
 - `team`, `player`, `team_player`, `staff`, `team_staff`
 
 **Colonne notevoli `category`**: `tipo_campionato TEXT` (Regionale, Provinciale...), `girone TEXT` (lettera girone, es. "E" — auto-salvato da import PDF e config GR)
@@ -232,6 +235,9 @@ Le tabelle reali nel DB Supabase sono:
 I workspace attivi nel DB sono:
 - `ACP Annex` (ID: `752eab50-73c1-495b-9e0e-8b851e9c9a99`) → **rinominato in "Albalonga"**
 - `DF Academy` (ID: `ab1186e5-a884-4355-b684-28e32b8157c2`) — Categorie: Under 15
+
+**Struttura `workspace`**: solo `nome`, `nome_breve`, `logo_url`, `checklist_template`, `data_creazione` — gestito dal superadmin.
+**Struttura `workspace_anagrafica`**: tutti i dati societari (`forma_giuridica`, `matricola_figc`, `p_iva`, `codice_fiscale`, `sdi`, `iban`, `indirizzo`, `telefono`, `email`, `sito_web`, `facebook`, `instagram`, `colori_sociali`, `sponsor_tecnico`, `nome_campo`, `indirizzo_campo`) — modificabile da admin/segreteria via `GET/PUT /api/workspaces/:id/anagrafica`. Parser unificato TC+testo libero: `parseSocietaText()` in `club.js` e `workspaces.js`.
 
 **NON ESISTONO PIÙ**:
 - Workspace demo `ASD Green Academy` (ID: `00000000-...`) — eliminato
@@ -358,6 +364,17 @@ Quando si scrive logica basata sul nome categoria, usare regex che copra entramb
 
 ## 🎨 Regole UI/UX (OBBLIGATORIO)
 
+### Tab Navigation — Standard
+
+Due stili di tab, scegliere in base al contesto:
+
+| Stile | Classi CSS | Quando usare |
+|-------|-----------|---------------|
+| **Pill** | `.tab-bar` + `.tab-btn` | 2-3 tab con etichette corte. Attiva = sfondo primary + testo bianco. Es: Tesseramento, Kit |
+| **Underline** | `.report-tabs` + `.report-tab` | 3+ tab con etichette lunghe o pagine con molto contenuto sotto. Attiva = bordo inferiore primary. Es: Report |
+
+**Regola**: mai mischiare i due stili nella stessa pagina. Per nuove pagine con tab, usare pill (`.tab-bar`) come default salvo eccezioni motivate.
+
 ### Principio generale
 
 Ogni elemento UI deve essere **coerente con il design system dell'app**. Mai usare componenti nativi del browser quando esiste un equivalente custom.
@@ -369,6 +386,7 @@ Ogni elemento UI deve essere **coerente con il design system dell'app**. Mai usa
 | `alert()` | Toast notification (`showToast()`) o modal custom |
 | `prompt()` | Modal custom con input stilizzato |
 | `confirm()` | Modal custom con bottoni Annulla/Conferma |
+| Import/parse dati | Sempre flusso **parse → preview → conferma → applica** (mai popolare campi direttamente senza conferma utente) |
 | Checkbox/radio nativi non stilizzati | Componenti con stile app (border-radius, colori brand) |
 
 ### Modal custom — Template
@@ -759,6 +777,28 @@ const { data: players } = await supabase.from('team_player')
 // Usa players direttamente per i certificati, zero query extra
 ```
 
+**Corollario — Hook secondari (fire-and-forget)**:
+Quando si aggiunge un hook a un endpoint esistente (es. auto-aggiornamento checklist, notifica, log), i dati necessari all'hook DEVONO provenire da:
+1. Dati già nel `req.body` o `req.params` — preferito
+2. JOIN aggiunto al select già presente nell'endpoint — se serve una sola colonna extra
+3. MAI una query separata dedicata solo all'hook
+
+```javascript
+// ❌ VIETATO (query extra solo per l'hook)
+await supabase.from('fee').update(...).eq('id', inst.fee_id);
+const { data: fee } = await supabase.from('fee').select('player_id, team_id').eq('id', inst.fee_id).single(); // query extra!
+hookFn(fee.player_id, fee.team_id);
+
+// ✅ OBBLIGATORIO (JOIN nel select iniziale)
+const { data: inst } = await supabase.from('fee_installment')
+  .update(...).eq('id', id).select('*, fee:fee_id(player_id, team_id, season_id)').single();
+hookFn(inst.fee.player_id, inst.fee.team_id, inst.fee.season_id); // zero query extra
+
+// ✅ OBBLIGATORIO (dati dal body/params se il frontend li ha già)
+// Frontend: apiFetch('/calciatori/' + id, { body: JSON.stringify({ ...d, season_id: window.YFM.currentSeasonId }) })
+// Backend: const seasonId = c.season_id; // zero query extra
+```
+
 ### Regola #8: Endpoint unificati — Mai duplicare chiamate per dati già disponibili
 
 Se un endpoint backend fetcha dati correlati (es. `category`, `team`, `team_staff`) per costruire la risposta, **includere quei dati nella risposta** anziché costringere il frontend a fare chiamate separate per gli stessi dati.
@@ -1053,6 +1093,7 @@ Usare per label visivamente nascoste ma accessibili a screen reader.
 1. Implementa le modifiche
 2. Testa: `cd frontend-v2 && npm run release` + `cd backend && node -c api/index.js`
    > ⚠️ `npm run release` = incrementa build counter + build. Usare `npm run build` SOLO per test intermedi senza commit.
+   > ⚠️ **UNA SOLA release per commit**. Se dopo la release servono micro-fix (spostare un elemento, fix typo, aggiustamento CSS), usare `npm run build` per verificare e includere nel MEDESIMO commit senza rieseguire `npm run release`. Mai incrementare il counter due volte per lo stesso commit.
 3. **Test funzionale** (vedi sezione sotto)
 4. Aggiorna documentazione (DEVELOPMENT_PLAN.md changelog + eventuali AGENTS.md/project-rules.md)
 5. Commit con messaggio descrittivo — **INCLUDERE SEMPRE** `frontend-v2/.build-counter.json` nel commit (vedi sotto)
