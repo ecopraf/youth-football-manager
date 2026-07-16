@@ -11,10 +11,31 @@ const TAGLIE_SG = ['XS','S','M','L','XL','XXL'];
 
 let templates = [];
 let stock = [];
+let bundles = [];
 let assignments = [];
 let rosterMap = {};
+let currentFilter = 'all';
 let isAdmin = false;
 let expandedTmpls = new Set();
+
+// Modal conferma riutilizzabile
+function confirmModal(msg, onConfirm, { danger = true, confirmLabel } = {}) {
+  const label = confirmLabel || (danger ? 'Elimina' : 'Conferma');
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:flex;align-items:center;justify-content:center;';
+  ov.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:320px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
+    <div style="font-size:32px;margin-bottom:12px;">${danger ? '🗑️' : '⚠️'}</div>
+    <div style="font-size:14px;color:#333;margin-bottom:20px;line-height:1.5;">${msg}</div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button id="cmNo" style="padding:8px 20px;border:1px solid #ddd;border-radius:8px;background:white;cursor:pointer;font-size:13px;">Annulla</button>
+      <button id="cmSi" style="padding:8px 20px;border:none;border-radius:8px;background:${danger ? '#E74C3C' : '#667eea'};color:white;cursor:pointer;font-size:13px;font-weight:600;">${label}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#cmNo').addEventListener('click', () => ov.remove());
+  ov.querySelector('#cmSi').addEventListener('click', () => { ov.remove(); onConfirm(); });
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+}
 
 export default async function loadKit() {
   const c = document.getElementById('pageContent');
@@ -26,14 +47,15 @@ export default async function loadKit() {
 
   showLoading('Caricamento kit...');
   try {
-    const [tmpls, stk, assigns, roster] = await Promise.all([
+    const [tmpls, bdls, assigns, roster] = await Promise.all([
       apiFetch('/kit-templates?workspace_id=' + workspaceId),
-      apiFetch('/kit-stock?workspace_id=' + workspaceId),
+      apiFetch('/kit-bundles?workspace_id=' + workspaceId),
       apiFetch('/kit-assignments?team_id=' + teamId + '&season_id=' + seasonId),
       apiFetch('/squadre/' + teamId + '/calciatori')
     ]);
     templates = tmpls || [];
-    stock = stk || [];
+    stock = []; // non più usato — i pezzi sono dentro bundles[].pezzi
+    bundles = bdls || [];
     assignments = assigns || [];
     rosterMap = {};
     (roster || []).forEach(p => { rosterMap[p.id] = p; });
@@ -68,6 +90,7 @@ function render(c) {
     btn.addEventListener('click', () => {
       c.querySelectorAll('.btn-kit-filter').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
       if (btn.dataset.filter === 'magazzino') renderMagazzino();
       else renderCards(btn.dataset.filter);
     });
@@ -89,16 +112,15 @@ function renderCards(filter) {
 
   let html = '';
   templates.filter(t => t.attivo !== false).forEach(tmpl => {
-    const tmplStock = stock.filter(s => s.template_id === tmpl.id);
     const tmplAssigns = assignments.filter(a => a.kit_stock?.template_id === tmpl.id);
     const articoli = tmpl.articoli || [];
-    const totArticoli = articoli.length;
+    const totArticoli = articoli.reduce((s, a) => s + (a.qty || 1), 0);
 
-    // Per ogni giocatore: quanti articoli assegnati
+    // Per ogni giocatore: quanti pezzi assegnati (rispettando qty per articolo)
     const playerStatus = rosterPlayers.map(p => {
       const playerAssigns = tmplAssigns.filter(a => a.player_id === p.id);
-      const assignedArticoli = new Set(playerAssigns.map(a => a.kit_stock?.articolo));
-      return { player: p, assigned: assignedArticoli.size, total: totArticoli, complete: assignedArticoli.size >= totArticoli };
+      const assigned = articoli.reduce((s, a) => s + Math.min(playerAssigns.filter(x => x.kit_stock?.articolo === a.nome).length, a.qty || 1), 0);
+      return { player: p, assigned, total: totArticoli, complete: assigned >= totArticoli };
     });
 
     // Filtro
@@ -110,8 +132,11 @@ function renderCards(filter) {
     const nIncomplete = playerStatus.filter(ps => !ps.complete && ps.assigned > 0).length;
     const nNone = playerStatus.filter(ps => ps.assigned === 0).length;
     const nArticoli = totArticoli || 1;
-    const pezziDisponibili = tmplStock.filter(s => s.stato === 'disponibile').length;
-    const kitDisponibili = Math.floor(pezziDisponibili / nArticoli);
+    // Kit disponibile = bundle con TUTTI i pezzi disponibili
+    const tmplBundles = bundles.filter(b => b.template_id === tmpl.id);
+    const totPezziKit = tmpl.articoli ? tmpl.articoli.reduce((s, a) => s + (a.qty || 1), 0) : 0;
+    const pezziDisponibili = tmplBundles.reduce((s, b) => s + (b.pezzi_disponibili || 0), 0);
+    const kitDisponibili = tmplBundles.filter(b => b.pezzi_disponibili > 0 && b.pezzi_disponibili === (b.tot_pezzi || totPezziKit)).length;
 
     // Alert
     let alert = '';
@@ -148,11 +173,13 @@ function renderCards(filter) {
             else dot = '🔴';
             const kitTaglia = tmplAssigns.find(a => a.player_id === p.id)?.kit_stock?.taglia;
             const tagliaLabel = kitTaglia || p.taglia;
+            const daOrdinare = p.da_ordinare_kit && !ps.complete;
             return `<div class="kit-row" data-player="${p.id}" data-tmpl="${tmpl.id}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #f5f5f5;cursor:pointer;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
               <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                 <span style="font-size:12px;">${dot}</span>
                 <span style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nome}</span>
                 ${tagliaLabel ? `<span style="font-size:10px;color:${kitTaglia ? '#4338ca' : '#888'};background:${kitTaglia ? '#eef2ff' : '#f0f0f0'};padding:1px 5px;border-radius:4px;">${tagliaLabel}</span>` : ''}
+                ${daOrdinare ? `<span style="font-size:10px;color:#d97706;background:#fef9ec;border:1px solid #fde68a;padding:1px 5px;border-radius:4px;">🛒 da ordinare${p.taglia ? ' ' + p.taglia : ' <span style="color:#E74C3C;">(taglia mancante)</span>'}</span>` : ''}
               </div>
               <div style="display:flex;align-items:center;gap:6px;">
                 <span style="font-size:12px;color:#888;">${ps.assigned}/${ps.total}</span>
@@ -222,9 +249,10 @@ function renderCards(filter) {
   container.querySelectorAll('.btn-del-tmpl').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (!confirm('Eliminare questo template kit?')) return;
-      await apiFetch('/kit-templates/' + btn.dataset.tmpl, { method: 'DELETE' });
-      loadKit();
+      confirmModal('Eliminare questo template kit?<br><small style="color:#888;">Verranno eliminati anche tutti i bundle e lo stock associati.</small>', async () => {
+        await apiFetch('/kit-templates/' + btn.dataset.tmpl, { method: 'DELETE' });
+        loadKit();
+      });
     });
   });
 }
@@ -239,82 +267,137 @@ function renderMagazzino() {
     return;
   }
 
+  const STATO_BADGE = {
+    integro:       { bg: '#dcfce7', color: '#166534', label: 'Integro' },
+    saccheggiato:  { bg: '#fef9ec', color: '#92400e', label: 'Saccheggiato' },
+    assegnato:     { bg: '#eef2ff', color: '#4338ca', label: 'Assegnato' },
+    incompleto:    { bg: '#fef2f2', color: '#E74C3C', label: 'Incompleto' },
+    da_riordinare: { bg: '#fef2f2', color: '#E74C3C', label: 'Da riordinare' }
+  };
+
   let html = '';
   templates.filter(t => t.attivo !== false).forEach(tmpl => {
-    const tmplStock = stock.filter(s => s.template_id === tmpl.id);
+    const tmplBundles = bundles.filter(b => b.template_id === tmpl.id);
     const taglie = tmpl.taglie || (tmpl.settore === 'scuola_calcio' ? TAGLIE_SC : TAGLIE_SG);
     const articoli = (tmpl.articoli || []).map(a => a.nome);
 
-    // Griglia: per ogni taglia, conteggio kit completi disponibili/assegnati
-    const rows = taglie.map(t => {
-      const byTaglia = tmplStock.filter(s => s.taglia === t);
-      const nArt = articoli.length || 1;
-      // Kit assegnati = giocatori con TUTTI gli articoli assegnati per questa taglia
-      const assignsByTaglia = assignments.filter(a => a.kit_stock?.template_id === tmpl.id && a.kit_stock?.taglia === t);
-      const playerArtMap = {};
-      assignsByTaglia.forEach(a => {
-        const pid = a.player_id;
-        if (!playerArtMap[pid]) playerArtMap[pid] = new Set();
-        playerArtMap[pid].add(a.kit_stock?.articolo);
-      });
-      const kitAssegnati = Object.values(playerArtMap).filter(arts => arts.size >= nArt).length;
-      const kitParziali = Object.values(playerArtMap).filter(arts => arts.size > 0 && arts.size < nArt).length;
-      // Kit disponibili = floor(pezzi disponibili / nArticoli)
-      const pezziDisp = byTaglia.filter(s => s.stato === 'disponibile').length;
-      const kitDisponibili = Math.floor(pezziDisp / nArt);
-      const pezziExtra = pezziDisp % nArt; // pezzi sfusi non sufficienti per un kit completo
-      const esaurito = kitDisponibili === 0 && byTaglia.length > 0;
-      return { taglia: t, kitDisponibili, kitAssegnati, kitParziali, pezziExtra, totale: byTaglia.length, esaurito };
-    });
+    const nIntegri      = tmplBundles.filter(b => b.stato === 'integro').length;
+    const nAssegnati    = tmplBundles.filter(b => b.stato === 'assegnato').length;
+    const nIncompleti   = tmplBundles.filter(b => b.stato === 'incompleto').length;
+    const nSaccheggiati = tmplBundles.filter(b => b.stato === 'saccheggiato').length;
+    const nRiordino     = tmplBundles.filter(b => b.stato === 'da_riordinare').length;
+    // Giocatori da ordinare per questo template (da_ordinare_kit=true)
+    const nDaOrdinare   = Object.values(rosterMap).filter(p => p.da_ordinare_kit).length;
+    // Sostituzioni in attesa per questo template
+    const nInAttesa     = assignments.filter(a => a.kit_stock?.template_id === tmpl.id &&
+      (a.sostituzioni || []).some(s => s.stato === 'in_attesa')).length;
 
-    const totDisp = rows.reduce((s, r) => s + r.kitDisponibili, 0);
-    const totAss = rows.reduce((s, r) => s + r.kitAssegnati, 0);
-    const totParz = rows.reduce((s, r) => s + r.kitParziali, 0);
-    const hasEsauriti = rows.some(r => r.esaurito);
+    // Raggruppa bundle per taglia
+    const bundlePerTaglia = {};
+    tmplBundles.forEach(b => {
+      if (!bundlePerTaglia[b.taglia]) bundlePerTaglia[b.taglia] = [];
+      bundlePerTaglia[b.taglia].push(b);
+    });
 
     html += `<div style="margin-bottom:16px;background:white;border-radius:12px;border:1px solid #eee;overflow:hidden;">
       <div style="padding:12px 16px;background:linear-gradient(135deg,#eef2ff,#e0e7ff);">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <span style="font-weight:700;font-size:14px;color:#4338ca;">📦 ${tmpl.nome}</span>
-          <div style="display:flex;gap:10px;font-size:11px;color:#666;">
-            <span>✅ ${totAss} kit assegnati</span>
-            <span>📦 ${totDisp} kit disponibili</span>
-            ${totParz > 0 ? `<span style="color:#d97706;">⚠️ ${totParz} incompleti</span>` : ''}
-            ${hasEsauriti ? '<span style="color:#E74C3C;">⚠️ Esauriti</span>' : ''}
+          <div style="display:flex;gap:8px;font-size:11px;flex-wrap:wrap;">
+            ${nIntegri > 0      ? `<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;">✅ ${nIntegri} disponibili</span>` : ''}
+            ${nAssegnati > 0    ? `<span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;">👕 ${nAssegnati} assegnati</span>` : ''}
+            ${nIncompleti > 0   ? `<span style="background:#fef2f2;color:#E74C3C;padding:2px 8px;border-radius:10px;">⚠️ ${nIncompleti} incompleti</span>` : ''}
+            ${nSaccheggiati > 0 ? `<span style="background:#fef9ec;color:#92400e;padding:2px 8px;border-radius:10px;">🔓 ${nSaccheggiati} saccheggiati</span>` : ''}
+            ${nRiordino > 0     ? `<span style="background:#fef2f2;color:#E74C3C;padding:2px 8px;border-radius:10px;">🔴 ${nRiordino} da riordinare</span>` : ''}
+            ${nDaOrdinare > 0   ? `<span style="background:#fef9ec;color:#92400e;padding:2px 8px;border-radius:10px;">🛒 ${nDaOrdinare} da ordinare</span>` : ''}
+            ${nInAttesa > 0     ? `<span style="background:#fef2f2;color:#E74C3C;padding:2px 8px;border-radius:10px;">🔄 ${nInAttesa} sost. in attesa</span>` : ''}
           </div>
         </div>
         <div style="font-size:11px;color:#666;margin-top:4px;">Articoli: ${articoli.join(', ')}</div>
       </div>
-      <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:12px;">
-          <thead><tr style="background:#f8fafc;">
-            <th style="text-align:left;padding:8px 12px;font-weight:600;color:#374151;">Taglia</th>
-            <th style="text-align:right;padding:8px 12px;font-weight:600;color:#374151;">Kit assegnati</th>
-            <th style="text-align:right;padding:8px 12px;font-weight:600;color:#374151;">Kit disponibili</th>
-            <th style="text-align:right;padding:8px 12px;font-weight:600;color:#374151;">Pezzi sfusi</th>
-          </tr></thead>
-          <tbody>${rows.filter(r => r.totale > 0).map(r => `<tr style="border-top:1px solid #f0f0f0;${r.esaurito ? 'background:#fef2f2;' : ''}">
-            <td style="padding:8px 12px;font-weight:500;">${r.taglia}${r.esaurito ? ' <span style="color:#E74C3C;font-size:10px;">esaurito</span>' : ''}${r.kitParziali > 0 ? ` <span style="color:#d97706;font-size:10px;" title="${r.kitParziali} kit con articoli mancanti">⚠️ incompleti</span>` : ''}</td>
-            <td style="text-align:right;padding:8px 12px;">${r.kitAssegnati}</td>
-            <td style="text-align:right;padding:8px 12px;color:${r.kitDisponibili > 0 ? '#166534' : '#999'};font-weight:${r.kitDisponibili > 0 ? '600' : '400'};">${r.kitDisponibili}</td>
-            <td style="text-align:right;padding:8px 12px;color:${r.pezziExtra > 0 ? '#d97706' : '#ccc'};font-size:11px;" title="Pezzi disponibili non sufficienti per un kit completo">${r.pezziExtra > 0 ? r.pezziExtra + ' pz' : '—'}</td>
-          </tr>`).join('')}
-          <tr style="border-top:2px solid #e0e7ff;background:#f8fafc;font-weight:600;">
-            <td style="padding:8px 12px;">Totale</td>
-            <td style="text-align:right;padding:8px 12px;">${totAss}</td>
-            <td style="text-align:right;padding:8px 12px;color:#166534;">${totDisp}</td>
-            <td style="text-align:right;padding:8px 12px;"></td>
-          </tr></tbody>
-        </table>
-      </div>
-      ${totParz > 0 ? `<div style="padding:8px 14px;background:#fef9ec;border-top:1px solid #fde68a;font-size:11px;color:#92400e;">⚠️ ${totParz} kit con articoli mancanti — alcuni kit sono stati parzialmente smontati per fornire pezzi singoli agli atleti.</div>` : ''}
+
+      ${taglie.map(taglia => {
+        const tagliBundles = (bundlePerTaglia[taglia] || []).sort((a, b) => a.numero_kit - b.numero_kit);
+        if (!tagliBundles.length) return '';
+        const totPK = tmpl.articoli ? tmpl.articoli.reduce((s, a) => s + (a.qty || 1), 0) : 0;
+        const nI  = tagliBundles.filter(b => b.stato === 'integro').length;
+        const nA  = tagliBundles.filter(b => b.stato === 'assegnato').length;
+        const nIn = tagliBundles.filter(b => b.stato === 'incompleto').length;
+        const nS  = tagliBundles.filter(b => b.stato === 'saccheggiato').length;
+        const nR  = tagliBundles.filter(b => b.stato === 'da_riordinare').length;
+        const summaryParts = [];
+        if (nI > 0)  summaryParts.push(`<span style="color:#166534;">${nI} disponibili</span>`);
+        if (nA > 0)  summaryParts.push(`<span style="color:#3730a3;">${nA} assegnati</span>`);
+        if (nIn > 0) summaryParts.push(`<span style="color:#E74C3C;">${nIn} incompleti</span>`);
+        if (nS > 0)  summaryParts.push(`<span style="color:#92400e;">${nS} saccheggiati</span>`);
+        if (nR > 0)  summaryParts.push(`<span style="color:#E74C3C;">${nR} da riordinare</span>`);
+        const tagliaKey = tmpl.id + '_' + taglia;
+        return `<div style="border-top:1px solid #f0f0f0;">
+          <div class="kb-taglia-header" data-key="${tagliaKey}" style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#f8fafc;cursor:pointer;user-select:none;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="kb-chevron" style="font-size:11px;transition:transform 0.2s;">▶</span>
+              <span style="font-size:12px;font-weight:600;color:#374151;">Taglia ${taglia}</span>
+              <span style="font-size:11px;color:#888;">— ${tagliBundles.length} kit — ${summaryParts.join(', ')}</span>
+            </div>
+          </div>
+          <div class="kb-taglia-body" data-key="${tagliaKey}" style="display:none;">
+            ${tagliBundles.map(b => {
+              const badge = STATO_BADGE[b.stato] || STATO_BADGE.integro;
+              const totPK2 = tmpl.articoli ? tmpl.articoli.reduce((s, a) => s + (a.qty || 1), 0) : b.tot_pezzi || 0;
+              const disp = b.pezzi_disponibili || 0;
+              const ass  = b.pezzi_assegnati  || 0;
+              const persi = b.pezzi_mancanti  || 0;
+              const tot  = b.tot_pezzi || totPK2;
+              const kitCompleto = disp > 0 && disp === tot;
+              const isSaccheggiato = b.stato === 'saccheggiato';
+
+              const dettaglioSaccheggio = isSaccheggiato ? `
+                <div style="margin-top:4px;padding:6px 10px;background:#fef9ec;border:1px solid #fde68a;border-radius:6px;font-size:11px;">
+                  ${disp > 0  ? `<div style="color:#166534;">✅ Presenti: ${disp} pezzi</div>` : ''}
+                  ${ass > 0   ? `<div style="color:#4338ca;">📦 Assegnati: ${ass} pezzi</div>` : ''}
+                  ${persi > 0 ? `<div style="color:#E74C3C;">❌ Persi/dann.: ${persi} pezzi</div>` : ''}
+                </div>` : '';
+
+              const kitLabel = kitCompleto
+                ? `<span style="color:#166534;font-size:11px;">✅ Kit completo disponibile</span>`
+                : ass > 0 && persi === 0
+                  ? `<span style="color:#4338ca;font-size:11px;">${ass}/${tot} pezzi assegnati</span>`
+                  : `<span style="color:#666;font-size:11px;">${disp} disp.${ass > 0 ? ' · ' + ass + ' ass.' : ''}${persi > 0 ? ' · <span style="color:#E74C3C;">' + persi + ' persi/dann.</span>' : ''}</span>`;
+
+              return `<div style="padding:7px 14px 7px 28px;border-bottom:1px solid #f5f5f5;font-size:12px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-weight:600;min-width:50px;color:#555;">Kit #${b.numero_kit}</span>
+                  <span style="background:${badge.bg};color:${badge.color};padding:1px 8px;border-radius:10px;font-size:11px;white-space:nowrap;">${badge.label}</span>
+                  <span style="flex:1;">${kitLabel}</span>
+                </div>
+                ${dettaglioSaccheggio}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+
+      ${nRiordino > 0 ? `<div style="padding:8px 14px;background:#fef2f2;border-top:1px solid #fecaca;font-size:11px;color:#E74C3C;">🔴 ${nRiordino} kit completamente esauriti — necessario riordino</div>` : ''}
+      ${nSaccheggiati > 0 ? `<div style="padding:8px 14px;background:#fef9ec;border-top:1px solid #fde68a;font-size:11px;color:#92400e;">⚠️ ${nSaccheggiati} kit parzialmente saccheggiati — i pezzi mancanti sono stati usati come sostituzione</div>` : ''}
       ${isAdmin ? `<div style="padding:8px 12px;border-top:1px solid #f0f0f0;text-align:right;">
         <button class="btn-restock" data-tmpl="${tmpl.id}" style="font-size:11px;padding:5px 12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;">+ Ordina stock</button>
       </div>` : ''}
     </div>`;
   });
 
-  container.innerHTML = html;
+  container.innerHTML = html || '<p style="color:#888;font-size:13px;padding:12px;">Nessun bundle in magazzino. Genera stock per iniziare.</p>';
+
+  // Toggle collasso per taglia
+  container.querySelectorAll('.kb-taglia-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const key = header.dataset.key;
+      const body = container.querySelector(`.kb-taglia-body[data-key="${key}"]`);
+      const chevron = header.querySelector('.kb-chevron');
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : 'block';
+      chevron.style.transform = open ? '' : 'rotate(90deg)';
+    });
+  });
 
   container.querySelectorAll('.btn-restock').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -322,6 +405,69 @@ function renderMagazzino() {
       if (tmpl) showGenerateStockModal(tmpl);
     });
   });
+
+  // Sezione Da ordinare
+  const daOrdinareList = Object.values(rosterMap)
+    .filter(p => p.da_ordinare_kit)
+    .sort((a, b) => {
+      const ta = a.taglia || 'ZZZ', tb = b.taglia || 'ZZZ';
+      if (ta !== tb) return ta.localeCompare(tb);
+      return `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`);
+    });
+
+  // Sostituzioni in attesa dagli assignments in memoria
+  const inAttesaList = [];
+  assignments.forEach(a => {
+    (a.sostituzioni || []).filter(s => s.stato === 'in_attesa').forEach(s => {
+      const p = Object.values(rosterMap).find(r => r.id === a.player_id);
+      if (p) inAttesaList.push({ cognome: p.cognome, nome: p.nome, taglia: a.kit_stock?.taglia || p.taglia, articolo: s.articolo });
+    });
+  });
+  inAttesaList.sort((a, b) => {
+    const ta = a.taglia || 'ZZZ', tb = b.taglia || 'ZZZ';
+    if (ta !== tb) return ta.localeCompare(tb);
+    return `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`);
+  });
+
+  if (daOrdinareList.length || inAttesaList.length) {
+    // Raggruppa giocatori da ordinare per taglia
+    const perTaglia = {};
+    daOrdinareList.forEach(p => {
+      const t = p.taglia || '—';
+      if (!perTaglia[t]) perTaglia[t] = [];
+      perTaglia[t].push(p);
+    });
+    const righeGiocatori = Object.entries(perTaglia).map(([taglia, players]) =>
+      `<div style="padding:6px 14px;border-bottom:1px solid #f5f5f5;">
+        <span style="font-size:12px;font-weight:600;color:#92400e;min-width:40px;display:inline-block;">${taglia}</span>
+        <span style="font-size:12px;color:#555;">${players.map(p => `${p.cognome} ${p.nome}`).join(', ')}</span>
+        <span style="font-size:11px;color:#aaa;margin-left:6px;">(${players.length})</span>
+      </div>`
+    ).join('');
+
+    // Sostituzioni in attesa
+    const righeAttesa = inAttesaList.map(s =>
+      `<div style="padding:6px 14px;border-bottom:1px solid #f5f5f5;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;background:#fef2f2;color:#E74C3C;padding:1px 6px;border-radius:4px;border:1px solid #fecaca;">sostituzione</span>
+        <span style="font-size:12px;font-weight:600;color:#92400e;min-width:40px;">${s.taglia || '—'}</span>
+        <span style="font-size:12px;color:#555;">${s.cognome} ${s.nome}</span>
+        <span style="font-size:11px;color:#888;">— ${s.articolo}</span>
+      </div>`
+    ).join('');
+
+    const hasSeparator = daOrdinareList.length > 0 && inAttesaList.length > 0;
+    const sec = document.createElement('div');
+    sec.style.cssText = 'margin-top:16px;background:white;border-radius:12px;border:1px solid #fde68a;overflow:hidden;';
+    sec.innerHTML = `
+      <div style="padding:10px 16px;background:linear-gradient(135deg,#fef9ec,#fef3c7);display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-weight:700;font-size:14px;color:#92400e;">🛒 Da ordinare</span>
+        <span style="font-size:12px;color:#92400e;">${daOrdinareList.length + inAttesaList.length} voci</span>
+      </div>
+      ${righeGiocatori}
+      ${hasSeparator ? '<div style="padding:4px 14px;background:#fef9ec;font-size:11px;color:#92400e;font-weight:600;">Sostituzioni in attesa</div>' : ''}
+      ${righeAttesa}`;
+    container.appendChild(sec);
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -329,16 +475,16 @@ function renderMagazzino() {
 // ═══════════════════════════════════════════
 async function autoAssign(tmpl) {
   const teamId = window.YFM.squadraId;
-  const seasonId = window.YFM.stagioneId;
+  const seasonId = window.YFM.currentSeasonId;
   const rosterPlayers = Object.values(rosterMap);
 
   // Giocatori con taglia che non hanno già kit completo
   const tmplAssigns = assignments.filter(a => a.kit_stock?.template_id === tmpl.id);
-  const totArticoli = (tmpl.articoli || []).length;
+  const totPezzi = (tmpl.articoli || []).reduce((s, a) => s + (a.qty || 1), 0);
   const eligible = rosterPlayers.filter(p => {
     if (!p.taglia) return false;
-    const assigned = tmplAssigns.filter(a => a.player_id === p.id).length;
-    return assigned < totArticoli;
+    const assigned = (tmpl.articoli || []).reduce((s, a) => s + Math.min(tmplAssigns.filter(x => x.player_id === p.id && x.kit_stock?.articolo === a.nome).length, a.qty || 1), 0);
+    return assigned < totPezzi;
   });
 
   if (!eligible.length) {
@@ -346,7 +492,34 @@ async function autoAssign(tmpl) {
     return;
   }
 
-  const body = { template_id: tmpl.id, team_id: teamId, season_id: seasonId, assignments: eligible.map(p => ({ player_id: p.id, taglia: p.taglia })) };
+  const totPezziKit = tmpl.articoli ? tmpl.articoli.reduce((s, a) => s + (a.qty || 1), 0) : 0;
+  const isBundleDisponibile = b => b.pezzi_disponibili > 0 && b.pezzi_disponibili === (b.tot_pezzi || totPezziKit);
+
+  // Per ogni giocatore trova il bundle disponibile (saccheggiati prima)
+  const assignmentsPayload = [];
+  const skippedNoStock = [];
+  const usedBundleIds = new Set();
+  for (const p of eligible) {
+    const candidati = bundles
+      .filter(b => b.template_id === tmpl.id && b.taglia === p.taglia &&
+        !usedBundleIds.has(b.id) && isBundleDisponibile(b))
+      .sort((a, b) => {
+        if (a.stato === b.stato) return a.numero_kit - b.numero_kit;
+        return a.stato === 'saccheggiato' ? -1 : 1;
+      });
+    if (!candidati.length) { skippedNoStock.push(p); continue; }
+    const bundle = candidati[0];
+    usedBundleIds.add(bundle.id);
+    assignmentsPayload.push({ player_id: p.id, bundle_id: bundle.id });
+  }
+
+  if (!assignmentsPayload.length) {
+    showToast('Nessun kit disponibile per le taglie richieste', 'warning');
+    await loadKit(); // ripristina stato bundle in memoria
+    return;
+  }
+
+  const body = { template_id: tmpl.id, team_id: teamId, season_id: seasonId, assignments: assignmentsPayload };
   showLoading();
   try {
     const res = await apiFetch('/kit-assignments-batch', { method: 'POST', body: JSON.stringify(body) });
@@ -474,9 +647,11 @@ function showConfigModal() {
   overlay.querySelector('#ktCancel').addEventListener('click', close);
 
   overlay.querySelectorAll('.btn-del-tmpl').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      await apiFetch('/kit-templates/' + btn.dataset.id, { method: 'DELETE' });
-      close(); loadKit();
+    btn.addEventListener('click', () => {
+      confirmModal('Eliminare questo template kit?<br><small style="color:#888;">Verranno eliminati anche tutti i bundle e lo stock associati.</small>', async () => {
+        await apiFetch('/kit-templates/' + btn.dataset.id, { method: 'DELETE' });
+        close(); loadKit();
+      });
     });
   });
 
@@ -492,7 +667,7 @@ function showConfigModal() {
       selected.push({ nome: ARTICOLI_PRECOMPILATI[i].nome, qty: qtys[i] });
     });
     const allArticoli = [...selected, ...customArticoli.map(nome => ({ nome, qty: 1 }))];
-    if (!nome || !allArticoli.length) { window.YFM?.showToast?.('Compila nome e seleziona almeno un articolo', 'error') || alert('Compila nome e seleziona almeno un articolo'); return; }
+    if (!nome || !allArticoli.length) { showToast('Compila nome e seleziona almeno un articolo', 'error'); return; }
     const taglie = settore === 'scuola_calcio' ? TAGLIE_SC : TAGLIE_SG;
     try {
       await apiFetch('/kit-templates', { method: 'POST', body: JSON.stringify({
@@ -501,7 +676,7 @@ function showConfigModal() {
       close(); loadKit();
       // Prompt per creare fee associata
       showFeePrompt(nome);
-    } catch (err) { window.YFM?.showToast?.(err.message, 'error') || alert(err.message); }
+    } catch (err) { showToast(err.message, 'error'); }
   });
 }
 
@@ -537,12 +712,16 @@ function showGenerateStockModal(tmpl) {
 
   const taglieRows = taglie.map(t => `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;">
     <span style="font-size:13px;font-weight:500;min-width:80px;">${t}</span>
-    <input class="gs-qty" data-taglia="${t}" type="number" min="0" value="0" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center;font-size:13px;">
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="gs-down" data-taglia="${t}" style="width:28px;height:28px;border:1px solid #ddd;border-radius:6px;background:#f8f9fa;cursor:pointer;font-size:13px;font-weight:600;">−</button>
+      <input class="gs-qty" data-taglia="${t}" type="number" min="0" value="0" style="width:54px;padding:4px;border:1px solid #ddd;border-radius:6px;text-align:center;font-size:13px;">
+      <button class="gs-up" data-taglia="${t}" style="width:28px;height:28px;border:1px solid #ddd;border-radius:6px;background:#f8f9fa;cursor:pointer;font-size:13px;font-weight:600;">+</button>
+    </div>
   </div>`).join('');
 
   overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
-    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">📦 Genera Stock — ${tmpl.nome}</div>
-    <div style="font-size:12px;color:#666;margin-bottom:16px;">Ogni kit include: ${(tmpl.articoli||[]).map(a=>a.nome).join(', ')}.<br>${tmpl.numerazione === 'sequenziale' ? 'Numeri assegnati automaticamente da ' + (tmpl.numerazione_start || 13) + '.' : ''}</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">📦 Genera Kit — ${tmpl.nome}</div>
+    <div style="font-size:12px;color:#666;margin-bottom:16px;">Ogni kit include: ${(tmpl.articoli||[]).map(a=>a.nome).join(', ')}.<br>Inserisci quanti kit completi generare per taglia.</div>
     <div style="font-size:12px;font-weight:600;color:#667eea;margin-bottom:8px;">Quanti kit per taglia?</div>
     ${taglieRows}
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
@@ -556,29 +735,109 @@ function showGenerateStockModal(tmpl) {
   overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
   overlay.querySelector('#gsCancel').addEventListener('click', close);
 
+  overlay.querySelectorAll('.gs-up').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inp = overlay.querySelector(`.gs-qty[data-taglia="${btn.dataset.taglia}"]`);
+      inp.value = (parseInt(inp.value) || 0) + 10;
+    });
+  });
+  overlay.querySelectorAll('.gs-down').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inp = overlay.querySelector(`.gs-qty[data-taglia="${btn.dataset.taglia}"]`);
+      inp.value = Math.max(0, (parseInt(inp.value) || 0) - 10);
+    });
+  });
+
   overlay.querySelector('#gsGenerate').addEventListener('click', async () => {
     const inputs = overlay.querySelectorAll('.gs-qty');
     const items = [];
-    const articoli = (tmpl.articoli || []).map(a => a.nome);
     inputs.forEach(inp => {
       const qty = parseInt(inp.value) || 0;
-      if (qty > 0) {
-        // Genera stock per OGNI articolo del template con questa taglia
-        articoli.forEach(art => {
-          items.push({ articolo: art, taglia: inp.dataset.taglia, quantita: qty });
-        });
-      }
+      if (qty > 0) items.push({ taglia: inp.dataset.taglia, quantita: qty });
     });
-    if (!items.length) { window.YFM?.showToast?.('Inserisci almeno una quantità', 'error') || alert('Inserisci almeno una quantità'); return; }
+    if (!items.length) { showToast('Inserisci almeno una quantità', 'error'); return; }
     try {
-      showLoading('Generazione stock...');
-      await apiFetch('/kit-stock/generate', { method: 'POST', body: JSON.stringify({
+      showLoading('Generazione kit...');
+      const res = await apiFetch('/kit-stock/generate', { method: 'POST', body: JSON.stringify({
         workspace_id: window.YFM.activeWorkspaceId, template_id: tmpl.id, items
       })});
       hideLoading();
       close();
+      showToast(`Generati ${res.bundles} kit (${res.pezzi} pezzi)`, 'success');
       loadKit();
-    } catch (err) { hideLoading(); window.YFM?.showToast?.(err.message, 'error') || alert(err.message); }
+    } catch (err) { hideLoading(); showToast(err.message, 'error'); }
+  });
+}
+
+// ═══════════════════════════════════════════
+// MODAL: Sostituzione pezzo
+// ═══════════════════════════════════════════
+function showSostituzioneModal(assignment, tmpl, playerNome, onDone) {
+  const articoli = (tmpl.articoli || []).map(a => a.nome);
+  // Articoli già assegnati a questo giocatore per questo template
+  const playerAssigns = assignments.filter(a => a.player_id === assignment.player_id && a.kit_stock?.template_id === tmpl.id);
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px;">🔄 Sostituisci pezzo</div>
+    <div style="font-size:12px;color:#666;margin-bottom:16px;">${playerNome} — ${tmpl.nome}</div>
+    <div style="display:grid;gap:10px;">
+      <div>
+        <label style="font-size:12px;color:#666;">Articolo da sostituire *</label>
+        <select id="sostArt" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;margin-top:4px;box-sizing:border-box;">
+          ${playerAssigns.map(a => `<option value="${a.id}" data-art="${a.kit_stock?.articolo}">${a.kit_stock?.articolo}${a.kit_stock?.taglia ? ' (' + a.kit_stock.taglia + ')' : ''}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;color:#666;">Motivo *</label>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <label style="font-size:13px;cursor:pointer;"><input type="radio" name="sostMotivo" value="perso" checked> Perso</label>
+          <label style="font-size:13px;cursor:pointer;"><input type="radio" name="sostMotivo" value="danneggiato"> Danneggiato</label>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;color:#666;">Costo addebitato (opzionale)</label>
+        <input id="sostCosto" type="number" min="0" step="0.01" placeholder="es. 15.00" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;margin-top:4px;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:12px;color:#666;">Note</label>
+        <input id="sostNote" placeholder="es. Persa durante trasferta" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;margin-top:4px;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+      <button class="btn btn-secondary" id="sostCancel">Annulla</button>
+      <button class="btn btn-primary" id="sostConfirm">🔄 Sostituisci</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelector('#sostCancel').addEventListener('click', close);
+
+  overlay.querySelector('#sostConfirm').addEventListener('click', async () => {
+    const sel = overlay.querySelector('#sostArt');
+    const assignmentId = sel.value;
+    const articolo = sel.options[sel.selectedIndex]?.dataset.art;
+    const motivo = overlay.querySelector('input[name="sostMotivo"]:checked').value;
+    const costo = parseFloat(overlay.querySelector('#sostCosto').value) || null;
+    const note = overlay.querySelector('#sostNote').value.trim() || null;
+    if (!assignmentId || !articolo) return;
+    try {
+      showLoading('Sostituzione in corso...');
+      const res = await apiFetch('/kit-assignments/' + assignmentId + '/sostituisci', {
+        method: 'POST', body: JSON.stringify({ articolo, motivo, note, costo })
+      });
+      hideLoading();
+      close();
+      if (res.sostituto) {
+        showToast(`✅ Pezzo sostituito${res.bundle_saccheggiato ? ' da ' + res.bundle_saccheggiato : ''}`, 'success');
+      } else {
+        showToast('⚠️ Nessun pezzo disponibile in magazzino — aggiunto in lista attesa. Vai a Magazzino per riordinare.', 'warning');
+      }
+      onDone();
+    } catch (err) { hideLoading(); showToast(err.message, 'error'); }
   });
 }
 
@@ -588,7 +847,6 @@ function showGenerateStockModal(tmpl) {
 function showAssignModal(tmpl, player) {
   const nome = `${player.cognome || ''} ${player.nome || ''}`.trim();
   const articoli = tmpl.articoli || [];
-  const tmplStock = stock.filter(s => s.template_id === tmpl.id);
   const playerAssigns = assignments.filter(a => a.player_id === player.id && a.kit_stock?.template_id === tmpl.id);
   const assignedStockIds = new Set(playerAssigns.map(a => a.kit_stock_id));
   const taglie = tmpl.taglie || (tmpl.settore === 'scuola_calcio' ? TAGLIE_SC : TAGLIE_SG);
@@ -598,118 +856,206 @@ function showAssignModal(tmpl, player) {
 
   function renderModal() {
     const defaultTaglia = player.taglia || '';
-    // Taglie disponibili nello stock
     const taglieOpts = taglie.map(t => `<option value="${t}"${t === defaultTaglia ? ' selected' : ''}>${t}</option>`).join('');
 
+    // Per ogni articolo, conta quanti pezzi assegnati vs qty richiesta
     let rows = articoli.map(art => {
-      const assigned = playerAssigns.find(a => a.kit_stock?.articolo === art.nome);
-      if (assigned) {
-        const s = assigned.kit_stock;
+      const qty = art.qty || 1;
+      const artAssigns = playerAssigns.filter(a => a.kit_stock?.articolo === art.nome);
+      const nAssegnati = artAssigns.length;
+      const tuttiAssegnati = nAssegnati >= qty;
+
+      if (tuttiAssegnati) {
+        const numeri = artAssigns.map(a => a.kit_stock?.numero).filter(Boolean);
+        const tagliaLabel = artAssigns[0]?.kit_stock?.taglia ? ` (${artAssigns[0].kit_stock.taglia})` : '';
+        const numLabel = numeri.length ? ' #' + numeri.join(', #') : '';
+        const removeButtons = isAdmin ? artAssigns.map(a =>
+          `<button class="ka-remove" data-id="${a.id}" style="font-size:10px;padding:3px 6px;background:#fee2e2;border:1px solid #fecaca;border-radius:4px;cursor:pointer;color:#dc2626;">✕</button>`
+        ).join('') : '';
         return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#d1fae5;border-radius:8px;margin-bottom:4px;">
-          <div><span style="font-size:13px;">✅ ${art.nome}</span>${s.taglia ? ` <span style="color:#888;font-size:11px;">(${s.taglia})</span>` : ''}${s.numero ? ` <span style="color:#888;font-size:11px;">#${s.numero}</span>` : ''}</div>
-          ${isAdmin ? `<button class="ka-remove" data-id="${assigned.id}" style="font-size:10px;padding:3px 6px;background:#fee2e2;border:1px solid #fecaca;border-radius:4px;cursor:pointer;color:#dc2626;">✕</button>` : ''}
+          <div><span style="font-size:13px;">✅ ${art.nome}</span>${qty > 1 ? ` <span style="font-size:11px;color:#166534;font-weight:600;">x${qty}</span>` : ''}${tagliaLabel ? `<span style="color:#888;font-size:11px;">${tagliaLabel}</span>` : ''}${numLabel ? `<span style="color:#888;font-size:11px;">${numLabel}</span>` : ''}</div>
+          <div style="display:flex;gap:4px;">${removeButtons}</div>
         </div>`;
       }
-      // Non assegnato — mostra select per assegnare singolo
-      const available = tmplStock.filter(s => s.articolo === art.nome && s.stato === 'disponibile');
-      if (!isAdmin || available.length === 0) {
-        return `<div style="display:flex;align-items:center;padding:8px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;">
-          <span style="font-size:13px;color:#888;">⬜ ${art.nome}</span>
-          ${available.length === 0 ? '<span style="font-size:10px;color:#E74C3C;margin-left:8px;">esaurito</span>' : ''}
+      // Parzialmente assegnato (es. 1/2 maglie)
+      if (nAssegnati > 0) {
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#fef9ec;border-radius:8px;margin-bottom:4px;">
+          <span style="font-size:13px;">⚠️ ${art.nome} <span style="font-size:11px;color:#92400e;">${nAssegnati}/${qty}</span></span>
         </div>`;
       }
-      const options = available.map(s => {
-        const label = [s.taglia, s.numero ? '#' + s.numero : ''].filter(Boolean).join(' ');
-        const sel = defaultTaglia && s.taglia === defaultTaglia ? 'selected' : '';
-        return `<option value="${s.id}" ${sel}>${label || 'N/D'}</option>`;
-      });
-      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fafafa;border-radius:8px;margin-bottom:4px;">
-        <span style="font-size:13px;flex:1;">⬜ ${art.nome}</span>
-        <select class="ka-select" data-art="${art.nome}" style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;">${defaultTaglia ? '' : '<option value="">-- taglia --</option>'}${options.join('')}</select>
-        <button class="ka-assign" data-art="${art.nome}" style="font-size:11px;padding:4px 8px;background:#27AE60;color:white;border:none;border-radius:6px;cursor:pointer;">Assegna</button>
+      // Non assegnato
+      return `<div style="display:flex;align-items:center;padding:8px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;">
+        <span style="font-size:13px;color:#888;">⬜ ${art.nome}</span>${qty > 1 ? ` <span style="font-size:11px;color:#aaa;">x${qty}</span>` : ''}
       </div>`;
     }).join('');
 
-    // Quanti articoli non ancora assegnati
-    const unassignedCount = articoli.filter(art => !playerAssigns.find(a => a.kit_stock?.articolo === art.nome)).length;
+    // Kit completo = tutti gli articoli con qty soddisfatta
+    const totalePezzi = articoli.reduce((s, a) => s + (a.qty || 1), 0);
+    const assegnatiTotali = articoli.reduce((s, a) => s + Math.min(playerAssigns.filter(x => x.kit_stock?.articolo === a.nome).length, a.qty || 1), 0);
+    const unassignedCount = totalePezzi - assegnatiTotali;
+
+    const stockInfo = unassignedCount > 0
+      ? (() => {
+          const taglia = player.taglia || '';
+          const totPK = tmpl.articoli ? tmpl.articoli.reduce((s, a) => s + (a.qty || 1), 0) : 0;
+          const nDisp = taglia ? bundles.filter(b => b.template_id === tmpl.id && b.taglia === taglia &&
+            b.pezzi_disponibili > 0 && b.pezzi_disponibili === (b.tot_pezzi || totPK)).length : null;
+          if (nDisp === null) return `<div id="kaStockInfo" style="padding:8px 12px;background:#f8f9fa;border:1px solid #eee;border-radius:8px;margin-bottom:10px;font-size:12px;color:#888;">Seleziona una taglia per vedere la disponibilità</div>`;
+          if (nDisp > 0) return `<div id="kaStockInfo" style="padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:10px;font-size:12px;color:#166534;">✅ ${nDisp} kit taglia ${taglia} disponibili in magazzino</div>`;
+          return `<div id="kaStockInfo" style="padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:10px;font-size:12px;color:#E74C3C;">❌ Nessun kit taglia ${taglia} disponibile in magazzino
+            ${isAdmin ? `<label style="display:flex;align-items:center;gap:6px;margin-top:6px;cursor:pointer;color:#333;font-size:12px;">
+              <input type="checkbox" id="kaOrdinare" ${player.da_ordinare_kit ? 'checked' : ''} style="width:16px;height:16px;accent-color:#667eea;cursor:pointer;">
+              Segna da ordinare per questo giocatore
+            </label>` : ''}</div>`;
+        })()
+      : '';
+
+    // Storico sostituzioni (da tutti gli assignment del giocatore per questo template)
+    const tuttiSost = playerAssigns.flatMap(a => a.sostituzioni || []);
+    const sostHtml = tuttiSost.length ? `<div style="margin-top:12px;padding:10px 12px;background:#fef9ec;border:1px solid #fde68a;border-radius:8px;">
+      <div style="font-size:11px;font-weight:600;color:#92400e;margin-bottom:6px;">🔄 Storico sostituzioni (${tuttiSost.length})</div>
+      ${tuttiSost.map(s => `<div style="font-size:11px;color:#666;padding:2px 0;">
+        ${s.data} — <strong>${s.articolo}</strong> ${s.motivo === 'perso' ? 'perso' : 'danneggiato'}
+        ${s.stato === 'in_attesa' ? '<span style="color:#E74C3C;"> — in attesa stock</span>' : '<span style="color:#27AE60;"> — sostituito</span>'}
+        ${s.costo ? ` — €${s.costo}` : ''}
+        ${s.note ? ` — ${s.note}` : ''}
+      </div>`).join('')}
+    </div>` : '';
 
     overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:420px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
       <div style="font-size:16px;font-weight:600;margin-bottom:4px;">👕 ${nome}</div>
       <div style="font-size:12px;color:#666;margin-bottom:12px;">${tmpl.nome}${player.taglia ? ' • Taglia: ' + player.taglia : ''}</div>
+      ${stockInfo}
       ${isAdmin && unassignedCount > 0 ? `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#eef2ff;border-radius:8px;margin-bottom:12px;border:1px solid #c7d2fe;">
         <select id="kaGlobalTaglia" style="padding:5px 8px;border:1px solid #c7d2fe;border-radius:6px;font-size:12px;"><option value="">Taglia...</option>${taglieOpts}</select>
         <button id="kaAssignAll" style="flex:1;padding:6px 12px;background:#667eea;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Assegna kit</button>
       </div>` : ''}
       ${rows}
-      <div style="margin-top:16px;text-align:right;"><button class="btn btn-secondary" id="kaClose">Chiudi</button></div>
+      ${sostHtml}
+      <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
+        ${isAdmin && playerAssigns.length > 0 ? `<button class="btn btn-secondary" id="kaSostituisci" style="font-size:12px;">🔄 Sostituisci pezzo</button>` : '<span></span>'}
+        <button class="btn btn-secondary" id="kaClose">Chiudi</button>
+      </div>
     </div>`;
 
     // Bindings
     overlay.querySelector('#kaClose').addEventListener('click', () => overlay.remove());
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 
-    // Global taglia changes all selects
+    // Checkbox da ordinare (handler centralizzato — usato anche dal rebind nel banner)
+    const handleDaOrdinare = async (checked) => {
+      const taglia = overlay.querySelector('#kaGlobalTaglia')?.value || player.taglia || null;
+      try {
+        await apiFetch('/kit-da-ordinare', { method: 'PUT', body: JSON.stringify({
+          team_player_id: player.team_player_id, da_ordinare: checked, taglia: checked ? taglia : undefined
+        })});
+        player.da_ordinare_kit = checked;
+        if (taglia && checked) player.taglia = taglia;
+        if (rosterMap[player.id]) {
+          rosterMap[player.id].da_ordinare_kit = checked;
+          if (taglia && checked) rosterMap[player.id].taglia = taglia;
+        }
+        showToast(checked ? '🛒 Giocatore segnato da ordinare' : 'Segnalazione rimossa', checked ? 'success' : 'info');
+        if (currentFilter !== 'magazzino') renderCards(currentFilter);
+      } catch (err) { showToast(err.message, 'error'); }
+    };
+    overlay.querySelector('#kaOrdinare')?.addEventListener('change', (e) => handleDaOrdinare(e.target.checked));
+
+    // Bottone sostituzione
+    overlay.querySelector('#kaSostituisci')?.addEventListener('click', () => {
+      // Passa il primo assignment disponibile (il modale sostituzione sceglie l'articolo)
+      showSostituzioneModal(playerAssigns[0], tmpl, nome, () => { overlay.remove(); loadKit(); });
+    });
+
+    // Global taglia changes: aggiorna banner stock disponibile
     overlay.querySelector('#kaGlobalTaglia')?.addEventListener('change', (e) => {
       const taglia = e.target.value;
       if (!taglia) return;
-      overlay.querySelectorAll('.ka-select').forEach(sel => {
-        const match = [...sel.options].find(o => o.text.startsWith(taglia));
-        if (match) sel.value = match.value;
-      });
+      const totPK = tmpl.articoli ? tmpl.articoli.reduce((s, a) => s + (a.qty || 1), 0) : 0;
+      const nDisp = bundles.filter(b => b.template_id === tmpl.id && b.taglia === taglia &&
+        b.pezzi_disponibili > 0 && b.pezzi_disponibili === (b.tot_pezzi || totPK)).length;
+      const banner = overlay.querySelector('#kaStockInfo');
+      if (banner) {
+        if (nDisp > 0) {
+          banner.style.background = '#f0fdf4'; banner.style.borderColor = '#bbf7d0'; banner.style.color = '#166534';
+          banner.innerHTML = `✅ ${nDisp} kit taglia ${taglia} disponibili in magazzino`;
+        } else {
+          banner.style.background = '#fef2f2'; banner.style.borderColor = '#fecaca'; banner.style.color = '#E74C3C';
+          banner.innerHTML = `❌ Nessun kit taglia ${taglia} disponibile in magazzino
+            ${isAdmin ? `<label style="display:flex;align-items:center;gap:6px;margin-top:6px;cursor:pointer;color:#333;font-size:12px;">
+              <input type="checkbox" id="kaOrdinare" ${player.da_ordinare_kit ? 'checked' : ''} style="width:16px;height:16px;accent-color:#667eea;cursor:pointer;">
+              Segna da ordinare per questo giocatore
+            </label>` : ''}`;
+          // Rebind checkbox — semplice toggle senza confirmModal
+          banner.querySelector('#kaOrdinare')?.addEventListener('change', (ev) => {
+            handleDaOrdinare(ev.target.checked);
+          });
+        }
+      }
     });
 
-    // Assign all unassigned at once
+    // Assign all unassigned at once — trova bundle dal frontend e passa bundle_id al backend
     overlay.querySelector('#kaAssignAll')?.addEventListener('click', async () => {
-      const taglia = overlay.querySelector('#kaGlobalTaglia')?.value;
-      if (!taglia) { window.YFM?.showToast?.('Seleziona una taglia', 'error'); return; }
-      const selects = overlay.querySelectorAll('.ka-select');
-      const ids = [];
-      selects.forEach(sel => { if (sel.value) ids.push(sel.value); });
-      if (!ids.length) { window.YFM?.showToast?.('Nessun articolo da assegnare', 'error'); return; }
+      const taglia = overlay.querySelector('#kaGlobalTaglia')?.value || player.taglia;
+      if (!taglia) { showToast('Seleziona una taglia', 'error'); return; }
+      // Trova primo bundle completo disponibile per la taglia (saccheggiati prima)
+      const totPK3 = tmpl.articoli ? tmpl.articoli.reduce((s, a) => s + (a.qty || 1), 0) : 0;
+      const candidati = bundles
+        .filter(b => b.template_id === tmpl.id && b.taglia === taglia &&
+          b.pezzi_disponibili > 0 && b.pezzi_disponibili === (b.tot_pezzi || totPK3))
+        .sort((a, b) => {
+          if (a.stato === b.stato) return a.numero_kit - b.numero_kit;
+          return a.stato === 'saccheggiato' ? -1 : 1;
+        });
+      if (!candidati.length) {
+        // Nessun kit disponibile
+        if (isAdmin) {
+          const giaSegnato = overlay.querySelector('#kaOrdinare')?.checked || player.da_ordinare_kit;
+          if (giaSegnato) {
+            // Checkbox già spuntato — chiudi semplicemente
+            overlay.remove();
+          } else {
+            confirmModal(
+              `Nessun kit taglia ${taglia} disponibile in magazzino.<br><br>Vuoi segnare questo giocatore come <strong>da ordinare</strong>?`,
+              async () => { await handleDaOrdinare(true); overlay.remove(); },
+              { danger: false, confirmLabel: 'Segna da ordinare' }
+            );
+          }
+        } else {
+          showToast('Nessun kit completo disponibile per taglia ' + taglia, 'error');
+        }
+        return;
+      }
+      const bundle = candidati[0];
       try {
         showLoading('Assegnazione kit...');
-        for (const stockId of ids) {
-          await apiFetch('/kit-assignments', { method: 'POST', body: JSON.stringify({
-            kit_stock_id: stockId, player_id: player.id,
-            team_id: window.YFM.squadraId, season_id: window.YFM.currentSeasonId
-          })});
-        }
+        const res = await apiFetch('/kit-assignments-batch', { method: 'POST', body: JSON.stringify({
+          template_id: tmpl.id, team_id: window.YFM.squadraId, season_id: window.YFM.currentSeasonId,
+          assignments: [{ player_id: player.id, bundle_id: bundle.id }]
+        })});
         hideLoading();
-        overlay.remove();
-        loadKit();
-      } catch (err) { hideLoading(); window.YFM?.showToast?.(err.message, 'error'); }
-    });
-
-    // Single assign
-    overlay.querySelectorAll('.ka-assign').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const art = btn.dataset.art;
-        const select = overlay.querySelector(`.ka-select[data-art="${art}"]`);
-        const stockId = select?.value;
-        if (!stockId) return;
-        try {
-          showLoading('Assegnazione...');
-          await apiFetch('/kit-assignments', { method: 'POST', body: JSON.stringify({
-            kit_stock_id: stockId, player_id: player.id,
-            team_id: window.YFM.squadraId, season_id: window.YFM.currentSeasonId
-          })});
-          hideLoading();
+        if (res.assigned > 0) {
           overlay.remove();
           loadKit();
-        } catch (err) { hideLoading(); window.YFM?.showToast?.(err.message, 'error'); }
-      });
+        } else {
+          const motivo = res.skipped?.[0]?.reason || 'stock insufficiente';
+          showToast('Kit non assegnato: ' + motivo, 'error');
+        }
+      } catch (err) { hideLoading(); showToast(err.message, 'error'); }
     });
 
-    // Remove
+    // Remove assegnazione
     overlay.querySelectorAll('.ka-remove').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        try {
-          showLoading('Rimozione...');
-          await apiFetch('/kit-assignments/' + btn.dataset.id, { method: 'DELETE' });
-          hideLoading();
-          overlay.remove();
-          loadKit();
-        } catch (err) { hideLoading(); window.YFM?.showToast?.(err.message, 'error'); }
+      btn.addEventListener('click', () => {
+        confirmModal('Rimuovere questo pezzo dal kit del giocatore?', async () => {
+          try {
+            showLoading('Rimozione...');
+            await apiFetch('/kit-assignments/' + btn.dataset.id, { method: 'DELETE' });
+            hideLoading();
+            overlay.remove();
+            loadKit();
+          } catch (err) { hideLoading(); showToast(err.message, 'error'); }
+        });
       });
     });
   }

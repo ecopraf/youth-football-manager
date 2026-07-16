@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 15 Luglio 2026 | Versione: v3.16 | Build: v3.16.62
+> Ultimo aggiornamento: 16 Luglio 2026 | Versione: v3.16 | Build: v3.16.66
 
 ---
 
@@ -145,8 +145,10 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 6.1 | Completare UI valutazioni giocatore | ⬜ | — | modules/team/valutazioni.js | ~15min |
-| 6.2 | Report presenze allenamenti (stampabile) | ⬜ | — | modules/performance/reports.js | ~10min |
+| 6.1a | Backend: aggiungere endpoint `GET+POST /partite/:id/valutazioni` (legge/scrive su `valutazione_partita`) | ⬜ | — | routes/match.js o statistics.js | ~8min |
+| 6.1b | Match Center: aggiungere tab "⭐ Valutazioni" (visibile solo se partita Terminata), riusa logica `valutazioni.js` | ⬜ | 6.1a | modules/team/matchCenter.js, modules/team/valutazioni.js | ~10min |
+| 6.1c | Distinta: rimuovere bottone "Valutazioni" (spostato nel MC) | ⬜ | 6.1b | modules/team/distinta.js | ~3min |
+| 6.2 | Report presenze allenamenti (stampabile) | ✅ | — | modules/print/printPresenze.js, router.js, printCenter.js | ~10min |
 | 6.3 | Import_log: aggiungere `durata_import`, `warnings` | ⬜ | — | migrazione SQL + routes/ | ~5min |
 | 6.4 | Document: aggiungere colonna `cartella` | ⬜ | — | migrazione SQL | ~3min |
 
@@ -1246,6 +1248,9 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.66 | feat: kit — UX magazzino completa. Checkbox da ordinare centralizzato (handleDaOrdinare con taglia), sezione gialla "Da ordinare" in magazzino con giocatori raggruppati per taglia + sostituzioni in_attesa, badge summary 🛒 N da ordinare / 🔄 N sost. in attesa per template, badge "🛒 da ordinare XXL" con taglia nel roster, stato incompleto nel STATO_BADGE, frecce +10/-10 nel modal genera stock, query pg raw aggregata GET /kit-bundles (80 righe vs 1040), aggiornamento taglia su batch-assign via team_player.id diretto |
+| v3.16.65 | feat: kit bundle — nuovo modello magazzino con kit fisici tracciati. DB: CREATE TABLE kit_bundle (template_id, taglia, numero_kit, stato integro/saccheggiato/assegnato/da_riordinare), ALTER kit_stock ADD bundle_id, ALTER kit_assignment ADD sostituzioni JSONB + bundle_id_originale. Backend: generate crea bundle+pezzi atomicamente, batch-assign usa bundle interi (saccheggiati prima degli integri), nuovo endpoint POST /kit-assignments/:id/sostituisci con saccheggio intelligente (attinge da bundle già saccheggiati prima di aprirne nuovi), GET /kit-bundles. Frontend: renderMagazzino vista per bundle con badge stato, showGenerateStockModal input per kit interi, showAssignModal con storico sostituzioni + bottone Sostituisci pezzo, showSostituzioneModal con articolo/motivo/costo/note |
+| v3.16.65 | feat: kit bundle — nuovo modello magazzino con kit fisici tracciati. DB: CREATE TABLE kit_bundle, ALTER kit_stock ADD bundle_id, ALTER kit_assignment ADD sostituzioni+bundle_id_originale. Backend: generate/restock batch (2 query per taglia vs 2N), batch-assign usa bundle interi (saccheggiati prima degli integri), endpoint POST /kit-assignments/:id/sostituisci con saccheggio intelligente, GET /kit-bundles, _updateBundleStato solo per perso/danneggiato. Frontend: magazzino vista bundle con taglie collassabili+summary inline, display kit completo vs parzialmente assegnato, showSostituzioneModal con articolo/motivo/costo/note, storico sostituzioni in showAssignModal. Fix: kitDisponibili conta bundle con TUTTI pezzi disponibili (non pezzi sfusi), badge header card aggiornati |
 | v3.16.64 | fix: kit lista assegnazioni ordinata alfabeticamente (cognome+nome). feat: checklist stagione — item auto/manual: certificato/kit/quota aggiornati automaticamente dai dati reali con sync al caricamento, item manual (iscrizione, gdpr, foto, tesseramento_figc) spuntabili manualmente; modale checklist mostra badge stato + link pagina dedicata per item auto; DEFAULT_ITEMS aggiornato con tipo+link; endpoint POST /checklist/:playerId/sync; helpData checklist aggiornato |
 | v3.16.63 | feat: workspace_anagrafica — dati societari separati da workspace. DB: nuova tabella con colori_sociali, sponsor_tecnico, nome_campo, indirizzo_campo, iban (migrati da workspace/facility). Backend: POST/PUT /workspaces solo nome/logo/nome_breve, GET/PUT /workspaces/:id/anagrafica aggiornato. Frontend workspaces.js: modale creazione semplificata, parser unificato parseSocietaText() TC+testo libero con preview campo per campo + flusso conferma prima di applicare. Frontend club.js: card mostra colori/sponsor/campo/iban, modal con sezioni Società/Contatti/Campo, bottone incolla dati con parser. Dashboard: fix kit widget (rosterMap undefined, workspace_id fallback, display X assegnati). Docs: DATABASE_SCHEMA, AGENTS.md, project-rules, helpData aggiornati |
 | v3.16.62 | feat: EPIC 12 Kit — auto-assign batch (🎯 Auto button), assegna kit a tutti i giocatori con taglia impostata in un click (endpoint POST /kit-assignments-batch), help in-app pagina Kit, capability dedicata `kit`, UX card (expanded state, inline assign, taglia badges, conteggio assegnati nella riga info), fix taglia in team_player (GET/PUT), taglie per settore (SG: XS-XXL, SC: 116-158 + adulte) |

@@ -253,15 +253,19 @@ export const PAGE_HELP = {
   },
   kit: {
     title: '👕 Kit Sportivo',
-    desc: 'Gestione magazzino kit della società: template configurabili, generazione stock per taglia, assegnazione ai giocatori.',
+    desc: 'Gestione magazzino kit della società: template configurabili, stock per bundle (kit completi), assegnazione ai giocatori con tracciamento pezzi e sostituzioni.',
     items: [
       '➕ Nuovo Kit: crea template con articoli precompilati (maglia, tuta, zaino...) e settore (Scuola Calcio / Settore Giovanile)',
-      '+ Stock: genera pezzi per taglia e quantità (il magazzino è condiviso tra categorie)',
-      '🎯 Auto: assegna automaticamente kit a tutti i giocatori che hanno la taglia impostata nel profilo e stock disponibile',
-      'Click su un giocatore per assegnare manualmente articoli specifici',
+      '+ Stock: genera kit completi per taglia — ogni bundle è un kit fisico tracciato (integro → assegnato)',
+      '🎯 Auto: assegna automaticamente kit a tutti i giocatori con taglia impostata e bundle disponibili',
+      'Click su un giocatore per assegnare manualmente o gestire sostituzioni di pezzi',
       'Filtri: Tutti / Incompleti / Completi per monitorare lo stato consegne',
       'Pallino stato: 🟢 completo, 🟡 parziale, 🔴 nessun articolo assegnato',
-      'Badge taglia: blu (da kit assegnato), grigio (dal profilo giocatore)'
+      'Badge taglia: blu (da kit assegnato), grigio (dal profilo giocatore)',
+      'Magazzino: vista per bundle con badge stato (integro / saccheggiato / assegnato / incompleto / da riordinare)',
+      '🛒 Da ordinare: segna un giocatore come "da ordinare" (taglia mancante) — appare nella sezione gialla in fondo al magazzino',
+      'Sostituzione pezzo: se un articolo è perso/danneggiato, il sistema attinge da bundle già saccheggiati prima di aprirne uno nuovo',
+      'Summary magazzino: badge 🛒 N da ordinare e 🔄 N sost. in attesa per ogni template'
     ]
   },
   registration: {

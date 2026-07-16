@@ -36,7 +36,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
     try {
       const includiSvincolati = req.query.includi_svincolati === '1';
       let query = supabase.from('team_player')
-        .select('id, calciatore:player_id(*), numero_maglia, ruolo_preferito, stato, aggregato, capitano, vice_capitano, taglia')
+        .select('id, calciatore:player_id(*), numero_maglia, ruolo_preferito, stato, aggregato, capitano, vice_capitano, taglia, da_ordinare_kit')
         .eq('team_id', req.params.squadraId);
       if (!includiSvincolati) {
         query = query.neq('stato', 'Svincolato');
@@ -51,7 +51,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         contatti_genitori: r.calciatore.contatti_genitori || [],
         numero_maglia: r.numero_maglia, ruolo: r.ruolo_preferito, stato: r.stato,
         aggregato: r.aggregato || false, capitano: r.capitano || false, vice_capitano: r.vice_capitano || false,
-        taglia: r.taglia || null,
+        taglia: r.taglia || null, da_ordinare_kit: r.da_ordinare_kit || false,
         team_player_id: r.id
       })));
     } catch (err) {

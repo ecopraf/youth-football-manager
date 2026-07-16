@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, requirePermission } = require('../middleware/auth.middleware');
+const { Pool } = require('pg');
+const pgPool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 let supabase;
 function init(sb) { supabase = sb; }
@@ -11,18 +16,17 @@ module.exports = { router, init };
 // KIT TEMPLATES
 // ═══════════════════════════════════════════
 
-// GET /api/kit-templates?workspace_id=X
 router.get('/api/kit-templates', authMiddleware, async (req, res) => {
   try {
     const { workspace_id } = req.query;
     if (!workspace_id) return res.status(400).json({ error: 'workspace_id richiesto' });
-    const { data, error } = await supabase.from('kit_template').select('*').eq('workspace_id', workspace_id).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('kit_template').select('*')
+      .eq('workspace_id', workspace_id).order('created_at', { ascending: false });
     if (error) return res.status(400).json({ error: error.message });
     res.json(data || []);
   } catch (err) { res.status(500).json({ error: 'Errore server' }); }
 });
 
-// POST /api/kit-templates
 router.post('/api/kit-templates', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
     const { workspace_id, nome, settore, articoli, numerazione, numerazione_start, taglie } = req.body;
@@ -37,7 +41,6 @@ router.post('/api/kit-templates', authMiddleware, requirePermission('kit', 'writ
   } catch (err) { res.status(500).json({ error: 'Errore server' }); }
 });
 
-// PUT /api/kit-templates/:id
 router.put('/api/kit-templates/:id', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
     const { nome, settore, articoli, numerazione, numerazione_start, taglie, attivo } = req.body;
@@ -55,7 +58,6 @@ router.put('/api/kit-templates/:id', authMiddleware, requirePermission('kit', 'w
   } catch (err) { res.status(500).json({ error: 'Errore server' }); }
 });
 
-// DELETE /api/kit-templates/:id
 router.delete('/api/kit-templates/:id', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
     const { error } = await supabase.from('kit_template').delete().eq('id', req.params.id);
@@ -65,10 +67,43 @@ router.delete('/api/kit-templates/:id', authMiddleware, requirePermission('kit',
 });
 
 // ═══════════════════════════════════════════
+// KIT BUNDLES
+// ═══════════════════════════════════════════
+
+// GET /api/kit-bundles?template_id=X — lista bundle con contatori aggregati (no limite 1000)
+router.get('/api/kit-bundles', authMiddleware, async (req, res) => {
+  try {
+    const { template_id, workspace_id } = req.query;
+    if (!template_id && !workspace_id) return res.status(400).json({ error: 'template_id o workspace_id richiesto' });
+
+    const conditions = [];
+    const params = [];
+    if (template_id) { params.push(template_id); conditions.push(`kb.template_id = $${params.length}`); }
+    if (workspace_id) { params.push(workspace_id); conditions.push(`kb.workspace_id = $${params.length}`); }
+    const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+
+    const { rows } = await pgPool.query(`
+      SELECT
+        kb.*,
+        COALESCE(COUNT(ks.id) FILTER (WHERE ks.stato = 'disponibile'), 0)::int  AS pezzi_disponibili,
+        COALESCE(COUNT(ks.id) FILTER (WHERE ks.stato = 'assegnato'),   0)::int  AS pezzi_assegnati,
+        COALESCE(COUNT(ks.id) FILTER (WHERE ks.stato IN ('perso','danneggiato')), 0)::int AS pezzi_mancanti,
+        COALESCE(COUNT(ks.id), 0)::int AS tot_pezzi
+      FROM kit_bundle kb
+      LEFT JOIN kit_stock ks ON ks.bundle_id = kb.id
+      ${where}
+      GROUP BY kb.id
+      ORDER BY kb.taglia, kb.numero_kit
+    `, params);
+
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+});
+
+// ═══════════════════════════════════════════
 // KIT STOCK
 // ═══════════════════════════════════════════
 
-// GET /api/kit-stock?workspace_id=X&template_id=Y
 router.get('/api/kit-stock', authMiddleware, async (req, res) => {
   try {
     const { workspace_id, template_id } = req.query;
@@ -82,69 +117,102 @@ router.get('/api/kit-stock', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Errore server' }); }
 });
 
-// POST /api/kit-stock/generate — genera stock da template (taglia × quantità)
-// body: { workspace_id, template_id, items: [{articolo, taglia, quantita}] }
+// Funzione condivisa: genera bundle+pezzi in batch (2 query per taglia invece di 2N)
+async function _generateBundles(workspace_id, template_id, items, tmpl) {
+  const numerazione = tmpl.numerazione || 'nessuna';
+  const startNum = tmpl.numerazione_start || 13;
+  const articoli = tmpl.articoli || [];
+
+  // Numero progressivo bundle per taglia
+  const { data: existingBundles } = await supabase.from('kit_bundle')
+    .select('taglia, numero_kit').eq('template_id', template_id);
+  const maxNumMap = {};
+  (existingBundles || []).forEach(b => {
+    maxNumMap[b.taglia] = Math.max(maxNumMap[b.taglia] || 0, b.numero_kit);
+  });
+
+  // Numero sequenziale pezzi
+  let nextNumMap = {};
+  if (numerazione === 'sequenziale') {
+    const { data: existing } = await supabase.from('kit_stock')
+      .select('articolo, taglia, numero').eq('template_id', template_id).not('numero', 'is', null);
+    (existing || []).forEach(s => {
+      const key = `${s.articolo}|${s.taglia}`;
+      nextNumMap[key] = Math.max(nextNumMap[key] || startNum, (s.numero || 0) + 1);
+    });
+  }
+
+  let totalBundles = 0;
+  let totalPezzi = 0;
+
+  for (const item of items) {
+    const { taglia, quantita } = item;
+    if (!quantita || quantita < 1) continue;
+    const base = maxNumMap[taglia] || 0;
+
+    // Batch insert tutti i bundle della taglia in una query
+    const bundleRows = Array.from({ length: quantita }, (_, k) => ({
+      template_id, workspace_id, taglia, numero_kit: base + k + 1, stato: 'integro'
+    }));
+    const { data: createdBundles, error: bErr } = await supabase.from('kit_bundle').insert(bundleRows).select('id, numero_kit');
+    if (bErr) throw new Error(bErr.message);
+
+    // Batch insert tutti i pezzi di tutti i bundle della taglia in una query
+    const pezziRows = [];
+    for (const bundle of createdBundles) {
+      for (const art of articoli) {
+        const qty = art.qty || 1;
+        for (let q = 0; q < qty; q++) {
+          const hasNumero = art.ha_numero && numerazione !== 'nessuna';
+          let numero = null;
+          if (hasNumero && numerazione === 'sequenziale') {
+            const key = `${art.nome}|${taglia}`;
+            numero = nextNumMap[key] || startNum;
+            nextNumMap[key] = numero + 1;
+          }
+          pezziRows.push({ workspace_id, template_id, bundle_id: bundle.id, articolo: art.nome, taglia, numero, stato: 'disponibile' });
+        }
+      }
+    }
+    const { error: pErr } = await supabase.from('kit_stock').insert(pezziRows);
+    if (pErr) throw new Error(pErr.message);
+
+    totalBundles += createdBundles.length;
+    totalPezzi += pezziRows.length;
+    maxNumMap[taglia] = base + quantita;
+  }
+  return { totalBundles, totalPezzi };
+}
+
+// POST /api/kit-stock/generate
 router.post('/api/kit-stock/generate', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
     const { workspace_id, template_id, items } = req.body;
-    if (!workspace_id || !template_id || !items?.length) return res.status(400).json({ error: 'Campi obbligatori: workspace_id, template_id, items' });
-
-    // Fetch template per numerazione
-    const { data: tmpl } = await supabase.from('kit_template').select('numerazione, numerazione_start, articoli').eq('id', template_id).single();
-    const numerazione = tmpl?.numerazione || 'nessuna';
-    const startNum = tmpl?.numerazione_start || 13;
-
-    // Per numerazione sequenziale: trova il prossimo numero disponibile per articolo+taglia
-    let nextNumMap = {};
-    if (numerazione === 'sequenziale') {
-      const { data: existing } = await supabase.from('kit_stock').select('articolo, taglia, numero').eq('template_id', template_id).not('numero', 'is', null);
-      (existing || []).forEach(s => {
-        const key = `${s.articolo}|${s.taglia}`;
-        nextNumMap[key] = Math.max(nextNumMap[key] || startNum, (s.numero || 0) + 1);
-      });
-    }
-
-    const rows = [];
-    for (const item of items) {
-      const { articolo, taglia, quantita } = item;
-      const artDef = (tmpl?.articoli || []).find(a => a.nome === articolo);
-      const hasNumero = artDef?.ha_numero && numerazione !== 'nessuna';
-
-      for (let i = 0; i < (quantita || 1); i++) {
-        let numero = null;
-        if (hasNumero && numerazione === 'sequenziale') {
-          const key = `${articolo}|${taglia}`;
-          numero = nextNumMap[key] || startNum;
-          nextNumMap[key] = numero + 1;
-        }
-        rows.push({ workspace_id, template_id, articolo, taglia: taglia || null, numero, stato: 'disponibile' });
-      }
-    }
-
-    if (!rows.length) return res.status(400).json({ error: 'Nessun pezzo da generare' });
-    const { data, error } = await supabase.from('kit_stock').insert(rows).select();
-    if (error) return res.status(400).json({ error: error.message });
-    res.status(201).json({ success: true, generated: data.length });
-  } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+    if (!workspace_id || !template_id || !items?.length) return res.status(400).json({ error: 'Campi obbligatori' });
+    const { data: tmpl } = await supabase.from('kit_template')
+      .select('numerazione, numerazione_start, articoli').eq('id', template_id).single();
+    if (!tmpl) return res.status(404).json({ error: 'Template non trovato' });
+    const { totalBundles, totalPezzi } = await _generateBundles(workspace_id, template_id, items, tmpl);
+    res.status(201).json({ success: true, bundles: totalBundles, pezzi: totalPezzi });
+  } catch (err) { res.status(500).json({ error: err.message || 'Errore server' }); }
 });
 
-// POST /api/kit-stock/restock — aggiungere stock (nuovo ordine parziale)
+// POST /api/kit-stock/restock
 router.post('/api/kit-stock/restock', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
     const { workspace_id, template_id, items } = req.body;
     if (!workspace_id || !template_id || !items?.length) return res.status(400).json({ error: 'Campi obbligatori' });
-    const rows = items.map(i => ({ workspace_id, template_id, articolo: i.articolo, taglia: i.taglia || null, numero: i.numero || null, stato: 'ordinato' }));
-    const { data, error } = await supabase.from('kit_stock').insert(rows).select();
-    if (error) return res.status(400).json({ error: error.message });
-    res.status(201).json({ success: true, added: data.length });
-  } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+    const { data: tmpl } = await supabase.from('kit_template').select('articoli').eq('id', template_id).single();
+    if (!tmpl) return res.status(404).json({ error: 'Template non trovato' });
+    const { totalBundles } = await _generateBundles(workspace_id, template_id, items, tmpl);
+    res.status(201).json({ success: true, added: totalBundles });
+  } catch (err) { res.status(500).json({ error: err.message || 'Errore server' }); }
 });
 
 // ═══════════════════════════════════════════
 // KIT ASSIGNMENTS
 // ═══════════════════════════════════════════
 
-// GET /api/kit-assignments?team_id=X&season_id=Y
 router.get('/api/kit-assignments', authMiddleware, async (req, res) => {
   try {
     const { team_id, season_id } = req.query;
@@ -158,19 +226,19 @@ router.get('/api/kit-assignments', authMiddleware, async (req, res) => {
 });
 
 // POST /api/kit-assignments — assegna pezzo a giocatore
-// body: { kit_stock_id, player_id, team_id, season_id }
 router.post('/api/kit-assignments', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
     const { kit_stock_id, player_id, team_id, season_id } = req.body;
-    if (!kit_stock_id || !player_id || !team_id || !season_id) return res.status(400).json({ error: 'Campi obbligatori: kit_stock_id, player_id, team_id, season_id' });
+    if (!kit_stock_id || !player_id || !team_id || !season_id) return res.status(400).json({ error: 'Campi obbligatori mancanti' });
 
-    // Verifica stock disponibile
-    const { data: stock } = await supabase.from('kit_stock').select('stato').eq('id', kit_stock_id).single();
+    const { data: stock } = await supabase.from('kit_stock').select('stato, bundle_id').eq('id', kit_stock_id).single();
     if (!stock || stock.stato !== 'disponibile') return res.status(400).json({ error: 'Pezzo non disponibile' });
 
-    // Crea assegnazione + aggiorna stato stock
     const [{ data: assignment, error: aErr }, { error: sErr }] = await Promise.all([
-      supabase.from('kit_assignment').insert({ kit_stock_id, player_id, team_id, season_id }).select().single(),
+      supabase.from('kit_assignment').insert({
+        kit_stock_id, player_id, team_id, season_id,
+        bundle_id_originale: stock.bundle_id
+      }).select().single(),
       supabase.from('kit_stock').update({ stato: 'assegnato' }).eq('id', kit_stock_id)
     ]);
     if (aErr) return res.status(400).json({ error: aErr.message });
@@ -179,69 +247,171 @@ router.post('/api/kit-assignments', authMiddleware, requirePermission('kit', 'wr
   } catch (err) { res.status(500).json({ error: 'Errore server' }); }
 });
 
-// POST /api/kit-assignments-batch — auto-assegna kit a giocatori con taglia
+// POST /api/kit-assignments-batch
+// Il frontend passa bundle_id già scelto — il backend verifica e assegna
+// body: { template_id, team_id, season_id, assignments: [{player_id, bundle_id}] }
 router.post('/api/kit-assignments-batch', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
     const { template_id, team_id, season_id, assignments } = req.body;
-    // assignments: [{player_id, taglia}]
     if (!template_id || !team_id || !season_id || !assignments?.length) return res.status(400).json({ error: 'Campi obbligatori' });
 
-    // Fetch template articoli
     const { data: tmpl } = await supabase.from('kit_template').select('articoli').eq('id', template_id).single();
     if (!tmpl) return res.status(404).json({ error: 'Template non trovato' });
-    const articoliNomi = (tmpl.articoli || []).map(a => a.nome);
-
-    // Fetch stock disponibile per questo template
-    const { data: stockAll } = await supabase.from('kit_stock').select('id, articolo, taglia')
-      .eq('template_id', template_id).eq('stato', 'disponibile');
-
-    // Già assegnati per questo team/season/template
-    const { data: existingAssigns } = await supabase.from('kit_assignment').select('player_id, kit_stock(template_id)')
-      .eq('team_id', team_id).eq('season_id', season_id);
-    const alreadyAssigned = new Set((existingAssigns || []).filter(a => a.kit_stock?.template_id === template_id).map(a => a.player_id));
-
-    // Group stock by taglia
-    const stockByTaglia = {};
-    (stockAll || []).forEach(s => {
-      const key = s.taglia || '_null';
-      if (!stockByTaglia[key]) stockByTaglia[key] = [];
-      stockByTaglia[key].push(s);
-    });
+    const nArticoli = (tmpl.articoli || []).reduce((s, a) => s + (a.qty || 1), 0);
 
     const created = [];
     const skipped = [];
 
-    for (const { player_id, taglia } of assignments) {
-      if (alreadyAssigned.has(player_id)) { skipped.push({ player_id, reason: 'già assegnato' }); continue; }
-      const available = stockByTaglia[taglia || '_null'] || [];
-      // Need one piece per articolo
-      const toAssign = [];
-      for (const art of articoliNomi) {
-        const idx = available.findIndex(s => s.articolo === art && !toAssign.some(a => a.id === s.id));
-        if (idx >= 0) toAssign.push(available[idx]);
+    for (const { player_id, bundle_id } of assignments) {
+      if (!bundle_id) { skipped.push({ player_id, reason: 'bundle_id mancante' }); continue; }
+
+      // Fetch pezzi disponibili del bundle scelto dal frontend
+      const { data: pezzi } = await supabase.from('kit_stock')
+        .select('id').eq('bundle_id', bundle_id).eq('stato', 'disponibile');
+
+      if (!pezzi?.length || pezzi.length < nArticoli) {
+        skipped.push({ player_id, reason: 'stock insufficiente' }); continue;
       }
-      if (toAssign.length < articoliNomi.length) { skipped.push({ player_id, reason: 'stock insufficiente' }); continue; }
-      // Remove used from available pool
-      toAssign.forEach(s => { const i = available.indexOf(s); if (i >= 0) available.splice(i, 1); });
-      created.push(...toAssign.map(s => ({ kit_stock_id: s.id, player_id, team_id, season_id })));
-      alreadyAssigned.add(player_id);
+
+      pezzi.forEach(p => created.push({ kit_stock_id: p.id, player_id, team_id, season_id, bundle_id_originale: bundle_id }));
     }
 
     if (created.length) {
       const { error: aErr } = await supabase.from('kit_assignment').insert(created);
       if (aErr) return res.status(400).json({ error: aErr.message });
       const stockIds = created.map(c => c.kit_stock_id);
+      const assignedPlayerIds = [...new Set(created.map(c => c.player_id))];
+      const assignedBundleIds = [...new Set(created.map(c => c.bundle_id_originale))];
+
       await supabase.from('kit_stock').update({ stato: 'assegnato' }).in('id', stockIds);
+      // Aggiorna taglia su team_player per ogni giocatore assegnato
+      const { data: bundleTaglie } = await supabase.from('kit_bundle').select('id, taglia').in('id', assignedBundleIds);
+      const bundleTagliaMap = {};
+      (bundleTaglie || []).forEach(b => { bundleTagliaMap[b.id] = b.taglia; });
+      // Recupera team_player_id per ogni player_id nel team
+      const { data: tpRows } = await supabase.from('team_player').select('id, player_id').eq('team_id', team_id).in('player_id', assignedPlayerIds);
+      const tpMap = {};
+      (tpRows || []).forEach(tp => { tpMap[tp.player_id] = tp.id; });
+      await Promise.all(
+        created
+          .filter((c, i, arr) => arr.findIndex(x => x.player_id === c.player_id) === i)
+          .map(c => {
+            const taglia = bundleTagliaMap[c.bundle_id_originale];
+            const tpId = tpMap[c.player_id];
+            if (!taglia || !tpId) return Promise.resolve();
+            return supabase.from('team_player').update({ taglia, da_ordinare_kit: false }).eq('id', tpId);
+          })
+      );
+      // Aggiorna stato bundle
+      await Promise.all(assignedBundleIds.map(id => _updateBundleStato(id)));
     }
 
-    res.json({ success: true, assigned: created.length / Math.max(articoliNomi.length, 1), skipped });
+    res.json({ success: true, assigned: created.length / Math.max(nArticoli, 1), skipped });
   } catch (err) { res.status(500).json({ error: 'Errore server' }); }
 });
 
-// DELETE /api/kit-assignments/:id — rimuovi assegnazione (stock torna disponibile)
+// PUT /api/kit-da-ordinare — setta/rimuove flag da_ordinare_kit su team_player
+router.put('/api/kit-da-ordinare', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
+  try {
+    const { team_player_id, da_ordinare, taglia } = req.body;
+    if (!team_player_id) return res.status(400).json({ error: 'team_player_id richiesto' });
+    const update = { da_ordinare_kit: !!da_ordinare };
+    if (taglia) update.taglia = taglia;
+    const { error } = await supabase.from('team_player').update(update).eq('id', team_player_id);
+    if (error) return res.status(400).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+});
+
+// POST /api/kit-assignments/:id/sostituisci — sostituzione pezzo con saccheggio intelligente
+// body: { articolo, motivo ('perso'|'danneggiato'), note, costo }
+router.post('/api/kit-assignments/:id/sostituisci', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
+  try {
+    const { articolo, motivo, note, costo } = req.body;
+    if (!articolo || !motivo) return res.status(400).json({ error: 'articolo e motivo richiesti' });
+
+    // Fetch assignment con kit_stock
+    const { data: assignment } = await supabase.from('kit_assignment')
+      .select('*, kit_stock(template_id, taglia, bundle_id)').eq('id', req.params.id).single();
+    if (!assignment) return res.status(404).json({ error: 'Assegnazione non trovata' });
+
+    const templateId = assignment.kit_stock?.template_id;
+    const taglia = assignment.kit_stock?.taglia;
+    const stockOriginaleId = assignment.kit_stock_id;
+
+    // 1. Marca il pezzo originale come perso/danneggiato
+    await supabase.from('kit_stock').update({ stato: motivo }).eq('id', stockOriginaleId);
+
+    // 2. Saccheggio intelligente: cerca prima nei bundle già saccheggiati, poi negli integri
+    // Fetch bundle con pezzi disponibili per questo articolo+taglia
+    const { data: bundles } = await supabase.from('kit_bundle')
+      .select('id, stato, numero_kit').eq('template_id', templateId)
+      .in('stato', ['saccheggiato', 'integro']).order('stato').order('numero_kit');
+    // saccheggiato < integro alfabeticamente → saccheggiati vengono prima ✓
+
+    const bundleIds = (bundles || []).map(b => b.id);
+    let pezzoSostituto = null;
+    let bundleSaccheggiato = null;
+
+    if (bundleIds.length) {
+      const { data: disponibili } = await supabase.from('kit_stock')
+        .select('id, bundle_id').in('bundle_id', bundleIds)
+        .eq('articolo', articolo).eq('taglia', taglia).eq('stato', 'disponibile')
+        .limit(1);
+
+      if (disponibili?.length) {
+        pezzoSostituto = disponibili[0];
+        bundleSaccheggiato = bundles.find(b => b.id === pezzoSostituto.bundle_id);
+      }
+    }
+
+    if (!pezzoSostituto) {
+      // Nessun pezzo disponibile — aggiorna comunque le sostituzioni con stato 'in_attesa'
+      const sostituzioni = [...(assignment.sostituzioni || []), {
+        articolo, motivo, note: note || null, costo: costo || null,
+        data: new Date().toISOString().split('T')[0],
+        kit_stock_id_originale: stockOriginaleId,
+        kit_stock_id_sostituto: null,
+        stato: 'in_attesa'
+      }];
+      await supabase.from('kit_assignment').update({ sostituzioni }).eq('id', req.params.id);
+      // Nessun sostituto trovato — bundle originale diventa incompleto
+      if (assignment.kit_stock?.bundle_id)
+        await supabase.from('kit_bundle').update({ stato: 'incompleto' }).eq('id', assignment.kit_stock.bundle_id);
+      return res.status(200).json({ success: true, sostituto: null, message: 'Nessun pezzo disponibile in magazzino — aggiunto in lista attesa' });
+    }
+
+    // 3. Assegna il pezzo sostituto
+    await supabase.from('kit_stock').update({ stato: 'assegnato' }).eq('id', pezzoSostituto.id);
+
+    // 4. Aggiorna sostituzioni sull'assignment
+    const sostituzioni = [...(assignment.sostituzioni || []), {
+      articolo, motivo, note: note || null, costo: costo || null,
+      data: new Date().toISOString().split('T')[0],
+      kit_stock_id_originale: stockOriginaleId,
+      kit_stock_id_sostituto: pezzoSostituto.id,
+      bundle_id_fonte: pezzoSostituto.bundle_id,
+      stato: 'completata'
+    }];
+    await supabase.from('kit_assignment').update({ sostituzioni }).eq('id', req.params.id);
+
+    // 5. Aggiorna stato bundle saccheggiato e bundle originale
+    await _updateBundleStato(pezzoSostituto.bundle_id);
+    if (assignment.kit_stock?.bundle_id) await _updateBundleStato(assignment.kit_stock.bundle_id);
+
+    res.json({
+      success: true,
+      sostituto: pezzoSostituto,
+      bundle_saccheggiato: bundleSaccheggiato ? `Kit ${taglia} #${bundleSaccheggiato.numero_kit}` : null
+    });
+  } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+});
+
+// DELETE /api/kit-assignments/:id
 router.delete('/api/kit-assignments/:id', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
-    const { data: assignment } = await supabase.from('kit_assignment').select('kit_stock_id').eq('id', req.params.id).single();
+    const { data: assignment } = await supabase.from('kit_assignment')
+      .select('kit_stock_id, kit_stock(bundle_id)').eq('id', req.params.id).single();
     if (!assignment) return res.status(404).json({ error: 'Assegnazione non trovata' });
     await Promise.all([
       supabase.from('kit_assignment').delete().eq('id', req.params.id),
@@ -250,3 +420,20 @@ router.delete('/api/kit-assignments/:id', authMiddleware, requirePermission('kit
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: 'Errore server' }); }
 });
+
+// ═══════════════════════════════════════════
+// HELPER PRIVATO: aggiorna stato bundle
+// ═══════════════════════════════════════════
+async function _updateBundleStato(bundleId) {
+  const { data: pezzi } = await supabase.from('kit_stock').select('stato').eq('bundle_id', bundleId);
+  if (!pezzi?.length) return;
+  const persiDanneggiati = pezzi.filter(p => p.stato === 'perso' || p.stato === 'danneggiato').length;
+  const assegnati = pezzi.filter(p => p.stato === 'assegnato').length;
+  let stato;
+  if (persiDanneggiati === pezzi.length) stato = 'da_riordinare';
+  else if (persiDanneggiati > 0) stato = 'saccheggiato';   // magazzino con pezzi mancanti
+  else if (assegnati === pezzi.length) stato = 'assegnato'; // kit completo al giocatore
+  else if (assegnati > 0) stato = 'saccheggiato';           // pezzi prelevati per sostituzione
+  else stato = 'integro';
+  await supabase.from('kit_bundle').update({ stato }).eq('id', bundleId);
+}
