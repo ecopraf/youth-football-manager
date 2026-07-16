@@ -1,7 +1,7 @@
 # Youth Football Manager — Development Plan
 
 > **Fonte di verità unica** per lo stato del progetto, task, dipendenze e priorità.
-> Ultimo aggiornamento: 16 Luglio 2026 | Versione: v3.16 | Build: v3.16.66
+> Ultimo aggiornamento: 17 Luglio 2026 | Versione: v3.16 | Build: v3.16.68
 
 ---
 
@@ -1248,6 +1248,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.68 | fix: kit help interattivo tab magazzino — data-help aggiornato dinamicamente in renderCards/renderMagazzino, ELEMENT_HELP kit.magazzino con stati bundle, docs: kit_bundle+pezzi_in_attesa in project-rules e AGENTS.md |
+| v3.16.67 | feat: kit pezzi mancanti fornitore — stato parziale bundle, modal selezione pezzi con checkbox, card "In attesa dal fornitore" con segna-arrivati (crea assignment + aggiorna stock), fix JSONB pezzi_in_attesa da pg raw, fix modal giocatore banner arancione se kit parziale, help interattivo contestuale tab lista (kit) e magazzino (kitMagazzino) |
 | v3.16.66 | feat: kit — UX magazzino completa. Checkbox da ordinare centralizzato (handleDaOrdinare con taglia), sezione gialla "Da ordinare" in magazzino con giocatori raggruppati per taglia + sostituzioni in_attesa, badge summary 🛒 N da ordinare / 🔄 N sost. in attesa per template, badge "🛒 da ordinare XXL" con taglia nel roster, stato incompleto nel STATO_BADGE, frecce +10/-10 nel modal genera stock, query pg raw aggregata GET /kit-bundles (80 righe vs 1040), aggiornamento taglia su batch-assign via team_player.id diretto |
 | v3.16.65 | feat: kit bundle — nuovo modello magazzino con kit fisici tracciati. DB: CREATE TABLE kit_bundle (template_id, taglia, numero_kit, stato integro/saccheggiato/assegnato/da_riordinare), ALTER kit_stock ADD bundle_id, ALTER kit_assignment ADD sostituzioni JSONB + bundle_id_originale. Backend: generate crea bundle+pezzi atomicamente, batch-assign usa bundle interi (saccheggiati prima degli integri), nuovo endpoint POST /kit-assignments/:id/sostituisci con saccheggio intelligente (attinge da bundle già saccheggiati prima di aprirne nuovi), GET /kit-bundles. Frontend: renderMagazzino vista per bundle con badge stato, showGenerateStockModal input per kit interi, showAssignModal con storico sostituzioni + bottone Sostituisci pezzo, showSostituzioneModal con articolo/motivo/costo/note |
 | v3.16.65 | feat: kit bundle — nuovo modello magazzino con kit fisici tracciati. DB: CREATE TABLE kit_bundle, ALTER kit_stock ADD bundle_id, ALTER kit_assignment ADD sostituzioni+bundle_id_originale. Backend: generate/restock batch (2 query per taglia vs 2N), batch-assign usa bundle interi (saccheggiati prima degli integri), endpoint POST /kit-assignments/:id/sostituisci con saccheggio intelligente, GET /kit-bundles, _updateBundleStato solo per perso/danneggiato. Frontend: magazzino vista bundle con taglie collassabili+summary inline, display kit completo vs parzialmente assegnato, showSostituzioneModal con articolo/motivo/costo/note, storico sostituzioni in showAssignModal. Fix: kitDisponibili conta bundle con TUTTI pezzi disponibili (non pezzi sfusi), badge header card aggiornati |

@@ -1,5 +1,6 @@
 import { apiFetch } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
+import { injectPageHelp } from '../../components/PageHelp.js';
 
 function showToast(msg, type = 'info') {
   if (window.showToast) { window.showToast(msg, type); return; }
@@ -23,6 +24,7 @@ function confirmModal(msg, onConfirm, { danger = true, confirmLabel } = {}) {
   const label = confirmLabel || (danger ? 'Elimina' : 'Conferma');
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:flex;align-items:center;justify-content:center;';
+  ov.classList.add('modal-overlay');
   ov.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:320px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
     <div style="font-size:32px;margin-bottom:12px;">${danger ? '🗑️' : '⚠️'}</div>
     <div style="font-size:14px;color:#333;margin-bottom:20px;line-height:1.5;">${msg}</div>
@@ -70,18 +72,18 @@ function render(c) {
   c.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
       <h1 class="page-title">👕 Kit Sportivo</h1>
-      ${isAdmin ? '<button class="btn btn-primary" id="btnConfigKit" style="font-size:13px;">⚙️ Configura template</button>' : ''}
+      ${isAdmin ? '<button class="btn btn-primary" id="btnConfigKit" style="font-size:13px;" data-help="kit.config">⚙️ Configura template</button>' : ''}
     </div>
     <style>.btn-kit-filter.active{background:#667eea!important;color:white!important;border-color:#667eea!important;}
     @media(max-width:500px){.kit-row{padding:8px 10px!important;}.kit-group-header{padding:10px 12px!important;}}</style>
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;" data-help="kit.filtri">
       <button class="btn btn-secondary btn-kit-filter active" data-filter="all" style="font-size:12px;padding:6px 12px;">Tutti</button>
       <button class="btn btn-secondary btn-kit-filter" data-filter="incompleto" style="font-size:12px;padding:6px 12px;">Incompleti</button>
       <button class="btn btn-secondary btn-kit-filter" data-filter="completo" style="font-size:12px;padding:6px 12px;">Completi</button>
       <span style="border-left:1px solid #ddd;margin:0 4px;"></span>
       <button class="btn btn-secondary btn-kit-filter" data-filter="magazzino" style="font-size:12px;padding:6px 12px;">📦 Magazzino</button>
     </div>
-    <div id="kitContainer"></div>
+    <div id="kitContainer" data-help="kit.lista"></div>
   `;
 
   renderCards('all');
@@ -91,8 +93,8 @@ function render(c) {
       c.querySelectorAll('.btn-kit-filter').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentFilter = btn.dataset.filter;
-      if (btn.dataset.filter === 'magazzino') renderMagazzino();
-      else renderCards(btn.dataset.filter);
+      if (btn.dataset.filter === 'magazzino') { renderMagazzino(); injectPageHelp('kitMagazzino'); }
+      else { renderCards(btn.dataset.filter); injectPageHelp('kit'); }
     });
   });
 
@@ -101,6 +103,7 @@ function render(c) {
 
 function renderCards(filter) {
   const container = document.getElementById('kitContainer');
+  container.setAttribute('data-help', 'kit.lista');
   if (!templates.length) {
     container.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template kit configurato. Clicca "⚙️ Configura template" per iniziare.</p>';
     return;
@@ -152,7 +155,7 @@ function renderCards(filter) {
             ${alert}
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
-            ${isAdmin ? `<button class="btn-auto-assign" data-tmpl="${tmpl.id}" style="font-size:11px;padding:4px 8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;cursor:pointer;color:#166534;" title="Assegna automaticamente a chi ha taglia">🎯 Auto</button><button class="btn-gen-stock" data-tmpl="${tmpl.id}" style="font-size:11px;padding:4px 8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;" title="Genera stock">+ Stock</button><button class="btn-del-tmpl" data-tmpl="${tmpl.id}" style="font-size:11px;padding:4px 8px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;cursor:pointer;color:#E74C3C;" title="Elimina template">✕</button>` : ''}
+            ${isAdmin ? `<button class="btn-auto-assign" data-tmpl="${tmpl.id}" data-help="kit.auto" style="font-size:11px;padding:4px 8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;cursor:pointer;color:#166534;" title="Assegna automaticamente a chi ha taglia">🎯 Auto</button><button class="btn-gen-stock" data-tmpl="${tmpl.id}" data-help="kit.stock" style="font-size:11px;padding:4px 8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;" title="Genera stock">+ Stock</button><button class="btn-del-tmpl" data-tmpl="${tmpl.id}" style="font-size:11px;padding:4px 8px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;cursor:pointer;color:#E74C3C;" title="Elimina template">✕</button>` : ''}
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:6px;margin-left:20px;font-size:11px;color:#666;flex-wrap:wrap;">
@@ -262,6 +265,7 @@ function renderCards(filter) {
 // ═══════════════════════════════════════════
 function renderMagazzino() {
   const container = document.getElementById('kitContainer');
+  container.setAttribute('data-help', 'kit.magazzino');
   if (!templates.length) {
     container.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template configurato.</p>';
     return;
@@ -271,6 +275,7 @@ function renderMagazzino() {
     integro:       { bg: '#dcfce7', color: '#166534', label: 'Integro' },
     saccheggiato:  { bg: '#fef9ec', color: '#92400e', label: 'Saccheggiato' },
     assegnato:     { bg: '#eef2ff', color: '#4338ca', label: 'Assegnato' },
+    parziale:      { bg: '#fff7ed', color: '#c2410c', label: 'Parziale' },
     incompleto:    { bg: '#fef2f2', color: '#E74C3C', label: 'Incompleto' },
     da_riordinare: { bg: '#fef2f2', color: '#E74C3C', label: 'Da riordinare' }
   };
@@ -286,6 +291,7 @@ function renderMagazzino() {
     const nIncompleti   = tmplBundles.filter(b => b.stato === 'incompleto').length;
     const nSaccheggiati = tmplBundles.filter(b => b.stato === 'saccheggiato').length;
     const nRiordino     = tmplBundles.filter(b => b.stato === 'da_riordinare').length;
+    const nParziali     = tmplBundles.filter(b => b.stato === 'parziale').length;
     // Giocatori da ordinare per questo template (da_ordinare_kit=true)
     const nDaOrdinare   = Object.values(rosterMap).filter(p => p.da_ordinare_kit).length;
     // Sostituzioni in attesa per questo template
@@ -309,6 +315,7 @@ function renderMagazzino() {
             ${nIncompleti > 0   ? `<span style="background:#fef2f2;color:#E74C3C;padding:2px 8px;border-radius:10px;">⚠️ ${nIncompleti} incompleti</span>` : ''}
             ${nSaccheggiati > 0 ? `<span style="background:#fef9ec;color:#92400e;padding:2px 8px;border-radius:10px;">🔓 ${nSaccheggiati} saccheggiati</span>` : ''}
             ${nRiordino > 0     ? `<span style="background:#fef2f2;color:#E74C3C;padding:2px 8px;border-radius:10px;">🔴 ${nRiordino} da riordinare</span>` : ''}
+            ${nParziali > 0     ? `<span style="background:#fff7ed;color:#c2410c;padding:2px 8px;border-radius:10px;">📦 ${nParziali} in attesa fornitore</span>` : ''}
             ${nDaOrdinare > 0   ? `<span style="background:#fef9ec;color:#92400e;padding:2px 8px;border-radius:10px;">🛒 ${nDaOrdinare} da ordinare</span>` : ''}
             ${nInAttesa > 0     ? `<span style="background:#fef2f2;color:#E74C3C;padding:2px 8px;border-radius:10px;">🔄 ${nInAttesa} sost. in attesa</span>` : ''}
           </div>
@@ -325,9 +332,11 @@ function renderMagazzino() {
         const nIn = tagliBundles.filter(b => b.stato === 'incompleto').length;
         const nS  = tagliBundles.filter(b => b.stato === 'saccheggiato').length;
         const nR  = tagliBundles.filter(b => b.stato === 'da_riordinare').length;
+        const nP  = tagliBundles.filter(b => b.stato === 'parziale').length;
         const summaryParts = [];
         if (nI > 0)  summaryParts.push(`<span style="color:#166534;">${nI} disponibili</span>`);
         if (nA > 0)  summaryParts.push(`<span style="color:#3730a3;">${nA} assegnati</span>`);
+        if (nP > 0)  summaryParts.push(`<span style="color:#c2410c;">${nP} in attesa fornitore</span>`);
         if (nIn > 0) summaryParts.push(`<span style="color:#E74C3C;">${nIn} incompleti</span>`);
         if (nS > 0)  summaryParts.push(`<span style="color:#92400e;">${nS} saccheggiati</span>`);
         if (nR > 0)  summaryParts.push(`<span style="color:#E74C3C;">${nR} da riordinare</span>`);
@@ -380,7 +389,7 @@ function renderMagazzino() {
       ${nRiordino > 0 ? `<div style="padding:8px 14px;background:#fef2f2;border-top:1px solid #fecaca;font-size:11px;color:#E74C3C;">🔴 ${nRiordino} kit completamente esauriti — necessario riordino</div>` : ''}
       ${nSaccheggiati > 0 ? `<div style="padding:8px 14px;background:#fef9ec;border-top:1px solid #fde68a;font-size:11px;color:#92400e;">⚠️ ${nSaccheggiati} kit parzialmente saccheggiati — i pezzi mancanti sono stati usati come sostituzione</div>` : ''}
       ${isAdmin ? `<div style="padding:8px 12px;border-top:1px solid #f0f0f0;text-align:right;">
-        <button class="btn-restock" data-tmpl="${tmpl.id}" style="font-size:11px;padding:5px 12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;">+ Ordina stock</button>
+        <button class="btn-restock" data-tmpl="${tmpl.id}" data-help="kit.restock" style="font-size:11px;padding:5px 12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;">+ Ordina stock</button>
       </div>` : ''}
     </div>`;
   });
@@ -460,13 +469,66 @@ function renderMagazzino() {
     sec.style.cssText = 'margin-top:16px;background:white;border-radius:12px;border:1px solid #fde68a;overflow:hidden;';
     sec.innerHTML = `
       <div style="padding:10px 16px;background:linear-gradient(135deg,#fef9ec,#fef3c7);display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-weight:700;font-size:14px;color:#92400e;">🛒 Da ordinare</span>
+        <span style="font-weight:700;font-size:14px;color:#92400e;" data-help="kit.daOrdinare">🛒 Da ordinare</span>
         <span style="font-size:12px;color:#92400e;">${daOrdinareList.length + inAttesaList.length} voci</span>
       </div>
       ${righeGiocatori}
       ${hasSeparator ? '<div style="padding:4px 14px;background:#fef9ec;font-size:11px;color:#92400e;font-weight:600;">Sostituzioni in attesa</div>' : ''}
       ${righeAttesa}`;
     container.appendChild(sec);
+  }
+
+  // Card "In attesa dal fornitore" (bundle parziali)
+  const allParziali = bundles.filter(b => b.stato === 'parziale' && b.pezzi_in_attesa?.length);
+  if (allParziali.length) {
+    // Raggruppa per template → taglia
+    const perTemplateTaglia = {};
+    allParziali.forEach(b => {
+      const tmpl = templates.find(t => t.id === b.template_id);
+      if (!tmpl) return;
+      const key = b.template_id + '|' + b.taglia;
+      if (!perTemplateTaglia[key]) perTemplateTaglia[key] = { tmpl, taglia: b.taglia, bundles: [] };
+      perTemplateTaglia[key].bundles.push(b);
+    });
+
+    const righeFornitore = Object.values(perTemplateTaglia).map(({ tmpl, taglia, bundles: bList }) => {
+      // Articoli in attesa con conteggio
+      const artCount = {};
+      bList.forEach(b => (b.pezzi_in_attesa || []).forEach(a => { artCount[a] = (artCount[a] || 0) + 1; }));
+      const artHtml = Object.entries(artCount)
+        .map(([art, n]) => `<span style="font-size:11px;background:#fff7ed;color:#c2410c;padding:1px 6px;border-radius:4px;border:1px solid #fed7aa;">${art} ×${n}</span>`)
+        .join(' ');
+      return `<div style="padding:8px 14px;border-bottom:1px solid #f5f5f5;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <div>
+          <span style="font-size:12px;font-weight:600;color:#374151;">${tmpl.nome} — Taglia ${taglia}</span>
+          <span style="font-size:11px;color:#888;margin-left:6px;">(${bList.length} kit)</span>
+          <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;">${artHtml}</div>
+        </div>
+        <button class="btn-segna-arrivati" data-tmpl="${tmpl.id}" data-taglia="${taglia}" data-help="kit.segnaArrivati"
+          style="font-size:11px;padding:5px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;cursor:pointer;color:#166534;white-space:nowrap;">
+          ✅ Segna arrivati
+        </button>
+      </div>`;
+    }).join('');
+
+    const secFornitore = document.createElement('div');
+    secFornitore.style.cssText = 'margin-top:16px;background:white;border-radius:12px;border:1px solid #fed7aa;overflow:hidden;';
+    secFornitore.innerHTML = `
+      <div style="padding:10px 16px;background:linear-gradient(135deg,#fff7ed,#ffedd5);display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-weight:700;font-size:14px;color:#c2410c;" data-help="kit.inAttesa">📦 In attesa dal fornitore</span>
+        <span style="font-size:12px;color:#c2410c;">${allParziali.length} kit parziali</span>
+      </div>
+      ${righeFornitore}`;
+    container.appendChild(secFornitore);
+
+    secFornitore.querySelectorAll('.btn-segna-arrivati').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tmpl = templates.find(t => t.id === btn.dataset.tmpl);
+        const taglia = btn.dataset.taglia;
+        const bParziali = allParziali.filter(b => b.template_id === btn.dataset.tmpl && b.taglia === taglia);
+        if (tmpl) showSegnaArrivatiModal(tmpl, taglia, bParziali);
+      });
+    });
   }
 }
 
@@ -553,6 +615,7 @@ function showConfigModal() {
   const workspaceId = window.YFM.activeWorkspaceId;
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  overlay.classList.add('modal-overlay');
 
   const existingHtml = templates.map(t => `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:6px;">
     <div><strong style="font-size:13px;">${t.nome}</strong> <span style="font-size:11px;color:#888;">(${t.settore === 'scuola_calcio' ? 'SC' : 'SG'})</span><br><span style="font-size:12px;">${(t.articoli || []).length} articoli • ${t.numerazione || 'nessuna'}</span></div>
@@ -683,6 +746,7 @@ function showConfigModal() {
 function showFeePrompt(kitNome) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  overlay.classList.add('modal-overlay');
   overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:360px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
     <div style="font-size:32px;margin-bottom:12px;">💰</div>
     <div style="font-size:14px;font-weight:600;margin-bottom:8px;">Vuoi creare una quota per questo kit?</div>
@@ -709,6 +773,7 @@ function showGenerateStockModal(tmpl) {
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  overlay.classList.add('modal-overlay');
 
   const taglieRows = taglie.map(t => `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;">
     <span style="font-size:13px;font-weight:500;min-width:80px;">${t}</span>
@@ -770,6 +835,156 @@ function showGenerateStockModal(tmpl) {
 }
 
 // ═══════════════════════════════════════════
+// MODAL: Selezione pezzi da assegnare (con deseleziona per pezzi mancanti dal fornitore)
+// ═══════════════════════════════════════════
+function showPezziSelectionModal(tmpl, taglia, bundle, player, parentOverlay) {
+  const articoli = tmpl.articoli || [];
+  const nome = `${player.cognome || ''} ${player.nome || ''}`.trim();
+
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2100;display:flex;align-items:center;justify-content:center;';
+  ov.classList.add('modal-overlay');
+
+  const rows = articoli.map(art => {
+    const qty = art.qty || 1;
+    return Array.from({ length: qty }, (_, i) => {
+      const key = qty > 1 ? `${art.nome} (${i + 1}/${qty})` : art.nome;
+      return `<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;cursor:pointer;">
+        <input type="checkbox" class="pezzi-check" data-articolo="${art.nome}" checked style="width:16px;height:16px;accent-color:#667eea;cursor:pointer;">
+        <span style="font-size:13px;">${key}</span>
+      </label>`;
+    }).join('');
+  }).join('');
+
+  ov.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px;">📦 Pezzi da consegnare</div>
+    <div style="font-size:12px;color:#666;margin-bottom:14px;">${nome} — Taglia ${taglia} — Kit #${bundle.numero_kit}</div>
+    <div style="font-size:12px;color:#888;margin-bottom:10px;">Deseleziona i pezzi non ancora arrivati dal fornitore:</div>
+    ${rows}
+    <div style="margin-top:6px;padding:8px 10px;background:#fef9ec;border:1px solid #fde68a;border-radius:6px;font-size:11px;color:#92400e;">
+      ⚠️ I pezzi deselezionati saranno segnati come <strong>in attesa dal fornitore</strong>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
+      <button id="pezziCancel" class="btn btn-secondary" style="font-size:12px;">Annulla</button>
+      <button id="pezziConfirm" class="btn btn-primary" style="font-size:12px;">Assegna kit</button>
+    </div>
+  </div>`;
+
+  document.body.appendChild(ov);
+  ov.querySelector('#pezziCancel').addEventListener('click', () => ov.remove());
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+
+  ov.querySelector('#pezziConfirm').addEventListener('click', async () => {
+    // Raccogli pezzi deselezionati (in attesa)
+    const pezziInAttesa = [];
+    ov.querySelectorAll('.pezzi-check:not(:checked)').forEach(cb => {
+      const art = cb.dataset.articolo;
+      if (!pezziInAttesa.includes(art)) pezziInAttesa.push(art);
+    });
+
+    try {
+      showLoading('Assegnazione kit...');
+      const res = await apiFetch('/kit-assignments-batch', { method: 'POST', body: JSON.stringify({
+        template_id: tmpl.id, team_id: window.YFM.squadraId, season_id: window.YFM.currentSeasonId,
+        assignments: [{ player_id: player.id, bundle_id: bundle.id, pezzi_in_attesa: pezziInAttesa }]
+      })});
+      hideLoading();
+      ov.remove();
+      if (res.assigned > 0 || res.skipped?.length === 0) {
+        if (pezziInAttesa.length) showToast(`Kit assegnato — ${pezziInAttesa.length} pezzi in attesa dal fornitore`, 'warning');
+        else showToast('Kit assegnato', 'success');
+        parentOverlay.remove();
+        loadKit();
+      } else {
+        showToast('Kit non assegnato: ' + (res.skipped?.[0]?.reason || 'errore'), 'error');
+      }
+    } catch (err) { hideLoading(); showToast(err.message, 'error'); }
+  });
+}
+
+// MODAL: Segna arrivati dal fornitore per taglia
+// ═══════════════════════════════════════════
+function showSegnaArrivatiModal(tmpl, taglia, bundleParziali) {
+  // Raggruppa articoli in attesa con conteggio max per articolo
+  const articoliCount = {};
+  bundleParziali.forEach(b => {
+    (b.pezzi_in_attesa || []).forEach(art => {
+      articoliCount[art] = (articoliCount[art] || 0) + 1;
+    });
+  });
+  const articoliList = Object.entries(articoliCount);
+  if (!articoliList.length) return;
+
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2100;display:flex;align-items:center;justify-content:center;';
+  ov.classList.add('modal-overlay');
+
+  const rows = articoliList.map(([art, maxQty]) =>
+    `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;">
+      <span style="font-size:13px;">${art}</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:#888;">max ${maxQty}</span>
+        <button class="sa-down" data-art="${art}" style="width:26px;height:26px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px;">−</button>
+        <span class="sa-val" data-art="${art}" style="min-width:24px;text-align:center;font-weight:600;font-size:13px;">0</span>
+        <button class="sa-up" data-art="${art}" data-max="${maxQty}" style="width:26px;height:26px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px;">+</button>
+      </div>
+    </div>`
+  ).join('');
+
+  ov.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px;">✅ Segna arrivati dal fornitore</div>
+    <div style="font-size:12px;color:#666;margin-bottom:14px;">Taglia ${taglia} — ${bundleParziali.length} kit in attesa</div>
+    <div style="font-size:12px;color:#888;margin-bottom:10px;">Indica quanti pezzi sono arrivati per ogni articolo:</div>
+    ${rows}
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
+      <button id="saCancel" class="btn btn-secondary" style="font-size:12px;">Annulla</button>
+      <button id="saConfirm" class="btn btn-primary" style="font-size:12px;">Conferma</button>
+    </div>
+  </div>`;
+
+  document.body.appendChild(ov);
+  ov.querySelector('#saCancel').addEventListener('click', () => ov.remove());
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+
+  // Contatori +/-
+  ov.querySelectorAll('.sa-up').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const art = btn.dataset.art;
+      const max = parseInt(btn.dataset.max);
+      const valEl = ov.querySelector(`.sa-val[data-art="${art}"]`);
+      const cur = parseInt(valEl.textContent);
+      if (cur < max) valEl.textContent = cur + 1;
+    });
+  });
+  ov.querySelectorAll('.sa-down').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const art = btn.dataset.art;
+      const valEl = ov.querySelector(`.sa-val[data-art="${art}"]`);
+      const cur = parseInt(valEl.textContent);
+      if (cur > 0) valEl.textContent = cur - 1;
+    });
+  });
+
+  ov.querySelector('#saConfirm').addEventListener('click', async () => {
+    const articoli_quantita = [];
+    ov.querySelectorAll('.sa-val').forEach(el => {
+      const q = parseInt(el.textContent);
+      if (q > 0) articoli_quantita.push({ articolo: el.dataset.art, quantita: q });
+    });
+    if (!articoli_quantita.length) { showToast('Nessun pezzo selezionato', 'warning'); return; }
+    try {
+      showLoading('Aggiornamento...');
+      await apiFetch('/kit-bundles/segna-arrivati', { method: 'PUT', body: JSON.stringify({
+        template_id: tmpl.id, taglia, articoli_quantita
+      })});
+      hideLoading();
+      ov.remove();
+      showToast('Pezzi segnati come arrivati', 'success');
+      loadKit();
+    } catch (err) { hideLoading(); showToast(err.message, 'error'); }
+  });
+}
+
 // MODAL: Sostituzione pezzo
 // ═══════════════════════════════════════════
 function showSostituzioneModal(assignment, tmpl, playerNome, onDone) {
@@ -779,6 +994,7 @@ function showSostituzioneModal(assignment, tmpl, playerNome, onDone) {
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:flex;align-items:center;justify-content:center;';
+  overlay.classList.add('modal-overlay');
   overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
     <div style="font-size:15px;font-weight:600;margin-bottom:4px;">🔄 Sostituisci pezzo</div>
     <div style="font-size:12px;color:#666;margin-bottom:16px;">${playerNome} — ${tmpl.nome}</div>
@@ -853,6 +1069,7 @@ function showAssignModal(tmpl, player) {
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  overlay.classList.add('modal-overlay');
 
   function renderModal() {
     const defaultTaglia = player.taglia || '';
@@ -894,7 +1111,17 @@ function showAssignModal(tmpl, player) {
     const assegnatiTotali = articoli.reduce((s, a) => s + Math.min(playerAssigns.filter(x => x.kit_stock?.articolo === a.nome).length, a.qty || 1), 0);
     const unassignedCount = totalePezzi - assegnatiTotali;
 
-    const stockInfo = unassignedCount > 0
+    // Controlla se i pezzi mancanti sono in attesa dal fornitore (bundle parziale)
+    const bundleAssegnato = bundles.find(b =>
+      b.template_id === tmpl.id && b.stato === 'parziale' &&
+      (b.pezzi_in_attesa || []).length > 0 &&
+      playerAssigns.some(a => a.bundle_id_originale === b.id)
+    );
+    const pezziInAttesaFornitore = bundleAssegnato?.pezzi_in_attesa || [];
+    // Pezzi davvero mancanti = non assegnati E non in attesa dal fornitore
+    const unassignedReal = unassignedCount - pezziInAttesaFornitore.length;
+
+    const stockInfo = unassignedReal > 0
       ? (() => {
           const taglia = player.taglia || '';
           const totPK = tmpl.articoli ? tmpl.articoli.reduce((s, a) => s + (a.qty || 1), 0) : 0;
@@ -908,7 +1135,12 @@ function showAssignModal(tmpl, player) {
               Segna da ordinare per questo giocatore
             </label>` : ''}</div>`;
         })()
-      : '';
+      : pezziInAttesaFornitore.length > 0
+        ? `<div style="padding:8px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin-bottom:10px;font-size:12px;color:#c2410c;">📦 Kit parziale — in attesa dal fornitore: <strong>${pezziInAttesaFornitore.join(', ')}</strong></div>`
+        : '';
+
+    // Mostra bottone assegna solo se ci sono pezzi davvero mancanti (non in attesa fornitore)
+    const showAssignBtn = isAdmin && unassignedReal > 0;
 
     // Storico sostituzioni (da tutti gli assignment del giocatore per questo template)
     const tuttiSost = playerAssigns.flatMap(a => a.sostituzioni || []);
@@ -926,7 +1158,7 @@ function showAssignModal(tmpl, player) {
       <div style="font-size:16px;font-weight:600;margin-bottom:4px;">👕 ${nome}</div>
       <div style="font-size:12px;color:#666;margin-bottom:12px;">${tmpl.nome}${player.taglia ? ' • Taglia: ' + player.taglia : ''}</div>
       ${stockInfo}
-      ${isAdmin && unassignedCount > 0 ? `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#eef2ff;border-radius:8px;margin-bottom:12px;border:1px solid #c7d2fe;">
+      ${showAssignBtn ? `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#eef2ff;border-radius:8px;margin-bottom:12px;border:1px solid #c7d2fe;">
         <select id="kaGlobalTaglia" style="padding:5px 8px;border:1px solid #c7d2fe;border-radius:6px;font-size:12px;"><option value="">Taglia...</option>${taglieOpts}</select>
         <button id="kaAssignAll" style="flex:1;padding:6px 12px;background:#667eea;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Assegna kit</button>
       </div>` : ''}
@@ -1012,7 +1244,6 @@ function showAssignModal(tmpl, player) {
         if (isAdmin) {
           const giaSegnato = overlay.querySelector('#kaOrdinare')?.checked || player.da_ordinare_kit;
           if (giaSegnato) {
-            // Checkbox già spuntato — chiudi semplicemente
             overlay.remove();
           } else {
             confirmModal(
@@ -1027,21 +1258,8 @@ function showAssignModal(tmpl, player) {
         return;
       }
       const bundle = candidati[0];
-      try {
-        showLoading('Assegnazione kit...');
-        const res = await apiFetch('/kit-assignments-batch', { method: 'POST', body: JSON.stringify({
-          template_id: tmpl.id, team_id: window.YFM.squadraId, season_id: window.YFM.currentSeasonId,
-          assignments: [{ player_id: player.id, bundle_id: bundle.id }]
-        })});
-        hideLoading();
-        if (res.assigned > 0) {
-          overlay.remove();
-          loadKit();
-        } else {
-          const motivo = res.skipped?.[0]?.reason || 'stock insufficiente';
-          showToast('Kit non assegnato: ' + motivo, 'error');
-        }
-      } catch (err) { hideLoading(); showToast(err.message, 'error'); }
+      // Mostra modal selezione pezzi (tutti spuntati di default, deseleziona quelli mancanti)
+      showPezziSelectionModal(tmpl, taglia, bundle, player, overlay);
     });
 
     // Remove assegnazione

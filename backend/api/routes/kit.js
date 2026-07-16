@@ -84,7 +84,8 @@ router.get('/api/kit-bundles', authMiddleware, async (req, res) => {
 
     const { rows } = await pgPool.query(`
       SELECT
-        kb.*,
+        kb.id, kb.template_id, kb.workspace_id, kb.taglia, kb.numero_kit, kb.stato,
+        CASE WHEN kb.pezzi_in_attesa IS NULL THEN '[]'::jsonb ELSE kb.pezzi_in_attesa END as pezzi_in_attesa,
         COALESCE(COUNT(ks.id) FILTER (WHERE ks.stato = 'disponibile'), 0)::int  AS pezzi_disponibili,
         COALESCE(COUNT(ks.id) FILTER (WHERE ks.stato = 'assegnato'),   0)::int  AS pezzi_assegnati,
         COALESCE(COUNT(ks.id) FILTER (WHERE ks.stato IN ('perso','danneggiato')), 0)::int AS pezzi_mancanti,
@@ -96,8 +97,89 @@ router.get('/api/kit-bundles', authMiddleware, async (req, res) => {
       ORDER BY kb.taglia, kb.numero_kit
     `, params);
 
+    // pg restituisce JSONB come stringa — deserializza
+    rows.forEach(r => {
+      if (typeof r.pezzi_in_attesa === 'string') r.pezzi_in_attesa = JSON.parse(r.pezzi_in_attesa);
+    });
+
     res.json(rows);
   } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+});
+
+// PUT /api/kit-bundles/segna-arrivati
+// body: { template_id, taglia, articolo, quantita }
+// Marca N bundle della taglia come ricevuti per quell'articolo
+router.put('/api/kit-bundles/segna-arrivati', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
+  try {
+    const { template_id, taglia, articoli_quantita } = req.body;
+    if (!template_id || !taglia || !articoli_quantita?.length) return res.status(400).json({ error: 'Campi obbligatori' });
+
+    // Fetch bundle parziali con i loro assignment esistenti (per ricavare player_id, team_id, season_id)
+    const { data: bundles } = await supabase.from('kit_bundle')
+      .select('id, pezzi_in_attesa')
+      .eq('template_id', template_id)
+      .eq('taglia', taglia)
+      .eq('stato', 'parziale');
+
+    if (!bundles?.length) return res.json({ success: true, updated: 0 });
+
+    // Recupera assignment esistenti per questi bundle (per sapere player_id/team_id/season_id)
+    const bundleIds = bundles.map(b => b.id);
+    const { data: existingStocks } = await supabase.from('kit_stock')
+      .select('id, articolo, bundle_id').in('bundle_id', bundleIds).eq('stato', 'disponibile');
+    // Usa bundle_id_originale direttamente — molto più semplice e affidabile
+    const { data: existingAssigns } = await supabase.from('kit_assignment')
+      .select('player_id, team_id, season_id, bundle_id_originale')
+      .in('bundle_id_originale', bundleIds);
+    const bundleAssignMap = {};
+    (existingAssigns || []).forEach(a => {
+      if (!bundleAssignMap[a.bundle_id_originale])
+        bundleAssignMap[a.bundle_id_originale] = { player_id: a.player_id, team_id: a.team_id, season_id: a.season_id };
+    });
+
+    let totalUpdated = 0;
+    const newAssignments = [];
+    const stocksToAssign = [];
+
+    for (const { articolo, quantita } of articoli_quantita) {
+      if (!quantita || quantita <= 0) continue;
+      const targets = bundles
+        .filter(b => (b.pezzi_in_attesa || []).includes(articolo))
+        .slice(0, quantita);
+
+      for (const bundle of targets) {
+        const nuoviInAttesa = (bundle.pezzi_in_attesa || []).filter(a => a !== articolo);
+        const nuovoStato = nuoviInAttesa.length === 0 ? 'assegnato' : 'parziale';
+        await supabase.from('kit_bundle')
+          .update({ pezzi_in_attesa: nuoviInAttesa, stato: nuovoStato })
+          .eq('id', bundle.id);
+        bundle.pezzi_in_attesa = nuoviInAttesa;
+        totalUpdated++;
+
+        // Trova il kit_stock disponibile per questo articolo in questo bundle
+        const stock = (existingStocks || []).find(s => s.bundle_id === bundle.id && s.articolo === articolo);
+        const assignCtx = bundleAssignMap[bundle.id];
+        if (stock && assignCtx) {
+          stocksToAssign.push(stock.id);
+          newAssignments.push({
+            kit_stock_id: stock.id,
+            player_id: assignCtx.player_id,
+            team_id: assignCtx.team_id,
+            season_id: assignCtx.season_id,
+            bundle_id_originale: bundle.id
+          });
+        }
+      }
+    }
+
+    // Batch: aggiorna stock + crea assignment
+    if (stocksToAssign.length) {
+      await supabase.from('kit_stock').update({ stato: 'assegnato' }).in('id', stocksToAssign);
+      await supabase.from('kit_assignment').insert(newAssignments);
+    }
+
+    res.json({ success: true, updated: totalUpdated });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Errore server' }); }
 });
 
 // ═══════════════════════════════════════════
@@ -249,7 +331,7 @@ router.post('/api/kit-assignments', authMiddleware, requirePermission('kit', 'wr
 
 // POST /api/kit-assignments-batch
 // Il frontend passa bundle_id già scelto — il backend verifica e assegna
-// body: { template_id, team_id, season_id, assignments: [{player_id, bundle_id}] }
+// body: { template_id, team_id, season_id, assignments: [{player_id, bundle_id, pezzi_in_attesa?}] }
 router.post('/api/kit-assignments-batch', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
     const { template_id, team_id, season_id, assignments } = req.body;
@@ -262,18 +344,29 @@ router.post('/api/kit-assignments-batch', authMiddleware, requirePermission('kit
     const created = [];
     const skipped = [];
 
-    for (const { player_id, bundle_id } of assignments) {
+    for (const { player_id, bundle_id, pezzi_in_attesa } of assignments) {
       if (!bundle_id) { skipped.push({ player_id, reason: 'bundle_id mancante' }); continue; }
 
+      const inAttesa = pezzi_in_attesa || [];
       // Fetch pezzi disponibili del bundle scelto dal frontend
       const { data: pezzi } = await supabase.from('kit_stock')
-        .select('id').eq('bundle_id', bundle_id).eq('stato', 'disponibile');
+        .select('id, articolo').eq('bundle_id', bundle_id).eq('stato', 'disponibile');
 
-      if (!pezzi?.length || pezzi.length < nArticoli) {
+      // I pezzi da assegnare sono quelli NON in attesa
+      const pezziDaAssegnare = inAttesa.length
+        ? (pezzi || []).filter(p => !inAttesa.includes(p.articolo))
+        : (pezzi || []);
+
+      if (!pezziDaAssegnare.length) {
         skipped.push({ player_id, reason: 'stock insufficiente' }); continue;
       }
 
-      pezzi.forEach(p => created.push({ kit_stock_id: p.id, player_id, team_id, season_id, bundle_id_originale: bundle_id }));
+      pezziDaAssegnare.forEach(p => created.push({ kit_stock_id: p.id, player_id, team_id, season_id, bundle_id_originale: bundle_id }));
+
+      // Se ci sono pezzi in attesa, aggiorna subito il bundle
+      if (inAttesa.length) {
+        await supabase.from('kit_bundle').update({ pezzi_in_attesa: inAttesa, stato: 'parziale' }).eq('id', bundle_id);
+      }
     }
 
     if (created.length) {
@@ -288,7 +381,6 @@ router.post('/api/kit-assignments-batch', authMiddleware, requirePermission('kit
       const { data: bundleTaglie } = await supabase.from('kit_bundle').select('id, taglia').in('id', assignedBundleIds);
       const bundleTagliaMap = {};
       (bundleTaglie || []).forEach(b => { bundleTagliaMap[b.id] = b.taglia; });
-      // Recupera team_player_id per ogni player_id nel team
       const { data: tpRows } = await supabase.from('team_player').select('id, player_id').eq('team_id', team_id).in('player_id', assignedPlayerIds);
       const tpMap = {};
       (tpRows || []).forEach(tp => { tpMap[tp.player_id] = tp.id; });
@@ -302,8 +394,12 @@ router.post('/api/kit-assignments-batch', authMiddleware, requirePermission('kit
             return supabase.from('team_player').update({ taglia, da_ordinare_kit: false }).eq('id', tpId);
           })
       );
-      // Aggiorna stato bundle
-      await Promise.all(assignedBundleIds.map(id => _updateBundleStato(id)));
+      // Aggiorna stato bundle (solo quelli senza pezzi_in_attesa — gli altri già impostati a parziale)
+      const bundleSenzaAttesa = assignments
+        .filter(a => !a.pezzi_in_attesa?.length)
+        .map(a => a.bundle_id)
+        .filter(Boolean);
+      await Promise.all(bundleSenzaAttesa.map(id => _updateBundleStato(id)));
     }
 
     res.json({ success: true, assigned: created.length / Math.max(nArticoli, 1), skipped });
@@ -425,13 +521,16 @@ router.delete('/api/kit-assignments/:id', authMiddleware, requirePermission('kit
 // HELPER PRIVATO: aggiorna stato bundle
 // ═══════════════════════════════════════════
 async function _updateBundleStato(bundleId) {
+  const { data: bundle } = await supabase.from('kit_bundle').select('pezzi_in_attesa').eq('id', bundleId).single();
   const { data: pezzi } = await supabase.from('kit_stock').select('stato').eq('bundle_id', bundleId);
   if (!pezzi?.length) return;
   const persiDanneggiati = pezzi.filter(p => p.stato === 'perso' || p.stato === 'danneggiato').length;
   const assegnati = pezzi.filter(p => p.stato === 'assegnato').length;
+  const inAttesa = (bundle?.pezzi_in_attesa || []).length;
   let stato;
   if (persiDanneggiati === pezzi.length) stato = 'da_riordinare';
-  else if (persiDanneggiati > 0) stato = 'saccheggiato';   // magazzino con pezzi mancanti
+  else if (persiDanneggiati > 0) stato = 'saccheggiato';
+  else if (inAttesa > 0) stato = 'parziale';               // kit assegnato con pezzi mancanti dal fornitore
   else if (assegnati === pezzi.length) stato = 'assegnato'; // kit completo al giocatore
   else if (assegnati > 0) stato = 'saccheggiato';           // pezzi prelevati per sostituzione
   else stato = 'integro';

@@ -200,6 +200,12 @@ Le tabelle reali nel DB Supabase sono:
 - `users`, `guest_token`
 - `import_log`
 - `tournament`
+- `kit_template`, `kit_stock`, `kit_assignment`, `kit_bundle`
+
+**Colonne notevoli `kit_bundle`**: `template_id UUID`, `taglia TEXT`, `numero_kit INT`, `stato TEXT` (integro/assegnato/parziale/saccheggiato/incompleto/da_riordinare), `pezzi_in_attesa JSONB DEFAULT '[]'` (array nomi articoli non ancora consegnati dal fornitore)
+**Colonne notevoli `kit_assignment`**: `player_id UUID`, `kit_stock_id UUID`, `bundle_id_originale UUID` (bundle da cui proviene il pezzo), `sostituzioni JSONB` (array `{articolo, motivo, costo, note, stato: 'in_attesa'|'sostituito', data}`)
+**Stato bundle**: `parziale` = assegnato con pezzi in attesa fornitore (temporaneo, si risolve con `PUT /kit-bundles/segna-arrivati`). `incompleto` = sostituzione non trovata (permanente).
+
 - `absence_notification`
 - `notification`
 - `fee`, `fee_config`, `fee_installment`

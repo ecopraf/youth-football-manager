@@ -255,17 +255,17 @@ export const PAGE_HELP = {
     title: '👕 Kit Sportivo',
     desc: 'Gestione magazzino kit della società: template configurabili, stock per bundle (kit completi), assegnazione ai giocatori con tracciamento pezzi e sostituzioni.',
     items: [
-      '➕ Nuovo Kit: crea template con articoli precompilati (maglia, tuta, zaino...) e settore (Scuola Calcio / Settore Giovanile)',
-      '+ Stock: genera kit completi per taglia — ogni bundle è un kit fisico tracciato (integro → assegnato)',
-      '🎯 Auto: assegna automaticamente kit a tutti i giocatori con taglia impostata e bundle disponibili',
-      'Click su un giocatore per assegnare manualmente o gestire sostituzioni di pezzi',
-      'Filtri: Tutti / Incompleti / Completi per monitorare lo stato consegne',
-      'Pallino stato: 🟢 completo, 🟡 parziale, 🔴 nessun articolo assegnato',
-      'Badge taglia: blu (da kit assegnato), grigio (dal profilo giocatore)',
-      'Magazzino: vista per bundle con badge stato (integro / saccheggiato / assegnato / incompleto / da riordinare)',
-      '🛒 Da ordinare: segna un giocatore come "da ordinare" (taglia mancante) — appare nella sezione gialla in fondo al magazzino',
-      'Sostituzione pezzo: se un articolo è perso/danneggiato, il sistema attinge da bundle già saccheggiati prima di aprirne uno nuovo',
-      'Summary magazzino: badge 🛒 N da ordinare e 🔄 N sost. in attesa per ogni template'
+      '⚙️ Configura template: crea il kit con articoli, settore (SC/SG) e regola numerazione',
+      '+ Stock: genera kit completi per taglia — ogni bundle è un kit fisico tracciato',
+      '🎯 Auto: assegna automaticamente kit a tutti i giocatori con taglia impostata',
+      'Click su un giocatore per assegnare manualmente o gestire pezzi mancanti/sostituzioni',
+      'Filtri: Tutti / Incompleti / Completi / Magazzino',
+      '📦 Magazzino: vista per bundle con stati (integro, parziale, assegnato, saccheggiato)',
+      'Pezzi mancanti fornitore: deseleziona articoli non arrivati durante l\'assegnazione — appaiono nella card "📦 In attesa dal fornitore"',
+      'Segna arrivati: quando il fornitore consegna i pezzi mancanti, aggiornali dalla card magazzino',
+      'Sostituzione pezzo: se un articolo è perso/danneggiato, il sistema trova automaticamente un pezzo sostitutivo',
+      '🛒 Da ordinare: segna giocatori senza stock disponibile per la loro taglia',
+      'Doppio-click su ? per help interattivo sugli elementi'
     ]
   },
   registration: {
@@ -321,7 +321,21 @@ export const PAGE_HELP = {
       '💰 Situazione quote: rate pagate e scadute',
       '📋 Tesseramento: compila dati mancanti, vedi documenti consegnati, scarica modulo PDF'
     ]
-  }
+  },
+
+  kitMagazzino: {
+    title: '📦 Magazzino Kit',
+    desc: 'Vista dei bundle fisici in magazzino, raggruppati per taglia. Gestisci stock, pezzi in attesa dal fornitore e riordini.',
+    items: [
+      'Ogni riga è un bundle (kit fisico completo) con badge stato: Integro, Assegnato, Parziale, Saccheggiato, Incompleto, Da riordinare',
+      'Click sull\'intestazione taglia per espandere/collassare i bundle di quella taglia',
+      '+ Ordina stock: aggiunge nuovi bundle al magazzino per quella taglia',
+      '📦 In attesa dal fornitore: bundle assegnati con pezzi non ancora arrivati — click “✅ Segna arrivati” per aggiornare',
+      'Segna arrivati: indica quanti pezzi sono arrivati per articolo — il sistema crea automaticamente l\'assegnazione e aggiorna lo stato bundle',
+      '🛒 Da ordinare: giocatori senza stock disponibile per la loro taglia, raggruppati per taglia',
+      'Doppio-click su ? per help interattivo sugli elementi'
+    ]
+  },
 };
 
 export const ELEMENT_HELP = {
@@ -755,5 +769,48 @@ export const ELEMENT_HELP = {
   'import.grPreview': {
     title: '👁️ Anteprima Dati',
     desc: 'Visualizza in anteprima i dati del girone senza importare nulla: classifica aggiornata, ultima giornata disputata e classifica marcatori. Utile per verificare che l\'URL configurato sia corretto.'
+  },
+
+  // === KIT SPORTIVO INTERATTIVO ===
+  'kit.config': {
+    title: '⚙️ Configura Template',
+    desc: 'Crea o modifica il template del kit. Definisci:<br><br>📝 <strong>Nome</strong> — es. "Kit Allenamento SG"<br>👕 <strong>Settore</strong> — Scuola Calcio (taglie 116-158) o Settore Giovanile (XS-XXL)<br>📦 <strong>Articoli</strong> — aggiungi ogni pezzo del kit con nome e quantità (es. Maglia x2, Pantaloncino x1)<br>🔢 <strong>Numerazione</strong> — nessuna / libera / sequenziale (auto da numero maglia)<br><br>Dopo aver configurato il template, usa <strong>+ Stock</strong> per generare i kit fisici in magazzino.'
+  },
+  'kit.filtri': {
+    title: '🔍 Filtri Vista',
+    desc: 'Cambia la visualizzazione della pagina:<br><br><strong>Tutti</strong> — lista completa giocatori con stato kit<br><strong>Incompleti</strong> — solo giocatori con kit non ancora completo<br><strong>Completi</strong> — solo giocatori con tutti gli articoli assegnati<br><strong>📦 Magazzino</strong> — vista bundle fisici per taglia con stati, card "In attesa dal fornitore" e card "Da ordinare"'
+  },
+  'kit.lista': {
+    title: '👕 Lista Giocatori',
+    desc: 'Ogni riga mostra un giocatore con:<br><br>🟢 <strong>Pallino verde</strong> — kit completo assegnato<br>🟡 <strong>Pallino giallo</strong> — kit parziale (alcuni articoli mancanti)<br>🔴 <strong>Pallino rosso</strong> — nessun articolo assegnato<br>📦 <strong>Badge taglia</strong> — blu se da kit assegnato, grigio se dal profilo<br><br><strong>Click sulla riga</strong> — apre il dettaglio con articoli assegnati, bottone assegna kit e storico sostituzioni.<br><br>Se il kit è parziale (pezzi in attesa dal fornitore) vedrai il banner arancione con i pezzi mancanti.'
+  },
+  'kit.magazzino': {
+    title: '📦 Vista Magazzino',
+    desc: 'Mostra i bundle fisici raggruppati per taglia. Ogni bundle è un kit completo tracciato individualmente.<br><br><strong>Badge stato bundle:</strong><br>🟢 <strong>Integro</strong> — tutti i pezzi disponibili<br>👕 <strong>Assegnato</strong> — tutti i pezzi assegnati al giocatore<br>🟠 <strong>Parziale</strong> — assegnato ma con pezzi in attesa dal fornitore<br>🔓 <strong>Saccheggiato</strong> — alcuni pezzi prelevati per sostituzioni<br>⚠️ <strong>Incompleto</strong> — assegnato con pezzo mancante (sostituzione non trovata)<br>🔴 <strong>Da riordinare</strong> — tutti i pezzi persi/danneggiati<br><br>Click sull\'intestazione taglia per espandere/collassare i bundle.'
+  },
+  'kit.stock': {
+    title: '+ Stock — Genera Kit in Magazzino',
+    desc: 'Genera i kit fisici (bundle) per taglia e quantità:<br><br>1. Inserisci quanti kit vuoi per ogni taglia (es. M: 3, L: 5, XL: 2)<br>2. Usa i bottoni <strong>+10 / -10</strong> per incrementi rapidi<br>3. Clicca <strong>Genera</strong><br><br>Ogni bundle è un kit fisico completo tracciato individualmente. I bundle vengono aggiunti al magazzino con stato <strong>Integro</strong>.'
+  },
+  'kit.auto': {
+    title: '🎯 Auto-Assegna',
+    desc: 'Assegna automaticamente un kit a tutti i giocatori che:<br>• Hanno la taglia impostata nel profilo<br>• Non hanno ancora un kit completo assegnato<br>• Hanno un bundle disponibile della loro taglia in magazzino<br><br>Il sistema usa prima i bundle già <strong>saccheggiati</strong> (parzialmente usati per sostituzioni) prima di aprire bundle integri.<br><br>Se mancano bundle per alcune taglie, i giocatori vengono saltati e mostrati nel riepilogo finale.'
+  },
+
+  'kit.restock': {
+    title: '+ Ordina stock',
+    desc: 'Aggiunge nuovi bundle al magazzino per questo template.<br><br>Inserisci la quantità per ogni taglia che vuoi aggiungere. I nuovi bundle vengono creati con stato <strong>Integro</strong> e numerati in sequenza rispetto a quelli già esistenti.'
+  },
+  'kit.daOrdinare': {
+    title: '🛒 Da ordinare',
+    desc: 'Lista dei giocatori per cui non è disponibile stock della loro taglia in magazzino.<br><br>Raggruppati per taglia per facilitare l\'ordine al fornitore. Quando arriva lo stock, genera i bundle con <strong>+ Stock</strong> e poi assegna il kit al giocatore.'
+  },
+  'kit.inAttesa': {
+    title: '📦 In attesa dal fornitore',
+    desc: 'Bundle assegnati a giocatori ma con uno o più articoli non ancora consegnati dal fornitore.<br><br>Raggruppati per template e taglia. Per ogni gruppo vedi quali articoli mancano e quanti bundle sono coinvolti.<br><br>Quando il fornitore consegna i pezzi, clicca <strong>✅ Segna arrivati</strong> per aggiornare.'
+  },
+  'kit.segnaArrivati': {
+    title: '✅ Segna arrivati',
+    desc: 'Registra i pezzi arrivati dal fornitore per questa taglia.<br><br>Per ogni articolo in attesa, indica <strong>quanti pezzi sono arrivati</strong> usando i bottoni + e − (max = bundle in attesa per quell\'articolo).<br><br>Il sistema aggiorna automaticamente:<br>• Lo stato del bundle (parziale → assegnato se tutti arrivati)<br>• Il kit_stock del pezzo → assegnato<br>• L\'assegnazione al giocatore'
   }
 };
