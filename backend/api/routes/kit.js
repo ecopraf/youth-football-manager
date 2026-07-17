@@ -306,11 +306,43 @@ router.get('/api/kit-assignments', authMiddleware, async (req, res) => {
   try {
     const { team_id, season_id } = req.query;
     if (!team_id) return res.status(400).json({ error: 'team_id richiesto' });
+
+    // Fetch assignments per team (giocatori) + staff del workspace cross-categoria
+    // Per lo staff: mostra tutti gli assignment dove staff_id è presente nello staff del team
+    const { data: teamData } = await supabase.from('team').select('workspace_id').eq('id', team_id).single();
+    const workspaceId = teamData?.workspace_id;
+
+    // Staff assegnato a questo team
+    const { data: teamStaff } = await supabase.from('team_staff').select('staff_id').eq('team_id', team_id);
+    const staffIds = (teamStaff || []).map(ts => ts.staff_id);
+
     let query = supabase.from('kit_assignment').select('*, kit_stock(*)').eq('team_id', team_id);
     if (season_id) query = query.eq('season_id', season_id);
-    const { data, error } = await query;
+    const { data: playerAssignments, error } = await query;
     if (error) return res.status(400).json({ error: error.message });
-    res.json(data || []);
+
+    // Assignment staff: cross-categoria (tutti gli assignment con staff_id in staffIds)
+    let staffAssignments = [];
+    if (staffIds.length) {
+      const { data: sa } = await supabase.from('kit_assignment')
+        .select('*, kit_stock(*)')
+        .in('staff_id', staffIds);
+      staffAssignments = sa || [];
+    }
+
+    // Fetch dati staff per arricchire la risposta
+    let staffMap = {};
+    if (staffIds.length) {
+      const { data: staffRows } = await supabase.from('staff')
+        .select('id, nome, cognome, ruolo, taglia').in('id', staffIds);
+      (staffRows || []).forEach(s => { staffMap[s.id] = s; });
+    }
+    staffAssignments = staffAssignments.map(a => ({
+      ...a,
+      staff: staffMap[a.staff_id] || null
+    }));
+
+    res.json({ players: playerAssignments || [], staff: staffAssignments });
   } catch (err) { res.status(500).json({ error: 'Errore server' }); }
 });
 
@@ -341,7 +373,7 @@ router.post('/api/kit-assignments', authMiddleware, requirePermission('kit', 'wr
 // body: { template_id, team_id, season_id, assignments: [{player_id, bundle_id, pezzi_in_attesa?}] }
 router.post('/api/kit-assignments-batch', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
-    const { template_id, team_id, season_id, assignments, numero_maglia } = req.body;
+    const { template_id, team_id, season_id, assignments, numero_maglia, is_staff } = req.body;
     if (!template_id || !team_id || !season_id || !assignments?.length) return res.status(400).json({ error: 'Campi obbligatori' });
 
     const { data: tmpl } = await supabase.from('kit_template').select('articoli').eq('id', template_id).single();
@@ -351,26 +383,33 @@ router.post('/api/kit-assignments-batch', authMiddleware, requirePermission('kit
     const created = [];
     const skipped = [];
 
-    for (const { player_id, bundle_id, pezzi_in_attesa } of assignments) {
-      if (!bundle_id) { skipped.push({ player_id, reason: 'bundle_id mancante' }); continue; }
+    for (const { player_id, staff_id, bundle_id, pezzi_in_attesa, taglia } of assignments) {
+      const entityId = is_staff ? staff_id : player_id;
+      if (!bundle_id) { skipped.push({ id: entityId, reason: 'bundle_id mancante' }); continue; }
 
       const inAttesa = pezzi_in_attesa || [];
-      // Fetch pezzi disponibili del bundle scelto dal frontend
       const { data: pezzi } = await supabase.from('kit_stock')
         .select('id, articolo').eq('bundle_id', bundle_id).eq('stato', 'disponibile');
 
-      // I pezzi da assegnare sono quelli NON in attesa
       const pezziDaAssegnare = inAttesa.length
         ? (pezzi || []).filter(p => !inAttesa.includes(p.articolo))
         : (pezzi || []);
 
       if (!pezziDaAssegnare.length) {
-        skipped.push({ player_id, reason: 'stock insufficiente' }); continue;
+        skipped.push({ id: entityId, reason: 'stock insufficiente' }); continue;
       }
 
-      pezziDaAssegnare.forEach(p => created.push({ kit_stock_id: p.id, player_id, team_id, season_id, bundle_id_originale: bundle_id }));
+      const assignmentBase = { team_id, season_id, bundle_id_originale: bundle_id };
+      if (is_staff) assignmentBase.staff_id = staff_id;
+      else assignmentBase.player_id = player_id;
 
-      // Se ci sono pezzi in attesa, aggiorna subito il bundle
+      pezziDaAssegnare.forEach(p => created.push({ kit_stock_id: p.id, ...assignmentBase }));
+
+      // Aggiorna taglia staff se fornita
+      if (is_staff && staff_id && taglia) {
+        await supabase.from('staff').update({ taglia }).eq('id', staff_id);
+      }
+
       if (inAttesa.length) {
         await supabase.from('kit_bundle').update({ pezzi_in_attesa: inAttesa, stato: 'parziale' }).eq('id', bundle_id);
       }
@@ -384,27 +423,28 @@ router.post('/api/kit-assignments-batch', authMiddleware, requirePermission('kit
       const assignedBundleIds = [...new Set(created.map(c => c.bundle_id_originale))];
 
       await supabase.from('kit_stock').update({ stato: 'assegnato' }).in('id', stockIds);
-      // Numerazione libera: salva numero_maglia sui pezzi assegnati
       if (numero_maglia) {
         await supabase.from('kit_stock').update({ numero: numero_maglia }).in('id', stockIds);
       }
-      // Aggiorna taglia su team_player per ogni giocatore assegnato
-      const { data: bundleTaglie } = await supabase.from('kit_bundle').select('id, taglia').in('id', assignedBundleIds);
-      const bundleTagliaMap = {};
-      (bundleTaglie || []).forEach(b => { bundleTagliaMap[b.id] = b.taglia; });
-      const { data: tpRows } = await supabase.from('team_player').select('id, player_id').eq('team_id', team_id).in('player_id', assignedPlayerIds);
-      const tpMap = {};
-      (tpRows || []).forEach(tp => { tpMap[tp.player_id] = tp.id; });
-      await Promise.all(
-        created
-          .filter((c, i, arr) => arr.findIndex(x => x.player_id === c.player_id) === i)
-          .map(c => {
-            const taglia = bundleTagliaMap[c.bundle_id_originale];
-            const tpId = tpMap[c.player_id];
-            if (!taglia || !tpId) return Promise.resolve();
-            return supabase.from('team_player').update({ taglia, da_ordinare_kit: false }).eq('id', tpId);
-          })
-      );
+      if (!is_staff) {
+        // Aggiorna taglia su team_player per ogni giocatore assegnato
+        const { data: bundleTaglie } = await supabase.from('kit_bundle').select('id, taglia').in('id', assignedBundleIds);
+        const bundleTagliaMap = {};
+        (bundleTaglie || []).forEach(b => { bundleTagliaMap[b.id] = b.taglia; });
+        const { data: tpRows } = await supabase.from('team_player').select('id, player_id').eq('team_id', team_id).in('player_id', assignedPlayerIds);
+        const tpMap = {};
+        (tpRows || []).forEach(tp => { tpMap[tp.player_id] = tp.id; });
+        await Promise.all(
+          created
+            .filter((c, i, arr) => arr.findIndex(x => x.player_id === c.player_id) === i)
+            .map(c => {
+              const taglia = bundleTagliaMap[c.bundle_id_originale];
+              const tpId = tpMap[c.player_id];
+              if (!taglia || !tpId) return Promise.resolve();
+              return supabase.from('team_player').update({ taglia, da_ordinare_kit: false }).eq('id', tpId);
+            })
+        );
+      }
       // Aggiorna stato bundle (solo quelli senza pezzi_in_attesa — gli altri già impostati a parziale)
       const bundleSenzaAttesa = assignments
         .filter(a => !a.pezzi_in_attesa?.length)

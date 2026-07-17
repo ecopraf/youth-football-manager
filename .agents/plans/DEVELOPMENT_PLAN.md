@@ -355,6 +355,18 @@
 | 12.29 | Migrazione stagione: copiare taglia da team_player precedente come default | ✅ | 12.8 | routes/workspace.js | ~5min |
 | 12.30 | Test build + aggiornare AGENTS.md e DATABASE_SCHEMA.md | ✅ | 12.28 | docs | ~5min |
 
+##### Fase 2f: Kit Staff (~35min)
+
+> Estendere il sistema kit per gestire l'assegnazione ai membri dello staff. La taglia è salvata su `staff` (caratteristica della persona). Il kit è visibile cross-categoria: se assegnato nella categoria X, appare già assegnato anche nella categoria Y dove lo stesso staff è presente.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 12.46 | DB: `ALTER TABLE kit_assignment ADD staff_id UUID REFERENCES staff(id)` + `ALTER TABLE staff ADD taglia TEXT` | ✅ | — | migrazione SQL | ~3min |
+| 12.47 | Backend: `GET /kit-assignments?team_id=X` include staff (join `staff`+`team_staff`, cross-categoria per staff già assegnati) | ✅ | 12.46 | routes/kit.js | ~8min |
+| 12.48 | Backend: `POST /kit-assignments-batch` accetta `staff_id` opzionale (alternativo a `player_id`) + `UPDATE staff SET taglia` se fornita | ✅ | 12.46 | routes/kit.js | ~5min |
+| 12.49 | Frontend: toggle Giocatori/Staff nella lista assegnazioni per template; modal assegnazione con select staff (filtrato per team_staff della categoria corrente, con badge se già assegnato in altra categoria) | ✅ | 12.47, 12.48 | modules/club/kit.js | ~15min |
+| 12.50 | Test build + aggiornare docs (AGENTS.md, DATABASE_SCHEMA.md, helpData.js) | ⬜ | 12.49 | docs | ~5min |
+
 **Effort totale Fase 2**: ~2h30 (23 task)
 
 **Taglie per settore (default)**:

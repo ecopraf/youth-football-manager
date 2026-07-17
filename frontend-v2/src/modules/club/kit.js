@@ -14,10 +14,13 @@ let templates = [];
 let stock = [];
 let bundles = [];
 let assignments = [];
+let staffAssignments = [];
 let rosterMap = {};
+let staffMap = {};
 let currentFilter = 'all';
 let isAdmin = false;
 let expandedTmpls = new Set();
+let kitViewMode = {}; // tmplId -> 'giocatori' | 'staff'
 
 // Modal conferma riutilizzabile
 function confirmModal(msg, onConfirm, { danger = true, confirmLabel } = {}) {
@@ -49,18 +52,23 @@ export default async function loadKit() {
 
   showLoading('Caricamento kit...');
   try {
-    const [tmpls, bdls, assigns, roster] = await Promise.all([
+    const [tmpls, bdls, assignsData, roster, staffList] = await Promise.all([
       apiFetch('/kit-templates?workspace_id=' + workspaceId),
       apiFetch('/kit-bundles?workspace_id=' + workspaceId),
       apiFetch('/kit-assignments?team_id=' + teamId + '&season_id=' + seasonId),
-      apiFetch('/squadre/' + teamId + '/calciatori')
+      apiFetch('/squadre/' + teamId + '/calciatori'),
+      apiFetch('/squadre/' + teamId + '/staff')
     ]);
     templates = tmpls || [];
-    stock = []; // non più usato — i pezzi sono dentro bundles[].pezzi
+    stock = [];
     bundles = bdls || [];
-    assignments = assigns || [];
+    // Nuova struttura: {players: [...], staff: [...]}
+    assignments = assignsData?.players || assignsData || [];
+    staffAssignments = assignsData?.staff || [];
     rosterMap = {};
     (roster || []).forEach(p => { rosterMap[p.id] = p; });
+    staffMap = {};
+    (staffList || []).forEach(s => { staffMap[s.id] = s; });
   } catch (e) { hideLoading(); c.innerHTML = '<div class="error-box">Errore caricamento</div>'; return; }
   hideLoading();
   render(c);
@@ -170,6 +178,10 @@ function renderCards(filter) {
             ${alert}
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;font-size:11px;">
+              <button class="btn-view-giocatori" data-tmpl="${tmpl.id}" style="padding:3px 8px;background:${(kitViewMode[tmpl.id]||'giocatori')==='giocatori'?'#667eea':'white'};color:${(kitViewMode[tmpl.id]||'giocatori')==='giocatori'?'white':'#666'};border:none;cursor:pointer;">👤 Giocatori</button>
+              <button class="btn-view-staff" data-tmpl="${tmpl.id}" style="padding:3px 8px;background:${kitViewMode[tmpl.id]==='staff'?'#667eea':'white'};color:${kitViewMode[tmpl.id]==='staff'?'white':'#666'};border:none;cursor:pointer;border-left:1px solid #ddd;">🦺 Staff</button>
+            </div>
             ${isAdmin ? `<button class="btn-auto-assign" data-tmpl="${tmpl.id}" data-help="kit.auto" style="font-size:11px;padding:4px 8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;cursor:pointer;color:#166534;" title="Assegna automaticamente a chi ha taglia">🎯 Auto</button><button class="btn-gen-stock" data-tmpl="${tmpl.id}" data-help="kit.stock" style="font-size:11px;padding:4px 8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;" title="Genera stock">+ Stock</button><button class="btn-del-tmpl" data-tmpl="${tmpl.id}" style="font-size:11px;padding:4px 8px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;cursor:pointer;color:#E74C3C;" title="Elimina template">✕</button>` : ''}
           </div>
         </div>
@@ -181,7 +193,36 @@ function renderCards(filter) {
         </div>
       </div>
       <div class="kit-group-body" data-tmpl="${tmpl.id}" style="display:${expandedTmpls.has(tmpl.id) ? 'block' : 'none'};border-top:1px solid #e0e7ff;">
-        ${filtered.length === 0 ? '<p style="padding:12px 16px;color:#888;font-size:13px;margin:0;">Nessun giocatore trovato.</p>' :
+        ${(kitViewMode[tmpl.id] || 'giocatori') === 'staff' ? (() => {
+          // Vista staff
+          const tmplStaffAssigns = staffAssignments.filter(a => a.kit_stock?.template_id === tmpl.id);
+          const assignedStaffIds = new Set(tmplStaffAssigns.map(a => a.staff_id));
+          const teamStaffList = Object.values(staffMap).sort((a,b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`));
+          if (!teamStaffList.length) return '<p style="padding:12px 16px;color:#888;font-size:13px;margin:0;">Nessuno staff assegnato a questa squadra.</p>';
+          return teamStaffList.map(s => {
+            const nome = `${s.cognome || ''} ${s.nome || ''}`.trim();
+            const sAssigns = tmplStaffAssigns.filter(a => a.staff_id === s.id);
+            const nAssegnati = sAssigns.length;
+            const totArticoli = (tmpl.articoli || []).reduce((sum, a) => sum + (a.qty || 1), 0);
+            const complete = nAssegnati >= totArticoli && totArticoli > 0;
+            const dot = complete ? '🟢' : nAssegnati > 0 ? '🟡' : '🔴';
+            const tagliaLabel = sAssigns[0]?.kit_stock?.taglia || s.taglia || '';
+            const altroTeam = sAssigns.length > 0 && sAssigns[0].team_id !== window.YFM.squadraId;
+            return `<div class="kit-row-staff" data-staff="${s.id}" data-tmpl="${tmpl.id}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #f5f5f5;cursor:pointer;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+              <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                <span style="font-size:12px;">${dot}</span>
+                <span style="font-size:13px;font-weight:500;">${nome}</span>
+                <span style="font-size:11px;color:#888;">${s.ruolo || ''}</span>
+                ${tagliaLabel ? `<span style="font-size:10px;color:#4338ca;background:#eef2ff;padding:1px 5px;border-radius:4px;">${tagliaLabel}</span>` : ''}
+                ${altroTeam ? `<span style="font-size:10px;color:#059669;background:#d1fae5;padding:1px 5px;border-radius:4px;" title="Assegnato in altra categoria">✓ altra cat.</span>` : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:12px;color:#888;">${nAssegnati}/${totArticoli}</span>
+                ${isAdmin && !complete ? `<button class="btn-assign-staff" data-staff="${s.id}" data-tmpl="${tmpl.id}" style="font-size:10px;padding:3px 8px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;">Assegna</button>` : ''}
+              </div>
+            </div>`;
+          }).join('');
+        })() : filtered.length === 0 ? '<p style="padding:12px 16px;color:#888;font-size:13px;margin:0;">Nessun giocatore trovato.</p>' :
           filtered.map(ps => {
             const p = ps.player;
             const nome = `${p.cognome || ''} ${p.nome || ''}`.trim();
@@ -242,6 +283,36 @@ function renderCards(filter) {
       const tmpl = templates.find(t => t.id === btn.dataset.tmpl);
       const player = rosterMap[btn.dataset.player];
       if (tmpl && player) showAssignModal(tmpl, player);
+    });
+  });
+
+  // Toggle Giocatori/Staff
+  container.querySelectorAll('.btn-view-giocatori').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      kitViewMode[btn.dataset.tmpl] = 'giocatori';
+      renderCards(currentFilter);
+    });
+  });
+  container.querySelectorAll('.btn-view-staff').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      kitViewMode[btn.dataset.tmpl] = 'staff';
+      renderCards(currentFilter);
+    });
+  });
+
+  // Assegna kit staff
+  container.querySelectorAll('.btn-assign-staff, .kit-row-staff').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-assign-staff') || el.classList.contains('kit-row-staff')) {
+        e.stopPropagation();
+        const tmplId = el.dataset.tmpl || e.target.closest('[data-tmpl]')?.dataset.tmpl;
+        const staffId = el.dataset.staff || e.target.closest('[data-staff]')?.dataset.staff;
+        const tmpl = templates.find(t => t.id === tmplId);
+        const staff = staffMap[staffId];
+        if (tmpl && staff) showAssignStaffModal(tmpl, staff);
+      }
     });
   });
 
@@ -1360,6 +1431,125 @@ function showAssignModal(tmpl, player) {
     overlay.querySelectorAll('.ka-remove').forEach(btn => {
       btn.addEventListener('click', () => {
         confirmModal('Rimuovere questo pezzo dal kit del giocatore?', async () => {
+          try {
+            showLoading('Rimozione...');
+            await apiFetch('/kit-assignments/' + btn.dataset.id, { method: 'DELETE' });
+            hideLoading();
+            overlay.remove();
+            loadKit();
+          } catch (err) { hideLoading(); showToast(err.message, 'error'); }
+        });
+      });
+    });
+  }
+
+  document.body.appendChild(overlay);
+  renderModal();
+}
+
+function showAssignStaffModal(tmpl, staff) {
+  const nome = `${staff.cognome || ''} ${staff.nome || ''}`.trim();
+  const articoli = tmpl.articoli || [];
+  const totArticoli = articoli.reduce((s, a) => s + (a.qty || 1), 0);
+  const sAssigns = staffAssignments.filter(a => a.staff_id === staff.id && a.kit_stock?.template_id === tmpl.id);
+  const taglie = tmpl.taglie || (tmpl.settore === 'scuola_calcio' ? TAGLIE_SC : TAGLIE_SG);
+  const teamId = window.YFM.squadraId;
+  const seasonId = window.YFM.currentSeasonId;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  overlay.classList.add('modal-overlay');
+
+  function renderModal() {
+    const defaultTaglia = sAssigns[0]?.kit_stock?.taglia || staff.taglia || '';
+    const taglieOpts = taglie.map(t => `<option value="${t}"${t === defaultTaglia ? ' selected' : ''}>${t}</option>`).join('');
+    const assegnatiTotali = articoli.reduce((s, a) => s + Math.min(sAssigns.filter(x => x.kit_stock?.articolo === a.nome).length, a.qty || 1), 0);
+    const unassigned = totArticoli - assegnatiTotali;
+
+    const rows = articoli.map(art => {
+      const qty = art.qty || 1;
+      const artAssigns = sAssigns.filter(a => a.kit_stock?.articolo === art.nome);
+      const nAss = artAssigns.length;
+      if (nAss >= qty) {
+        const tagliaLabel = artAssigns[0]?.kit_stock?.taglia ? ` (${artAssigns[0].kit_stock.taglia})` : '';
+        const removeButtons = isAdmin ? artAssigns.map(a =>
+          `<button class="ka-remove" data-id="${a.id}" style="font-size:10px;padding:3px 6px;background:#fee2e2;border:1px solid #fecaca;border-radius:4px;cursor:pointer;color:#dc2626;">✕</button>`
+        ).join('') : '';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#d1fae5;border-radius:8px;margin-bottom:4px;">
+          <span style="font-size:13px;">✅ ${art.nome}${tagliaLabel ? `<span style="color:#888;font-size:11px;">${tagliaLabel}</span>` : ''}</span>
+          <div style="display:flex;gap:4px;">${removeButtons}</div>
+        </div>`;
+      }
+      if (nAss > 0) return `<div style="padding:8px 12px;background:#fef9ec;border-radius:8px;margin-bottom:4px;font-size:13px;">⚠️ ${art.nome} <span style="font-size:11px;color:#92400e;">${nAss}/${qty}</span></div>`;
+      return `<div style="padding:8px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:4px;font-size:13px;color:#888;">⬜ ${art.nome}</div>`;
+    }).join('');
+
+    // Stock disponibile per taglia selezionata
+    const totPK = totArticoli;
+    const nDisp = defaultTaglia ? bundles.filter(b => b.template_id === tmpl.id && b.taglia === defaultTaglia &&
+      b.pezzi_disponibili > 0 && b.pezzi_disponibili === (b.tot_pezzi || totPK)).length : null;
+    const stockInfo = unassigned > 0 ? (
+      nDisp === null ? `<div id="kaStockInfo" style="padding:8px 12px;background:#f8f9fa;border:1px solid #eee;border-radius:8px;margin-bottom:10px;font-size:12px;color:#888;">Seleziona una taglia per vedere la disponibilità</div>` :
+      nDisp > 0 ? `<div id="kaStockInfo" style="padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:10px;font-size:12px;color:#166534;">✅ ${nDisp} kit taglia ${defaultTaglia} disponibili</div>` :
+      `<div id="kaStockInfo" style="padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;margin-bottom:10px;font-size:12px;color:#E74C3C;">❌ Nessun kit taglia ${defaultTaglia} disponibile</div>`
+    ) : '';
+
+    overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:420px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
+      <div style="font-size:16px;font-weight:600;margin-bottom:4px;">🦺 ${nome}</div>
+      <div style="font-size:12px;color:#666;margin-bottom:12px;">${tmpl.nome} • ${staff.ruolo || 'Staff'}${staff.taglia ? ' • Taglia: ' + staff.taglia : ''}</div>
+      ${stockInfo}
+      ${isAdmin && unassigned > 0 ? `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#eef2ff;border-radius:8px;margin-bottom:12px;border:1px solid #c7d2fe;">
+        <select id="kaStaffTaglia" style="padding:5px 8px;border:1px solid #c7d2fe;border-radius:6px;font-size:12px;"><option value="">Taglia...</option>${taglieOpts}</select>
+        ${tmpl.numerazione === 'libera' ? '<input id="kaStaffNumero" type="number" min="1" max="99" placeholder="n°" style="width:54px;padding:5px 6px;border:1px solid #c7d2fe;border-radius:6px;font-size:12px;text-align:center;">' : ''}
+        <button id="kaStaffAssign" style="flex:1;padding:6px 12px;background:#667eea;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Assegna kit</button>
+      </div>` : ''}
+      ${rows}
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+        <button class="btn btn-secondary" id="kaStaffClose">Chiudi</button>
+      </div>
+    </div>`;
+
+    overlay.querySelector('#kaStaffClose').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+    // Aggiorna stock info al cambio taglia
+    overlay.querySelector('#kaStaffTaglia')?.addEventListener('change', (e) => {
+      const taglia = e.target.value;
+      const info = overlay.querySelector('#kaStockInfo');
+      if (!info || !taglia) return;
+      const n = bundles.filter(b => b.template_id === tmpl.id && b.taglia === taglia &&
+        b.pezzi_disponibili > 0 && b.pezzi_disponibili === (b.tot_pezzi || totPK)).length;
+      if (n > 0) { info.style.background = '#f0fdf4'; info.style.borderColor = '#bbf7d0'; info.style.color = '#166534'; info.textContent = `✅ ${n} kit taglia ${taglia} disponibili`; }
+      else { info.style.background = '#fef2f2'; info.style.borderColor = '#fecaca'; info.style.color = '#E74C3C'; info.textContent = `❌ Nessun kit taglia ${taglia} disponibile`; }
+    });
+
+    // Assegna kit staff
+    overlay.querySelector('#kaStaffAssign')?.addEventListener('click', async () => {
+      const taglia = overlay.querySelector('#kaStaffTaglia')?.value;
+      const numeroMaglia = overlay.querySelector('#kaStaffNumero')?.value || null;
+      if (!taglia) { showToast('Seleziona una taglia', 'error'); return; }
+      const totPK2 = totArticoli;
+      const bundle = bundles.find(b => b.template_id === tmpl.id && b.taglia === taglia &&
+        b.pezzi_disponibili > 0 && b.pezzi_disponibili === (b.tot_pezzi || totPK2));
+      if (!bundle) { showToast('Nessun kit disponibile per questa taglia', 'error'); return; }
+      try {
+        showLoading('Assegnazione...');
+        await apiFetch('/kit-assignments-batch', { method: 'POST', body: JSON.stringify({
+          template_id: tmpl.id, team_id: teamId, season_id: seasonId, is_staff: true,
+          numero_maglia: numeroMaglia ? parseInt(numeroMaglia) : null,
+          assignments: [{ staff_id: staff.id, bundle_id: bundle.id, taglia }]
+        })});
+        hideLoading();
+        overlay.remove();
+        showToast('Kit assegnato a ' + nome, 'success');
+        loadKit();
+      } catch (err) { hideLoading(); showToast(err.message, 'error'); }
+    });
+
+    // Rimuovi pezzo
+    overlay.querySelectorAll('.ka-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        confirmModal('Rimuovere questo pezzo dal kit dello staff?', async () => {
           try {
             showLoading('Rimozione...');
             await apiFetch('/kit-assignments/' + btn.dataset.id, { method: 'DELETE' });
