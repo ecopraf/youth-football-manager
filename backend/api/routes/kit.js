@@ -341,7 +341,7 @@ router.post('/api/kit-assignments', authMiddleware, requirePermission('kit', 'wr
 // body: { template_id, team_id, season_id, assignments: [{player_id, bundle_id, pezzi_in_attesa?}] }
 router.post('/api/kit-assignments-batch', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
-    const { template_id, team_id, season_id, assignments } = req.body;
+    const { template_id, team_id, season_id, assignments, numero_maglia } = req.body;
     if (!template_id || !team_id || !season_id || !assignments?.length) return res.status(400).json({ error: 'Campi obbligatori' });
 
     const { data: tmpl } = await supabase.from('kit_template').select('articoli').eq('id', template_id).single();
@@ -384,6 +384,10 @@ router.post('/api/kit-assignments-batch', authMiddleware, requirePermission('kit
       const assignedBundleIds = [...new Set(created.map(c => c.bundle_id_originale))];
 
       await supabase.from('kit_stock').update({ stato: 'assegnato' }).in('id', stockIds);
+      // Numerazione libera: salva numero_maglia sui pezzi assegnati
+      if (numero_maglia) {
+        await supabase.from('kit_stock').update({ numero: numero_maglia }).in('id', stockIds);
+      }
       // Aggiorna taglia su team_player per ogni giocatore assegnato
       const { data: bundleTaglie } = await supabase.from('kit_bundle').select('id, taglia').in('id', assignedBundleIds);
       const bundleTagliaMap = {};

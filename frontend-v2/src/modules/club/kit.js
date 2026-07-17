@@ -126,14 +126,29 @@ function renderCards(filter) {
       return { player: p, assigned, total: totArticoli, complete: assigned >= totArticoli };
     });
 
+    // Filtro portiere: kit portiere mostra solo portieri; kit normale esclude portieri con kit portiere già assegnato
+    const portiereTemplateIds = new Set(templates.filter(t => t.is_portiere).map(t => t.id));
+    let baseList = playerStatus;
+    if (tmpl.is_portiere) {
+      // Solo portieri
+      baseList = playerStatus.filter(ps => ps.player.ruolo_principale === 'Portiere');
+    } else {
+      // Escludi portieri che hanno già un kit portiere assegnato
+      const portieriCoperti = new Set(
+        assignments.filter(a => portiereTemplateIds.has(a.kit_stock?.template_id)).map(a => a.player_id)
+      );
+      baseList = playerStatus.filter(ps =>
+        ps.player.ruolo_principale !== 'Portiere' || !portieriCoperti.has(ps.player.id)
+      );
+    }
     // Filtro
-    let filtered = playerStatus;
-    if (filter === 'incompleto') filtered = playerStatus.filter(ps => !ps.complete);
-    else if (filter === 'completo') filtered = playerStatus.filter(ps => ps.complete);
+    let filtered = baseList;
+    if (filter === 'incompleto') filtered = baseList.filter(ps => !ps.complete);
+    else if (filter === 'completo') filtered = baseList.filter(ps => ps.complete);
 
-    const nComplete = playerStatus.filter(ps => ps.complete).length;
-    const nIncomplete = playerStatus.filter(ps => !ps.complete && ps.assigned > 0).length;
-    const nNone = playerStatus.filter(ps => ps.assigned === 0).length;
+    const nComplete = baseList.filter(ps => ps.complete).length;
+    const nIncomplete = baseList.filter(ps => !ps.complete && ps.assigned > 0).length;
+    const nNone = baseList.filter(ps => ps.assigned === 0).length;
     const nArticoli = totArticoli || 1;
     // Kit disponibile = bundle con TUTTI i pezzi disponibili
     const tmplBundles = bundles.filter(b => b.template_id === tmpl.id);
@@ -160,7 +175,7 @@ function renderCards(filter) {
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:6px;margin-left:20px;font-size:11px;color:#666;flex-wrap:wrap;">
-          <span>✅ ${nComplete}/${rosterPlayers.length} assegnati</span>
+          <span>✅ ${nComplete}/${baseList.length} assegnati</span>
           <span>📦 ${kitDisponibili} kit (${pezziDisponibili} pezzi)</span>
           <span>📋 ${totArticoli} articoli</span>
           <span>${tmpl.settore === 'scuola_calcio' ? '⚽ Scuola Calcio' : '🏟️ Settore Giovanile'}</span>
@@ -675,7 +690,7 @@ function showConfigModal() {
       </div>
       <div id="ktNumStart" style="display:none;"><label style="font-size:12px;color:#666;">Numero iniziale</label><input id="ktStartN" type="number" value="13" style="width:80px;padding:8px;border:1px solid #ddd;border-radius:8px;"></div>
       <div><label style="font-size:12px;color:#666;">Articoli inclusi nel kit *</label>
-        <div style="margin-top:6px;display:grid;gap:2px;">${articoliCheckboxes}</div>
+        <div id="ktArtList" style="margin-top:6px;display:grid;grid-template-columns:1fr;gap:2px;">${articoliCheckboxes}</div>
         <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
           <input id="ktCustomArt" placeholder="Altro articolo..." style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:12px;">
           <button id="ktAddCustom" style="font-size:12px;padding:5px 10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;">+ Aggiungi</button>
@@ -725,8 +740,9 @@ function showConfigModal() {
   overlay.querySelector('#ktPortiere').addEventListener('change', function() {
     portiereSources = this.checked ? ARTICOLI_PORTIERE : null;
     const artList = portiereSources || ARTICOLI_PRECOMPILATI;
-    const cont = overlay.querySelector('.kt-art-row')?.closest('div');
+    const cont = overlay.querySelector('#ktArtList');
     if (!cont) return;
+    cont.style.cssText = "margin-top:6px;display:grid;grid-template-columns:1fr;gap:2px;";
     cont.innerHTML = artList.map((a, i) =>
       `<div class="kt-art-row" style="display:flex;align-items:center;gap:8px;padding:4px 0;">
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;flex:1;">
@@ -938,7 +954,8 @@ function showPezziSelectionModal(tmpl, taglia, bundle, player, parentOverlay) {
       showLoading('Assegnazione kit...');
       const res = await apiFetch('/kit-assignments-batch', { method: 'POST', body: JSON.stringify({
         template_id: tmpl.id, team_id: window.YFM.squadraId, season_id: window.YFM.currentSeasonId,
-        assignments: [{ player_id: player.id, bundle_id: bundle.id, pezzi_in_attesa: pezziInAttesa }]
+        assignments: [{ player_id: player.id, bundle_id: bundle.id, pezzi_in_attesa: pezziInAttesa }],
+        numero_maglia: tmpl.numerazione === 'libera' ? (parseInt(overlay.querySelector('#kaNumeroMaglia')?.value) || null) : null
       })});
       hideLoading();
       ov.remove();
@@ -1212,6 +1229,7 @@ function showAssignModal(tmpl, player) {
       ${stockInfo}
       ${showAssignBtn ? `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#eef2ff;border-radius:8px;margin-bottom:12px;border:1px solid #c7d2fe;">
         <select id="kaGlobalTaglia" style="padding:5px 8px;border:1px solid #c7d2fe;border-radius:6px;font-size:12px;"><option value="">Taglia...</option>${taglieOpts}</select>
+        ${tmpl.numerazione === 'libera' ? '<input id="kaNumeroMaglia" type="number" min="1" max="99" placeholder="n\u00b0" title="Numero maglia" style="width:54px;padding:5px 6px;border:1px solid #c7d2fe;border-radius:6px;font-size:12px;text-align:center;">' : ''}
         <button id="kaAssignAll" style="flex:1;padding:6px 12px;background:#667eea;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Assegna kit</button>
       </div>` : ''}
       ${rows}
