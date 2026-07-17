@@ -327,7 +327,8 @@ export const PAGE_HELP = {
     title: '📦 Magazzino Kit',
     desc: 'Vista dei bundle fisici in magazzino, raggruppati per taglia. Gestisci stock, pezzi in attesa dal fornitore e riordini.',
     items: [
-      'Ogni riga è un bundle (kit fisico completo) con badge stato: Integro, Assegnato, Parziale, Saccheggiato, Incompleto, Da riordinare',
+      'Ogni riga è un bundle (kit fisico completo). Se il template usa numerazione sequenziale, il bundle mostra il numero di maglia (es. n°13); altrimenti mostra il progressivo interno (Kit #1, Kit #2...)',
+      'Badge stato: Integro, Assegnato, Parziale, Saccheggiato, Incompleto, Da riordinare',
       'Click sull\'intestazione taglia per espandere/collassare i bundle di quella taglia',
       '+ Ordina stock: aggiunge nuovi bundle al magazzino per quella taglia',
       '📦 In attesa dal fornitore: bundle assegnati con pezzi non ancora arrivati — click “✅ Segna arrivati” per aggiornare',
@@ -774,7 +775,7 @@ export const ELEMENT_HELP = {
   // === KIT SPORTIVO INTERATTIVO ===
   'kit.config': {
     title: '⚙️ Configura Template',
-    desc: 'Crea o modifica il template del kit. Definisci:<br><br>📝 <strong>Nome</strong> — es. "Kit Allenamento SG"<br>👕 <strong>Settore</strong> — Scuola Calcio (taglie 116-158) o Settore Giovanile (XS-XXL)<br>📦 <strong>Articoli</strong> — aggiungi ogni pezzo del kit con nome e quantità (es. Maglia x2, Pantaloncino x1)<br>🔢 <strong>Numerazione</strong> — nessuna / libera / sequenziale (auto da numero maglia)<br><br>Dopo aver configurato il template, usa <strong>+ Stock</strong> per generare i kit fisici in magazzino.'
+    desc: 'Crea o modifica il template del kit. Definisci:<br><br>📝 <strong>Nome</strong> — es. "Kit Allenamento SG"<br>👕 <strong>Settore</strong> — Scuola Calcio (taglie 116-158) o Settore Giovanile (XS-XXL)<br>🧤 <strong>Kit Portiere</strong> — pre-compila con articoli da portiere (maglia/pantaloncino/calzettoni portiere + rappresentanza). Completamente personalizzabile. Badge 🧤 in lista e magazzino.<br>📦 <strong>Articoli</strong> — aggiungi ogni pezzo del kit con nome e quantità (es. Maglia x2, Pantaloncino x1). Per il portiere puoi aggiungere "Guanti portiere" manualmente se la società li fornisce.<br>🔢 <strong>Numerazione</strong> — nessuna / libera / sequenziale (auto da numero maglia). Con numerazione sequenziale il magazzino mostra <strong>n°13</strong> invece di Kit #1.<br><br>Dopo aver configurato il template, usa <strong>+ Stock</strong> per generare i kit fisici in magazzino.'
   },
   'kit.filtri': {
     title: '🔍 Filtri Vista',

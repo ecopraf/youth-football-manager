@@ -205,6 +205,7 @@ Le tabelle reali nel DB Supabase sono:
 **Colonne notevoli `kit_bundle`**: `template_id UUID`, `taglia TEXT`, `numero_kit INT`, `stato TEXT` (integro/assegnato/parziale/saccheggiato/incompleto/da_riordinare), `pezzi_in_attesa JSONB DEFAULT '[]'` (array nomi articoli non ancora consegnati dal fornitore)
 **Colonne notevoli `kit_assignment`**: `player_id UUID`, `kit_stock_id UUID`, `bundle_id_originale UUID` (bundle da cui proviene il pezzo), `sostituzioni JSONB` (array `{articolo, motivo, costo, note, stato: 'in_attesa'|'sostituito', data}`)
 **Stato bundle**: `parziale` = assegnato con pezzi in attesa fornitore (temporaneo, si risolve con `PUT /kit-bundles/segna-arrivati`). `incompleto` = sostituzione non trovata (permanente).
+**Colonne notevoli `kit_template`**: `is_portiere BOOLEAN DEFAULT false` — se true, pre-compila con articoli da portiere (Maglia/Pantaloncino/Calzettoni portiere + Guanti). Badge 🧤 in lista e magazzino. `numero_maglia` (calcolato da `kit_stock.numero` del primo articolo `ha_numero=true` per bundle — restituito da `GET /kit-bundles`).
 
 - `absence_notification`
 - `notification`
@@ -1093,6 +1094,54 @@ Ogni nuova pagina/componente DEVE rispettare:
 .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
 ```
 Usare per label visivamente nascoste ma accessibili a screen reader.
+
+## 🔧 Strumenti di Modifica File (OBBLIGATORIO)
+
+### Regola #1: Python per modifiche a file JS/HTML con template literals
+
+I file frontend contengono template literals con backtick, virgolette miste e HTML inline. `fsReplace` fallisce spesso su questi pattern. Usare **sempre Python** per modifiche a file `.js` che contengono:
+- Template literals (backtick + `${...}`)
+- HTML inline con attributi `style="..."` o `class="..."`
+- Stringhe con virgolette doppie e singole miste
+- Più di una riga di contesto da matchare
+
+```python
+# Pattern standard per modifiche JS con Python
+with open('path/to/file.js', 'r') as f:
+    content = f.read()
+
+old = 'stringa esatta da sostituire'
+new = 'nuova stringa'
+
+if old in content:
+    content = content.replace(old, new, 1)
+    with open('path/to/file.js', 'w') as f:
+        f.write(content)
+    print('OK')
+else:
+    print('NOT FOUND')
+```
+
+**Quando usare `fsReplace`**: solo per file `.md`, `.json`, file di configurazione, o singole righe semplici senza virgolette miste.
+
+**Quando usare Python**: sempre per file `.js` con template literals o HTML inline, e per qualsiasi sostituzione che coinvolge più di una riga.
+
+### Regola #2: Testare query SQL prima di scrivere il codice
+
+Ogni nuova query SQL (endpoint, subquery, JOIN, aggregazione) DEVE essere testata direttamente sul DB **prima** di essere inserita nel codice backend:
+
+```javascript
+// Eseguire con: cd backend && /Users/Raffaele/.nvm/versions/node/v24.18.0/bin/node -e "..."
+const { Pool } = require('pg');
+const pool = new Pool({ connectionString: 'postgresql://...', ssl: { rejectUnauthorized: false } });
+pool.query('SELECT ...').then(r => console.log('OK', r.rows)).catch(e => console.error('ERR:', e.message)).finally(() => pool.end());
+```
+
+**Regola**: se la query usa tabelle, colonne o funzioni non verificate di recente → testarla prima. Non assumere che una tabella o colonna esista senza verifica.
+
+**Quando si può saltare il test**: solo per query banali su tabelle già usate nello stesso endpoint (es. `SELECT id FROM kit_template WHERE workspace_id = $1`).
+
+---
 
 ## Workflow Post-Modifica
 

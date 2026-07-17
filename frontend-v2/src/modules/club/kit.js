@@ -152,6 +152,7 @@ function renderCards(filter) {
           <div style="display:flex;align-items:center;gap:8px;">
             <span class="kit-chevron" style="font-size:12px;transition:transform 0.2s;${expandedTmpls.has(tmpl.id) ? 'transform:rotate(90deg);' : ''}">▶</span>
             <span style="font-weight:700;font-size:14px;color:#166534;">${tmpl.nome}</span>
+            ${tmpl.is_portiere ? '<span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:1px 7px;border-radius:10px;border:1px solid #bfdbfe;">🧤 Portiere</span>' : ''}
             ${alert}
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
@@ -308,7 +309,7 @@ function renderMagazzino() {
     html += `<div style="margin-bottom:16px;background:white;border-radius:12px;border:1px solid #eee;overflow:hidden;">
       <div style="padding:12px 16px;background:linear-gradient(135deg,#eef2ff,#e0e7ff);">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-          <span style="font-weight:700;font-size:14px;color:#4338ca;">📦 ${tmpl.nome}</span>
+          <span style="font-weight:700;font-size:14px;color:#4338ca;">📦 ${tmpl.nome}${tmpl.is_portiere ? ' <span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:1px 7px;border-radius:10px;border:1px solid #bfdbfe;">🧤 Portiere</span>' : ''}</span>
           <div style="display:flex;gap:8px;font-size:11px;flex-wrap:wrap;">
             ${nIntegri > 0      ? `<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;">✅ ${nIntegri} disponibili</span>` : ''}
             ${nAssegnati > 0    ? `<span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;">👕 ${nAssegnati} assegnati</span>` : ''}
@@ -375,7 +376,7 @@ function renderMagazzino() {
 
               return `<div style="padding:7px 14px 7px 28px;border-bottom:1px solid #f5f5f5;font-size:12px;">
                 <div style="display:flex;align-items:center;gap:10px;">
-                  <span style="font-weight:600;min-width:50px;color:#555;">Kit #${b.numero_kit}</span>
+                  <span style="font-weight:600;min-width:50px;color:#555;">${b.numero_maglia != null ? 'n°' + b.numero_maglia : 'Kit #' + b.numero_kit}</span>
                   <span style="background:${badge.bg};color:${badge.color};padding:1px 8px;border-radius:10px;font-size:11px;white-space:nowrap;">${badge.label}</span>
                   <span style="flex:1;">${kitLabel}</span>
                 </div>
@@ -610,6 +611,18 @@ const ARTICOLI_PRECOMPILATI = [
   { nome: 'K-way', qty: 1 },
   { nome: 'Zaino/Borsone', qty: 1 },
 ];
+const ARTICOLI_PORTIERE = [
+  { nome: 'Maglia portiere', qty: 2 },
+  { nome: 'Pantaloncino portiere', qty: 2 },
+  { nome: 'Calzettoni portiere', qty: 2 },
+  { nome: 'Tuta rappresentanza', qty: 1 },
+  { nome: 'Tuta allenamento', qty: 1 },
+  { nome: 'Polo rappresentanza', qty: 1 },
+  { nome: 'Pantaloncino rappresentanza', qty: 1 },
+  { nome: 'Giubbotto', qty: 1 },
+  { nome: 'K-way', qty: 1 },
+  { nome: 'Zaino/Borsone', qty: 1 },
+];
 
 function showConfigModal() {
   const workspaceId = window.YFM.activeWorkspaceId;
@@ -641,6 +654,12 @@ function showConfigModal() {
     <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Nuovo template</div>
     <div style="display:grid;gap:12px;">
       <div><label style="font-size:12px;color:#666;">Nome *</label><input id="ktNome" placeholder="es. Kit Gara Under 15" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;"></div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="ktPortiere" style="width:16px;height:16px;cursor:pointer;"> 🧤 Kit Portiere
+        </label>
+        <span style="font-size:11px;color:#1d4ed8;">Pre-compila con articoli da portiere</span>
+      </div>
       <div><label style="font-size:12px;color:#666;">Settore</label>
         <div style="display:flex;gap:12px;margin-top:4px;">
           <label style="font-size:13px;cursor:pointer;"><input type="radio" name="ktSettore" value="scuola_calcio"> Scuola Calcio (taglie 116-158)</label>
@@ -701,6 +720,37 @@ function showConfigModal() {
     overlay.querySelector(`.kt-qty-val[data-idx="${i}"]`).textContent = qtys[i];
   }));
 
+  // Toggle portiere: pre-popola articoli
+  let portiereSources = null; // null = usa ARTICOLI_PRECOMPILATI
+  overlay.querySelector('#ktPortiere').addEventListener('change', function() {
+    portiereSources = this.checked ? ARTICOLI_PORTIERE : null;
+    const artList = portiereSources || ARTICOLI_PRECOMPILATI;
+    const cont = overlay.querySelector('.kt-art-row')?.closest('div');
+    if (!cont) return;
+    cont.innerHTML = artList.map((a, i) =>
+      `<div class="kt-art-row" style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;flex:1;">
+          <input type="checkbox" class="kt-art-cb" data-idx="${i}" checked> ${a.nome}
+        </label>
+        <div style="display:flex;align-items:center;gap:2px;">
+          <button class="kt-qty-down" data-idx="${i}" style="width:22px;height:22px;border:1px solid #ddd;border-radius:4px;background:#f8f9fa;cursor:pointer;font-size:12px;line-height:1;">−</button>
+          <span class="kt-qty-val" data-idx="${i}" style="font-size:12px;min-width:18px;text-align:center;font-weight:600;">${a.qty}</span>
+          <button class="kt-qty-up" data-idx="${i}" style="width:22px;height:22px;border:1px solid #ddd;border-radius:4px;background:#f8f9fa;cursor:pointer;font-size:12px;line-height:1;">+</button>
+        </div>
+      </div>`
+    ).join('');
+    // Re-bind spinners
+    artList.forEach((a, i) => { qtys[i] = a.qty; });
+    cont.querySelectorAll('.kt-qty-up').forEach(btn => btn.addEventListener('click', () => {
+      const i = +btn.dataset.idx; qtys[i] = Math.min(qtys[i] + 1, 10);
+      cont.querySelector(`.kt-qty-val[data-idx="${i}"]`).textContent = qtys[i];
+    }));
+    cont.querySelectorAll('.kt-qty-down').forEach(btn => btn.addEventListener('click', () => {
+      const i = +btn.dataset.idx; qtys[i] = Math.max(qtys[i] - 1, 1);
+      cont.querySelector(`.kt-qty-val[data-idx="${i}"]`).textContent = qtys[i];
+    }));
+  });
+
   overlay.querySelectorAll('input[name="ktNum"]').forEach(r => r.addEventListener('change', () => {
     overlay.querySelector('#ktNumStart').style.display = r.value === 'sequenziale' && r.checked ? 'block' : 'none';
   }));
@@ -724,17 +774,19 @@ function showConfigModal() {
     const numerazione = overlay.querySelector('input[name="ktNum"]:checked').value;
     const numerazione_start = parseInt(overlay.querySelector('#ktStartN')?.value) || 13;
     // Raccogli articoli selezionati con quantità
+    const artSrc = portiereSources || ARTICOLI_PRECOMPILATI;
     const selected = [];
     overlay.querySelectorAll('.kt-art-cb:checked').forEach(cb => {
       const i = +cb.dataset.idx;
-      selected.push({ nome: ARTICOLI_PRECOMPILATI[i].nome, qty: qtys[i] });
+      if (artSrc[i]) selected.push({ nome: artSrc[i].nome, qty: qtys[i] });
     });
     const allArticoli = [...selected, ...customArticoli.map(nome => ({ nome, qty: 1 }))];
     if (!nome || !allArticoli.length) { showToast('Compila nome e seleziona almeno un articolo', 'error'); return; }
     const taglie = settore === 'scuola_calcio' ? TAGLIE_SC : TAGLIE_SG;
     try {
       await apiFetch('/kit-templates', { method: 'POST', body: JSON.stringify({
-        workspace_id: workspaceId, nome, settore, articoli: allArticoli, numerazione, numerazione_start, taglie
+        workspace_id: workspaceId, nome, settore, articoli: allArticoli, numerazione, numerazione_start, taglie,
+        is_portiere: overlay.querySelector('#ktPortiere').checked
       })});
       close(); loadKit();
       // Prompt per creare fee associata
@@ -858,7 +910,7 @@ function showPezziSelectionModal(tmpl, taglia, bundle, player, parentOverlay) {
 
   ov.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
     <div style="font-size:15px;font-weight:600;margin-bottom:4px;">📦 Pezzi da consegnare</div>
-    <div style="font-size:12px;color:#666;margin-bottom:14px;">${nome} — Taglia ${taglia} — Kit #${bundle.numero_kit}</div>
+    <div style="font-size:12px;color:#666;margin-bottom:14px;">${nome} — Taglia ${taglia} — ${bundle.numero_maglia != null ? 'n°' + bundle.numero_maglia : 'Kit #' + bundle.numero_kit}</div>
     <div style="font-size:12px;color:#888;margin-bottom:10px;">Deseleziona i pezzi non ancora arrivati dal fornitore:</div>
     ${rows}
     <div style="margin-top:6px;padding:8px 10px;background:#fef9ec;border:1px solid #fde68a;border-radius:6px;font-size:11px;color:#92400e;">

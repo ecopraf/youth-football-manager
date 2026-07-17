@@ -29,12 +29,13 @@ router.get('/api/kit-templates', authMiddleware, async (req, res) => {
 
 router.post('/api/kit-templates', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
-    const { workspace_id, nome, settore, articoli, numerazione, numerazione_start, taglie } = req.body;
+    const { workspace_id, nome, settore, articoli, numerazione, numerazione_start, taglie, is_portiere } = req.body;
     if (!workspace_id || !nome || !articoli?.length) return res.status(400).json({ error: 'Campi obbligatori: workspace_id, nome, articoli' });
     const { data, error } = await supabase.from('kit_template').insert({
       workspace_id, nome, settore: settore || 'settore_giovanile',
       articoli, numerazione: numerazione || 'nessuna',
-      numerazione_start: numerazione_start || 13, taglie: taglie || null
+      numerazione_start: numerazione_start || 13, taglie: taglie || null,
+      is_portiere: is_portiere || false
     }).select().single();
     if (error) return res.status(400).json({ error: error.message });
     res.status(201).json(data);
@@ -43,7 +44,7 @@ router.post('/api/kit-templates', authMiddleware, requirePermission('kit', 'writ
 
 router.put('/api/kit-templates/:id', authMiddleware, requirePermission('kit', 'write'), async (req, res) => {
   try {
-    const { nome, settore, articoli, numerazione, numerazione_start, taglie, attivo } = req.body;
+    const { nome, settore, articoli, numerazione, numerazione_start, taglie, attivo, is_portiere } = req.body;
     const update = {};
     if (nome !== undefined) update.nome = nome;
     if (settore !== undefined) update.settore = settore;
@@ -52,6 +53,7 @@ router.put('/api/kit-templates/:id', authMiddleware, requirePermission('kit', 'w
     if (numerazione_start !== undefined) update.numerazione_start = numerazione_start;
     if (taglie !== undefined) update.taglie = taglie;
     if (attivo !== undefined) update.attivo = attivo;
+    if (is_portiere !== undefined) update.is_portiere = is_portiere;
     const { data, error } = await supabase.from('kit_template').update(update).eq('id', req.params.id).select().single();
     if (error) return res.status(400).json({ error: error.message });
     res.json(data);
@@ -86,6 +88,11 @@ router.get('/api/kit-bundles', authMiddleware, async (req, res) => {
       SELECT
         kb.id, kb.template_id, kb.workspace_id, kb.taglia, kb.numero_kit, kb.stato,
         CASE WHEN kb.pezzi_in_attesa IS NULL THEN '[]'::jsonb ELSE kb.pezzi_in_attesa END as pezzi_in_attesa,
+        (SELECT ks2.numero FROM kit_stock ks2
+         JOIN kit_template kt ON kt.id = kb.template_id
+         WHERE ks2.bundle_id = kb.id AND ks2.numero IS NOT NULL
+           AND EXISTS (SELECT 1 FROM jsonb_array_elements(kt.articoli) art WHERE (art->>'nome') = ks2.articolo AND (art->>'ha_numero')::boolean = true)
+         LIMIT 1) AS numero_maglia,
         COALESCE(COUNT(ks.id) FILTER (WHERE ks.stato = 'disponibile'), 0)::int  AS pezzi_disponibili,
         COALESCE(COUNT(ks.id) FILTER (WHERE ks.stato = 'assegnato'),   0)::int  AS pezzi_assegnati,
         COALESCE(COUNT(ks.id) FILTER (WHERE ks.stato IN ('perso','danneggiato')), 0)::int AS pezzi_mancanti,
