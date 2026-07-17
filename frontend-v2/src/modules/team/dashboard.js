@@ -743,7 +743,8 @@ export default async function loadDashboard() {
       apiFetch('/kit-templates?workspace_id=' + _wsId),
       apiFetch('/kit-stock?workspace_id=' + _wsId),
       apiFetch('/kit-assignments?team_id=' + window.YFM.squadraId + '&season_id=' + window.YFM.currentSeasonId)
-    ]).then(([tmpls, stk, assigns]) => {
+    ]).then(([tmpls, stk, assignsData]) => {
+      const assigns = assignsData?.players || assignsData || [];
       const activeTmpls = (tmpls || []).filter(t => t.attivo !== false);
       const isAdminUser = _isAdminUser(window.YFM.getUser());
       if (!activeTmpls.length) {

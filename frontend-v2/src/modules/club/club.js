@@ -132,6 +132,8 @@ function renderClub(c, ws, staff, anagrafica, wid) {
   if (ag.telefono) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCDE</span>' + ag.telefono + '</div>';
   if (ag.email) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCE7</span>' + ag.email + '</div>';
   if (ag.sito_web) html += '<div class="club-info-row"><span class="club-info-icon">\uD83C\uDF10</span><a href="' + ag.sito_web + '" target="_blank" style="color:#667eea;">' + ag.sito_web + '</a></div>';
+  if (ag.facebook) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCF1</span><a href="' + ag.facebook + '" target="_blank" style="color:#667eea;">Facebook</a></div>';
+  if (ag.instagram) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCF8</span><a href="' + ag.instagram + '" target="_blank" style="color:#667eea;">Instagram</a></div>';
   if (ag.p_iva) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCBC</span>P.IVA ' + ag.p_iva + '</div>';
   if (ag.codice_fiscale) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDD22</span>C.F. ' + ag.codice_fiscale + '</div>';
   if (ag.sdi) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCC4</span>SDI ' + ag.sdi + '</div>';

@@ -10,7 +10,7 @@ function createStaffRouter({ supabase, authMiddleware }) {
   router.get('/api/squadre/:squadraId/staff-completo', authMiddleware, async (req, res) => {
     try {
       const { data, error } = await supabase.from('team_staff')
-        .select('ruolo_squadra, staff:staff_id(id, nome, cognome, ruolo, qualifiche, documento)')
+        .select('ruolo_squadra, staff:staff_id(id, nome, cognome, ruolo, qualifiche, documento, taglia, da_ordinare_kit)')
         .eq('team_id', req.params.squadraId);
       if (error) return res.status(400).json({ error: error.message });
       const result = (data || []).map(ts => {
@@ -21,6 +21,8 @@ function createStaffRouter({ supabase, authMiddleware }) {
           nome: s.nome,
           cognome: s.cognome,
           ruolo_squadra: ts.ruolo_squadra,
+          taglia: s.taglia || null,
+          da_ordinare_kit: s.da_ordinare_kit || false,
           matricola: q.matricola || '',
           tessera: q.tessera_figc || q.tessera_lnd || '',
           tipo_tessera: q.tipo_tessera || ''

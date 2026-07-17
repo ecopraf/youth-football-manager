@@ -367,6 +367,18 @@
 | 12.49 | Frontend: toggle Giocatori/Staff nella lista assegnazioni per template; modal assegnazione con select staff (filtrato per team_staff della categoria corrente, con badge se già assegnato in altra categoria) | ✅ | 12.47, 12.48 | modules/club/kit.js | ~15min |
 | 12.50 | Test build + aggiornare docs (AGENTS.md, DATABASE_SCHEMA.md, helpData.js) | ✅ | 12.49 | docs | ~5min |
 
+##### Fase 2g: Flusso "Ordine Evaso" (~45min)
+
+> Gestire il ciclo di vita degli ordini in attesa: kit completi (`da_ordinare_kit`) e pezzi sfusi (`pezzi_in_attesa` su bundle). Card "Da ordinare" diventa operativa con bottone "Gestisci ordine" per ogni voce. Tipo 1 parziale si converte in Tipo 2 (pezzi_in_attesa).
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 12.51 | Backend: `POST /kit-evadi-ordine` — body `{player_id?/staff_id?, template_id, taglia, tipo_ordine: 'kit'\|'pezzi', articoli_arrivati?, assegna_subito}`. Tipo kit: crea bundle+stock, assegna se richiesto, azzera `da_ordinare_kit`. Tipo pezzi: rimuove articoli da `pezzi_in_attesa` del bundle, aggiorna stato bundle | ✅ | — | routes/kit.js | ~15min |
+| 12.52 | Frontend: card "Da ordinare" — righe singole con bottone "Gestisci ordine" per ogni voce (Tipo 1 kit e Tipo 2 pezzi sfusi) | ✅ | 12.51 | modules/club/kit.js | ~10min |
+| 12.53 | Frontend: `showGestisciOrdineKitModal()` — checklist articoli arrivati, radio assegna-subito/solo-stock | ✅ | 12.52 | modules/club/kit.js | ~10min |
+| 12.54 | Frontend: `showGestisciOrdinePezziModal()` — checklist pezzi in attesa (spunta = arrivato), pezzi non spuntati restano in attesa | ✅ | 12.52 | modules/club/kit.js | ~8min |
+| 12.55 | Test build + aggiornare docs | ✅ | 12.54 | docs | ~3min |
+
 **Effort totale Fase 2**: ~2h30 (23 task)
 
 **Taglie per settore (default)**:
@@ -1260,6 +1272,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.74 | feat: kit flusso ordine evaso — `POST /kit-evadi-ordine` (Tipo 1 kit completo: crea bundle+stock+assegna, azzera da_ordinare_kit; Tipo 2 pezzi sfusi: rimuove da pezzi_in_attesa, crea stock, assegna). Card "Da ordinare" con bottone "Gestisci ordine" per riga, modal Tipo 1 (checklist articoli + radio assegna/stock), modal Tipo 2 (checklist pezzi in attesa). Task 12.51-12.55 |
 | v3.16.73 | feat: kit staff — toggle Giocatori/Staff per template, modal assegnazione staff con taglia, cross-categoria visibility. DB: staff_id su kit_assignment, taglia su staff, player_id nullable. Task 12.46-12.49 |
 | v3.16.72 | feat: kit icone contestuali per template (getKitIcon: 🧤 portiere, 👟 allenamento, ⚽ gara, 🧥 invernale, 👕 default) — rimuove badge testuale Portiere inline. fix: nDaOrdinare filtrato per ruolo portiere su kit portiere, tmpl_nome con concatenazione invece di template literal annidato, ruolo_principale nel mapping roster, overlay→parentOverlay in showPezziSelectionModal, grid-template-columns:1fr modal portiere |
 | v3.16.71 | feat: kit portiere filtra solo portieri (ruolo_principale=Portiere); kit normale esclude portieri già coperti da kit portiere. feat: numerazione libera — campo n° nel modal assegnazione, salvato su kit_stock. fix: modal portiere grid-template-columns:1fr. Note: release counter a v3.16.70, commit taggato v3.16.71 |

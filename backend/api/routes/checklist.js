@@ -103,9 +103,10 @@ module.exports = function createChecklistRouter({ supabase, authMiddleware }) {
 
     const autoState = { certificato: certOk, kit: kitOk, quota: quotaOk };
 
-    // Aggiorna solo gli item auto, preserva i manual
+    // Aggiorna item auto per chiave (campo 'tipo' potrebbe non essere presente nel DB)
+    const AUTO_KEYS = ['certificato', 'kit', 'quota'];
     const updatedItems = chk.items.map(item => {
-      if (item.tipo === 'auto' && autoState[item.key] !== undefined)
+      if (AUTO_KEYS.includes(item.key) && autoState[item.key] !== undefined)
         return { ...item, done: autoState[item.key] };
       return item;
     });

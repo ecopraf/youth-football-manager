@@ -32,8 +32,10 @@ export default async function loadChecklist() {
     (roster || []).forEach(p => { rosterMap[p.id] = p; });
 
     // Sync automatico item auto per tutti i giocatori con checklist esistente
+    // Nota: gli items nel DB non hanno campo 'tipo' — sync su tutti
+    const AUTO_KEYS = ['certificato', 'kit', 'quota'];
     const syncPromises = checklistData
-      .filter(c => c.items?.some(i => i.tipo === 'auto'))
+      .filter(c => c.items?.some(i => AUTO_KEYS.includes(i.key)))
       .map(c => syncPlayerChecklist(c.player_id));
     await Promise.all(syncPromises);
   } catch (e) { hideLoading(); c.innerHTML = '<div class="error-box">Errore caricamento</div>'; return; }

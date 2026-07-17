@@ -113,7 +113,7 @@ api/
     ├── notification.js         — Comunicazioni in-app (convocazioni, avvisi, solleciti), conferme lettura, sollecito-certificato
     ├── dashboard.js            — Endpoint aggregato dashboard (stats+top+partite+allenamenti+injuries+certificati)
     ├── fees.js                 — Fee config CRUD, quote generate, installments, pagamenti, rigenera batch
-    ├── kit.js                  — Kit templates CRUD, stock generate/restock, assignments singoli e batch, bundle model (GET /kit-bundles, PUT /kit-bundles/segna-arrivati), batch-assign con pezzi_in_attesa, stato parziale. GET /kit-assignments restituisce {players, staff} (staff cross-categoria). batch-assign accetta is_staff+staff_id
+    ├── kit.js                  — Kit templates CRUD, stock generate/restock, assignments singoli e batch, bundle model (GET /kit-bundles, PUT /kit-bundles/segna-arrivati, DELETE /kit-bundles/:id), batch-assign con pezzi_in_attesa, stato parziale. GET /kit-assignments restituisce {players, staff} (staff cross-categoria). batch-assign accetta is_staff+staff_id, azzera da_ordinare_kit per giocatori E staff. POST /kit-evadi-ordine (tipo kit: crea bundle+stock+assegna, azzera da_ordinare_kit; tipo pezzi: rimuove da pezzi_in_attesa, crea stock, assegna)
     ├── checklist.js            — Checklist stagione: template per workspace, CRUD per player/team, generazione batch
     ├── clubOperations.js       — Endpoint aggregato /api/club-operations/summary (quote+kit+checklist+certificati)
     ├── registration.js         — Tesseramento: template CRUD, registrations CRUD/batch, sollecito documenti, auto-check certificato
@@ -201,7 +201,7 @@ frontend-v2/src/
     │   ├── workspace.js       — Dettaglio workspace
     │   ├── workspaceSwitcher.js — Switch workspace (superadmin)
     │   ├── fees.js            — Quote economiche (config, assegnazione, pagamenti)
-    │   ├── kit.js             — Kit sportivo (template, stock, assegnazioni, auto-assign batch, vista magazzino, bundle model, stato parziale/fornitore, help contestuale per tab)
+    │   ├── kit.js             — Kit sportivo (template, stock, assegnazioni, auto-assign batch, vista magazzino, bundle model, stato parziale/fornitore, flusso ordine evaso, elimina bundle, help contestuale per tab)
     │   ├── checklist.js       — Checklist stagione (toggle items, barra progresso, filtri per item, template config)
     │   └── registration.js    — Tesseramento atleti
     └── import/
