@@ -113,7 +113,7 @@ api/
     ├── notification.js         — Comunicazioni in-app (convocazioni, avvisi, solleciti), conferme lettura, sollecito-certificato
     ├── dashboard.js            — Endpoint aggregato dashboard (stats+top+partite+allenamenti+injuries+certificati)
     ├── fees.js                 — Fee config CRUD, quote generate, installments, pagamenti, rigenera batch
-    ├── kit.js                  — Kit templates CRUD, stock generate/restock, assignments singoli e batch, bundle model (GET /kit-bundles, PUT /kit-bundles/segna-arrivati), batch-assign con pezzi_in_attesa, stato parziale
+    ├── kit.js                  — Kit templates CRUD, stock generate/restock, assignments singoli e batch, bundle model (GET /kit-bundles, PUT /kit-bundles/segna-arrivati), batch-assign con pezzi_in_attesa, stato parziale. GET /kit-assignments restituisce {players, staff} (staff cross-categoria). batch-assign accetta is_staff+staff_id
     ├── checklist.js            — Checklist stagione: template per workspace, CRUD per player/team, generazione batch
     ├── clubOperations.js       — Endpoint aggregato /api/club-operations/summary (quote+kit+checklist+certificati)
     ├── registration.js         — Tesseramento: template CRUD, registrations CRUD/batch, sollecito documenti, auto-check certificato

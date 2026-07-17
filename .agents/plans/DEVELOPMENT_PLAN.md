@@ -365,7 +365,7 @@
 | 12.47 | Backend: `GET /kit-assignments?team_id=X` include staff (join `staff`+`team_staff`, cross-categoria per staff già assegnati) | ✅ | 12.46 | routes/kit.js | ~8min |
 | 12.48 | Backend: `POST /kit-assignments-batch` accetta `staff_id` opzionale (alternativo a `player_id`) + `UPDATE staff SET taglia` se fornita | ✅ | 12.46 | routes/kit.js | ~5min |
 | 12.49 | Frontend: toggle Giocatori/Staff nella lista assegnazioni per template; modal assegnazione con select staff (filtrato per team_staff della categoria corrente, con badge se già assegnato in altra categoria) | ✅ | 12.47, 12.48 | modules/club/kit.js | ~15min |
-| 12.50 | Test build + aggiornare docs (AGENTS.md, DATABASE_SCHEMA.md, helpData.js) | ⬜ | 12.49 | docs | ~5min |
+| 12.50 | Test build + aggiornare docs (AGENTS.md, DATABASE_SCHEMA.md, helpData.js) | ✅ | 12.49 | docs | ~5min |
 
 **Effort totale Fase 2**: ~2h30 (23 task)
 
@@ -1260,6 +1260,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.73 | feat: kit staff — toggle Giocatori/Staff per template, modal assegnazione staff con taglia, cross-categoria visibility. DB: staff_id su kit_assignment, taglia su staff, player_id nullable. Task 12.46-12.49 |
 | v3.16.72 | feat: kit icone contestuali per template (getKitIcon: 🧤 portiere, 👟 allenamento, ⚽ gara, 🧥 invernale, 👕 default) — rimuove badge testuale Portiere inline. fix: nDaOrdinare filtrato per ruolo portiere su kit portiere, tmpl_nome con concatenazione invece di template literal annidato, ruolo_principale nel mapping roster, overlay→parentOverlay in showPezziSelectionModal, grid-template-columns:1fr modal portiere |
 | v3.16.71 | feat: kit portiere filtra solo portieri (ruolo_principale=Portiere); kit normale esclude portieri già coperti da kit portiere. feat: numerazione libera — campo n° nel modal assegnazione, salvato su kit_stock. fix: modal portiere grid-template-columns:1fr. Note: release counter a v3.16.70, commit taggato v3.16.71 |
 | v3.16.70 | feat: kit numerazione libera — campo n° nel modal assegnazione (visibile solo se tmpl.numerazione=libera), salvato su kit_stock al momento dell'assegnazione, mostrato in magazzino come n°X. Fix modal portiere: grid-template-columns:1fr + id ktArtList per toggle corretto |

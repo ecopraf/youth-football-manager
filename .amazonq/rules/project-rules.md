@@ -203,7 +203,8 @@ Le tabelle reali nel DB Supabase sono:
 - `kit_template`, `kit_stock`, `kit_assignment`, `kit_bundle`
 
 **Colonne notevoli `kit_bundle`**: `template_id UUID`, `taglia TEXT`, `numero_kit INT`, `stato TEXT` (integro/assegnato/parziale/saccheggiato/incompleto/da_riordinare), `pezzi_in_attesa JSONB DEFAULT '[]'` (array nomi articoli non ancora consegnati dal fornitore)
-**Colonne notevoli `kit_assignment`**: `player_id UUID`, `kit_stock_id UUID`, `bundle_id_originale UUID` (bundle da cui proviene il pezzo), `sostituzioni JSONB` (array `{articolo, motivo, costo, note, stato: 'in_attesa'|'sostituito', data}`)
+**Colonne notevoli `kit_assignment`**: `player_id UUID` (nullable — null per staff), `staff_id UUID` (nullable — null per giocatori), `kit_stock_id UUID`, `bundle_id_originale UUID` (bundle da cui proviene il pezzo), `sostituzioni JSONB` (array `{articolo, motivo, costo, note, stato: 'in_attesa'|'sostituito', data}`)
+**Regola kit_assignment**: esattamente uno tra `player_id` e `staff_id` deve essere valorizzato. Kit staff visibile cross-categoria (query su `staff_id` senza filtro `team_id`).
 **Stato bundle**: `parziale` = assegnato con pezzi in attesa fornitore (temporaneo, si risolve con `PUT /kit-bundles/segna-arrivati`). `incompleto` = sostituzione non trovata (permanente).
 **Colonne notevoli `kit_template`**: `is_portiere BOOLEAN DEFAULT false` — se true, pre-compila con articoli da portiere (Maglia/Pantaloncino/Calzettoni portiere + Guanti). Badge 🧤 in lista e magazzino. `numero_maglia` (calcolato da `kit_stock.numero` del primo articolo `ha_numero=true` per bundle — restituito da `GET /kit-bundles`).
 
