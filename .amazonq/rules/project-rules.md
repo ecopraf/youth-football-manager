@@ -381,7 +381,91 @@ Due stili di tab, scegliere in base al contesto:
 | **Pill** | `.tab-bar` + `.tab-btn` | 2-3 tab con etichette corte. Attiva = sfondo primary + testo bianco. Es: Tesseramento, Kit |
 | **Underline** | `.report-tabs` + `.report-tab` | 3+ tab con etichette lunghe o pagine con molto contenuto sotto. Attiva = bordo inferiore primary. Es: Report |
 
-**Regola**: mai mischiare i due stili nella stessa pagina. Per nuove pagine con tab, usare pill (`.tab-bar`) come default salvo eccezioni motivate.
+**Regola**: mai mischiare i due stili allo stesso livello gerarchico. È ammesso usare pill per la selezione entità principale e underline per sotto-tab secondarie dentro una sezione (es. pagina Kit: pill per template → underline per "Da ordinare" / "In attesa").
+
+### Stato tab — Variabili di modulo (OBBLIGATORIO)
+
+Lo stato delle tab attive DEVE essere dichiarato come **variabile di modulo** (fuori da `render()`), non come variabile locale. Questo garantisce che la selezione persista durante la sessione senza reload.
+
+```javascript
+// ✅ OBBLIGATORIO — variabili di modulo, fuori da render()
+let activeAssegnazioniTab = null; // inizializzato al primo template in render()
+let activeMagazzinoTab = null;
+let activeOrdiniTab = 'da_ordinare';
+let assegnazioniFilter = 'all';
+
+function render(c) {
+  // Inizializza solo se null o se il template non esiste più
+  if (!activeTab || !entities.find(e => e.id === activeTab))
+    activeTab = entities[0]?.id || null;
+  // ...
+}
+```
+
+**Regola**: ogni sezione con tab indipendente ha la propria variabile di stato. Il reset avviene solo se l'entità selezionata non esiste più (es. template eliminato).
+
+### CSS inline nel render() — Quando usarlo (OBBLIGATORIO)
+
+Per classi CSS specifiche di un singolo modulo (non riutilizzabili altrove), iniettare un blocco `<style>` all'inizio dell'HTML generato da `render()` invece di aggiungere classi globali in `style.css`.
+
+```javascript
+function render(c) {
+  c.innerHTML = `
+    <style>
+      .kit-tab { font-size:12px; padding:5px 12px; border-radius:20px; ... }
+      .kit-tab.active { background:#667eea; color:white; }
+      @media(max-width:768px) { .kit-page-grid { grid-template-columns:1fr; } }
+    </style>
+    <!-- HTML del modulo -->
+  `;
+}
+```
+
+**Quando usare `<style>` inline nel render()**:
+- Classi usate solo in questo modulo (prefisso con nome modulo, es. `.kit-`, `.fee-`, `.report-`)
+- Media query specifiche del modulo
+- Animazioni/transizioni locali
+
+**Quando usare `style.css` globale**:
+- Classi riutilizzate in 2+ moduli (es. `.tab-bar`, `.btn`, `.card`)
+- Reset/base styles
+- Variabili CSS custom
+
+### Filtri inline accanto al titolo sezione (OBBLIGATORIO)
+
+Quando una sezione ha filtri rapidi (es. Tutti / Incompleti / Completi), posizionarli **nella stessa riga del titolo** usando `justify-content:space-between`, non sotto in una riga separata.
+
+```html
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+  <span style="font-weight:700;font-size:14px;color:#374151;">📋 Titolo Sezione</span>
+  <div class="kit-filter-bar">
+    <button class="kit-filter active" data-f="all">Tutti</button>
+    <button class="kit-filter" data-f="incompleto">Incompleti</button>
+    <button class="kit-filter" data-f="completo">Completi</button>
+  </div>
+</div>
+```
+
+**Stile filtri**: pill piccole (`font-size:11px; padding:3px 10px; border-radius:12px`), attivo = sfondo primary. Su mobile wrappano sotto il titolo grazie a `flex-wrap:wrap`.
+
+### Summary header con contatori (OBBLIGATORIO)
+
+Ogni sezione con tab che mostra una lista DEVE avere un summary header che mostra i contatori chiave **senza bisogno di espandere**. Il summary va aggiornato ad ogni cambio tab/filtro.
+
+```javascript
+// Pattern: calcola contatori dalla lista filtrata
+const total = list.length;
+const completi = list.filter(x => x.stato === 'completo').length;
+const incompleti = total - completi;
+
+// Render summary inline accanto al titolo o sotto la tab bar
+const summary = `<span style="font-size:12px;color:#888;">
+  ${total} totali · <span style="color:#27AE60;">${completi} completi</span>
+  ${incompleti > 0 ? ` · <span style="color:#E74C3C;">${incompleti} incompleti</span>` : ''}
+</span>`;
+```
+
+**Regola**: il summary deve essere visibile senza scroll, aggiornato in tempo reale al cambio filtro/tab, e usare colori semantici (verde = ok, rosso = attenzione).
 
 ### Quando usare tab per navigare tra entità multiple (OBBLIGATORIO)
 

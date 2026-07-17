@@ -104,14 +104,14 @@ function render(c) {
     </style>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
       <h1 class="page-title">👕 Kit Sportivo</h1>
-      ${isAdmin ? '<button class="btn btn-primary" id="btnConfigKit" style="font-size:13px;" data-help="kit.config">⚙️ Configura template</button>' : ''}
+      ${isAdmin ? '<button class="btn btn-primary" id="btnConfigKit" style="font-size:13px;" data-help="kit.config">⚙️ Configura kit</button>' : ''}
     </div>
-    ${!attivi.length ? '<p style="color:#888;font-size:13px;">Nessun template kit configurato. Clicca "⚙️ Configura template" per iniziare.</p>' : `
+    ${!attivi.length ? '<p style="color:#888;font-size:13px;">Nessun template kit configurato. Clicca "⚙️ Configura kit" per iniziare.</p>' : `
     <!-- SEZIONE ASSEGNAZIONI -->
     <div style="background:white;border-radius:12px;border:1px solid #eee;padding:16px;margin-bottom:16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
         <span style="font-weight:700;font-size:14px;color:#374151;">📋 Assegnazioni</span>
-        <div class="kit-filter-bar" id="kitAssegnazioniFilters">
+        <div class="kit-filter-bar" id="kitAssegnazioniFilters" data-help="kit.filtri">
           <button class="kit-filter${assegnazioniFilter==='all'?' active':''}" data-f="all">Tutti</button>
           <button class="kit-filter${assegnazioniFilter==='incompleto'?' active':''}" data-f="incompleto">Incompleti</button>
           <button class="kit-filter${assegnazioniFilter==='completo'?' active':''}" data-f="completo">Completi</button>
@@ -191,11 +191,13 @@ function render(c) {
   });
 
   c.querySelector('#btnConfigKit')?.addEventListener('click', showConfigModal);
+  injectPageHelp('kit');
 }
 
 function renderAssegnazioniTab() {
   const body = document.getElementById('kitAssegnazioniBody');
   if (!body) return;
+  body.setAttribute('data-help', 'kit.lista');
   const tmpl = templates.find(t => t.id === activeAssegnazioniTab);
   if (!tmpl) { body.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template.</p>'; return; }
 
@@ -241,7 +243,7 @@ function renderAssegnazioniTab() {
     ${nNone > 0 ? `<span style="color:#E74C3C;">🔴 ${nNone} senza kit</span>` : ''}
     ${nIncomplete > 0 ? `<span style="color:#d97706;">🟡 ${nIncomplete} incompleti</span>` : ''}
     <span>📦 ${kitDisponibili} kit disponibili</span>
-    ${isAdmin ? `<button class="btn-auto-assign" data-tmpl="${tmpl.id}" style="margin-left:auto;font-size:11px;padding:2px 8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:5px;cursor:pointer;color:#4338ca;">🎯 Auto-assegna</button>` : ''}
+    ${isAdmin ? `<button class="btn-auto-assign" data-tmpl="${tmpl.id}" data-help="kit.auto" style="margin-left:auto;font-size:11px;padding:2px 8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:5px;cursor:pointer;color:#4338ca;">🎯 Auto-assegna</button>` : ''}
   </div>`;
 
   let rowsHtml = '';
@@ -342,9 +344,10 @@ function renderAssegnazioniTab() {
 
 function renderCards(filter) {
   const container = document.getElementById('kitContainer');
+  if (!container) return;
   container.setAttribute('data-help', 'kit.lista');
   if (!templates.length) {
-    container.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template kit configurato. Clicca "⚙️ Configura template" per iniziare.</p>';
+    container.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template kit configurato. Clicca "⚙️ Configura kit" per iniziare.</p>';
     return;
   }
 
@@ -563,6 +566,7 @@ function renderCards(filter) {
 function renderMagazzinoTab() {
   const body = document.getElementById('kitMagazzinoBody');
   if (!body) return;
+  body.setAttribute('data-help', 'kit.magazzino');
   const tmpl = templates.find(t => t.id === activeMagazzinoTab);
   if (!tmpl) { body.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template.</p>'; return; }
 
@@ -836,6 +840,7 @@ function renderOrdiniTab() {
 // ═══════════════════════════════════════════
 function renderMagazzino() {
   const container = document.getElementById('kitContainer');
+  if (!container) return;
   container.setAttribute('data-help', 'kit.magazzino');
   if (!templates.length) {
     container.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template configurato.</p>';
