@@ -379,6 +379,18 @@
 | 12.54 | Frontend: `showGestisciOrdinePezziModal()` — checklist pezzi in attesa (spunta = arrivato), pezzi non spuntati restano in attesa | ✅ | 12.52 | modules/club/kit.js | ~8min |
 | 12.55 | Test build + aggiornare docs | ✅ | 12.54 | docs | ~3min |
 
+##### Fase 2h: Refactoring Layout Pagina Kit (~60min)
+
+> Redesign completo della pagina kit: 3 sezioni distinte (Assegnazioni con tab per template, Magazzino con tab per template, Ordini con tab Da ordinare/In attesa). Layout 2 colonne desktop per Magazzino+Ordini. Elimina scroll verticale infinito.
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 12.56 | Nuova struttura `render()`: header + sezione Assegnazioni (card con tab template) + grid 2col desktop (Magazzino + Ordini) | ⬜ | — | modules/club/kit.js | ~15min |
+| 12.57 | Sezione Assegnazioni: tab pill per ogni template, filtri Tutti/Incompleti/Completi contestuali, lista giocatori/staff del template selezionato | ⬜ | 12.56 | modules/club/kit.js | ~15min |
+| 12.58 | Sezione Magazzino: card con tab pill per template, bundle per taglia collassabili (riusa logica esistente) | ⬜ | 12.56 | modules/club/kit.js | ~15min |
+| 12.59 | Sezione Ordini: card con tab "Da ordinare" / "In attesa fornitore" (unifica le due sezioni attuali) | ⬜ | 12.56 | modules/club/kit.js | ~10min |
+| 12.60 | CSS responsive: grid 2col desktop (Magazzino+Ordini), 1col mobile. Tab pill standard. Build test + docs | ⬜ | 12.57-12.59 | modules/club/kit.js | ~5min |
+
 **Effort totale Fase 2**: ~2h30 (23 task)
 
 **Taglie per settore (default)**:
@@ -1272,6 +1284,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.75 | fix: da_ordinare_kit staff azzerato su batch-assign, fix manuale DB Coppola. feat: DELETE /kit-bundles/:id (solo se non assegnato), bottone 🗑️ su bundle magazzino (admin), nome destinatario in card "In attesa dal fornitore" |
 | v3.16.74 | feat: kit flusso ordine evaso — `POST /kit-evadi-ordine` (Tipo 1 kit completo: crea bundle+stock+assegna, azzera da_ordinare_kit; Tipo 2 pezzi sfusi: rimuove da pezzi_in_attesa, crea stock, assegna). Card "Da ordinare" con bottone "Gestisci ordine" per riga, modal Tipo 1 (checklist articoli + radio assegna/stock), modal Tipo 2 (checklist pezzi in attesa). Task 12.51-12.55 |
 | v3.16.73 | feat: kit staff — toggle Giocatori/Staff per template, modal assegnazione staff con taglia, cross-categoria visibility. DB: staff_id su kit_assignment, taglia su staff, player_id nullable. Task 12.46-12.49 |
 | v3.16.72 | feat: kit icone contestuali per template (getKitIcon: 🧤 portiere, 👟 allenamento, ⚽ gara, 🧥 invernale, 👕 default) — rimuove badge testuale Portiere inline. fix: nDaOrdinare filtrato per ruolo portiere su kit portiere, tmpl_nome con concatenazione invece di template literal annidato, ruolo_principale nel mapping roster, overlay→parentOverlay in showPezziSelectionModal, grid-template-columns:1fr modal portiere |

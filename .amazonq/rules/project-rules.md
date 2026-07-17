@@ -383,6 +383,71 @@ Due stili di tab, scegliere in base al contesto:
 
 **Regola**: mai mischiare i due stili nella stessa pagina. Per nuove pagine con tab, usare pill (`.tab-bar`) come default salvo eccezioni motivate.
 
+### Quando usare tab per navigare tra entità multiple (OBBLIGATORIO)
+
+Se una pagina gestisce **N entità omogenee** (es. template kit, categorie, stagioni, tipi documento), usare **tab pill** per selezionare l'entità attiva invece di mostrare tutto in cascata verticale.
+
+**Regola**: se ci sono 2+ entità della stessa natura con dati propri → tab, non lista verticale.
+
+Esempi:
+- Pagina Kit: tab per ogni template (Kit Squadra / Kit Portiere / Kit Staff)
+- Pagina Quote: tab per ogni fee_config
+- Pagina Checklist: tab per ogni categoria
+
+**Pattern standard tab-entità**:
+```javascript
+// Stato attivo
+let activeTab = entities[0].id;
+
+// Render tab bar
+const tabBar = `<div class="tab-bar">
+  ${entities.map(e => `<button class="tab-btn${e.id === activeTab ? ' active' : ''}" data-id="${e.id}">${e.nome}</button>`).join('')}
+</div>`;
+
+// Render contenuto entità attiva
+function renderTabContent(id) { /* mostra solo dati dell'entità selezionata */ }
+
+// Handler
+doc.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => { activeTab = btn.dataset.id; renderTabContent(activeTab); });
+});
+```
+
+### Layout pagine complesse — Sezioni affiancate (OBBLIGATORIO)
+
+Per pagine con **2+ sezioni funzionalmente distinte** (es. lista + dettaglio, magazzino + ordini), usare layout a **griglia 2 colonne su desktop**, colonna singola su mobile.
+
+**Regola**: se due sezioni sono indipendenti e consultate separatamente → affiancarle su desktop invece di metterle in cascata.
+
+```css
+/* Pattern standard 2 colonne */
+.page-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 768px) {
+  .page-grid-2col { grid-template-columns: 1fr; }
+}
+
+/* Colonna principale + sidebar */
+.page-grid-main-side {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 768px) {
+  .page-grid-main-side { grid-template-columns: 1fr; }
+}
+```
+
+**Quando usare quale**:
+| Pattern | Quando |
+|---|---|
+| `2col` (1fr 1fr) | Sezioni di pari importanza (es. Magazzino + Ordini) |
+| `main-side` (2fr 1fr) | Sezione principale + pannello secondario (es. lista + filtri) |
+| Cascata verticale | Solo se le sezioni sono sequenziali (es. step wizard) |
+
 ### Principio generale
 
 Ogni elemento UI deve essere **coerente con il design system dell'app**. Mai usare componenti nativi del browser quando esiste un equivalente custom.
