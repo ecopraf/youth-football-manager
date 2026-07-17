@@ -1284,6 +1284,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.77 | fix: checklist — migrazione DB chiave `tesseramento` → `tesseramento_figc` (20 record). feat: filtro item checklist mostra gruppo "Completati" collassabile in fondo invece di nasconderli; dot item filtrato evidenziato; stato espanso persistente in sessione |
+| v3.16.76 | refactor: pagina Kit — layout 3 sezioni (Assegnazioni full-width, grid 2col Magazzino+Ordini); tab pill per template in ogni sezione; filtri Tutti/Incompleti/Completi inline; summary header con contatori; ordini unificati in tab underline Da ordinare/In attesa. docs: regole UI aggiornate (CSS inline render, stato tab modulo, filtri inline, summary header, tab misti pill+underline) |
 | v3.16.75 | fix: da_ordinare_kit staff azzerato su batch-assign, fix manuale DB Coppola. feat: DELETE /kit-bundles/:id (solo se non assegnato), bottone 🗑️ su bundle magazzino (admin), nome destinatario in card "In attesa dal fornitore" |
 | v3.16.74 | feat: kit flusso ordine evaso — `POST /kit-evadi-ordine` (Tipo 1 kit completo: crea bundle+stock+assegna, azzera da_ordinare_kit; Tipo 2 pezzi sfusi: rimuove da pezzi_in_attesa, crea stock, assegna). Card "Da ordinare" con bottone "Gestisci ordine" per riga, modal Tipo 1 (checklist articoli + radio assegna/stock), modal Tipo 2 (checklist pezzi in attesa). Task 12.51-12.55 |
 | v3.16.73 | feat: kit staff — toggle Giocatori/Staff per template, modal assegnazione staff con taglia, cross-categoria visibility. DB: staff_id su kit_assignment, taglia su staff, player_id nullable. Task 12.46-12.49 |

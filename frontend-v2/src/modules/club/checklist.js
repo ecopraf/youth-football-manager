@@ -10,6 +10,7 @@ let checklistData = [];
 let templateItems = [];
 let rosterMap = {};
 let filterItem = 'all';
+let completiExpanded = false;
 
 export default async function loadChecklist() {
   const c = document.getElementById('pageContent');
@@ -59,10 +60,15 @@ function render(c) {
   });
 
   // Filter
+  const isItemFilter = filterItem !== 'all' && filterItem !== 'incompleti' && filterItem !== 'completi';
   let filtered = playerChk;
+  let completiGroup = [];
   if (filterItem === 'incompleti') filtered = playerChk.filter(pc => pc.pct < 100);
   else if (filterItem === 'completi') filtered = playerChk.filter(pc => pc.pct === 100);
-  else if (filterItem !== 'all') filtered = playerChk.filter(pc => !pc.items.find(i => i.key === filterItem)?.done);
+  else if (isItemFilter) {
+    filtered = playerChk.filter(pc => !pc.items.find(i => i.key === filterItem)?.done);
+    completiGroup = playerChk.filter(pc => pc.items.find(i => i.key === filterItem)?.done);
+  }
 
   // Stats
   const totPlayers = playerChk.length;
@@ -104,16 +110,49 @@ function render(c) {
 
   // Render player rows
   const list = document.getElementById('checklistList');
-  list.innerHTML = filtered.map(pc => {
+
+  function renderRow(pc) {
     const p = pc.player;
     const nome = `${p.cognome || ''} ${p.nome || ''}`.trim();
-    const dots = pc.items.map(i => `<span title="${i.label}" style="width:10px;height:10px;border-radius:50%;background:${i.done ? '#27AE60' : '#e0e0e0'};display:inline-block;flex-shrink:0;"></span>`).join('');
+    const dots = pc.items.map(i => {
+      const isActive = isItemFilter && i.key === filterItem;
+      return `<span title="${i.label}" style="width:${isActive ? '12px' : '10px'};height:${isActive ? '12px' : '10px'};border-radius:50%;background:${i.done ? '#27AE60' : '#e0e0e0'};display:inline-block;flex-shrink:0;${isActive ? 'box-shadow:0 0 0 2px #667eea44;' : ''}"></span>`;
+    }).join('');
     return `<div class="chk-row" data-player="${p.id}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border:1px solid #eee;border-radius:10px;margin-bottom:6px;cursor:pointer;" onmouseover="this.style.borderColor='#667eea'" onmouseout="this.style.borderColor='#eee'">
       <span style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nome}</span>
       <div style="display:flex;align-items:center;gap:3px;flex-shrink:0;">${dots}</div>
       <span style="font-size:11px;color:${pc.pct === 100 ? '#27AE60' : pc.pct > 50 ? '#d97706' : '#E74C3C'};font-weight:600;min-width:30px;text-align:right;flex-shrink:0;">${pc.pct}%</span>
     </div>`;
-  }).join('') || '<p style="color:#888;font-size:13px;padding:12px;">Nessun giocatore trovato.</p>';
+  }
+
+  let html = filtered.map(renderRow).join('') || '<p style="color:#888;font-size:13px;padding:12px;">Nessun giocatore trovato.</p>';
+
+  if (isItemFilter && completiGroup.length > 0) {
+    const itemLabel = templateItems.find(i => i.key === filterItem)?.label || filterItem;
+    html += `<div style="margin-top:12px;">
+      <button id="btnToggleCompleti" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;cursor:pointer;font-size:13px;color:#166534;font-weight:600;text-align:left;">
+        <span style="flex:1;">✅ ${itemLabel} completato — ${completiGroup.length} giocator${completiGroup.length === 1 ? 'e' : 'i'}</span>
+        <span id="completiChevron" style="font-size:11px;color:#888;transition:transform 0.2s;${completiExpanded ? 'transform:rotate(180deg)' : ''}">${completiExpanded ? '▲' : '▼'}</span>
+      </button>
+      <div id="completiList" style="display:${completiExpanded ? 'block' : 'none'};margin-top:4px;">
+        ${completiGroup.map(pc => {
+          const p = pc.player;
+          const nome = `${p.cognome || ''} ${p.nome || ''}`.trim();
+          const dots = pc.items.map(i => {
+            const isActive = i.key === filterItem;
+            return `<span title="${i.label}" style="width:${isActive ? '12px' : '10px'};height:${isActive ? '12px' : '10px'};border-radius:50%;background:${i.done ? '#27AE60' : '#e0e0e0'};display:inline-block;flex-shrink:0;${isActive ? 'box-shadow:0 0 0 2px #27AE6044;' : ''}"></span>`;
+          }).join('');
+          return `<div class="chk-row" data-player="${p.id}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f9fefb;border:1px solid #dcfce7;border-radius:10px;margin-bottom:6px;cursor:pointer;opacity:0.85;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+            <span style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#555;">${nome}</span>
+            <div style="display:flex;align-items:center;gap:3px;flex-shrink:0;">${dots}</div>
+            <span style="font-size:11px;color:${pc.pct === 100 ? '#27AE60' : pc.pct > 50 ? '#d97706' : '#E74C3C'};font-weight:600;min-width:30px;text-align:right;flex-shrink:0;">${pc.pct}%</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  list.innerHTML = html;
 
   // Events
   c.querySelectorAll('.btn-chk-filter').forEach(btn => {
@@ -122,6 +161,14 @@ function render(c) {
 
   list.querySelectorAll('.chk-row').forEach(row => {
     row.addEventListener('click', () => showPlayerChecklist(row.dataset.player, c));
+  });
+
+  document.getElementById('btnToggleCompleti')?.addEventListener('click', () => {
+    completiExpanded = !completiExpanded;
+    const listEl = document.getElementById('completiList');
+    const chevron = document.getElementById('completiChevron');
+    if (listEl) listEl.style.display = completiExpanded ? 'block' : 'none';
+    if (chevron) { chevron.textContent = completiExpanded ? '▲' : '▼'; chevron.style.transform = completiExpanded ? 'rotate(180deg)' : ''; }
   });
 
   document.getElementById('btnGenChecklist')?.addEventListener('click', async () => {

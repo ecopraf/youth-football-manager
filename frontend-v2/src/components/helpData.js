@@ -293,7 +293,8 @@ export const PAGE_HELP = {
       'Click su un giocatore per aprire la checklist: gli item automatici mostrano lo stato con link diretto alla pagina dedicata',
       '🔄 Genera per tutti: crea la checklist per tutta la rosa in un click',
       '⚙️ Template: personalizza gli item della checklist per il tuo workspace',
-      'Filtri: Tutti, Incompleti, Completi + filtro per singolo item mancante',
+      'Filtri: Tutti, Incompleti, Completi + filtro per singolo item — quando si filtra per item specifico, i giocatori che lo hanno completato appaiono in un gruppo collassabile verde in fondo ("✅ Item completato — N giocatori"), clic per espandere',
+      'Il dot dell\'item filtrato è evidenziato (leggermente più grande con alone colorato) per riconoscerlo a colpo d\'occhio nella riga',
       'Barra progresso: mostra la media di completamento della squadra',
       'Widget dashboard: mostra incompleti e percentuale media'
     ]
