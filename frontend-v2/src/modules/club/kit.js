@@ -74,39 +74,270 @@ export default async function loadKit() {
   render(c);
 }
 
+// Stato tab attive per ogni sezione
+let activeAssegnazioniTab = null; // template_id
+let activeMagazzinoTab = null;    // template_id
+let activeOrdiniTab = 'da_ordinare'; // 'da_ordinare' | 'in_attesa'
+let assegnazioniFilter = 'all';
+
 function render(c) {
   isAdmin = window.YFM.canWrite('kit') || window.YFM.getUser()?.ruolo === 'admin' || window.YFM.getUser()?.is_superadmin;
+  const attivi = templates.filter(t => t.attivo !== false);
+  if (!activeAssegnazioniTab || !attivi.find(t => t.id === activeAssegnazioniTab))
+    activeAssegnazioniTab = attivi[0]?.id || null;
+  if (!activeMagazzinoTab || !attivi.find(t => t.id === activeMagazzinoTab))
+    activeMagazzinoTab = attivi[0]?.id || null;
 
   c.innerHTML = `
+    <style>
+      .kit-tab-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+      .kit-tab { font-size:12px; padding:5px 12px; border:1px solid #ddd; border-radius:20px; background:white; cursor:pointer; color:#555; white-space:nowrap; }
+      .kit-tab.active { background:#667eea; color:white; border-color:#667eea; }
+      .kit-filter-bar { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+      .kit-filter { font-size:11px; padding:3px 10px; border:1px solid #ddd; border-radius:12px; background:white; cursor:pointer; color:#666; }
+      .kit-filter.active { background:#667eea; color:white; border-color:#667eea; }
+      .kit-ordini-tab { font-size:12px; padding:5px 14px; border:none; border-bottom:2px solid transparent; background:none; cursor:pointer; color:#888; }
+      .kit-ordini-tab.active { color:#667eea; border-bottom-color:#667eea; font-weight:600; }
+      .kit-page-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+      @media(max-width:768px) { .kit-page-grid { grid-template-columns:1fr; } }
+      @media(max-width:500px) { .kit-row { padding:8px 10px!important; } }
+    </style>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
       <h1 class="page-title">👕 Kit Sportivo</h1>
       ${isAdmin ? '<button class="btn btn-primary" id="btnConfigKit" style="font-size:13px;" data-help="kit.config">⚙️ Configura template</button>' : ''}
     </div>
-    <style>.btn-kit-filter.active{background:#667eea!important;color:white!important;border-color:#667eea!important;}
-    @media(max-width:500px){.kit-row{padding:8px 10px!important;}.kit-group-header{padding:10px 12px!important;}}</style>
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;" data-help="kit.filtri">
-      <button class="btn btn-secondary btn-kit-filter active" data-filter="all" style="font-size:12px;padding:6px 12px;">Tutti</button>
-      <button class="btn btn-secondary btn-kit-filter" data-filter="incompleto" style="font-size:12px;padding:6px 12px;">Incompleti</button>
-      <button class="btn btn-secondary btn-kit-filter" data-filter="completo" style="font-size:12px;padding:6px 12px;">Completi</button>
-      <span style="border-left:1px solid #ddd;margin:0 4px;"></span>
-      <button class="btn btn-secondary btn-kit-filter" data-filter="magazzino" style="font-size:12px;padding:6px 12px;">📦 Magazzino</button>
+    ${!attivi.length ? '<p style="color:#888;font-size:13px;">Nessun template kit configurato. Clicca "⚙️ Configura template" per iniziare.</p>' : `
+    <!-- SEZIONE ASSEGNAZIONI -->
+    <div style="background:white;border-radius:12px;border:1px solid #eee;padding:16px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <span style="font-weight:700;font-size:14px;color:#374151;">📋 Assegnazioni</span>
+        <div class="kit-filter-bar" id="kitAssegnazioniFilters">
+          <button class="kit-filter${assegnazioniFilter==='all'?' active':''}" data-f="all">Tutti</button>
+          <button class="kit-filter${assegnazioniFilter==='incompleto'?' active':''}" data-f="incompleto">Incompleti</button>
+          <button class="kit-filter${assegnazioniFilter==='completo'?' active':''}" data-f="completo">Completi</button>
+        </div>
+      </div>
+      <div class="kit-tab-bar" id="kitAssegnazioniTabs">
+        ${attivi.map(t => `<button class="kit-tab${t.id===activeAssegnazioniTab?' active':''}" data-tmpl="${t.id}">${getKitIcon(t)} ${t.nome}</button>`).join('')}
+      </div>
+      <div id="kitAssegnazioniBody"></div>
     </div>
-    <div id="kitContainer" data-help="kit.lista"></div>
+    <!-- GRID MAGAZZINO + ORDINI -->
+    <div class="kit-page-grid">
+      <!-- MAGAZZINO -->
+      <div style="background:white;border-radius:12px;border:1px solid #eee;padding:16px;">
+        <div style="font-weight:700;font-size:14px;color:#374151;margin-bottom:12px;">📦 Magazzino</div>
+        <div class="kit-tab-bar" id="kitMagazzinoTabs">
+          ${attivi.map(t => `<button class="kit-tab${t.id===activeMagazzinoTab?' active':''}" data-tmpl="${t.id}">${getKitIcon(t)} ${t.nome}</button>`).join('')}
+        </div>
+        <div id="kitMagazzinoBody"></div>
+      </div>
+      <!-- ORDINI -->
+      <div style="background:white;border-radius:12px;border:1px solid #eee;padding:16px;">
+        <div style="font-weight:700;font-size:14px;color:#374151;margin-bottom:8px;">🛒 Ordini</div>
+        <div style="display:flex;border-bottom:1px solid #eee;margin-bottom:12px;">
+          <button class="kit-ordini-tab${activeOrdiniTab==='da_ordinare'?' active':''}" data-tab="da_ordinare">Da ordinare</button>
+          <button class="kit-ordini-tab${activeOrdiniTab==='in_attesa'?' active':''}" data-tab="in_attesa">In attesa fornitore</button>
+        </div>
+        <div id="kitOrdiniBody"></div>
+      </div>
+    </div>
+    `}
   `;
 
-  renderCards('all');
+  if (!attivi.length) {
+    c.querySelector('#btnConfigKit')?.addEventListener('click', showConfigModal);
+    return;
+  }
 
-  c.querySelectorAll('.btn-kit-filter').forEach(btn => {
+  renderAssegnazioniTab();
+  renderMagazzinoTab();
+  renderOrdiniTab();
+
+  // Handler tab Assegnazioni
+  c.querySelector('#kitAssegnazioniTabs').addEventListener('click', e => {
+    const btn = e.target.closest('.kit-tab');
+    if (!btn) return;
+    activeAssegnazioniTab = btn.dataset.tmpl;
+    c.querySelectorAll('#kitAssegnazioniTabs .kit-tab').forEach(b => b.classList.toggle('active', b.dataset.tmpl === activeAssegnazioniTab));
+    renderAssegnazioniTab();
+  });
+
+  // Handler filtri Assegnazioni
+  c.querySelector('#kitAssegnazioniFilters').addEventListener('click', e => {
+    const btn = e.target.closest('.kit-filter');
+    if (!btn) return;
+    assegnazioniFilter = btn.dataset.f;
+    c.querySelectorAll('#kitAssegnazioniFilters .kit-filter').forEach(b => b.classList.toggle('active', b.dataset.f === assegnazioniFilter));
+    renderAssegnazioniTab();
+  });
+
+  // Handler tab Magazzino
+  c.querySelector('#kitMagazzinoTabs').addEventListener('click', e => {
+    const btn = e.target.closest('.kit-tab');
+    if (!btn) return;
+    activeMagazzinoTab = btn.dataset.tmpl;
+    c.querySelectorAll('#kitMagazzinoTabs .kit-tab').forEach(b => b.classList.toggle('active', b.dataset.tmpl === activeMagazzinoTab));
+    renderMagazzinoTab();
+  });
+
+  // Handler tab Ordini
+  c.querySelectorAll('.kit-ordini-tab').forEach(btn => {
     btn.addEventListener('click', () => {
-      c.querySelectorAll('.btn-kit-filter').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentFilter = btn.dataset.filter;
-      if (btn.dataset.filter === 'magazzino') { renderMagazzino(); injectPageHelp('kitMagazzino'); }
-      else { renderCards(btn.dataset.filter); injectPageHelp('kit'); }
+      activeOrdiniTab = btn.dataset.tab;
+      c.querySelectorAll('.kit-ordini-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === activeOrdiniTab));
+      renderOrdiniTab();
     });
   });
 
   c.querySelector('#btnConfigKit')?.addEventListener('click', showConfigModal);
+}
+
+function renderAssegnazioniTab() {
+  const body = document.getElementById('kitAssegnazioniBody');
+  if (!body) return;
+  const tmpl = templates.find(t => t.id === activeAssegnazioniTab);
+  if (!tmpl) { body.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template.</p>'; return; }
+
+  const rosterPlayers = Object.values(rosterMap).sort((a, b) =>
+    `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`));
+  const tmplAssigns = assignments.filter(a => a.kit_stock?.template_id === tmpl.id);
+  const articoli = tmpl.articoli || [];
+  const totArticoli = articoli.reduce((s, a) => s + (a.qty || 1), 0);
+
+  const playerStatus = rosterPlayers.map(p => {
+    const playerAssigns = tmplAssigns.filter(a => a.player_id === p.id);
+    const assigned = articoli.reduce((s, a) => s + Math.min(playerAssigns.filter(x => x.kit_stock?.articolo === a.nome).length, a.qty || 1), 0);
+    return { player: p, assigned, total: totArticoli, complete: assigned >= totArticoli };
+  });
+
+  const portiereTemplateIds = new Set(templates.filter(t => t.tipo === 'portiere' || t.is_portiere).map(t => t.id));
+  let baseList = playerStatus;
+  if (tmpl.tipo === 'portiere' || tmpl.is_portiere) {
+    baseList = playerStatus.filter(ps => ps.player.ruolo_principale === 'Portiere');
+  } else if (tmpl.tipo !== 'staff') {
+    const portieriCoperti = new Set(
+      assignments.filter(a => portiereTemplateIds.has(a.kit_stock?.template_id)).map(a => a.player_id)
+    );
+    baseList = playerStatus.filter(ps =>
+      ps.player.ruolo_principale !== 'Portiere' || !portieriCoperti.has(ps.player.id)
+    );
+  }
+
+  let filtered = baseList;
+  if (assegnazioniFilter === 'incompleto') filtered = baseList.filter(ps => !ps.complete);
+  else if (assegnazioniFilter === 'completo') filtered = baseList.filter(ps => ps.complete);
+
+  const nComplete = baseList.filter(ps => ps.complete).length;
+  const nNone = baseList.filter(ps => ps.assigned === 0).length;
+  const nIncomplete = baseList.filter(ps => !ps.complete && ps.assigned > 0).length;
+  const tmplBundles = bundles.filter(b => b.template_id === tmpl.id);
+  const totPezziKit = articoli.reduce((s, a) => s + (a.qty || 1), 0);
+  const kitDisponibili = tmplBundles.filter(b => b.pezzi_disponibili > 0 && b.pezzi_disponibili === (b.tot_pezzi || totPezziKit)).length;
+
+  // Summary header
+  const summaryHtml = `<div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:#666;flex-wrap:wrap;padding:8px 12px;background:#f8fafc;border-radius:8px;">
+    <span>✅ ${nComplete}/${baseList.length} completi</span>
+    ${nNone > 0 ? `<span style="color:#E74C3C;">🔴 ${nNone} senza kit</span>` : ''}
+    ${nIncomplete > 0 ? `<span style="color:#d97706;">🟡 ${nIncomplete} incompleti</span>` : ''}
+    <span>📦 ${kitDisponibili} kit disponibili</span>
+    ${isAdmin ? `<button class="btn-auto-assign" data-tmpl="${tmpl.id}" style="margin-left:auto;font-size:11px;padding:2px 8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:5px;cursor:pointer;color:#4338ca;">🎯 Auto-assegna</button>` : ''}
+  </div>`;
+
+  let rowsHtml = '';
+
+  if (tmpl.tipo === 'staff') {
+    const tmplStaffAssigns = staffAssignments.filter(a => a.kit_stock?.template_id === tmpl.id);
+    const teamStaffList = Object.values(staffMap).sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`));
+    if (!teamStaffList.length) {
+      rowsHtml = '<p style="color:#888;font-size:13px;padding:8px 0;">Nessuno staff assegnato a questa squadra.</p>';
+    } else {
+      rowsHtml = teamStaffList.map(s => {
+        const nome = `${s.cognome || ''} ${s.nome || ''}`.trim();
+        const sAssigns = tmplStaffAssigns.filter(a => a.staff_id === s.id);
+        const nAss = sAssigns.length;
+        const tot = (tmpl.articoli || []).reduce((sum, a) => sum + (a.qty || 1), 0);
+        const complete = nAss >= tot && tot > 0;
+        const dot = complete ? '🟢' : nAss > 0 ? '🟡' : '🔴';
+        const tagliaLabel = sAssigns[0]?.kit_stock?.taglia || s.taglia || '';
+        const altroTeam = sAssigns.length > 0 && sAssigns[0].team_id !== window.YFM.squadraId;
+        return `<div class="kit-row-staff" data-staff="${s.id}" data-tmpl="${tmpl.id}" style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid #f5f5f5;cursor:pointer;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+            <span>${dot}</span>
+            <span style="font-size:13px;font-weight:500;">${nome}</span>
+            <span style="font-size:11px;color:#888;">${s.ruolo || ''}</span>
+            ${tagliaLabel ? `<span style="font-size:10px;color:#4338ca;background:#eef2ff;padding:1px 5px;border-radius:4px;">${tagliaLabel}</span>` : ''}
+            ${altroTeam ? `<span style="font-size:10px;color:#059669;background:#d1fae5;padding:1px 5px;border-radius:4px;">✓ altra cat.</span>` : ''}
+            ${s.da_ordinare_kit && !complete ? `<span style="font-size:10px;color:#d97706;background:#fef9ec;border:1px solid #fde68a;padding:1px 5px;border-radius:4px;">🛒 da ordinare${s.taglia ? ' ' + s.taglia : ''}</span>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;color:#888;">${nAss}/${tot}</span>
+            ${isAdmin && !complete ? `<button class="btn-assign-staff" data-staff="${s.id}" data-tmpl="${tmpl.id}" style="font-size:10px;padding:3px 8px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;">Assegna</button>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+  } else if (!filtered.length) {
+    rowsHtml = '<p style="color:#888;font-size:13px;padding:8px 0;">Nessun giocatore trovato.</p>';
+  } else {
+    rowsHtml = filtered.map(ps => {
+      const p = ps.player;
+      const nome = `${p.cognome || ''} ${p.nome || ''}`.trim();
+      const dot = ps.complete ? '🟢' : ps.assigned > 0 ? '🟡' : '🔴';
+      const kitTaglia = tmplAssigns.find(a => a.player_id === p.id)?.kit_stock?.taglia;
+      const tagliaLabel = kitTaglia || p.taglia;
+      const daOrdinare = p.da_ordinare_kit && !ps.complete;
+      return `<div class="kit-row" data-player="${p.id}" data-tmpl="${tmpl.id}" style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid #f5f5f5;cursor:pointer;" onmouseover="this.style.background='#fafafa'" onmouseout="this.style.background=''">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+          <span>${dot}</span>
+          <span style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nome}</span>
+          ${tagliaLabel ? `<span style="font-size:10px;color:${kitTaglia ? '#4338ca' : '#888'};background:${kitTaglia ? '#eef2ff' : '#f0f0f0'};padding:1px 5px;border-radius:4px;">${tagliaLabel}</span>` : ''}
+          ${daOrdinare ? `<span style="font-size:10px;color:#d97706;background:#fef9ec;border:1px solid #fde68a;padding:1px 5px;border-radius:4px;">🛒 da ordinare${p.taglia ? ' ' + p.taglia : ''}</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:12px;color:#888;">${ps.assigned}/${ps.total}</span>
+          ${isAdmin && !ps.complete ? `<button class="btn-quick-assign" data-player="${p.id}" data-tmpl="${tmpl.id}" style="font-size:10px;padding:3px 8px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;">Assegna</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  body.innerHTML = summaryHtml + `<div style="border:1px solid #f0f0f0;border-radius:8px;overflow:hidden;">${rowsHtml}</div>`;
+
+  // Bind eventi
+  body.querySelectorAll('.kit-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('.btn-quick-assign')) return;
+      const t = templates.find(x => x.id === row.dataset.tmpl);
+      const player = rosterMap[row.dataset.player];
+      if (t && player) showAssignModal(t, player);
+    });
+  });
+  body.querySelectorAll('.btn-quick-assign').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const t = templates.find(x => x.id === btn.dataset.tmpl);
+      const player = rosterMap[btn.dataset.player];
+      if (t && player) showAssignModal(t, player);
+    });
+  });
+  body.querySelectorAll('.btn-assign-staff, .kit-row-staff').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const tmplId = el.dataset.tmpl || e.target.closest('[data-tmpl]')?.dataset.tmpl;
+      const staffId = el.dataset.staff || e.target.closest('[data-staff]')?.dataset.staff;
+      const t = templates.find(x => x.id === tmplId);
+      const staff = staffMap[staffId];
+      if (t && staff) showAssignStaffModal(t, staff);
+    });
+  });
+  body.querySelectorAll('.btn-auto-assign').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const t = templates.find(x => x.id === btn.dataset.tmpl);
+      if (t) autoAssign(t);
+    });
+  });
 }
 
 function renderCards(filter) {
@@ -324,6 +555,280 @@ function renderCards(filter) {
       });
     });
   });
+}
+
+// ═══════════════════════════════════════════
+// RENDER MAGAZZINO TAB (nuova sezione)
+// ═══════════════════════════════════════════
+function renderMagazzinoTab() {
+  const body = document.getElementById('kitMagazzinoBody');
+  if (!body) return;
+  const tmpl = templates.find(t => t.id === activeMagazzinoTab);
+  if (!tmpl) { body.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template.</p>'; return; }
+
+  const STATO_BADGE = {
+    integro:       { bg: '#dcfce7', color: '#166534', label: 'Integro' },
+    saccheggiato:  { bg: '#fef9ec', color: '#92400e', label: 'Saccheggiato' },
+    assegnato:     { bg: '#eef2ff', color: '#4338ca', label: 'Assegnato' },
+    parziale:      { bg: '#fff7ed', color: '#c2410c', label: 'Parziale' },
+    incompleto:    { bg: '#fef2f2', color: '#E74C3C', label: 'Incompleto' },
+    da_riordinare: { bg: '#fef2f2', color: '#E74C3C', label: 'Da riordinare' }
+  };
+
+  const tmplBundles = bundles.filter(b => b.template_id === tmpl.id);
+  const taglie = tmpl.taglie || (tmpl.settore === 'scuola_calcio' ? TAGLIE_SC : TAGLIE_SG);
+  const totPezziKit = (tmpl.articoli || []).reduce((s, a) => s + (a.qty || 1), 0);
+
+  const nIntegri      = tmplBundles.filter(b => b.stato === 'integro').length;
+  const nAssegnati    = tmplBundles.filter(b => b.stato === 'assegnato').length;
+  const nIncompleti   = tmplBundles.filter(b => b.stato === 'incompleto').length;
+  const nSaccheggiati = tmplBundles.filter(b => b.stato === 'saccheggiato').length;
+  const nRiordino     = tmplBundles.filter(b => b.stato === 'da_riordinare').length;
+  const nParziali     = tmplBundles.filter(b => b.stato === 'parziale').length;
+
+  // Summary badges
+  const summaryHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-size:11px;">
+    ${nIntegri > 0      ? `<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;">✅ ${nIntegri} disponibili</span>` : ''}
+    ${nAssegnati > 0    ? `<span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;">👕 ${nAssegnati} assegnati</span>` : ''}
+    ${nIncompleti > 0   ? `<span style="background:#fef2f2;color:#E74C3C;padding:2px 8px;border-radius:10px;">⚠️ ${nIncompleti} incompleti</span>` : ''}
+    ${nSaccheggiati > 0 ? `<span style="background:#fef9ec;color:#92400e;padding:2px 8px;border-radius:10px;">🔓 ${nSaccheggiati} saccheggiati</span>` : ''}
+    ${nRiordino > 0     ? `<span style="background:#fef2f2;color:#E74C3C;padding:2px 8px;border-radius:10px;">🔴 ${nRiordino} da riordinare</span>` : ''}
+    ${nParziali > 0     ? `<span style="background:#fff7ed;color:#c2410c;padding:2px 8px;border-radius:10px;">📦 ${nParziali} in attesa</span>` : ''}
+    ${!tmplBundles.length ? '<span style="color:#888;">Nessuno stock generato</span>' : ''}
+  </div>`;
+
+  // Raggruppa per taglia
+  const bundlePerTaglia = {};
+  tmplBundles.forEach(b => {
+    if (!bundlePerTaglia[b.taglia]) bundlePerTaglia[b.taglia] = [];
+    bundlePerTaglia[b.taglia].push(b);
+  });
+
+  const taglieHtml = taglie.map(taglia => {
+    const tagliBundles = (bundlePerTaglia[taglia] || []).sort((a, b) => a.numero_kit - b.numero_kit);
+    if (!tagliBundles.length) return '';
+    const nI = tagliBundles.filter(b => b.stato === 'integro').length;
+    const nA = tagliBundles.filter(b => b.stato === 'assegnato').length;
+    const nP = tagliBundles.filter(b => b.stato === 'parziale').length;
+    const nIn = tagliBundles.filter(b => b.stato === 'incompleto').length;
+    const nS = tagliBundles.filter(b => b.stato === 'saccheggiato').length;
+    const summaryParts = [];
+    if (nI > 0)  summaryParts.push(`<span style="color:#166534;">${nI} disp.</span>`);
+    if (nA > 0)  summaryParts.push(`<span style="color:#3730a3;">${nA} ass.</span>`);
+    if (nP > 0)  summaryParts.push(`<span style="color:#c2410c;">${nP} att.</span>`);
+    if (nIn > 0) summaryParts.push(`<span style="color:#E74C3C;">${nIn} incompl.</span>`);
+    if (nS > 0)  summaryParts.push(`<span style="color:#92400e;">${nS} sacch.</span>`);
+    const tagliaKey = tmpl.id + '_' + taglia;
+    const bundleRows = tagliBundles.map(b => {
+      const badge = STATO_BADGE[b.stato] || STATO_BADGE.integro;
+      const disp = b.pezzi_disponibili || 0;
+      const ass  = b.pezzi_assegnati  || 0;
+      const persi = b.pezzi_mancanti  || 0;
+      const tot  = b.tot_pezzi || totPezziKit;
+      const kitCompleto = disp > 0 && disp === tot;
+      const kitLabel = kitCompleto
+        ? `<span style="color:#166534;font-size:11px;">✅ completo</span>`
+        : ass > 0 && persi === 0
+          ? `<span style="color:#4338ca;font-size:11px;">${ass}/${tot} ass.</span>`
+          : `<span style="color:#666;font-size:11px;">${disp} disp.${ass > 0 ? ' · ' + ass + ' ass.' : ''}${persi > 0 ? ' · <span style="color:#E74C3C;">' + persi + ' persi</span>' : ''}</span>`;
+      const canDelete = isAdmin && b.stato !== 'assegnato';
+      return `<div style="padding:6px 12px 6px 24px;border-bottom:1px solid #f5f5f5;font-size:12px;display:flex;align-items:center;gap:8px;">
+        <span style="font-weight:600;min-width:46px;color:#555;">${b.numero_maglia != null ? 'n°' + b.numero_maglia : 'Kit #' + b.numero_kit}</span>
+        <span style="background:${badge.bg};color:${badge.color};padding:1px 7px;border-radius:10px;font-size:11px;">${badge.label}</span>
+        <span style="flex:1;">${kitLabel}</span>
+        ${canDelete ? `<button class="btn-delete-bundle" data-id="${b.id}" title="Elimina" style="background:none;border:none;cursor:pointer;font-size:13px;color:#ccc;padding:1px 3px;" onmouseover="this.style.color='#E74C3C'" onmouseout="this.style.color='#ccc'">🗑️</button>` : ''}
+      </div>`;
+    }).join('');
+    return `<div style="border:1px solid #f0f0f0;border-radius:8px;overflow:hidden;margin-bottom:6px;">
+      <div class="kb-taglia-header" data-key="${tagliaKey}" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:#f8fafc;cursor:pointer;user-select:none;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="kb-chevron" style="font-size:10px;transition:transform 0.2s;">▶</span>
+          <span style="font-size:12px;font-weight:600;color:#374151;">Taglia ${taglia}</span>
+          <span style="font-size:11px;color:#888;">${tagliBundles.length} kit — ${summaryParts.join(', ')}</span>
+        </div>
+      </div>
+      <div class="kb-taglia-body" data-key="${tagliaKey}" style="display:none;">${bundleRows}</div>
+    </div>`;
+  }).join('');
+
+  const actionsHtml = isAdmin ? `<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+    <button class="btn-restock" data-tmpl="${tmpl.id}" style="font-size:11px;padding:5px 12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;cursor:pointer;color:#4338ca;">+ Ordina stock</button>
+  </div>` : '';
+
+  body.innerHTML = summaryHtml + (taglieHtml || '<p style="color:#888;font-size:12px;">Nessun bundle. Genera stock per iniziare.</p>') + actionsHtml;
+
+  // Toggle taglia
+  body.querySelectorAll('.kb-taglia-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const key = header.dataset.key;
+      const b = body.querySelector(`.kb-taglia-body[data-key="${key}"]`);
+      const ch = header.querySelector('.kb-chevron');
+      const open = b.style.display !== 'none';
+      b.style.display = open ? 'none' : 'block';
+      ch.style.transform = open ? '' : 'rotate(90deg)';
+    });
+  });
+  body.querySelectorAll('.btn-restock').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = templates.find(x => x.id === btn.dataset.tmpl);
+      if (t) showGenerateStockModal(t);
+    });
+  });
+  body.querySelectorAll('.btn-delete-bundle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      confirmModal('Eliminare questo kit dallo stock?', async () => {
+        try {
+          showLoading('Eliminazione...');
+          await apiFetch('/kit-bundles/' + btn.dataset.id, { method: 'DELETE' });
+          hideLoading(); showToast('Kit eliminato', 'success'); loadKit();
+        } catch (err) { hideLoading(); showToast(err.message, 'error'); }
+      });
+    });
+  });
+}
+
+// ═══════════════════════════════════════════
+// RENDER ORDINI TAB (nuova sezione)
+// ═══════════════════════════════════════════
+function renderOrdiniTab() {
+  const body = document.getElementById('kitOrdiniBody');
+  if (!body) return;
+
+  if (activeOrdiniTab === 'da_ordinare') {
+    // ── Da ordinare ──────────────────────────────
+    const bundleToTmplGlobal = {};
+    bundles.forEach(b => { bundleToTmplGlobal[b.id] = b.template_id; });
+
+    const daOrdinareList = [
+      ...Object.values(rosterMap)
+        .filter(p => p.da_ordinare_kit)
+        .map(p => {
+          const tmplMancante = templates.filter(t => t.attivo !== false && t.tipo !== 'staff').find(t => {
+            const hasAssignment = assignments.some(a => a.player_id === p.id && (bundleToTmplGlobal[a.bundle_id_originale] === t.id || a.kit_stock?.template_id === t.id));
+            return !hasAssignment && (t.tipo !== 'portiere' || p.ruolo_principale === 'Portiere');
+          });
+          return { ...p, tmpl_nome: tmplMancante?.nome || null, tmpl_id: tmplMancante?.id || null, _tipo: 'giocatore' };
+        }),
+      ...Object.values(staffMap)
+        .filter(s => s.da_ordinare_kit)
+        .map(s => {
+          const tmplMancante = templates.filter(t => t.attivo !== false && t.tipo === 'staff').find(t =>
+            !staffAssignments.some(a => a.staff_id === s.id && (bundleToTmplGlobal[a.bundle_id_originale] === t.id || a.kit_stock?.template_id === t.id))
+          );
+          return { ...s, tmpl_nome: tmplMancante?.nome || null, tmpl_id: tmplMancante?.id || null, _tipo: 'staff' };
+        })
+    ].sort((a, b) => {
+      const ta = a.taglia || 'ZZZ', tb = b.taglia || 'ZZZ';
+      if (ta !== tb) return ta.localeCompare(tb);
+      return `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`);
+    });
+
+    const inAttesaList = [];
+    assignments.forEach(a => {
+      (a.sostituzioni || []).filter(s => s.stato === 'in_attesa').forEach(s => {
+        const p = Object.values(rosterMap).find(r => r.id === a.player_id);
+        if (p) inAttesaList.push({ cognome: p.cognome, nome: p.nome, taglia: a.kit_stock?.taglia || p.taglia, articolo: s.articolo });
+      });
+    });
+
+    if (!daOrdinareList.length && !inAttesaList.length) {
+      body.innerHTML = '<p style="color:#888;font-size:13px;padding:8px 0;">Nessun ordine in attesa. 🎉</p>';
+      return;
+    }
+
+    const righeKit = daOrdinareList.map((item, idx) =>
+      `<div style="padding:8px 10px;border-bottom:1px solid #f5f5f5;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
+          <span style="font-size:12px;font-weight:600;color:#92400e;min-width:32px;">${item.taglia || '—'}</span>
+          <span style="font-size:12px;color:#555;">${item._tipo === 'staff' ? '🦺 ' : ''}${item.cognome} ${item.nome}</span>
+          ${item.tmpl_nome ? `<span style="font-size:10px;color:#aaa;">(${item.tmpl_nome})</span>` : ''}
+        </div>
+        <button class="btn-gestisci-ordine-kit" data-idx="${idx}" style="font-size:11px;padding:3px 8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;cursor:pointer;color:#166534;white-space:nowrap;flex-shrink:0;">📦 Gestisci</button>
+      </div>`
+    ).join('');
+
+    const righeSost = inAttesaList.map((s, idx) =>
+      `<div style="padding:8px 10px;border-bottom:1px solid #f5f5f5;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
+          <span style="font-size:10px;background:#fef2f2;color:#E74C3C;padding:1px 5px;border-radius:4px;border:1px solid #fecaca;flex-shrink:0;">sost.</span>
+          <span style="font-size:12px;font-weight:600;color:#92400e;min-width:32px;">${s.taglia || '—'}</span>
+          <span style="font-size:12px;color:#555;">${s.cognome} ${s.nome}</span>
+          <span style="font-size:11px;color:#888;">— ${s.articolo}</span>
+        </div>
+        <button class="btn-gestisci-ordine-pezzi" data-idx="${idx}" style="font-size:11px;padding:3px 8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;cursor:pointer;color:#166534;white-space:nowrap;flex-shrink:0;">📦 Gestisci</button>
+      </div>`
+    ).join('');
+
+    const hasSep = daOrdinareList.length > 0 && inAttesaList.length > 0;
+    body.innerHTML = `<div style="border:1px solid #fde68a;border-radius:8px;overflow:hidden;">
+      ${righeKit}
+      ${hasSep ? '<div style="padding:4px 10px;background:#fef9ec;font-size:11px;color:#92400e;font-weight:600;">Sostituzioni in attesa</div>' : ''}
+      ${righeSost}
+    </div>`;
+
+    body.querySelectorAll('.btn-gestisci-ordine-kit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = daOrdinareList[parseInt(btn.dataset.idx)];
+        const tmpl = templates.find(t => t.id === item.tmpl_id) ||
+          templates.find(t => t.tipo !== 'staff' && t.attivo !== false);
+        if (tmpl) showGestisciOrdineKitModal(item, tmpl);
+      });
+    });
+    body.querySelectorAll('.btn-gestisci-ordine-pezzi').forEach(btn => {
+      btn.addEventListener('click', () => showGestisciOrdinePezziModal(inAttesaList[parseInt(btn.dataset.idx)]));
+    });
+
+  } else {
+    // ── In attesa dal fornitore ───────────────────
+    const allParziali = bundles.filter(b => b.stato === 'parziale' && b.pezzi_in_attesa?.length);
+    if (!allParziali.length) {
+      body.innerHTML = '<p style="color:#888;font-size:13px;padding:8px 0;">Nessun kit parziale in attesa. 🎉</p>';
+      return;
+    }
+
+    const perTemplateTaglia = {};
+    allParziali.forEach(b => {
+      const tmpl = templates.find(t => t.id === b.template_id);
+      if (!tmpl) return;
+      const key = b.template_id + '|' + b.taglia;
+      if (!perTemplateTaglia[key]) perTemplateTaglia[key] = { tmpl, taglia: b.taglia, bundles: [] };
+      perTemplateTaglia[key].bundles.push(b);
+    });
+
+    const righe = Object.values(perTemplateTaglia).map(({ tmpl, taglia, bundles: bList }) => {
+      const artCount = {};
+      bList.forEach(b => (b.pezzi_in_attesa || []).forEach(a => { artCount[a] = (artCount[a] || 0) + 1; }));
+      const artHtml = Object.entries(artCount)
+        .map(([art, n]) => `<span style="font-size:11px;background:#fff7ed;color:#c2410c;padding:1px 5px;border-radius:4px;border:1px solid #fed7aa;">${art} ×${n}</span>`)
+        .join(' ');
+      const destinatari = bList.map(b => {
+        const pa = assignments.find(a => a.bundle_id_originale === b.id);
+        if (pa) { const p = Object.values(rosterMap).find(r => r.id === pa.player_id); return p ? p.cognome + ' ' + p.nome : null; }
+        const sa = staffAssignments.find(a => a.bundle_id_originale === b.id);
+        if (sa) { const s = staffMap[sa.staff_id]; return s ? '🦺 ' + s.cognome + ' ' + s.nome : null; }
+        return null;
+      }).filter(Boolean);
+      return `<div style="padding:8px 10px;border-bottom:1px solid #f5f5f5;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;color:#374151;">${tmpl.nome} — ${taglia} <span style="font-size:11px;color:#888;">(${bList.length} kit)</span></div>
+          ${destinatari.length ? `<div style="font-size:11px;color:#555;margin-top:2px;">👤 ${destinatari.join(', ')}</div>` : ''}
+          <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">${artHtml}</div>
+        </div>
+        <button class="btn-segna-arrivati" data-tmpl="${tmpl.id}" data-taglia="${taglia}" style="font-size:11px;padding:4px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;cursor:pointer;color:#166534;white-space:nowrap;flex-shrink:0;">✅ Segna arrivati</button>
+      </div>`;
+    }).join('');
+
+    body.innerHTML = `<div style="border:1px solid #fed7aa;border-radius:8px;overflow:hidden;">${righe}</div>`;
+
+    body.querySelectorAll('.btn-segna-arrivati').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tmpl = templates.find(t => t.id === btn.dataset.tmpl);
+        const taglia = btn.dataset.taglia;
+        const bParziali = allParziali.filter(b => b.template_id === btn.dataset.tmpl && b.taglia === taglia);
+        if (tmpl) showSegnaArrivatiModal(tmpl, taglia, bParziali);
+      });
+    });
+  }
 }
 
 // ═══════════════════════════════════════════
