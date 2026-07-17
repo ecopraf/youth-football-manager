@@ -3,7 +3,7 @@ const router = express.Router();
 const { authMiddleware, requirePermission } = require('../middleware/auth.middleware');
 const { Pool } = require('pg');
 const pgPool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres.csxdlxbhcnyfppojwwzy:Yfm2026Secure!@aws-0-eu-west-1.pooler.supabase.com:6543/postgres',
   ssl: { rejectUnauthorized: false }
 });
 
