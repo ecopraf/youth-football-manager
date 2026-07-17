@@ -52,6 +52,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         numero_maglia: r.numero_maglia, ruolo: r.ruolo_preferito, stato: r.stato,
         aggregato: r.aggregato || false, capitano: r.capitano || false, vice_capitano: r.vice_capitano || false,
         taglia: r.taglia || null, da_ordinare_kit: r.da_ordinare_kit || false,
+        ruolo_principale: r.calciatore.ruolo_principale || null,
         team_player_id: r.id
       })));
     } catch (err) {

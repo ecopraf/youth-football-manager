@@ -166,8 +166,7 @@ function renderCards(filter) {
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div style="display:flex;align-items:center;gap:8px;">
             <span class="kit-chevron" style="font-size:12px;transition:transform 0.2s;${expandedTmpls.has(tmpl.id) ? 'transform:rotate(90deg);' : ''}">▶</span>
-            <span style="font-weight:700;font-size:14px;color:#166534;">${tmpl.nome}</span>
-            ${tmpl.is_portiere ? '<span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:1px 7px;border-radius:10px;border:1px solid #bfdbfe;">🧤 Portiere</span>' : ''}
+            <span style="font-weight:700;font-size:14px;color:#166534;">${getKitIcon(tmpl)} ${tmpl.nome}</span>
             ${alert}
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
@@ -308,8 +307,13 @@ function renderMagazzino() {
     const nSaccheggiati = tmplBundles.filter(b => b.stato === 'saccheggiato').length;
     const nRiordino     = tmplBundles.filter(b => b.stato === 'da_riordinare').length;
     const nParziali     = tmplBundles.filter(b => b.stato === 'parziale').length;
-    // Giocatori da ordinare per questo template (da_ordinare_kit=true)
-    const nDaOrdinare   = Object.values(rosterMap).filter(p => p.da_ordinare_kit).length;
+    // Giocatori da ordinare per questo template (da_ordinare_kit=true E senza kit assegnato per questo template)
+    const bundleToTmpl = {}; bundles.forEach(b => { bundleToTmpl[b.id] = b.template_id; });
+    const assignedPlayerIds = new Set(assignments.filter(a => bundleToTmpl[a.bundle_id_originale] === tmpl.id || a.kit_stock?.template_id === tmpl.id).map(a => a.player_id));
+    const nDaOrdinare   = Object.values(rosterMap).filter(p =>
+      p.da_ordinare_kit && !assignedPlayerIds.has(p.id) &&
+      (!tmpl.is_portiere || p.ruolo_principale === 'Portiere')
+    ).length;
     // Sostituzioni in attesa per questo template
     const nInAttesa     = assignments.filter(a => a.kit_stock?.template_id === tmpl.id &&
       (a.sostituzioni || []).some(s => s.stato === 'in_attesa')).length;
@@ -324,7 +328,7 @@ function renderMagazzino() {
     html += `<div style="margin-bottom:16px;background:white;border-radius:12px;border:1px solid #eee;overflow:hidden;">
       <div style="padding:12px 16px;background:linear-gradient(135deg,#eef2ff,#e0e7ff);">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-          <span style="font-weight:700;font-size:14px;color:#4338ca;">📦 ${tmpl.nome}${tmpl.is_portiere ? ' <span style="font-size:11px;background:#eff6ff;color:#1d4ed8;padding:1px 7px;border-radius:10px;border:1px solid #bfdbfe;">🧤 Portiere</span>' : ''}</span>
+          <span style="font-weight:700;font-size:14px;color:#4338ca;">${getKitIcon(tmpl)} ${tmpl.nome}</span>
           <div style="display:flex;gap:8px;font-size:11px;flex-wrap:wrap;">
             ${nIntegri > 0      ? `<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;">✅ ${nIntegri} disponibili</span>` : ''}
             ${nAssegnati > 0    ? `<span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:10px;">👕 ${nAssegnati} assegnati</span>` : ''}
@@ -432,8 +436,17 @@ function renderMagazzino() {
   });
 
   // Sezione Da ordinare
+  const bundleToTmplGlobal = {}; bundles.forEach(b => { bundleToTmplGlobal[b.id] = b.template_id; });
   const daOrdinareList = Object.values(rosterMap)
     .filter(p => p.da_ordinare_kit)
+    .map(p => {
+      // Trova il template per cui manca il kit (primo template attivo senza assignment)
+      const tmplMancante = templates.filter(t => t.attivo !== false).find(t => {
+        const hasAssignment = assignments.some(a => a.player_id === p.id && (bundleToTmplGlobal[a.bundle_id_originale] === t.id || a.kit_stock?.template_id === t.id));
+        return !hasAssignment && (!t.is_portiere || p.ruolo_principale === 'Portiere');
+      });
+      return { ...p, tmpl_nome: tmplMancante?.nome || null };
+    })
     .sort((a, b) => {
       const ta = a.taglia || 'ZZZ', tb = b.taglia || 'ZZZ';
       if (ta !== tb) return ta.localeCompare(tb);
@@ -465,7 +478,7 @@ function renderMagazzino() {
     const righeGiocatori = Object.entries(perTaglia).map(([taglia, players]) =>
       `<div style="padding:6px 14px;border-bottom:1px solid #f5f5f5;">
         <span style="font-size:12px;font-weight:600;color:#92400e;min-width:40px;display:inline-block;">${taglia}</span>
-        <span style="font-size:12px;color:#555;">${players.map(p => `${p.cognome} ${p.nome}`).join(', ')}</span>
+        <span style="font-size:12px;color:#555;">${players.map(p => p.cognome + ' ' + p.nome + (p.tmpl_nome ? ' <span style="font-size:10px;color:#aaa;">(' + p.tmpl_nome + ')</span>' : '')).join(', ')}</span>
         <span style="font-size:11px;color:#aaa;margin-left:6px;">(${players.length})</span>
       </div>`
     ).join('');
@@ -638,6 +651,17 @@ const ARTICOLI_PORTIERE = [
   { nome: 'K-way', qty: 1 },
   { nome: 'Zaino/Borsone', qty: 1 },
 ];
+
+function getKitIcon(tmpl) {
+  if (tmpl.is_portiere) return '🧤';
+  const n = (tmpl.nome || '').toLowerCase();
+  if (/portiere/.test(n)) return '🧤';
+  if (/allenamento|training/.test(n)) return '👟';
+  if (/gara|partita|match|gioco/.test(n)) return '⚽';
+  if (/invernale|freddo|winter/.test(n)) return '🧥';
+  if (/staff|tecnico|mister/.test(n)) return '🦺';
+  return '👕';
+}
 
 function showConfigModal() {
   const workspaceId = window.YFM.activeWorkspaceId;
@@ -853,7 +877,7 @@ function showGenerateStockModal(tmpl) {
   </div>`).join('');
 
   overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
-    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">📦 Genera Kit — ${tmpl.nome}</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">${getKitIcon(tmpl)} Genera Kit — ${tmpl.nome}</div>
     <div style="font-size:12px;color:#666;margin-bottom:16px;">Ogni kit include: ${(tmpl.articoli||[]).map(a=>a.nome).join(', ')}.<br>Inserisci quanti kit completi generare per taglia.</div>
     <div style="font-size:12px;font-weight:600;color:#667eea;margin-bottom:8px;">Quanti kit per taglia?</div>
     ${taglieRows}
@@ -955,7 +979,7 @@ function showPezziSelectionModal(tmpl, taglia, bundle, player, parentOverlay) {
       const res = await apiFetch('/kit-assignments-batch', { method: 'POST', body: JSON.stringify({
         template_id: tmpl.id, team_id: window.YFM.squadraId, season_id: window.YFM.currentSeasonId,
         assignments: [{ player_id: player.id, bundle_id: bundle.id, pezzi_in_attesa: pezziInAttesa }],
-        numero_maglia: tmpl.numerazione === 'libera' ? (parseInt(overlay.querySelector('#kaNumeroMaglia')?.value) || null) : null
+        numero_maglia: tmpl.numerazione === 'libera' ? (parseInt(parentOverlay.querySelector('#kaNumeroMaglia')?.value) || null) : null
       })});
       hideLoading();
       ov.remove();
