@@ -630,6 +630,7 @@ Tutte le variabili globali disponibili nel frontend dopo il login e la selezione
 | `window.YFM.teamId` | `window.YFM.squadraId` | Il campo si chiama `squadraId` |
 | `window.YFM.workspaceId` | `window.YFM.activeWorkspaceId` | Prefisso `active` |
 | `window.YFM.user` | `window.YFM.getUser()` | È una funzione, non una proprietà |
+| `loadXxx()` senza `await loadData()` | Chiamare `await loadData()` alla fine di `loadXxx()` | La funzione `load*` deve sempre popolare i dati dopo aver costruito il DOM e registrato gli event listener |
 
 ### 🔄 Aggiornamento obbligatorio
 

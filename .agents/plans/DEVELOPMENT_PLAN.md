@@ -1284,6 +1284,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.81 | fix: guestLinks — loadGuestLinks non chiamava loadData() (griglia sempre vuota), rimosso riferimento a #linksTableBody (vecchio DOM) nel catch |
 | v3.16.80 | fix: kit modale assegnazione — articolo con sostituzione `in_attesa` mostrato con sfondo grigio + icona 🔄 + badge "in attesa sostituzione" invece di ✅ verde (Santangelo Tuta rappresentanza) |
 | v3.16.79 | fix: kit assegnazioni — conteggio `assigned` sottraeva sostituzioni `in_attesa` (assignedEff = assigned - sostPendenti); badge 🔧 nella riga giocatore se sostituzione pendente. feat: kit layout accordion — 3 card header affiancate (Assegnazioni/Magazzino/Ordini) con summary numerico real-time via `summaryOnly=true`; card multi-riga `updateSezCard(lines[])`; card Ordini righe separate da ordinare/in attesa fornitore; card Assegnazioni riga sostituzioni in attesa. docs: helpData kit aggiornato (PAGE_HELP + ELEMENT_HELP + data-help sulle 3 card) |
 | v3.16.77 | fix: checklist — migrazione DB chiave `tesseramento` → `tesseramento_figc` (20 record). feat: filtro item checklist mostra gruppo "Completati" collassabile in fondo invece di nasconderli; dot item filtrato evidenziato; stato espanso persistente in sessione |

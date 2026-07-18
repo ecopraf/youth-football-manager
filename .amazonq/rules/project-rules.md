@@ -361,6 +361,27 @@ Quando si scrive logica basata sul nome categoria, usare regex che copra entramb
 - **Tutti gli endpoint di scrittura** (POST/PUT/DELETE) devono avere `authMiddleware`
 - **Nessun `console.log` di debug** nel codice pushato in produzione
 - **Build test obbligatorio** prima di ogni commit (`npm run build` nel frontend, `node -c api/index.js` nel backend)
+- **Guard post-await obbligatorio** in ogni funzione `load*()` frontend: dopo chiamate async, verificare sempre che `#pageContent` sia ancora quello catturato prima degli await. Pattern obbligatorio:
+  ```javascript
+  export default async function loadXxx() {
+    const c = document.getElementById('pageContent');
+    // ... await chiamate API ...
+    if (document.getElementById('pageContent') !== c) return; // utente ha navigato via
+    render(c);
+  }
+  ```
+  Nel `catch`, stessa verifica prima di mostrare l'errore: `if (document.getElementById('pageContent') === c) c.innerHTML = '...'`
+- **`loadData()` obbligatorio alla fine di `load*()`**: ogni funzione `load*()` che costruisce il DOM e registra event listener DEVE chiamare `await loadData()` come ultimo step. Senza questa chiamata la pagina viene renderizzata vuota. Pattern:
+  ```javascript
+  export default async function loadXxx() {
+    const c = document.getElementById('pageContent');
+    c.innerHTML = `...HTML...`;
+    // registra event listener
+    showLoading('Caricamento...');
+    await loadData(); // OBBLIGATORIO — popola i dati
+    hideLoading();
+  }
+  ```
 - **Porta locale backend**: 3002 (non 3001)
 - **Versione attuale**: v3.16 (frontend e backend allineati)
 - **Mai riutilizzare campi esistenti per scopi diversi** — se serve un nuovo dato, creare una colonna/tabella dedicata
