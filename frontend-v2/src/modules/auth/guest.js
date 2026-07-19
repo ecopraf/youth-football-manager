@@ -29,6 +29,9 @@ export default async function loadGuest() {
     const playerName = guestData.player_name || null;
     const { setupGuestLayout } = await import('../../components/layout/Sidebar');
     setupGuestLayout(guestData.tipo, playerName);
+    // Ripristina visibilità app (era nascosta per evitare flash del layout normale)
+    const appEl = document.getElementById('app');
+    if (appEl) appEl.style.visibility = '';
     const { initRouter } = await import('../../router');
     initRouter();
     
@@ -47,11 +50,18 @@ export default async function loadGuest() {
         logo.style.display = 'block';
       }
       const hn = document.getElementById('headerSocName');
-      if (hn && guestData.tipo !== 'atleta') hn.textContent = guestData.workspace.nome_breve || guestData.workspace.nome || '';
+      if (hn && guestData.tipo !== 'famiglia') hn.textContent = guestData.workspace.nome_breve || guestData.workspace.nome || '';
       const wn = document.getElementById('workspaceName');
       if (wn) wn.textContent = guestData.workspace.nome_breve || guestData.workspace.nome || '';
     }
     if (guestData.facility) window.YFM.facility = guestData.facility;
+    // Nascondi campana notifiche per guest ospite
+    if (guestData.tipo !== 'famiglia') {
+      const nb = document.getElementById('notifBadge');
+      if (nb) nb.style.display = 'none';
+      const gbw = document.getElementById('guestBellWrap');
+      if (gbw) gbw.style.display = 'none';
+    }
     await loadSquadre();
     
     // Messaggio di benvenuto
@@ -63,11 +73,11 @@ export default async function loadGuest() {
           <h2 style="margin:12px 0 8px;">Ciao ${playerName.split(' ')[0]}!</h2>
           <p style="color:#666;">Benvenuto nel tuo spazio personale</p>
         </div>`;
-        const targetPage = guestData.tipo === 'atleta' ? 'guestAtleta' : guestData.tipo === 'genitore' ? 'guestGenitore' : 'dashboard';
+        const targetPage = guestData.tipo === 'famiglia' ? 'guestAtleta' : guestData.tipo === 'ospite' ? 'guestGenitore' : 'dashboard';
         setTimeout(() => window.YFM.navigateTo(targetPage), 2000);
       }
     } else {
-      const targetPage = guestData.tipo === 'atleta' ? 'guestAtleta' : guestData.tipo === 'genitore' ? 'guestGenitore' : 'dashboard';
+      const targetPage = guestData.tipo === 'famiglia' ? 'guestAtleta' : guestData.tipo === 'ospite' ? 'guestGenitore' : 'dashboard';
       window.YFM.navigateTo(targetPage);
     }
   } catch (err) {

@@ -357,6 +357,7 @@ Quando si scrive logica basata sul nome categoria, usare regex che copra entramb
 ## Regole di Sviluppo
 
 - **Nessun riferimento alla demo** nel progetto principale (la demo è nel repo separato `youth-football-manager-demo`)
+- **Landing page**: la versione aggiornata si trova in `youth-football-manager-demo/landing/` (repo separato, deploy Vercel indipendente). La cartella `youth-football-manager/landing/` è obsoleta e non va modificata. Per aggiornare la landing, lavorare sul repo `youth-football-manager-demo`.
 - **La registrazione è solo per admin/superadmin** — non esporre endpoint pubblici di registrazione
 - **Tutti gli endpoint di scrittura** (POST/PUT/DELETE) devono avere `authMiddleware`
 - **Nessun `console.log` di debug** nel codice pushato in produzione

@@ -63,14 +63,18 @@ window.YFM.getWorkspaceLogo = () => {
 window.YFM.handleLogout = function() {
   destroySessionGuard();
   const wasGuest = !!sessionStorage.getItem('yfm_guest');
-  localStorage.removeItem('yfm_token');
-  localStorage.removeItem('yfm_user');
-  sessionStorage.removeItem('yfm_guest');
-  localStorage.removeItem('yfm_active_workspace');
-  localStorage.removeItem('yfm_demo_session');
-  localStorage.removeItem('yfm_demo_user');
-  localStorage.removeItem('yfm_squadra_id');
-  resetWorkspaceCache();
+  if (wasGuest) {
+    // Guest: pulisce solo sessionStorage, non tocca localStorage (altre tab potrebbero avere sessioni normali)
+    sessionStorage.removeItem('yfm_guest');
+  } else {
+    localStorage.removeItem('yfm_token');
+    localStorage.removeItem('yfm_user');
+    localStorage.removeItem('yfm_active_workspace');
+    localStorage.removeItem('yfm_demo_session');
+    localStorage.removeItem('yfm_demo_user');
+    localStorage.removeItem('yfm_squadra_id');
+    resetWorkspaceCache();
+  }
   if (wasGuest) {
     document.getElementById('app').innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f7fa;">
       <div style="text-align:center;padding:40px;background:white;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08);max-width:360px;">
@@ -129,13 +133,21 @@ window.YFM.openPlayerDetail = function(playerId) {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const path = window.location.pathname;
+  const isGuestPath = path.startsWith('/guest/');
+
+  if (isGuestPath) {
+    // Nascondi app durante il caricamento guest per evitare flash del layout normale
+    const appEl = document.getElementById('app');
+    if (appEl) appEl.style.visibility = 'hidden';
+  }
+
   setupLayout();
   initOfflineBanner();
   initLandscapeHint();
   initRouter();
 
-  const path = window.location.pathname;
-  if (path.startsWith('/guest/')) {
+  if (isGuestPath) {
     const token = path.split('/guest/')[1];
     if (token) {
       window.YFM.guestToken = token;

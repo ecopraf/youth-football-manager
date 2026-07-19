@@ -152,7 +152,7 @@ export function initRouter() {
       userNameEl.textContent = user.nome;
       userNameEl.style.display = 'inline';
     } else if (guest && userNameEl) {
-      userNameEl.textContent = guest.tipo === 'atleta' ? 'Atleta' : 'Genitore';
+      userNameEl.textContent = guest.tipo === 'famiglia' ? 'Famiglia' : 'Ospite';
       userNameEl.style.display = 'inline';
     }
     
@@ -188,10 +188,10 @@ export function initRouter() {
       if (isGuest) {
         if (page === 'dashboard') {
           const guestTipo = sessionStorage.getItem('guest_tipo');
-          page = guestTipo === 'genitore' ? 'guestGenitore' : 'guestAtleta';
+          page = guestTipo === 'ospite' ? 'guestGenitore' : 'guestAtleta';
         } else if (!guestAllowedPages.includes(page)) {
           const guestTipo = sessionStorage.getItem('guest_tipo');
-          page = guestTipo === 'genitore' ? 'guestGenitore' : 'guestAtleta';
+          page = guestTipo === 'ospite' ? 'guestGenitore' : 'guestAtleta';
         }
       }
     }
@@ -219,8 +219,9 @@ export function initRouter() {
       if (window.YFM.updateUserUI) {
         window.YFM.updateUserUI();
       }
-      // Campanella notifiche guest
-      if (window.YFM.isGuest() && document.getElementById('guestBellWrap')) {
+      // Campanella notifiche guest (solo atleta/genitore, non ospite)
+      const guestTipo = sessionStorage.getItem('guest_tipo');
+      if (window.YFM.isGuest() && guestTipo === 'famiglia' && document.getElementById('guestBellWrap')) {
         import('./modules/auth/guestAtleta.js').then(m => {
           if (m.updateGuestBell) m.updateGuestBell();
         }).catch(() => {});

@@ -17,8 +17,10 @@ export default async function loadClub() {
     let wsData, staffData, anagrafica;
     if (isGuest) {
       wsData = window.YFM.workspaceInfo || {};
-      staffData = await apiFetch('/squadre/' + teamId + '/staff-completo').catch(() => []);
-      anagrafica = {};
+      [staffData, anagrafica] = await Promise.all([
+        apiFetch('/squadre/' + teamId + '/staff-completo').catch(() => []),
+        apiFetch('/workspaces/' + wid + '/anagrafica').catch(() => ({}))
+      ]);
     } else {
       [wsData, staffData, anagrafica] = await Promise.all([
         apiFetch('/auth/workspaces').then(ws => ws.find(w => w.id === wid) || ws[0]),
@@ -129,8 +131,8 @@ function renderClub(c, ws, staff, anagrafica, wid) {
   if (ag.forma_giuridica || (ws && ws.nome)) html += '<div class="club-info-row"><span class="club-info-icon">\uD83C\uDFDB\uFE0F</span>' + [ws && ws.nome, ag.forma_giuridica].filter(Boolean).join(' ') + '</div>';
   if (ag.colori_sociali) html += '<div class="club-info-row"><span class="club-info-icon">\uD83C\uDFA8</span>' + ag.colori_sociali + (ag.sponsor_tecnico ? ' · ' + ag.sponsor_tecnico : '') + '</div>';
   if (ag.indirizzo) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCCD</span>' + ag.indirizzo + '</div>';
-  if (ag.telefono) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCDE</span>' + ag.telefono + '</div>';
-  if (ag.email) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCE7</span>' + ag.email + '</div>';
+  if (ag.telefono) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCDE</span><a href="tel:' + ag.telefono + '" style="color:inherit;text-decoration:none;">' + ag.telefono + '</a></div>';
+  if (ag.email) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCE7</span><a href="mailto:' + ag.email + '" style="color:#667eea;">' + ag.email + '</a></div>';
   if (ag.sito_web) html += '<div class="club-info-row"><span class="club-info-icon">\uD83C\uDF10</span><a href="' + ag.sito_web + '" target="_blank" style="color:#667eea;">' + ag.sito_web + '</a></div>';
   if (ag.facebook) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCF1</span><a href="' + ag.facebook + '" target="_blank" style="color:#667eea;">Facebook</a></div>';
   if (ag.instagram) html += '<div class="club-info-row"><span class="club-info-icon">\uD83D\uDCF8</span><a href="' + ag.instagram + '" target="_blank" style="color:#667eea;">Instagram</a></div>';

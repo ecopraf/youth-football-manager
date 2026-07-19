@@ -238,7 +238,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
 
   router.post('/api/auth/guest-link', authMiddleware, async (req, res) => {
     try {
-      const { tipo = 'genitore', categorie_accesso = [], scadenza_giorni, player_id, telefono, season_id } = req.body;
+      const { tipo = 'ospite', categorie_accesso = [], scadenza_giorni, player_id, telefono, season_id } = req.body;
 
       // Blocco creazione se stagione scaduta (dopo 31 luglio)
       if (season_id) {
@@ -305,7 +305,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
 
       // Fetch existing player links per non duplicare (stessa stagione)
       const { data: existing } = await supabase.from('guest_token')
-        .select('player_id').eq('tipo', 'atleta')
+        .select('player_id').eq('tipo', 'famiglia')
         .eq('season_id', team.season_id)
         .in('player_id', roster.map(r => r.player_id))
         .gte('scadenza', new Date().toISOString());
@@ -322,7 +322,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         const p = r.player || {};
         const token = crypto.randomBytes(32).toString('hex');
         const { data, error } = await supabase.from('guest_token').insert({
-          token, utente_id: (req.user.id && req.user.id !== 'superadmin') ? req.user.id : null, tipo: 'atleta',
+          token, utente_id: (req.user.id && req.user.id !== 'superadmin') ? req.user.id : null, tipo: 'famiglia',
           squadre_accesso: categorie_accesso, scadenza,
           player_id: r.player_id, telefono: p.telefono || null,
           season_id: team.season_id
@@ -479,7 +479,7 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
         const { data: cat } = await supabase.from('category').select('workspace_id').eq('id', categorie2[0]).single();
         if (cat?.workspace_id) {
           const [{ data: ws }, { data: fac }] = await Promise.all([
-            supabase.from('workspace').select('id, nome, nome_breve, email, telefono, sito_web, logo_url').eq('id', cat.workspace_id).single(),
+            supabase.from('workspace').select('id, nome, nome_breve, logo_url').eq('id', cat.workspace_id).single(),
             supabase.from('facility').select('nome, indirizzo, citta').eq('workspace_id', cat.workspace_id).eq('is_default', true).maybeSingle()
           ]);
           workspace = ws || null;

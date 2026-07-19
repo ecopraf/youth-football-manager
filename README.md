@@ -35,7 +35,7 @@ youth-football-manager/
 ├── backend/           # API backend (Node.js/Express) - Vercel
 ├── frontend-v2/       # Frontend moderno (Vite/JavaScript) - Vercel
 ├── docs/              # Documenti partnership e manuali
-├── landing.html       # Landing page pubblica
+├── landing.html       # Landing page pubblica (OBSOLETA — vedi repo demo)
 ├── AGENTS.md          # Linee guida sviluppo (per AI)
 └── README.md
 ```
@@ -52,6 +52,7 @@ youth-football-manager/
 
 - **App**: https://youth-football-manager.vercel.app
 - **Backend API**: https://youth-football-manager-backend.vercel.app
+- **Landing page**: nel repo `youth-football-manager-demo/landing/` (deploy Vercel separato, non modificare `landing/` in questo repo)
 
 ---
 

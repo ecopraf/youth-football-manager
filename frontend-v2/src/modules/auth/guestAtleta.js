@@ -378,7 +378,7 @@ function bindEvents(c, playerId, teamId, motivi) {
         el.style.borderLeftColor = '#ddd';
         el.style.fontWeight = '400';
         const tipo = sessionStorage.getItem('guest_tipo');
-        if (tipo === 'genitore') {
+        if (tipo === 'ospite') {
           const seen = JSON.parse(sessionStorage.getItem('yfm_notif_seen') || '[]');
           if (!seen.includes(nid)) seen.push(nid);
           sessionStorage.setItem('yfm_notif_seen', JSON.stringify(seen));
@@ -532,7 +532,7 @@ let bellInterval = null;
 export function isReadByGuest(notif) {
   const token = window.YFM.guestToken;
   const tipo = sessionStorage.getItem('guest_tipo');
-  if (tipo === 'genitore') {
+  if (tipo === 'ospite') {
     const seen = JSON.parse(sessionStorage.getItem('yfm_notif_seen') || '[]');
     return seen.includes(notif.id);
   }
@@ -542,7 +542,8 @@ export function isReadByGuest(notif) {
 }
 
 export async function updateGuestBell(teamId) {
-  const tipo = window.YFM.guestPlayerId ? 'atleta' : 'genitore';
+  if (sessionStorage.getItem('guest_tipo') !== 'famiglia') return;
+  const tipo = window.YFM.guestPlayerId ? 'famiglia' : 'ospite';
   const tid = teamId || window.YFM.guestTeamId || window.YFM.squadraId;
   if (!tid) return;
 
@@ -611,7 +612,7 @@ function showBellPanel(notifs) {
   const unreadIds = items.filter(n => !isReadByGuest(n)).map(n => n.id);
   if (unreadIds.length > 0) {
     const tipo = sessionStorage.getItem('guest_tipo');
-    if (tipo === 'genitore') {
+    if (tipo === 'ospite') {
       // Genitore: solo sessionStorage
       const seen = JSON.parse(sessionStorage.getItem('yfm_notif_seen') || '[]');
       unreadIds.forEach(id => { if (!seen.includes(id)) seen.push(id); });

@@ -69,8 +69,13 @@ export default async function loadKit() {
     (roster || []).forEach(p => { rosterMap[p.id] = p; });
     staffMap = {};
     (staffList || []).forEach(s => { staffMap[s.id] = { ...s, ruolo: s.ruolo_squadra || s.ruolo || '' }; });
-  } catch (e) { hideLoading(); c.innerHTML = '<div class="error-box">Errore caricamento</div>'; return; }
+  } catch (e) {
+    hideLoading();
+    if (document.getElementById('pageContent') === c) c.innerHTML = '<div class="error-box">Errore nel caricamento di kit: ' + e.message + '</div>';
+    return;
+  }
   hideLoading();
+  if (document.getElementById('pageContent') !== c) return;
   render(c);
 }
 

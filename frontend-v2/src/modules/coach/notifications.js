@@ -294,6 +294,10 @@ function timeAgo(dateStr) {
 // Exported: aggiorna badge notifiche nella header (combina assenze + comunicazioni)
 export async function updateNotifBadge(teamId) {
   try {
+    const guestSession = sessionStorage.getItem('yfm_guest');
+    if (guestSession) {
+      try { const g = JSON.parse(guestSession); if (g.tipo !== 'famiglia') return; } catch(e) {}
+    }
     const tid = teamId || window.YFM.squadraId;
     const isUuid = tid && /^[0-9a-f]{8}-/.test(tid);
     const [absRes, commRes] = await Promise.all([
