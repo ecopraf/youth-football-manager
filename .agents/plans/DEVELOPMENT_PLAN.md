@@ -1213,6 +1213,75 @@
 
 ---
 
+### EPIC 23: Player Performance Center
+
+> Pagina dedicata sotto la sezione Performance per trasformare i voti partita in conoscenza strategica. Vista rosa aggregata (classifica interna, analisi per reparto, top performer) + vista giocatore (trend voti, media, eventi correlati). Obiettivo: da sistema di data entry a sistema di decision support per allenatori e DS.
+
+**Valore commerciale**: Nessun gestionale dilettantistico offre analytics sui voti. L'allenatore vede in un colpo d'occhio chi sta crescendo, chi è in calo, quali reparti sono deboli. Il DS ha elementi oggettivi per le decisioni di mercato.
+
+**Prerequisito**: Dati sufficienti = almeno 5 partite con valutazioni inserite. Sotto questa soglia mostrare stato "Dati insufficienti".
+
+#### Fase 1: Backend — Endpoint aggregati
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 23.1 | Endpoint `GET /api/squadre/:teamId/performance-summary` — per ogni giocatore: media voti, n° valutazioni, trend (media ultimi 5 vs precedenti), minuti totali, gol/assist/cartellini da match_event | ⬜ | — | routes/statistics.js | ~15min |
+| 23.2 | Endpoint `GET /api/calciatori/:playerId/performance-detail?team_id=X` — lista valutazioni con dati partita (avversario, data, competizione, minuti, eventi), media mensile, trend | ⬜ | — | routes/statistics.js | ~10min |
+
+#### Fase 2: Pagina base — Vista Rosa
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 23.3 | Creare `modules/performance/playerPerformance.js` — struttura pagina con due view: Rosa (default) e Giocatore | ⬜ | 23.1 | modules/performance/playerPerformance.js | ~10min |
+| 23.4 | Sezione "🏆 Top Performer" — top 5 per media voti con badge trend (⬆⬇➡) e mini-sparkline | ⬜ | 23.3 | modules/performance/playerPerformance.js | ~12min |
+| 23.5 | Sezione "📊 Analisi per Reparto" — media voti per ruolo (Portieri/Difensori/Centrocampisti/Attaccanti) con heatmap colorata (🟢🟡🔴) | ⬜ | 23.3 | modules/performance/playerPerformance.js | ~10min |
+| 23.6 | Sezione "📋 Classifica Rosa" — tabella tutti i giocatori ordinata per media voti, con colonne: nome, media, trend, presenze valutate, gol, assist | ⬜ | 23.3 | modules/performance/playerPerformance.js | ~12min |
+| 23.7 | Sezione "⚠️ Senza valutazioni" — giocatori con 0 voti nelle ultime 3 partite (reminder per l'allenatore) | ⬜ | 23.3 | modules/performance/playerPerformance.js | ~8min |
+
+#### Fase 3: Vista Giocatore
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 23.8 | Click su giocatore → vista dettaglio con header (nome, media, trend, minuti totali) | ⬜ | 23.4 | modules/performance/playerPerformance.js | ~8min |
+| 23.9 | Grafico trend voti — canvas line chart (ultime 10 partite) con punti cliccabili, asse X = data partita | ⬜ | 23.8 | modules/performance/playerPerformance.js | ~15min |
+| 23.10 | Statistiche aggregate — media stagionale, media ultimi 5 vs precedenti (con delta colorato), miglior voto, peggior voto | ⬜ | 23.8 | modules/performance/playerPerformance.js | ~8min |
+| 23.11 | Lista partite valutate — card per partita con voto, minuti, avversario, data, eventi (⚽🅰️🟨🟥), nota allenatore | ⬜ | 23.8 | modules/performance/playerPerformance.js | ~12min |
+| 23.12 | Analisi mensile — media voti per mese (barre orizzontali colorate) | ⬜ | 23.8 | modules/performance/playerPerformance.js | ~10min |
+
+#### Fase 4: Integrazione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 23.13 | Sidebar: voce "⭐ Performance" sotto sezione Performance (capability: `statistiche`) | ⬜ | 23.3 | components/layout/sidebarNav.js | ~3min |
+| 23.14 | Router: registrare route `playerPerformance` | ⬜ | 23.3 | router.js | ~2min |
+| 23.15 | PlayerDetail: link "→ Vedi performance" nella sezione valutazioni che naviga alla pagina con giocatore pre-selezionato | ⬜ | 23.8 | modules/team/playerDetail.js | ~5min |
+| 23.16 | Dashboard: widget "⭐ Top Performer" — top 3 giocatori per media voti (ultimi 30gg), visibile per allenatore/admin | ⬜ | 23.1 | modules/team/dashboard.js | ~10min |
+| 23.17 | helpData.js: aggiungere entry per pagina playerPerformance | ⬜ | 23.3 | components/helpData.js | ~3min |
+| 23.18 | Test build completo + aggiornare docs (AGENTS.md, DATABASE_SCHEMA) | ⬜ | 23.17 | .agents/ | ~3min |
+
+**Effort totale stimato**: ~2h 38min (18 task)
+
+**Priorità implementazione**:
+1. Fase 1 (Backend) — dati aggregati, 25min
+2. Fase 2 (Vista Rosa) — valore immediato per l'allenatore, 52min
+3. Fase 3 (Vista Giocatore) — approfondimento per singolo atleta, 53min
+4. Fase 4 (Integrazione) — connessioni con resto app, 26min
+
+**Note architetturali**:
+- Nessuna tabella DB nuova — tutto basato su `valutazione_partita` + `match_event` + `match` esistenti
+- Il trend è calcolato: media ultimi 5 voti vs media voti precedenti (se <5 voti totali → solo media, no trend)
+- La heatmap reparto usa soglie: media ≥7 = 🟢, 6-6.9 = 🟡, <6 = 🔴
+- Il grafico trend usa `utils/charts.js` già esistente
+- La vista giocatore è una sub-view nella stessa pagina (no navigazione separata) — URL con `?playerId=X` per deep-link da playerDetail
+- Capability richiesta: `statistiche: read` (stessa delle statistiche esistenti)
+- Soglia dati minimi: <3 valutazioni per giocatore → mostrare "Dati insufficienti" invece di media
+- I minuti giocati vengono da `valutazione_partita` (già salvati nella tab MC) — NON da match_formation
+- **Non implementare ora**: micro-valutazioni (Tecnica/Tattica/ecc.), radar chart, confronto giocatori, valutazione AI conferma/svincolo — richiedono più stagioni di dati per essere significativi
+
+**Dipendenze**: Nessuna (usa dati già esistenti)
+
+---
+
 ## 4. Dipendenze tra Epic
 
 ```
@@ -1233,6 +1302,7 @@ EPIC 17 (Piano Gara) ──→ nessuna dipendenza (usa Match Center e rosa esist
 EPIC 18 (Refactoring Stagioni) ──→ nessuna dipendenza (refactoring logica esistente)
 EPIC 19 (PWA Guest Push) ──→ dipende da EPIC 11 (guest infrastruttura) + EPIC 12 (quote visibili)
 EPIC 20 (Tesseramento) ──→ nessuna dipendenza (standalone, usa workspace/player/team esistenti)
+EPIC 23 (Player Performance Center) → nessuna dipendenza (usa dati già esistenti: valutazione_partita + match_event)
 ```
 
 Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
@@ -1240,19 +1310,21 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 2. **EPIC 2** (infortuni, 43min) → feature richiesta dai mister ✅
 3. **EPIC 11** (atleta/genitore, ~2h) → evoluzione accesso utenti, alto valore percepito ✅
 4. **EPIC 16** (Print Center, ~3h15) → differenziatore commerciale, hub documentale, risolve Android ✅
-5. **EPIC 18** (Refactoring Stagioni, ~2h40) → fix architetturale critico, risolve bug staff + semplifica modello
-6. **EPIC 17** (Piano Gara, ~4h15) → differenziatore forte, nessuna app giovanile lo offre
-7. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
-8. **EPIC 14** (Match Center evolution, ~53min) → UX bordo campo (complementare a EPIC 17)
-9. **EPIC 3** (visite, 35min) → scadenze mediche = obbligo FIGC
-10. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro + sinergia con note avversario EPIC 17
-11. **EPIC 6** (polish, 33min) → UX
-12. **EPIC 9** (workspace hub, ~57min) → gestione superadmin
-13. **EPIC 7** (tornei, 37min) → nice-to-have
-14. **EPIC 12** (club operations, ~15h) → valore società, post-EPIC 11
-15. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno, bassa priorità
-16. **EPIC 20** (Tesseramento, ~3h30) → digitalizzazione processo iscrizione, valore segreteria
-17. **EPIC 19** (PWA Guest Push, ~8h) → engagement famiglie, post-EPIC 12
+5. **EPIC 18** (Refactoring Stagioni, ~2h40) → fix architetturale critico ✅
+6. **EPIC 23** (Player Performance Center, ~2h38) → decision support per allenatori, differenziatore forte
+7. **EPIC 17** (Piano Gara, ~4h15) → differenziatore forte, nessuna app giovanile lo offre
+8. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
+9. **EPIC 14** (Match Center evolution, ~53min) → UX bordo campo
+10. **EPIC 3** (visite, 35min) → scadenze mediche = obbligo FIGC
+11. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro
+12. **EPIC 6** (polish, 33min) → UX
+13. **EPIC 9** (workspace hub, ~57min) → gestione superadmin
+14. **EPIC 7** (tornei, 37min) → nice-to-have
+15. **EPIC 12** (club operations, ~15h) → valore società, post-EPIC 11
+16. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno
+17. **EPIC 20** (Tesseramento, ~3h30) → digitalizzazione processo iscrizione ✅
+18. **EPIC 19** (PWA Guest Push, ~8h) → engagement famiglie, post-EPIC 12
+19. **EPIC 22** (Refactoring Capabilities, ~1h20) → UX permessi
 
 ---
 
