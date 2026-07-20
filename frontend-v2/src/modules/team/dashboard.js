@@ -753,7 +753,7 @@ export default async function loadDashboard() {
         if (kitWidget.dataset.userHidden !== '1') kitWidget.style.display = '';
         kitWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashKitCard">
           <div style="font-size:14px;font-weight:600;margin-bottom:8px;">👕 Kit Sportivo</div>
-          <div style="font-size:12px;color:#999;">Nessun template configurato. Clicca per configurare.</div>
+          <div style="font-size:12px;color:#999;">Nessuna seduta tipo configurata. Clicca per configurare.</div>
         </div>`;
         kitWidget.querySelector('#dashKitCard')?.addEventListener('click', () => window.YFM.navigateTo('kit'));
         return;

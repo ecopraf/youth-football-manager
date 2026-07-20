@@ -71,10 +71,10 @@ function renderTemplates(templates) {
   let html = `<div class="card" data-help="settings.templateList" style="margin-bottom:16px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
       <h3 class="section-title" style="margin:0;">📋 Template Sedute</h3>
-      <button class="btn btn-primary btn-small" id="btnNewTemplate">+ Nuovo Template</button>
+      <button class="btn btn-primary btn-small" id="btnNewTemplate">+ Nuova seduta tipo</button>
     </div>`;
   if (templates.length === 0) {
-    html += `<p style="color:#6c757d;font-size:13px;">Nessun template salvato.</p>`;
+    html += `<p style="color:#6c757d;font-size:13px;">Nessuna seduta tipo salvata.</p>`;
   } else {
     html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">`;
     templates.forEach((t, idx) => {

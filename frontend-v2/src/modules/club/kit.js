@@ -177,7 +177,7 @@ function render(c) {
       <h1 class="page-title">👕 Kit Sportivo</h1>
       ${isAdmin ? '<button class="btn btn-primary" id="btnConfigKit" style="font-size:13px;" data-help="kit.config">⚙️ Configura kit</button>' : ''}
     </div>
-    ${!attivi.length ? '<p style="color:#888;font-size:13px;">Nessun template kit configurato. Clicca "⚙️ Configura kit" per iniziare.</p>' : (() => {
+    ${!attivi.length ? '<p style="color:#888;font-size:13px;">Nessun kit configurato. Clicca "⚙️ Configura kit" per iniziare.</p>' : (() => {
       const sm = calcKitSummary();
       const sezDefs = [
         { id: 'assegnazioni', icon: '📋', label: 'Assegnazioni',
@@ -292,7 +292,7 @@ function renderAssegnazioniTab(summaryOnly = false) {
   if (!summaryOnly && !body) return;
   if (body) body.setAttribute('data-help', 'kit.lista');
   const tmpl = templates.find(t => t.id === activeAssegnazioniTab);
-  if (!tmpl) { body.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template.</p>'; return; }
+  if (!tmpl) { body.innerHTML = '<p style="color:#888;font-size:13px;">Nessun kit configurato.</p>'; return; }
 
   const rosterPlayers = Object.values(rosterMap).sort((a, b) =>
     `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`));
@@ -448,7 +448,7 @@ function renderCards(filter) {
   if (!container) return;
   container.setAttribute('data-help', 'kit.lista');
   if (!templates.length) {
-    container.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template kit configurato. Clicca "⚙️ Configura kit" per iniziare.</p>';
+    container.innerHTML = '<p style="color:#888;font-size:13px;">Nessun kit configurato. Clicca "⚙️ Configura kit" per iniziare.</p>';
     return;
   }
 
@@ -669,7 +669,7 @@ function renderMagazzinoTab(summaryOnly = false) {
   if (!summaryOnly && !body) return;
   if (body) body.setAttribute('data-help', 'kit.magazzino');
   const tmpl = templates.find(t => t.id === activeMagazzinoTab);
-  if (!tmpl) { body.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template.</p>'; return; }
+  if (!tmpl) { body.innerHTML = '<p style="color:#888;font-size:13px;">Nessun kit configurato.</p>'; return; }
 
   const STATO_BADGE = {
     integro:       { bg: '#dcfce7', color: '#166534', label: 'Integro' },
@@ -955,7 +955,7 @@ function renderMagazzino() {
   if (!container) return;
   container.setAttribute('data-help', 'kit.magazzino');
   if (!templates.length) {
-    container.innerHTML = '<p style="color:#888;font-size:13px;">Nessun template configurato.</p>';
+    container.innerHTML = '<p style="color:#888;font-size:13px;">Nessun kit configurato.</p>';
     return;
   }
 
@@ -1438,7 +1438,7 @@ function showConfigModal() {
   ).join('');
 
   overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:500px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
-    <div style="font-size:16px;font-weight:600;margin-bottom:16px;">⚙️ Template Kit</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:16px;">⚙️ Configura kit</div>
     ${existingHtml ? `<div style="margin-bottom:16px;">${existingHtml}</div><hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` : ''}
     <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Nuovo template</div>
     <div style="display:grid;gap:12px;">

@@ -85,7 +85,7 @@ function render(c) {
       <h1 class="page-title">📋 Checklist Stagione</h1>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         ${isAdmin && !checklistData.length ? `<button class="btn btn-primary" id="btnGenChecklist" style="font-size:12px;">🔄 Genera per tutti</button>` : ''}
-        ${isAdmin ? `<button class="btn btn-secondary" id="btnConfigChecklist" style="font-size:12px;">⚙️ Template</button>` : ''}
+        ${isAdmin ? `<button class="btn btn-secondary" id="btnConfigChecklist" style="font-size:12px;">⚙️ Personalizza checklist</button>` : ''}
       </div>
     </div>
     <style>.btn-chk-filter.active{background:#667eea!important;color:white!important;border-color:#667eea!important;}</style>
@@ -285,7 +285,7 @@ function showTemplateConfig(container) {
   </div>`).join('');
 
   overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:420px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
-    <div style="font-size:16px;font-weight:600;margin-bottom:16px;">⚙️ Template Checklist</div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:16px;">⚙️ Personalizza checklist</div>
     <div id="tmplItems">${itemsHtml}</div>
     <div style="margin-top:8px;display:flex;gap:6px;">
       <input id="tmplNew" placeholder="Nuovo item..." style="flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;">

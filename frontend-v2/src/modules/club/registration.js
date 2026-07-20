@@ -72,7 +72,7 @@ function render(c, teamId, workspaceId, seasonId) {
       </div>
       <div class="tab-bar">
         <button class="tab-btn ${activeTab === 'situazione' ? 'active' : ''}" data-tab="situazione">📊 Situazione</button>
-        <button class="tab-btn ${activeTab === 'template' ? 'active' : ''}" data-tab="template">⚙️ Template</button>
+        <button class="tab-btn ${activeTab === 'template' ? 'active' : ''}" data-tab="template">📋 Crea modulo</button>
       </div>
       <div id="regTabContent"></div>
     </div>
@@ -123,7 +123,7 @@ function renderSituazione(container, teamId, seasonId) {
         overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
           <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
           <div style="font-size:15px;font-weight:600;margin-bottom:8px;">Eliminare TUTTI i tesseramenti?</div>
-          <div style="font-size:13px;color:#666;margin-bottom:20px;">Potrai rigenerarli dal template aggiornato.</div>
+          <div style="font-size:13px;color:#666;margin-bottom:20px;">Potrai rigenerarli dal modulo aggiornato.</div>
           <div style="display:flex;gap:8px;justify-content:center;">
             <button id="delCancel" class="btn btn-secondary" style="font-size:13px;">Annulla</button>
             <button id="delConfirm" class="btn btn-primary" style="font-size:13px;background:#E74C3C;">Elimina tutti</button>

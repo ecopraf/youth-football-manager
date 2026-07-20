@@ -74,7 +74,7 @@ function renderMain(c, logs, teamName) {
     <div class="import-cards">
       <div class="import-card" id="icGrConfig" data-help="import.grConfig">
         <div class="import-card-icon">⚙️</div>
-        <div class="import-card-title">Configura URL Girone</div>
+        <div class="import-card-title">Imposta link girone</div>
         <div class="import-card-desc">Seleziona campionato e girone sul portale regionale</div>
         <span class="import-card-badge" style="background:#E8EAF6;color:#283593;">Setup</span>
       </div>
@@ -92,7 +92,7 @@ function renderMain(c, logs, teamName) {
       </div>` : ''}
       ${window.YFM.getUser()?.is_superadmin ? `<div class="import-card" id="icGrLoghiWizard">
         <div class="import-card-icon">🧙</div>
-        <div class="import-card-title">Wizard Loghi (Batch)</div>
+        <div class="import-card-title">Scarica loghi squadre</div>
         <div class="import-card-desc">Scansiona tutti i gironi, scarica nuovi loghi e verifica aggiornamenti</div>
         <span class="import-card-badge" style="background:#EDE7F6;color:#4527A0;">Superadmin</span>
       </div>` : ''}
@@ -690,7 +690,7 @@ function openGrConfig() {
 async function openGrUnifiedImport() {
   const sq = window.YFM.getSquadra();
   if (!sq?.classifica_url) {
-    alert('⚠️ Configura prima l\'URL del girone nella card "Configura URL Girone"');
+    alert('⚠️ Configura prima l\'URL del girone nella card "Imposta link girone"');
     return;
   }
 
@@ -881,7 +881,7 @@ async function openGrEventi() {
   const teamId = window.YFM.squadraId;
   const sq = window.YFM.getSquadra();
   if (!sq?.classifica_url) {
-    alert('Configura prima l\'URL del girone nella sezione "Configura URL Girone"');
+    alert('Configura prima l\'URL del girone nella sezione "Imposta link girone"');
     return;
   }
 
@@ -1014,7 +1014,7 @@ async function openGrPreview() {
 
     let html = '';
     if (!classifica.classifica) {
-      html = '<div style="color:#c00;padding:16px;background:#fee;border-radius:8px;">❌ URL non configurato. Usa "Configura URL Girone" prima.</div>';
+      html = '<div style="color:#c00;padding:16px;background:#fee;border-radius:8px;">❌ URL non configurato. Usa "Imposta link girone" prima.</div>';
     } else {
       const info = classifica.info || {};
       html += `<h3 style="margin:0 0 8px;font-size:14px;">🏆 ${info.championship_name || 'Classifica'} - Gir. ${info.group_name || ''}</h3>`;

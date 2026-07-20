@@ -307,7 +307,7 @@ async function loadProgrammaFromDB(date) {
 
 async function applyTemplateUI(date) {
   const templates = await apiFetch('/squadre/' + window.YFM.squadraId + '/training-templates').catch(() => []);
-  if (templates.length === 0) { alert('Nessun template salvato.'); return; }
+  if (templates.length === 0) { alert('Nessuna seduta tipo salvata.'); return; }
 
   const TIPO_COLORS = { 'Tattico': '#8b5cf6', 'Tecnico': '#3b82f6', 'Atletico': '#ef4444', 'Partita a tema': '#22c55e', 'Possesso palla': '#06b6d4', 'Difensivo': '#f59e0b', 'Misto': '#6b7280' };
 
