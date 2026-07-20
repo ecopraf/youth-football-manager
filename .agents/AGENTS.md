@@ -452,6 +452,20 @@ curl -s 'https://csxdlxbhcnyfppojwwzy.supabase.co/rest/v1/workspace?select=*' \
 2. Dopo ogni feature: commit + push
 3. Verifica con `curl https://.../api/health`
 
+### ⚠️ Deploy Landing Page (yfm-landing) — OBBLIGATORIO
+
+La landing page si trova in `youth-football-manager-demo/landing/` (repo separato).
+Il progetto Vercel `yfm-landing` **NON si triggera automaticamente** dal push su GitHub.
+
+Dopo ogni modifica a file in `landing/`, eseguire SEMPRE:
+
+```bash
+cd /Users/Raffaele/Documents/Youth-Foorball-Manager/youth-football-manager-demo/landing
+vercel --prod --yes
+```
+
+URL produzione: **https://yfm-landing.vercel.app**
+
 ---
 
 ## Workflow Raccomandato
