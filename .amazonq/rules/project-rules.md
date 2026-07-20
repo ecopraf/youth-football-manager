@@ -196,7 +196,8 @@ Le tabelle reali nel DB Supabase sono:
 **Codici tipo_evento (OBBLIGATORI)**: `GOAL`, `ASSIST`, `SUB`, `YELLOW`, `RED`, `SUBITO`, `AUTOGOL`, `IN`, `OUT`
 - ❌ MAI usare: `GOL`, `ASS`, `AMMONIZIONE`, `ESPULSIONE` (codici errati che non matchano la lookup table)
 - `training`, `training_attendance`, `training_config`, `training_template`
-- `valutazione_partita`, `document`
+**Colonne notevoli `valutazione_partita`**: `voto NUMERIC` (nullable — null = SV, nessun voto numerico), `nota_allenatore TEXT`
+
 - `users`, `guest_token`
 - `import_log`
 - `tournament`
@@ -711,6 +712,12 @@ window.YFM.getSocietaName()
 - Tab switching: `panelMap = { events: 'mcBodyEvents', formation: 'mcBodyFormation', notes: 'mcBodyNotes' }`
 - Nuovi panel: aggiungere in `getBody()`, registrare in `panelMap`, bind nel handler tab click
 - Textarea/input nei panel: sempre `box-sizing:border-box` + `width:100%`
+- **Durata partita**: usare sempre `getHalfDuration()` (già definita nel file) — NON ricalcolare la categoria manualmente
+- **Formazione iniziale vs corrente**: `formazioneIniziale` = snapshot pre-SUB (usare per valutazioni/gruppi); `formazioneData` = stato corrente post-SUB (usare per formazione live)
+- **ASSIST negli eventi**: al caricamento gli eventi ASSIST vengono mergiati nel GOAL corrispondente e rimossi dall'array `eventi`. L'assist è in `e.assist_id` dell'evento GOAL — NON cercare `e.tipo === 'ASSIST'`
+- **`showToast` in matchCenter**: è una funzione locale definita nel file (riga ~1148) — NON importarla da `ui.js` (non esiste lì)
+- **Tab MC mobile**: usare `mc-tab-short` con emoji + label abbreviata (`flex:1`, no scroll). Su desktop `mc-tab-full` con testo completo
+- **`overflow-x:clip` vs `hidden`**: `clip` blocca il contenuto che straborda ma NON crea un nuovo scroll container — usarlo quando si vuole che i figli con `overflow-x:auto` possano scrollare
 
 ### Flusso Convocazioni → Formazione → Distinta (OBBLIGATORIO)
 

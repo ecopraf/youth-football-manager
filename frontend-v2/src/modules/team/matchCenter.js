@@ -306,18 +306,24 @@ function getPastBanner() {
 
 function getTabs() {
   const count = eventi.length;
-  return `<div class="mc-tabs" data-help="mc.tabs">
-    <button class="mc-tab active" data-tab="events">📋 Eventi${count ? ' <span class="mc-tab-badge">' + count + '</span>' : ''}</button>
-    <button class="mc-tab" data-tab="formation">🏟️ Formazione</button>
-    <button class="mc-tab" data-tab="notes">📝 Note</button>
-    <button class="mc-tab" data-tab="import">📋 Import</button>
-  </div>`;
+  const match = window.YFM.allMatches?.find(m => m.id === currentMatchId);
+  const isTerminata = match?.stato === 'Terminata' || match?.archiviata;
+  return `<div class="mc-tabs-wrap"><div class="mc-tabs" data-help="mc.tabs">
+    <button class="mc-tab active" data-tab="events"><span class="mc-tab-full">📋 Eventi</span><span class="mc-tab-short">📋<span class="mc-tab-label">Eventi</span></span>${count ? ' <span class="mc-tab-badge">' + count + '</span>' : ''}</button>
+    <button class="mc-tab" data-tab="formation"><span class="mc-tab-full">🏟️ Formazione</span><span class="mc-tab-short">🏟️<span class="mc-tab-label">Form.</span></span></button>
+    <button class="mc-tab" data-tab="notes"><span class="mc-tab-full">📝 Note</span><span class="mc-tab-short">📝<span class="mc-tab-label">Note</span></span></button>
+    ${isTerminata ? '<button class="mc-tab" data-tab="valutazioni"><span class="mc-tab-full">⭐ Valutazioni</span><span class="mc-tab-short">⭐<span class="mc-tab-label">Voti</span></span></button>' : ''}
+    <button class="mc-tab" data-tab="import"><span class="mc-tab-full">📋 Import</span><span class="mc-tab-short">📥<span class="mc-tab-label">Import</span></span></button>
+  </div></div>`;
 }
 
 function getBody(mid) {
+  const match = window.YFM.allMatches?.find(m => m.id === mid);
+  const isTerminata = match?.stato === 'Terminata' || match?.archiviata;
   return `<div class="mc-tab-panel mc-tab-active" id="mcBodyEvents">${getTimeline(mid)}</div>
   <div class="mc-tab-panel" id="mcBodyFormation">${getLiveFormation(mid)}</div>
   <div class="mc-tab-panel" id="mcBodyNotes">${getNotesPanel(mid)}</div>
+  ${isTerminata ? '<div class="mc-tab-panel" id="mcBodyValutazioni"><div class="mc-qa-card" style="text-align:center;color:#888;padding:32px;">Caricamento valutazioni...</div></div>' : ''}
   <div class="mc-tab-panel" id="mcBodyImport">${getImportPanel(mid)}</div>
   ${getQuickActions(mid)}
   ${getSaveButton()}
@@ -416,12 +422,18 @@ function getSingleFormationView(mid, fData, canEdit) {
 
 function getCurrentTitolari() {
   if (!formazioneData) return [];
-  return [formazioneData.portiere, ...(formazioneData.difensori||[]), ...(formazioneData.centrocampisti||[]), ...(formazioneData.attaccanti||[])].filter(Boolean);
+  const iniziali = [formazioneData.portiere, ...(formazioneData.difensori||[]), ...(formazioneData.centrocampisti||[]), ...(formazioneData.attaccanti||[])].filter(Boolean);
+  const usciti = eventi.filter(e => e.tipo === 'SUB' && e.principale_id).map(e => e.principale_id);
+  const entrati = eventi.filter(e => e.tipo === 'SUB' && e.sub_in_id).map(e => e.sub_in_id);
+  return [...iniziali.filter(id => !usciti.includes(id)), ...entrati];
 }
 
 function getCurrentRiserve() {
   if (!formazioneData) return [];
-  return formazioneData.riserve || [];
+  const riserveIniziali = formazioneData.riserve || [];
+  const usciti = eventi.filter(e => e.tipo === 'SUB' && e.principale_id).map(e => e.principale_id);
+  const entrati = eventi.filter(e => e.tipo === 'SUB' && e.sub_in_id).map(e => e.sub_in_id);
+  return riserveIniziali.filter(id => !entrati.includes(id) && !usciti.includes(id));
 }
 
 function getSaveButton() {
@@ -528,8 +540,17 @@ function getStyles() {
 .mc-live-countdown{font-size:11px;color:#888;margin-top:6px;text-align:center;}
 .mc-live-btn-blink{animation:live-btn-pulse 1s ease-in-out infinite;}
 @keyframes live-btn-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,0.6);}50%{transform:scale(1.05);box-shadow:0 0 0 8px rgba(255,255,255,0);}}
-.mc-tabs{display:flex;gap:4px;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:16px;overflow-x:auto;}
-.mc-tab{padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#555;cursor:pointer;border-radius:8px;white-space:nowrap;border:1px solid #ddd;}
+.mc-tabs-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -16px;padding:0 16px;}
+.mc-tabs-wrap::-webkit-scrollbar{display:none;}
+.mc-tabs{display:flex;gap:4px;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:16px;min-width:100%;}
+.mc-tab{padding:8px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#555;cursor:pointer;border-radius:8px;white-space:nowrap;border:1px solid #ddd;flex-shrink:0;}
+.mc-tab-short{display:none;}
+@media(max-width:500px){
+  .mc-tab{padding:4px 6px;font-size:11px;flex:1;text-align:center;}
+  .mc-tab-full{display:none;}
+  .mc-tab-short{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:16px;line-height:1;}
+  .mc-tab-label{font-size:9px;font-weight:600;color:inherit;line-height:1;}
+}
 .mc-tab:hover{background:#f0f4ff;color:#333;border-color:#667eea;}
 .mc-tab.active{background:#667eea;color:white;}
 .mc-tab-badge{background:white;color:#667eea;padding:1px 6px;border-radius:8px;font-size:10px;margin-left:4px;}
@@ -563,9 +584,12 @@ function getStyles() {
 }
 @media(max-width:639px){
   .mc-qa{grid-template-columns:repeat(2,1fr);}
-  .mc-teams{gap:10px;}
-  .mc-team-name{font-size:13px;max-width:90px;}
-  .mc-score-num{font-size:36px;}
+  .mc-teams{gap:6px;}
+  .mc-team-block{min-width:0;flex:1;max-width:calc(50% - 40px);}
+  .mc-team-name{font-size:11px;max-width:100%;word-break:break-word;}
+  .mc-team-logo{width:36px;height:36px;font-size:18px;}
+  .mc-score-num{font-size:32px;}
+  .mc-header{padding:16px 10px;}
   .mc-drawer{width:100%;max-width:100vw;}
 }
 </style>`;
@@ -793,10 +817,11 @@ function bindEvents(mid) {
       tab.classList.add('active');
       const t = tab.dataset.tab;
       document.querySelectorAll('.mc-tab-panel').forEach(p => p.classList.remove('mc-tab-active'));
-      const panelMap = { events: 'mcBodyEvents', formation: 'mcBodyFormation', notes: 'mcBodyNotes', import: 'mcBodyImport' };
+      const panelMap = { events: 'mcBodyEvents', formation: 'mcBodyFormation', notes: 'mcBodyNotes', valutazioni: 'mcBodyValutazioni', import: 'mcBodyImport' };
       document.getElementById(panelMap[t])?.classList.add('mc-tab-active');
       if (t === 'formation') { bindLiveFormation(mid); bindFormationSubtabs(); }
       if (t === 'notes') bindNotesPanel(mid);
+      if (t === 'valutazioni') bindValutazioniPanel(mid);
       if (t === 'import') bindImportPanel(mid);
     });
   });
@@ -1357,10 +1382,164 @@ function getImportPanel(mid) {
   </div>`;
 }
 
+async function bindValutazioniPanel(mid) {
+  const panel = document.getElementById('mcBodyValutazioni');
+  if (!panel) return;
+  const { apiFetch } = await import('../../services/api.js');
+
+  // IDs iniziali dalla formazione PRIMA delle sostituzioni (formazioneIniziale)
+  const fIniz = formazioneIniziale || formazioneData;
+  const titolariInizialiIds = new Set([
+    fIniz?.portiere,
+    ...(fIniz?.difensori||[]),
+    ...(fIniz?.centrocampisti||[]),
+    ...(fIniz?.attaccanti||[])
+  ].filter(Boolean));
+  const riserveInizialiIds = new Set(fIniz?.riserve || []);
+
+  // Chi è uscito e chi è entrato tramite SUB
+  const uscitiIds = new Set(eventi.filter(e => e.tipo === 'SUB' && e.principale_id).map(e => e.principale_id));
+  const entratiIds = new Set(eventi.filter(e => e.tipo === 'SUB' && e.sub_in_id).map(e => e.sub_in_id));
+
+  const fullMin = getHalfDuration() * 2;
+
+  const minutiMap = {};
+  titolariInizialiIds.forEach(id => { minutiMap[id] = fullMin; });
+  riserveInizialiIds.forEach(id => { minutiMap[id] = 0; });
+  eventi.filter(e => e.tipo === 'SUB').forEach(e => {
+    const min = e.minuto || 0;
+    if (e.principale_id) minutiMap[e.principale_id] = min;
+    // chi entra: almeno 1 minuto simbolico se sub all'ultimo minuto (es. 80' su 80')
+    if (e.sub_in_id) minutiMap[e.sub_in_id] = Math.max(1, fullMin - min);
+  });
+
+  const evMap = {};
+  eventi.forEach(e => {
+    const pid = e.principale_id;
+    if (pid) {
+      if (!evMap[pid]) evMap[pid] = { gol:0, assist:0, yellow:0, red:0 };
+      if (e.tipo === 'GOAL' && !e.autogol) evMap[pid].gol++;
+      if (e.tipo === 'YELLOW') evMap[pid].yellow++;
+      if (e.tipo === 'RED') evMap[pid].red++;
+    }
+    // assist è nel campo assist_id del GOAL (già mergiato al caricamento)
+    if (e.tipo === 'GOAL' && !e.autogol && e.assist_id) {
+      if (!evMap[e.assist_id]) evMap[e.assist_id] = { gol:0, assist:0, yellow:0, red:0 };
+      evMap[e.assist_id].assist++;
+    }
+  });
+
+  let valMap = {};
+  try {
+    const valRes = await apiFetch('/partite/' + mid + '/valutazioni');
+    (valRes.valutazioni || []).forEach(v => { valMap[v.calciatore_id] = v; });
+  } catch(e) {}
+
+  const votiOptions = Array.from({length:13}, (_,i) => 4 + i * 0.5);
+
+  const renderEventi = (id) => {
+    const ev = evMap[id];
+    if (!ev) return '';
+    let b = '';
+    if (ev.gol) b += '<span style="font-size:11px;">\u26bd' + (ev.gol>1?' x'+ev.gol:'') + '</span>';
+    if (ev.assist) b += '<span style="font-size:11px;">\ud83c\udd70\ufe0f' + (ev.assist>1?' x'+ev.assist:'') + '</span>';
+    if (ev.yellow) b += '<span style="font-size:11px;">\ud83d\udfe8</span>';
+    if (ev.red) b += '<span style="font-size:11px;">\ud83d\udfe5</span>';
+    return b ? '<span style="display:inline-flex;gap:3px;margin-left:4px;vertical-align:middle;">' + b + '</span>' : '';
+  };
+
+  const renderGiocatore = (g) => {
+    const id = g.calciatoreId;
+    const min = minutiMap[id] !== undefined ? minutiMap[id] : (titolariInizialiIds.has(id) ? fullMin : 0);
+    const ex = valMap[id] || {};
+    const disabled = min === 0;
+    const isSV = min > 0 && min < 5;
+    const defaultVal = ex.voto != null ? ex.voto : (isSV ? 'SV' : '');
+    const minBadge = min > 0
+      ? '<span style="font-size:10px;color:#888;background:#f0f0f0;padding:2px 5px;border-radius:8px;margin-left:4px;">\u23f1 ' + min + "'</span>"
+      : '<span style="font-size:10px;color:#bbb;background:#f8f8f8;padding:2px 5px;border-radius:8px;margin-left:4px;">non entrato</span>';
+    const cardStyle = disabled ? 'opacity:0.4;background:#fafafa;' : 'background:white;';
+    const selectStyle = disabled ? 'border-color:#ddd;color:#bbb;' : 'border-color:#667eea;color:#667eea;';
+    const notaVal = (ex.nota_allenatore||'').replace(/"/g,'&quot;');
+    const opzioni = votiOptions.map(v => '<option value="' + v + '"' + (ex.voto==v?' selected':'') + '>' + v.toString().replace('.',',') + '</option>').join('');
+    return '<div class="mc-val-card" style="' + cardStyle + '">'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-weight:600;font-size:13px;display:flex;align-items:center;flex-wrap:wrap;gap:2px;">'
+      + (g.cognome||'').toUpperCase() + ' ' + (g.nome||'') + minBadge + renderEventi(id)
+      + '</div>'
+      + '<input type="text" class="mc-val-note" placeholder="Note..." value="' + notaVal + '" data-nid="' + id + '" ' + (disabled?'disabled':'') + '>'
+      + '</div>'
+      + '<select class="mc-val-select" data-vid="' + id + '" style="' + selectStyle + '" ' + (disabled?'disabled':'') + '>'
+      + '<option value="">-</option>'
+      + '<option value="SV"' + (defaultVal==='SV'?' selected':'') + '>SV</option>'
+      + opzioni
+      + '</select>'
+      + '</div>';
+  };
+
+  const renderGruppo = (label, color, list) => {
+    if (!list.length) return '';
+    const vg = list.map(g => parseFloat(valMap[g.calciatoreId]?.voto)).filter(v => !isNaN(v) && v > 0);
+    const mg = vg.length ? ' \u00b7 <span style="color:#667eea;font-weight:600;">media ' + (vg.reduce((a,b)=>a+b,0)/vg.length).toFixed(1) + '</span>' : '';
+    return '<div style="font-size:11px;font-weight:700;color:' + color + ';text-transform:uppercase;letter-spacing:0.5px;padding:10px 0 6px;border-bottom:1px solid #f0f0f0;margin-bottom:8px;">' + label + mg + '</div>'
+      + list.map(renderGiocatore).join('');
+  };
+
+  // Titolari = iniziali che NON sono usciti (rimasti in campo per tutta la partita o ancora in campo)
+  // + titolari iniziali che sono usciti (hanno giocato ma sono stati sostituiti)
+  // In pratica: tutti i titolari iniziali (con il loro minutaggio reale)
+  const titolari = giocatori.filter(g => titolariInizialiIds.has(g.calciatoreId)).sort((a,b)=>(a.cognome||'').localeCompare(b.cognome||''));
+  // Subentrati = chi era riserva iniziale ed è entrato (ha minutaggio > 0)
+  const subentrati = giocatori.filter(g => riserveInizialiIds.has(g.calciatoreId) && entratiIds.has(g.calciatoreId)).sort((a,b)=>(a.cognome||'').localeCompare(b.cognome||''));
+  // Non entrati = riserve che non sono mai entrate
+  const nonEntrati = giocatori.filter(g => riserveInizialiIds.has(g.calciatoreId) && !entratiIds.has(g.calciatoreId)).sort((a,b)=>(a.cognome||'').localeCompare(b.cognome||''));
+
+  const votiSalvati = Object.values(valMap).map(v => parseFloat(v.voto)).filter(v => !isNaN(v) && v > 0);
+  const avgVal = votiSalvati.length ? (votiSalvati.reduce((a,b)=>a+b,0)/votiSalvati.length).toFixed(1) : '-';
+
+  panel.innerHTML = '<div class="mc-qa-card">'
+    + '<style>'
+    + '.mc-val-card{display:flex;align-items:flex-start;justify-content:space-between;padding:8px 10px;border-radius:10px;margin-bottom:6px;border:1px solid #eee;gap:8px;}'
+    + '.mc-val-select{padding:5px 8px;border:2px solid #667eea;border-radius:10px;font-weight:bold;font-size:14px;min-width:60px;text-align:center;flex-shrink:0;}'
+    + '.mc-val-select:disabled{cursor:not-allowed;}'
+    + '.mc-val-note{width:100%;padding:4px 8px;border:1px solid #eee;border-radius:6px;font-size:11px;margin-top:4px;box-sizing:border-box;}'
+    + '</style>'
+    + '<div style="text-align:center;padding:12px;background:linear-gradient(135deg,#667eea15,#764ba215);border-radius:12px;margin-bottom:14px;border:2px solid #667eea30;">'
+    + '<div id="mcValAvg" style="font-size:38px;font-weight:bold;color:#667eea;line-height:1;">' + avgVal + '</div>'
+    + '<div style="font-size:11px;color:#888;margin-top:3px;">media \u00b7 ' + votiSalvati.length + ' voti</div>'
+    + '</div>'
+    + (giocatori.length === 0 ? '<div style="text-align:center;color:#888;padding:24px;">Nessun giocatore disponibile</div>' : '')
+    + renderGruppo('\ud83d\udfe2 Titolari', '#27AE60', titolari)
+    + renderGruppo('\ud83d\udd35 Subentrati', '#3498DB', subentrati)
+    + renderGruppo('\u26aa Non entrati', '#aaa', nonEntrati)
+    + '<button class="btn btn-primary" id="mcValSave" style="width:100%;margin-top:12px;">\ud83d\udcbe Salva Valutazioni</button>'
+    + '</div>';
+
+  panel.querySelectorAll('.mc-val-select').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const voti = [...panel.querySelectorAll('.mc-val-select:not(:disabled)')].map(s => parseFloat(s.value)).filter(v => !isNaN(v));
+      document.getElementById('mcValAvg').textContent = voti.length ? (voti.reduce((a,b)=>a+b,0)/voti.length).toFixed(1) : '-';
+    });
+  });
+
+  document.getElementById('mcValSave')?.addEventListener('click', async () => {
+    const valutazioni = [];
+    panel.querySelectorAll('.mc-val-select:not(:disabled)').forEach(sel => {
+      if (!sel.value) return;
+      const pid = sel.dataset.vid;
+      const nota = panel.querySelector('[data-nid="'+pid+'"]')?.value || null;
+      valutazioni.push({ calciatore_id: pid, voto: sel.value === 'SV' ? null : parseFloat(sel.value), nota_allenatore: nota });
+    });
+    if (!valutazioni.length) { showToast('Nessun voto da salvare', 'warning'); return; }
+    try {
+      await apiFetch('/partite/'+mid+'/valutazioni', { method:'POST', body: JSON.stringify({ valutazioni }) });
+      valutazioni.forEach(v => { valMap[v.calciatore_id] = { voto: v.voto, nota_allenatore: v.nota_allenatore }; });
+      showToast('\u2b50 Valutazioni salvate!', 'success');
+    } catch(e) { showToast('Errore: '+e.message, 'error'); }
+  });
+}
 function bindImportPanel(mid) {
   document.getElementById('mcImportParse')?.addEventListener('click', () => {
-    const text = document.getElementById('mcImportText')?.value?.trim();
-    if (!text || text.length < 10) { alert('Incolla il tabellino prima di analizzare'); return; }
     const resultDiv = document.getElementById('mcImportResult');
     let parsedData;
     try {

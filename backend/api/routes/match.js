@@ -592,10 +592,13 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         return res.json(result);
       }
       // No formazione: verifica se convocazione è stata pubblicata
+      // Per staff autenticato (non guest): restituisce array vuoto con flag, non 403
+      const isGuest = req.user?.ruolo === 'guest';
       const { data: pubNotif } = await supabase.from('notification')
         .select('id').eq('tipo', 'convocazione').eq('riferimento_id', req.params.matchId).limit(1);
       if (!pubNotif || pubNotif.length === 0) {
-        return res.status(403).json({ error: 'NOT_PUBLISHED', message: 'Convocazione non ancora pubblicata' });
+        if (isGuest) return res.status(403).json({ error: 'NOT_PUBLISHED', message: 'Convocazione non ancora pubblicata' });
+        return res.json({ notPublished: true, data: [] });
       }
       res.json([]);
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -635,6 +638,38 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
         if (!error) inserite++;
       }
       res.json({ success: true, inserite });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // ── VALUTAZIONI ──
+
+  // GET /api/partite/:matchId/valutazioni
+  router.get('/api/partite/:matchId/valutazioni', authMiddleware, async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('valutazione_partita')
+        .select('calciatore_id, voto, nota_allenatore')
+        .eq('partita_id', req.params.matchId);
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ valutazioni: data || [] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  // POST /api/partite/:matchId/valutazioni — upsert batch
+  router.post('/api/partite/:matchId/valutazioni', authMiddleware, requirePermission('partite', 'write'), async (req, res) => {
+    try {
+      const { valutazioni } = req.body;
+      if (!Array.isArray(valutazioni) || valutazioni.length === 0)
+        return res.status(400).json({ error: 'Array valutazioni mancante' });
+      const rows = valutazioni.map(v => ({
+        partita_id: req.params.matchId,
+        calciatore_id: v.calciatore_id,
+        voto: v.voto,
+        nota_allenatore: v.nota_allenatore || null
+      }));
+      const { error } = await supabase.from('valutazione_partita')
+        .upsert(rows, { onConflict: 'partita_id,calciatore_id' });
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, salvate: rows.length });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 

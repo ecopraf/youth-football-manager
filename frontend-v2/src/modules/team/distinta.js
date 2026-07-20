@@ -33,8 +33,16 @@ export async function openDistinta(mid, staffOverrides) {
   try {
     let data = await apiFetch('/squadre/' + window.YFM.squadraId + '/partite/' + mid + '/distinta');
     
+    // Staff autenticato: backend restituisce {notPublished:true, data:[]} invece di 403
+    const notPublished = data && data.notPublished === true;
+    if (notPublished) data = [];
+    
     // Se non c'è formazione, usa i convocati (solo se pubblicati)
     if (!data || !Array.isArray(data) || data.length === 0) {
+      if (notPublished) {
+        // Convocazioni non pubblicate: distinta vuota con banner
+        data = { formazione: [], partita: null, staff: {} };
+      } else {
       // Carica convocati e rosa in parallelo
       const [convResp, rosa] = await Promise.all([
         apiFetch('/partite/' + mid + '/convocazioni').catch(() => []),
@@ -69,6 +77,7 @@ export async function openDistinta(mid, staffOverrides) {
         }));
       
       data = { formazione: formazioneDaConvocati, partita: null, staff: {} };
+      }
     }
     
     // Se data è un array (dalla formazione API), wrappalo
@@ -94,31 +103,12 @@ export async function openDistinta(mid, staffOverrides) {
     // Carica distinta_meta (assistente arbitro, ecc.)
     distintaMeta = await apiFetch('/partite/' + mid + '/distinta-meta').catch(() => ({}));
     renderDistinta(data, curStaff, distintaMeta, mid);
-  } catch (e) {
-    if (e.message === 'NOT_PUBLISHED') {
-      // Distinta vuota stampabile — carica comunque dati partita e meta
-      const match = window.YFM.allMatches?.find(m => m.id === mid);
-      const partita = match ? {
-        avversario: match.avversario,
-        dataOra: match.data_ora,
-        competizione: match.competizione || '',
-        giornata: match.giornata,
-        luogo: match.luogo,
-        indirizzo_campo: match.indirizzo_campo || null
-      } : { avversario: '...', dataOra: new Date().toISOString(), competizione: '', giornata: null, luogo: '', indirizzo_campo: null };
-      matchInfo = partita;
-      distintaMeta = await apiFetch('/partite/' + mid + '/distinta-meta').catch(() => ({}));
-      const emptyData = { formazione: [], partita, staff: {} };
-      curStaff = {};
-      renderDistinta(emptyData, curStaff, distintaMeta, mid);
-      // Aggiungi banner informativo sopra la distinta
+    if (notPublished) {
       const inner = document.getElementById('distintaInner');
-      if (inner) {
-        inner.insertAdjacentHTML('afterbegin', '<div class="no-print-banner" style="background:#FFF3CD;border:1px solid #FFEAA7;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;"><span style="font-size:20px;">⚠️</span><div><strong style="font-size:13px;">Convocazioni non pubblicate</strong><br><span style="font-size:12px;color:#666;">La distinta è vuota. Pubblica le convocazioni per popolarla automaticamente.</span></div></div>');
-      }
-    } else {
-      document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Nessun convocato per questa partita. Salva prima le convocazioni.</div>';
+      if (inner) inner.insertAdjacentHTML('afterbegin', '<div class="no-print-banner" style="background:#FFF3CD;border:1px solid #FFEAA7;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;"><span style="font-size:20px;">⚠️</span><div><strong style="font-size:13px;">Convocazioni non pubblicate</strong><br><span style="font-size:12px;color:#666;">La distinta è vuota. Pubblica le convocazioni per popolarla automaticamente.</span></div></div>');
     }
+  } catch (e) {
+    document.getElementById('distintaInner').innerHTML = '<div class="error-box">⚠️ Nessun convocato per questa partita. Salva prima le convocazioni.</div>';
   }
   
   document.getElementById('printBtn').addEventListener('click', async () => {
@@ -145,97 +135,6 @@ export async function openDistinta(mid, staffOverrides) {
   
   document.getElementById('staffBtn').addEventListener('click', () => openStaffForm(mid, curStaff, matchInfo, distintaMeta));
   
-}
-
-async function openValutazioniForm(mid) {
-  const content = '<div id="valutazioniInner"><div class="loading"><div class="spinner"></div>Caricamento...</div></div>';
-  const footer = '<button class="btn btn-secondary" id="modalCancel">Annulla</button><button class="btn btn-primary" id="saveValutazioniBtn">💾 Salva</button>';
-  const modal = createModal('⭐ Valutazioni Giocatori', content, footer, '700px');
-  
-  try {
-    const [partitaRes, valutazioniRes] = await Promise.all([
-      apiFetch('/partite/' + mid),
-      apiFetch('/partite/' + mid + '/valutazioni').catch(() => ({ valutazioni: [] }))
-    ]);
-    
-    const formazioneRes = await apiFetch('/partite/' + mid + '/formazione');
-    const formazione = formazioneRes.formazione || [];
-    
-    // Crea mappa valutazioni esistenti
-    const existingVotes = {};
-    (valutazioniRes.valutazioni || []).forEach(v => {
-      existingVotes[v.calciatore_id] = v;
-    });
-    
-    // Genera HTML con voti selezionabili
-    let html = '<style>';
-    html += '.val-card{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f8f9fa;border-radius:10px;margin-bottom:8px;border:1px solid #eee;}';
-    html += '.val-card:hover{border-color:#667eea;}';
-    html += '.val-player{font-weight:600;font-size:14px;flex:1;}';
-    html += '.val-number{font-size:20px;font-weight:bold;color:#667eea;min-width:40px;text-align:center;}';
-    html += '.vote-select{padding:8px 12px;font-size:16px;border:2px solid #667eea;border-radius:8px;background:white;cursor:pointer;min-width:70px;text-align:center;}';
-    html += '.vote-select:focus{outline:none;border-color:#764ba2;}';
-    html += '.note-input{width:100%;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;margin-top:6px;}';
-    html += '</style>';
-    html += '<p style="margin-bottom:16px;color:#666;font-size:13px;">Assegna un voto da 1 a 10 per ogni giocatore della formazione.</p>';
-    html += '<div id="valutazioniList">';
-    
-    formazione.forEach((g, idx) => {
-      const existing = existingVotes[g.id] || {};
-      const currentVoto = existing.voto || '';
-      const currentNota = existing.nota_allenatore || '';
-      
-      html += '<div class="val-card" data-player-id="' + g.id + '">';
-      html += '<div style="flex:1;">';
-      html += '<div class="val-player">' + (g.cognome || '').toUpperCase() + ' ' + (g.nome || '') + '</div>';
-      html += '<input type="text" class="note-input" placeholder="Note (opzionale)" value="' + currentNota + '" data-nota-id="' + g.id + '">';
-      html += '</div>';
-      html += '<select class="vote-select" data-voto-id="' + g.id + '">';
-      html += '<option value="">-</option>';
-      for (let v = 4; v <= 10; v += 0.5) {
-        html += '<option value="' + v + '"' + (currentVoto == v ? ' selected' : '') + '>' + v.toString().replace('.', ',') + '</option>';
-      }
-      html += '</select>';
-      html += '</div>';
-    });
-    
-    html += '</div>';
-    
-    document.getElementById('valutazioniInner').innerHTML = html;
-    
-    // Salva valutazioni
-    document.getElementById('saveValutazioniBtn').addEventListener('click', async () => {
-      const valutazioni = [];
-      document.querySelectorAll('.vote-select').forEach(sel => {
-        const playerId = sel.dataset.votoId;
-        const voto = sel.value;
-        const nota = document.querySelector('[data-nota-id="' + playerId + '"]').value;
-        if (voto) {
-          valutazioni.push({
-            calciatore_id: playerId,
-            voto: parseFloat(voto),
-            nota_allenatore: nota || null
-          });
-        }
-      });
-      
-      showLoading();
-      try {
-        await apiFetch('/partite/' + mid + '/valutazioni', {
-          method: 'POST',
-          body: JSON.stringify({ valutazioni })
-        });
-        modal.close();
-        alert('✅ Valutazioni salvate!');
-      } catch (e) {
-        alert('Errore: ' + e.message);
-      } finally {
-        hideLoading();
-      }
-    });
-  } catch (err) {
-    document.getElementById('valutazioniInner').innerHTML = '<div class="error-box">Errore: ' + err.message + '</div>';
-  }
 }
 
 function renderDistinta(d, staff, meta, mid) {

@@ -145,9 +145,10 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 6.1a | Backend: aggiungere endpoint `GET+POST /partite/:id/valutazioni` (legge/scrive su `valutazione_partita`) | ⬜ | — | routes/match.js o statistics.js | ~8min |
-| 6.1b | Match Center: aggiungere tab "⭐ Valutazioni" (visibile solo se partita Terminata), riusa logica `valutazioni.js` | ⬜ | 6.1a | modules/team/matchCenter.js, modules/team/valutazioni.js | ~10min |
-| 6.1c | Distinta: rimuovere bottone "Valutazioni" (spostato nel MC) | ⬜ | 6.1b | modules/team/distinta.js | ~3min |
+| 6.1a | Backend: aggiungere endpoint `GET+POST /partite/:id/valutazioni` (legge/scrive su `valutazione_partita`) | ✅ | — | routes/match.js | ~8min |
+| 6.1b | Match Center: aggiungere tab "⭐ Valutazioni" (visibile solo se partita Terminata), riusa logica `valutazioni.js` | ✅ | 6.1a | modules/team/matchCenter.js | ~10min |
+| 6.1c | Distinta: rimuovere funzione `openValutazioniForm` (dead code, spostata nel MC) | ✅ | 6.1b | modules/team/distinta.js | ~3min |
+| 6.1d | Fix valutazioni: gruppi titolari/subentrati, minutaggio categoria, assist, SV corner case, tab mobile emoji+label | ✅ | 6.1b | modules/team/matchCenter.js | ~30min |
 | 6.2 | Report presenze allenamenti (stampabile) | ✅ | — | modules/print/printPresenze.js, router.js, printCenter.js | ~10min |
 | 6.3 | Import_log: aggiungere `durata_import`, `warnings` | ⬜ | — | migrazione SQL + routes/ | ~5min |
 | 6.4 | Document: aggiungere colonna `cartella` | ⬜ | — | migrazione SQL | ~3min |
@@ -1276,14 +1277,14 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Severità | Descrizione | File |
 |----------|-------------|------|
-| Minore | Valutazioni giocatore: UI incompleta | valutazioni.js |
-
+| — | Nessun bug noto al momento | — |
 ---
 
 ## 7. Changelog Recente
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.82 | feat: tab Valutazioni nel Match Center — gruppi Titolari/Subentrati/Non entrati, minutaggio da getHalfDuration() (U16=80'), assist da e.assist_id (GOAL mergiato), SV per <5min e corner case sub all'ultimo minuto (Math.max(1,...)), formazioneIniziale per gruppi corretti, showToast locale, voto nullable in DB. fix: tab MC mobile emoji+label abbreviata (flex:1, no scroll), header MC mobile (flex:1, word-break), overflow-x:clip su .content (permette scroll figli) |
 | v3.16.81 | fix: guestLinks — loadGuestLinks non chiamava loadData() (griglia sempre vuota), rimosso riferimento a #linksTableBody (vecchio DOM) nel catch |
 | v3.16.80 | fix: kit modale assegnazione — articolo con sostituzione `in_attesa` mostrato con sfondo grigio + icona 🔄 + badge "in attesa sostituzione" invece di ✅ verde (Santangelo Tuta rappresentanza) |
 | v3.16.79 | fix: kit assegnazioni — conteggio `assigned` sottraeva sostituzioni `in_attesa` (assignedEff = assigned - sostPendenti); badge 🔧 nella riga giocatore se sostituzione pendente. feat: kit layout accordion — 3 card header affiancate (Assegnazioni/Magazzino/Ordini) con summary numerico real-time via `summaryOnly=true`; card multi-riga `updateSezCard(lines[])`; card Ordini righe separate da ordinare/in attesa fornitore; card Assegnazioni riga sostituzioni in attesa. docs: helpData kit aggiornato (PAGE_HELP + ELEMENT_HELP + data-help sulle 3 card) |

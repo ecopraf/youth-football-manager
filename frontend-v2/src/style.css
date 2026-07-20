@@ -204,7 +204,7 @@ body {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
   .main { margin-left: 0; width: 100%; overflow-x: hidden; }
-  .content { padding: 16px; max-width: 100vw; overflow-x: hidden; }
+  .content { padding: 16px; max-width: 100vw; overflow-x: clip; }
   .grid-2 { grid-template-columns: 1fr; }
   .header { padding: 0 8px; gap: 2px; overflow: hidden; }
   .header-right { gap: 4px !important; min-width: 0; flex-shrink: 1; }
