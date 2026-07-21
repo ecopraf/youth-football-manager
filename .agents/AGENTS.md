@@ -59,7 +59,7 @@ git status
 | **Deploy** | Vercel (auto su push a main) |
 | **PWA** | Installabile (vite-plugin-pwa, Workbox precache, registerSW autoUpdate). Offline: solo asset statici. Offline-first API cache: EPIC 15 (planned). |
 | **Auth** | JWT + capabilities granulari per modulo (rosa, partite, formazione, allenamenti, statistiche, guest_links, import, report, quote, tesseramento). Livelli: `''` (nessuno), `'read'`, `'write'`. Admin/superadmin bypassano. Allenatore usa capabilities dal profilo (fallback legacy: tutto se nessun permesso). `quote` e `tesseramento` visibili solo per admin e segreteria (write), allenatore/dirigente (read). |
-| **Guest** | JWT guest (24h). Login risolve team_id + player_name. Tipo: `atleta` (home personale) o `genitore` (home squadra). Capabilities differenziate per tipo. |
+| **Guest** | JWT guest (24h). Login risolve team_id + player_name. Tipo: `famiglia` (home personale con quote/tesseramento, ha `player_id`) o `ospite` (solo partite/risultati, link di cortesia). Capabilities differenziate per tipo. |
 | **Notifiche** | Badge 🔔 aggiornato al login + polling 60s + cambio squadra. Centro Comunicazioni con tabs (📤 Inviate + 📥 Ricevute). Inviate: avvisi/convocazioni creati dall'utente (edit/delete). Ricevute: assenze + indisponibilità convocati (read-only + 💬 Rispondi). Convocazioni: salva separato da pubblica (notifica solo su Pubblica). |
 | **Help** | Sistema help interattivo contestuale (PageHelp.js + helpData.js) |
 
@@ -94,30 +94,107 @@ api/
 │   ├── dbErrors.js             — Traduzione errori DB (duplicate key → messaggi IT)
 │   ├── capabilities.js         — Profili/capabilities utente (mirror CommonJS)
 │   └── teamAccess.js           — Validazione accesso team (team→category resolution)
-└── routes/ (20 router)
+└── routes/ (23 router)
     ├── auth.js                 — Login, register, users CRUD, guest (batch delete/renew)
+                                  `POST /api/auth/login` `POST /api/auth/logout` `GET /api/auth/me` `PUT /api/auth/profile`
+                                  `POST /api/auth/register` `GET /api/auth/users` `GET|PUT|DELETE /api/auth/users/:id` `PUT /api/auth/users/:id/toggle-active`
+                                  `GET /api/auth/guest-links` `POST /api/auth/guest-link` `DELETE /api/auth/guest-link/:token` `DELETE /api/auth/guest-links-batch` `POST /api/auth/guest-links-renew`
+                                  `GET /api/guest/:token` `GET|PUT /api/users/preferences`
     ├── workspace.js            — Workspace (nome/logo/nome_breve), workspace_anagrafica (dati societari), facility, stagioni, categorie, migrazione
+                                  `GET /api/auth/workspaces` `GET /api/workspaces` `GET|PUT /api/workspaces/:id` `PUT /api/workspaces/:id/logo` `PUT /api/workspaces/:id/anagrafica` `GET /api/workspaces/:id/recap`
+                                  `GET|POST /api/workspaces/:id/stagioni` `GET /api/workspaces/:id/stagioni/:seasonId/teams` `POST /api/stagioni/:id/migra`
+                                  `GET|POST /api/workspaces/:id/categorie` `DELETE /api/categorie/:id`
+                                  `GET|POST /api/workspaces/:id/facility` `GET|PUT /api/workspaces/:id/staff` `POST /api/workspaces/:id/staff/migrate`
+                                  `GET /api/staff/:id` `GET /api/logos` `GET /api/teams/search`
     ├── team.js                 — Squadre CRUD, PUT stagioni, POST categorie/:catId/team
+                                  `GET|POST /api/squadre` `GET|PUT|DELETE /api/squadre/:id` `GET|PUT /api/stagioni/:id` `GET /api/stagioni/:id/squadre` `POST /api/categorie/:catId/team` `GET /api/stagioni`
     ├── training.js             — Config, presenze, templates, programma, allenamenti-futuri
+                                  `GET|PUT /api/squadre/:squadraId/allenamenti/config` `DELETE /api/allenamenti/config/:id`
+                                  `GET|POST /api/squadre/:squadraId/allenamenti/presenze` `POST /api/squadre/:squadraId/allenamenti/presenze-batch`
+                                  `GET|POST /api/squadre/:squadraId/training-templates` `GET|PUT|DELETE /api/training-templates/:id` `GET /api/squadre/:squadraId/training-by-date` `GET|PUT /api/squadre/:squadraId/training-by-date/:date`
+                                  `GET /api/squadre/:squadraId/allenamenti/summary` `GET /api/squadre/:squadraId/allenamenti-futuri` `GET /api/squadre/:squadraId/allenamenti/annullati`
+                                  `POST /api/training/:id/annulla` `POST /api/training/:id/ripristina` `GET|PUT /api/training/:trainingId/programma`
+                                  `GET|POST /api/squadre/:squadraId/allenamenti/materiale` `DELETE /api/allenamenti/materiale/:id` `GET /api/squadre/:teamId/assenze-settimana`
     ├── match.js                — Partite CRUD, convocazioni, formazione, eventi, live-action
+                                  `GET /api/squadre/:squadraId/partite` `GET /api/squadre/:squadraId/partite-all` `GET /api/squadre/:squadraId/partite-future`
+                                  `GET|PUT|DELETE /api/partite/:id` `POST /api/squadre/:squadraId/importa-calendario`
+                                  `GET|PUT /api/partite/:matchId/dettaglio` `PUT /api/partite/:matchId/distinta-meta` `PUT /api/partite/:id/note`
+                                  `POST /api/partite/:id/archivia` `POST /api/partite/:id/sblocca` `POST /api/partite/:id/live-action`
+                                  `GET|POST /api/partite/:matchId/convocazioni` `POST /api/partite/:matchId/convocazioni-batch` `POST /api/partite/:matchId/convocazioni-pubblica`
+                                  `GET /api/partite/:matchId/convocazioni-stato` `PUT /api/partite/:matchId/convocazioni/:convId/risposta`
+                                  `GET /api/squadre/:squadraId/partite/:matchId/convocati` `GET /api/squadre/:squadraId/partite/:matchId/distinta`
+                                  `GET|POST /api/squadre/:squadraId/partite/:matchId/formazione` `GET|PUT /api/partite/:matchId/formazione`
+                                  `GET|POST /api/squadre/:squadraId/partite/:matchId/eventi` `POST /api/partite/:matchId/eventi-batch` `POST /api/partite/:matchId/evento-item`
+                                  `GET|POST /api/partite/:matchId/valutazioni` `GET /api/squadre/:teamId/ultima-formazione`
     ├── staff.js                — Staff completo per distinta
+                                  `GET /api/squadre/:squadraId/staff-completo`
     ├── admin.js                — Migrazioni schema DB
     ├── statistics.js           — Statistiche complete, top players, report partita/stagionale/giocatore
+                                  `GET /api/squadre/:id/statistiche-complete` `GET /api/squadre/:id/stats-charts` `GET /api/squadre/:id/top-players` `GET /api/squadre/:id/valutazioni-top`
+                                  `GET /api/squadre/:id/classifica` `GET /api/squadre/:id/competitions` `GET /api/squadre/:squadraId/stats-giocatori`
+                                  `GET /api/partite/:matchId/report` `GET /api/squadre/:squadraId/report-stagionale` `GET /api/calciatori/:playerId/report`
+                                  `GET /api/squadre/:id/print-center-status`
     ├── player.js               — Calciatori CRUD, scadenze, career, career-matches, last-matches, injuries, move
+                                  `GET /api/squadre/:squadraId/calciatori` `GET|PUT|DELETE /api/squadre/:squadraId/calciatori/:id` `PUT /api/squadre/:squadraId/calciatori/:tpId/ruolo-capitano`
+                                  `GET|PUT /api/calciatori/:id` `GET /api/calciatori/:id/career` `GET /api/calciatori/:id/career-matches` `GET /api/calciatori/:id/last-matches`
+                                  `GET /api/squadre/:squadraId/scadenze-mediche`
+                                  `POST /api/squadre/:squadraId/svincola` `POST /api/squadre/:squadraId/riattiva` `POST /api/squadre/:squadraId/recupera` `GET /api/squadre/:squadraId/svincolati-workspace`
+                                  `POST /api/squadre/:squadraId/aggrega` `POST /api/squadre/:squadraId/disaggrega` `GET /api/squadre/:squadraId/aggregabili`
+                                  `GET|POST /api/injuries` `GET|PUT|DELETE /api/injuries/:id` `GET /api/players/:playerId/injuries` `GET /api/squadre/:teamId/injuries`
+                                  `GET /api/giocatori/:id/valutazioni`
     ├── roster.js               — Import rosa XLS/Tuttocampo
+                                  `POST /api/roster/parse-xls` `POST /api/roster/import-xls`
+                                  `POST /api/roster/scrape-tuttocampo` `POST /api/roster/parse-html-tuttocampo` `POST /api/roster/parse-text-tuttocampo` `POST /api/roster/import-tuttocampo`
     ├── importCalendario.js     — PDF, testo SGS, import-log
+                                  `POST /api/calendario/parse-pdf` `POST /api/calendario/parse-text` `POST /api/calendario/extract` `POST /api/calendario/import` `GET /api/import-log`
     ├── importTuttocampo.js     — Scraping calendario TC, eventi, loghi automatici
+                                  `POST /api/calendario/import-tuttocampo` `GET /api/partite/:matchId/eventi-tuttocampo` `POST /api/partite/:matchId/import-eventi-tuttocampo`
     ├── importConfirm.js        — Confirm TC, formations batch, matches-without-formation
+                                  `POST /api/calendario/confirm-tuttocampo` `POST /api/import-formations-batch` `GET /api/matches-without-formation`
     ├── gazzettaRegionale.js    — Classifica, calendario, marcatori, loghi da GR API, wizard loghi
+                                  `GET /api/gr/levels` `GET /api/gr/championships/:levelId` `GET /api/gr/groups/:levelId/:championshipId` `GET /api/gr/preview/:levelId/:championshipId/:groupId`
+                                  `GET /api/gr/classifica/:teamId` `GET /api/gr/calendario/:teamId` `GET /api/gr/marcatori/:teamId`
+                                  `POST /api/gr/import-calendario/:teamId` `POST /api/gr/import-loghi/:teamId` `PUT /api/gr/configure`
+                                  `POST /api/gr/match-events/preview` `POST /api/gr/match-events/import`
+                                  `POST /api/gr/logos-wizard` `POST /api/gr/logos-confirm` `GET /api/gr/logos-pending`
     ├── absence.js              — Segnalazione assenze atleti (notifiche, storico, motivi)
+                                  `GET /api/absence/motivi` `POST /api/absence` `GET /api/absence/player/:playerId`
+                                  `GET /api/absence/team/:teamId` `GET /api/absence/team/:teamId/week` `GET /api/absence/unread/:teamId`
+                                  `PUT /api/absence/:id/read` `POST /api/absence/read-all/:teamId`
     ├── notification.js         — Comunicazioni in-app (convocazioni, avvisi, solleciti), conferme lettura, sollecito-certificato
+                                  `GET /api/notifications/team/:teamId` `GET /api/notifications/unread` `POST /api/notifications` `DELETE /api/notifications-batch`
+                                  `PUT /api/notifications/:id/read` `POST /api/notifications/read-all` `POST /api/notifications/guest-read`
+                                  `GET|DELETE /api/notifications/:id` `GET /api/notifications/:id/receipts` `POST /api/notifications/reply`
+                                  `POST /api/notifications/sollecito-certificato`
     ├── dashboard.js            — Endpoint aggregato dashboard (stats+top+partite+allenamenti+injuries+certificati)
+                                  `GET /api/squadre/:id/dashboard`
     ├── fees.js                 — Fee config CRUD, quote generate, installments, pagamenti, rigenera batch
-    ├── kit.js                  — Kit templates CRUD, stock generate/restock, assignments singoli e batch, bundle model (GET /kit-bundles, PUT /kit-bundles/segna-arrivati, DELETE /kit-bundles/:id), batch-assign con pezzi_in_attesa, stato parziale. GET /kit-assignments restituisce {players, staff} (staff cross-categoria). batch-assign accetta is_staff+staff_id, azzera da_ordinare_kit per giocatori E staff. POST /kit-evadi-ordine (tipo kit: crea bundle+stock+assegna, azzera da_ordinare_kit; tipo pezzi: rimuove da pezzi_in_attesa, crea stock, assegna)
+                                  `GET /api/fee-configs` `POST /api/fee-configs` `PUT /api/fee-configs/:id` `DELETE /api/fee-configs/:id`
+                                  `POST /api/fee-configs/:id/rigenera` `PUT /api/fee-configs/:id/payment-info`
+                                  `GET /api/fees` `POST /api/fees-generate` `DELETE /api/fees/:id` `DELETE /api/fees-batch`
+                                  `POST /api/fees/notify` `GET /api/fees/guest`
+                                  `PUT /api/fee-installments/:id/pay` `PUT /api/fee-installments/:id/unpay`
+                                  `POST /api/fee-installments/:id/upload-ricevuta` `GET /api/fee-installments/:id/ricevuta` `PUT /api/fee-installments/:id/conferma-pagamento`
+    ├── kit.js                  — Kit templates CRUD, stock generate/restock, assignments singoli e batch, bundle model, flusso ordine evaso
+                                  `GET|POST /api/kit-templates` `GET|PUT|DELETE /api/kit-templates/:id`
+                                  `GET /api/kit-stock` `POST /api/kit-stock/generate` `POST /api/kit-stock/restock`
+                                  `GET /api/kit-bundles` `PUT /api/kit-bundles/segna-arrivati` `DELETE /api/kit-bundles/:id`
+                                  `GET /api/kit-assignments` `POST /api/kit-assignments` `DELETE /api/kit-assignments/:id` `POST /api/kit-assignments/:id/sostituisci`
+                                  `POST /api/kit-assignments-batch` `GET /api/kit-da-ordinare` `POST /api/kit-evadi-ordine`
+                                  GET /kit-assignments restituisce {players, staff} (staff cross-categoria). batch-assign accetta is_staff+staff_id, azzera da_ordinare_kit per giocatori E staff.
     ├── checklist.js            — Checklist stagione: template per workspace, CRUD per player/team, generazione batch
+                                  `GET|PUT /api/checklist-template` `GET|PUT /api/checklist/:playerId` `POST /api/checklist/:playerId/sync`
+                                  `GET /api/checklist` `POST /api/checklist-generate`
     ├── clubOperations.js       — Endpoint aggregato /api/club-operations/summary (quote+kit+checklist+certificati)
+                                  `GET /api/club-operations/summary`
     ├── registration.js         — Tesseramento: template CRUD, registrations CRUD/batch, sollecito documenti, auto-check certificato
+                                  `GET|PUT /api/workspaces/:id/registration-template`
+                                  `GET /api/squadre/:teamId/registrations` `POST /api/registrations` `GET|PUT|DELETE /api/registrations/:id`
+                                  `POST /api/squadre/:teamId/registrations-batch` `DELETE /api/squadre/:teamId/registrations-batch`
+                                  `GET /api/registrations/player/:playerId` `PUT /api/registrations/player/:playerId/anagrafica`
+                                  `POST /api/registrations/:id/sollecito`
     └── tournament.js           — Tornei CRUD (disabilitato in sidebar)
+                                  `GET|POST /api/tornei` `GET|PUT|DELETE /api/tornei/:id`
 ```
 
 ### Script Utility
@@ -161,8 +238,8 @@ frontend-v2/src/
     ├── auth/
     │   ├── login.js           — Login page
     │   ├── guest.js           — Guest view (routing differenziato per tipo)
-    │   ├── guestAtleta.js     — Home atleta (stats, allenamenti, partite, assenze)
-    │   ├── guestGenitore.js   — Home genitore (comunicazioni, partite, risultati)
+    │   ├── guestAtleta.js     — Home Famiglia (tipo=famiglia: stats, allenamenti, partite, assenze, quote, tesseramento)
+    │   ├── guestGenitore.js   — Home Ospite (tipo=ospite: solo partite/risultati pubblici, niente quote)
     │   └── absence.js         — Segnalazione assenza (guest)
     ├── admin/
     │   ├── users.js           — Gestione utenti
@@ -625,8 +702,8 @@ Tutte le variabili globali disponibili nel frontend dopo il login e la selezione
 |-----------|------|-------------|
 | `window.YFM.guestToken` | String | Token guest corrente |
 | `window.YFM.guestTeamId` | UUID | team_id per guest (auto-selezionato) |
-| `window.YFM.guestPlayerId` | UUID | player_id (solo tipo atleta) |
-| `window.YFM.guestPlayerName` | String | Nome giocatore (solo tipo atleta) |
+| `window.YFM.guestPlayerId` | UUID | player_id (solo tipo `famiglia`) |
+| `window.YFM.guestPlayerName` | String | Nome giocatore (solo tipo `famiglia`) |
 | `window.YFM.guestSquadreAccesso` | Array | category_id accessibili |
 
 ### Preferenze utente (settate in `modules/team/dashboard.js`)

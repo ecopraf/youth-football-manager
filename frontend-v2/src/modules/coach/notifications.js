@@ -19,9 +19,9 @@ export default async function loadNotifications() {
 
 function renderPage(c, absences, comms, teamId) {
   const userId = window.YFM.getUser()?.id;
-  const sent = comms.filter(n => n.created_by === userId && n.titolo !== '⚠️ Convocato indisponibile');
+  const sent = comms.filter(n => n.tipo !== 'ricevuta_caricata' && n.created_by === userId && n.titolo !== '⚠️ Convocato indisponibile');
   const indisponibili = comms.filter(n => n.titolo === '⚠️ Convocato indisponibile');
-  const received = comms.filter(n => n.created_by !== userId && n.titolo !== '⚠️ Convocato indisponibile');
+  const received = comms.filter(n => n.tipo === 'ricevuta_caricata' || (n.created_by !== userId && n.titolo !== '⚠️ Convocato indisponibile'));
   const unreadAbs = absences.filter(n => !n.letto).length + indisponibili.filter(n => !n.letto).length + received.filter(n => !n.letto).length;
   const unreadComms = sent.filter(n => !n.letto).length;
 
@@ -142,6 +142,77 @@ function renderPage(c, absences, comms, teamId) {
     });
   });
 
+  // Conferma ricevuta
+  c.querySelectorAll('[data-conferma-ricevuta]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const instId = btn.dataset.confermaRicevuta;
+      const notifId = btn.dataset.notifId;
+      showConfirmModal('Confermare il pagamento di questa rata?', async () => {
+        btn.disabled = true;
+        btn.textContent = '⏳';
+        await apiFetch(`/fee-installments/${instId}/conferma-pagamento`, { method: 'PUT', body: JSON.stringify({ azione: 'conferma' }) });
+        if (notifId) await apiFetch('/notifications/' + notifId + '/read', { method: 'PUT' }).catch(() => {});
+        if (window.showToast) window.showToast('✅ Pagamento confermato', 'success');
+        updateNotifBadge(teamId);
+        loadNotifications();
+      });
+    });
+  });
+
+  // Rifiuta ricevuta
+  c.querySelectorAll('[data-rifiuta-ricevuta]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const instId = btn.dataset.rifiutaRicevuta;
+      const notifId = btn.dataset.notifId;
+      showConfirmModal('Rifiutare la ricevuta? La famiglia riceverà una notifica per ricaricarla.', async () => {
+        btn.disabled = true;
+        btn.textContent = '⏳';
+        await apiFetch(`/fee-installments/${instId}/conferma-pagamento`, { method: 'PUT', body: JSON.stringify({ azione: 'rifiuta' }) });
+        if (notifId) await apiFetch('/notifications/' + notifId + '/read', { method: 'PUT' }).catch(() => {});
+        if (window.showToast) window.showToast('❌ Ricevuta rifiutata — notifica inviata alla famiglia', 'info');
+        updateNotifBadge(teamId);
+        loadNotifications();
+      });
+    });
+  });
+
+  // Preview ricevuta
+  c.querySelectorAll('[data-preview-ricevuta]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const instId = btn.dataset.previewRicevuta;
+      btn.disabled = true;
+      btn.textContent = '⏳';
+      try {
+        const result = await apiFetch(`/fee-installments/${instId}/ricevuta`);
+        btn.disabled = false;
+        btn.textContent = '👁 Vedi';
+        const url = result?.url;
+        if (!url) { if (window.showToast) window.showToast('Nessuna ricevuta trovata', 'error'); return; }
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:3000;display:flex;align-items:center;justify-content:center;';
+        const isPdf = url.includes('.pdf') || url.includes('pdf');
+        overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:16px;max-width:90vw;max-height:90vh;display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:700;">📎 Ricevuta</span>
+            <button id="closePreview" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
+          </div>
+          ${isPdf
+            ? `<iframe src="${url}" style="width:70vw;height:70vh;border:none;border-radius:8px;"></iframe>`
+            : `<img src="${url}" style="max-width:70vw;max-height:70vh;border-radius:8px;object-fit:contain;">`
+          }
+          <a href="${url}" target="_blank" style="text-align:center;font-size:12px;color:#667eea;">🔗 Apri in nuova scheda</a>
+        </div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('#closePreview').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      } catch(err) {
+        btn.disabled = false;
+        btn.textContent = '👁 Vedi';
+        if (window.showToast) window.showToast('Errore caricamento ricevuta: ' + (err.message || ''), 'error');
+      }
+    });
+  });
+
   // Mark all absences read
   document.getElementById('markAllAbsRead')?.addEventListener('click', async () => {
     await apiFetch('/absence/read-all/' + teamId, { method: 'PUT' });
@@ -183,9 +254,8 @@ function renderCommCard(n, isRead) {
   const actionBtn = n.tipo === 'convocazione' && n.riferimento_id
     ? `<button class="notif-action" data-open-conv="${n.riferimento_id}" data-notif-id="${n.id}">📄 Apri</button>`
     : '';
-  const markBtn = isRead
-    ? '<div class="notif-done">✓</div>'
-    : `<button class="notif-mark" data-mark-comm="${n.id}" title="Segna come letta">○</button>`;
+  // Per le notifiche inviate: nessuna spunta verde (lo stato lettura è in receiptsBtn)
+  const markBtn = isRead ? '' : `<button class="notif-mark" data-mark-comm="${n.id}" title="Segna come letta">○</button>`;
   const isIndividual = !!n.destinatario_player_id;
   const hasAtleti = n.destinatario_tipo && n.destinatario_tipo.includes('atleta');
   const lettoDa = n.letto_da || {};
@@ -263,8 +333,29 @@ function renderRicevutaCard(item, isRead) {
     </div>`;
   }
 
-  // Indisponibilità convocazione o altra notifica ricevuta
+  // Ricevuta caricata dalla famiglia
   const n = item.data;
+  if (n.tipo === 'ricevuta_caricata') {
+    const markBtn = isRead
+      ? '<div class="notif-done">✓</div>'
+      : `<button class="notif-mark" data-mark-comm="${n.id}" title="Segna come letta">○</button>`;
+    const actionBtns = !isRead && n.riferimento_id ? `
+      <button class="notif-action" style="background:#27AE60;font-size:10px;padding:4px 8px;" data-conferma-ricevuta="${n.riferimento_id}" data-notif-id="${n.id}">✅ Conferma</button>
+      <button class="notif-action" style="background:#E74C3C;font-size:10px;padding:4px 8px;" data-rifiuta-ricevuta="${n.riferimento_id}" data-notif-id="${n.id}">❌ Rifiuta</button>
+      <button class="notif-action" style="background:#667eea;font-size:10px;padding:4px 8px;" data-preview-ricevuta="${n.riferimento_id}" data-notif-id="${n.id}">👁 Vedi</button>` : '';
+    return `<div class="notif-card ${isRead ? 'read' : ''}" style="border-left-color:#F39C12;">
+      <div class="notif-avatar" style="background:linear-gradient(135deg,#F39C12,#e67e22);">📎</div>
+      <div class="notif-body">
+        <div class="notif-name">${n.titolo || '📎 Ricevuta caricata'}</div>
+        <div class="notif-meta">${timeAgo(n.created_at)}</div>
+        ${n.messaggio ? `<div class="notif-msg">${n.messaggio}</div>` : ''}
+        ${actionBtns ? `<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">${actionBtns}</div>` : ''}
+      </div>
+      ${markBtn}
+    </div>`;
+  }
+
+  // Indisponibilità convocazione o altra notifica ricevuta
   const markBtn = isRead
     ? '<div class="notif-done">✓</div>'
     : `<button class="notif-mark" data-mark-comm="${n.id}" title="Segna come letta">○</button>`;
@@ -295,7 +386,7 @@ function timeAgo(dateStr) {
 export async function updateNotifBadge(teamId) {
   try {
     const guestSession = sessionStorage.getItem('yfm_guest');
-    if (guestSession) {
+    if (guestSession && !localStorage.getItem('yfm_token')) {
       try { const g = JSON.parse(guestSession); if (g.tipo !== 'famiglia') return; } catch(e) {}
     }
     const tid = teamId || window.YFM.squadraId;
@@ -530,4 +621,20 @@ function showEditCommModal(id, titolo, messaggio, priorita) {
       btn.disabled = false;
     }
   });
+}
+
+function showConfirmModal(message, onConfirm) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:340px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="font-size:15px;font-weight:600;margin-bottom:20px;line-height:1.4;">${message}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button id="cmCancel" style="padding:8px 16px;border:1px solid #ddd;border-radius:8px;background:white;cursor:pointer;font-size:13px;">Annulla</button>
+      <button id="cmConfirm" style="padding:8px 16px;border:none;border-radius:8px;background:#667eea;color:white;cursor:pointer;font-size:13px;font-weight:600;">Conferma</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#cmCancel').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#cmConfirm').addEventListener('click', () => { overlay.remove(); onConfirm(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 }

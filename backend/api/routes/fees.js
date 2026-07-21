@@ -2,7 +2,10 @@
  * Fees Routes — gestione quote economiche con configurazione per categoria
  */
 const express = require('express');
+const multer = require('multer');
 const { handleDbError } = require('../helpers/dbErrors');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 module.exports = function createFeesRouter({ supabase, authMiddleware }) {
   const router = express.Router();
@@ -361,7 +364,7 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
           titolo: n.titolo,
           messaggio: n.messaggio,
           riferimento_id: n.fee_id || null,
-          destinatario_tipo: ['genitore', 'atleta'],
+          destinatario_tipo: ['famiglia'],
           destinatario_profilo: ['segreteria', 'admin'],
           destinatario_player_id: n.player_id,
           created_by: req.user.id,
@@ -380,6 +383,209 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }
+  });
+
+  // ═══════════════════════════════════════════
+  // EPIC 21 — BONIFICO + UPLOAD RICEVUTA
+  // ═══════════════════════════════════════════
+
+  // 21.5 — PUT /api/fee-configs/:id/payment-info — salva causale_template
+  router.put('/api/fee-configs/:id/payment-info', authMiddleware, async (req, res) => {
+    try {
+      const { causale_template } = req.body;
+      const { data, error } = await supabase.from('fee_config')
+        .update({ causale_template, updated_at: new Date().toISOString() })
+        .eq('id', req.params.id)
+        .select().single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data);
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
+  // 21.6 — POST /api/fee-installments/:id/upload-ricevuta
+  router.post('/api/fee-installments/:id/upload-ricevuta', authMiddleware, upload.single('ricevuta'), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: 'File mancante' });
+
+      const instId = req.params.id;
+      const { data: inst, error: instErr } = await supabase.from('fee_installment')
+        .select('*, fee:fee_id(player_id, team_id, season_id, fee_config_id)')
+        .eq('id', instId).single();
+      if (instErr || !inst) return res.status(404).json({ error: 'Rata non trovata' });
+
+      // Verifica che il guest stia caricando per il proprio player
+      if (req.user.isGuest && req.user.player_id !== inst.fee.player_id)
+        return res.status(403).json({ error: 'Non autorizzato' });
+
+      const ext = req.file.mimetype === 'application/pdf' ? 'pdf'
+        : req.file.mimetype === 'image/png' ? 'png' : 'jpg';
+      const path = `${inst.fee.season_id}/${inst.fee.player_id}/${instId}.${ext}`;
+
+      const { error: upErr } = await supabase.storage.from('ricevute')
+        .upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+      if (upErr) return res.status(500).json({ error: 'Upload fallito: ' + upErr.message });
+
+      await supabase.from('fee_installment').update({
+        ricevuta_path: path,
+        ricevuta_uploaded_at: new Date().toISOString()
+      }).eq('id', instId);
+
+      // Notifica segreteria
+      const { data: player } = await supabase.from('player').select('nome, cognome').eq('id', inst.fee.player_id).single();
+      const { data: feeConfig } = await supabase.from('fee_config').select('nome, workspace_id').eq('id', inst.fee.fee_config_id).single();
+      const playerName = player ? `${player.cognome} ${player.nome}` : 'Giocatore';
+      await supabase.from('notification').insert({
+        workspace_id: feeConfig?.workspace_id,
+        team_id: inst.fee.team_id,
+        tipo: 'ricevuta_caricata',
+        titolo: `📎 Ricevuta caricata`,
+        messaggio: `${playerName} ha caricato la ricevuta per ${feeConfig?.nome || 'quota'} — Rata ${inst.numero_rata}`,
+        riferimento_id: instId,
+        destinatario_profilo: ['segreteria', 'admin'],
+        destinatario_tipo: ['segreteria', 'admin'],
+        created_by: req.user.isGuest ? null : (req.user.id || null),
+        letto: false
+      });
+
+      res.json({ success: true, path });
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
+  // 21.7 — GET /api/fee-installments/:id/ricevuta — signed URL (1h)
+  router.get('/api/fee-installments/:id/ricevuta', authMiddleware, async (req, res) => {
+    try {
+      const { data: inst } = await supabase.from('fee_installment')
+        .select('ricevuta_path, fee:fee_id(player_id)').eq('id', req.params.id).single();
+      if (!inst?.ricevuta_path) return res.status(404).json({ error: 'Nessuna ricevuta' });
+
+      if (req.user.isGuest && req.user.player_id !== inst.fee.player_id)
+        return res.status(403).json({ error: 'Non autorizzato' });
+
+      const { data, error } = await supabase.storage.from('ricevute')
+        .createSignedUrl(inst.ricevuta_path, 3600);
+      if (error) return res.status(500).json({ error: error.message });
+      res.json({ url: data.signedUrl });
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
+  // 21.8 — PUT /api/fee-installments/:id/conferma-pagamento
+  router.put('/api/fee-installments/:id/conferma-pagamento', authMiddleware, async (req, res) => {
+    try {
+      const { azione } = req.body; // 'conferma' | 'rifiuta'
+      if (!['conferma', 'rifiuta'].includes(azione)) return res.status(400).json({ error: 'azione non valida' });
+
+      const { data: inst } = await supabase.from('fee_installment')
+        .select('*, fee:fee_id(player_id, team_id, fee_config_id, season_id)')
+        .eq('id', req.params.id).single();
+      if (!inst) return res.status(404).json({ error: 'Rata non trovata' });
+      const feeId = inst.fee_id; // stringa UUID — inst.fee è l'oggetto joinato
+
+      if (azione === 'conferma') {
+        // Segna come pagata e rileggi subito il risultato
+        await supabase.from('fee_installment').update({
+          stato: 'pagata',
+          data_pagamento: new Date().toISOString().split('T')[0],
+          metodo_pagamento: 'Bonifico',
+          conferma_user_id: req.user.id
+        }).eq('id', req.params.id).select();
+
+        // Rileggi TUTTE le rate della fee dopo l'update
+        const { data: allInst } = await supabase.from('fee_installment')
+          .select('importo, stato').eq('fee_id', feeId);
+        const pagato = (allInst || []).filter(i => i.stato === 'pagata').reduce((s, i) => s + parseFloat(i.importo || 0), 0);
+        const totale = (allInst || []).reduce((s, i) => s + parseFloat(i.importo || 0), 0);
+        await supabase.from('fee').update({
+          importo_pagato: pagato,
+          stato: pagato >= totale ? 'pagata' : pagato > 0 ? 'parziale' : 'da_pagare'
+        }).eq('id', feeId).select();
+      } else {
+        // Rifiuta: reset ricevuta
+        await supabase.from('fee_installment').update({
+          ricevuta_path: null,
+          ricevuta_uploaded_at: null
+        }).eq('id', req.params.id);
+
+        // Notifica genitore
+        const { data: feeConfig } = await supabase.from('fee_config').select('nome, workspace_id').eq('id', inst.fee.fee_config_id).single();
+        await supabase.from('notification').insert({
+          workspace_id: feeConfig?.workspace_id,
+          team_id: inst.fee.team_id,
+          tipo: 'ricevuta_rifiutata',
+          titolo: '❌ Ricevuta non valida',
+          messaggio: `La ricevuta per ${feeConfig?.nome || 'quota'} Rata ${inst.numero_rata} non è stata accettata. Ricaricare un documento leggibile.`,
+          riferimento_id: req.params.id,
+          destinatario_tipo: ['famiglia'],
+          destinatario_player_id: inst.fee.player_id,
+          created_by: req.user.id,
+          letto: false
+        });
+      }
+
+      res.json({ success: true, azione });
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
+  // 21.9 — GET /api/fees/guest — rate giocatore con info bonifico (guest + admin)
+  router.get('/api/fees/guest', authMiddleware, async (req, res) => {
+    try {
+      const playerId = req.user.isGuest ? req.user.player_id : req.query.player_id;
+      const teamId = req.query.team_id;
+      if (!playerId) return res.status(400).json({ error: 'player_id mancante' });
+
+      const { data: fees, error } = await supabase.from('fee')
+        .select('*, fee_config:fee_config_id(nome, causale_template, workspace_id), fee_installment(*), season:season_id(nome)')
+        .eq('player_id', playerId)
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false });
+      if (error) return res.status(400).json({ error: error.message });
+
+      // Leggi IBAN, intestatario, stagione, categoria in parallelo
+      let iban = null, intestatario = null, stagione = '', categoria = '', annoNascita = '';
+
+      const wsId = fees?.[0]?.fee_config?.workspace_id;
+      const feeTeamId = teamId || fees?.[0]?.team_id;
+
+      const [anaRes, wsRes, playerRes, teamRes] = await Promise.all([
+        wsId ? supabase.from('workspace_anagrafica').select('iban, nome_banca').eq('workspace_id', wsId).single() : Promise.resolve({}),
+        wsId ? supabase.from('workspace').select('nome').eq('id', wsId).single() : Promise.resolve({}),
+        supabase.from('player').select('nome, cognome, data_nascita').eq('id', playerId).single(),
+        feeTeamId ? supabase.from('team').select('category:category_id(nome)').eq('id', feeTeamId).single() : Promise.resolve({})
+      ]);
+
+      iban = anaRes.data?.iban || null;
+      const nomeBanca = anaRes.data?.nome_banca || null;
+      intestatario = wsRes.data?.nome || null;
+
+      const player = playerRes.data;
+      const playerName = player ? `${player.cognome} ${player.nome}` : '';
+      if (player?.data_nascita) annoNascita = new Date(player.data_nascita).getFullYear().toString();
+
+
+      stagione = fees?.[0]?.season?.nome || '';
+      categoria = teamRes.data?.category?.nome || '';
+
+      // Variabili disponibili per il template causale
+      const compilaCausale = (template, numeroRata) =>
+        (template || `Iscrizione {stagione} {categoria} ({anno_nascita}) Rata {rata} - {nome}`)
+          .replace('{stagione}', stagione)
+          .replace('{categoria}', categoria)
+          .replace('{anno_nascita}', annoNascita)
+          .replace('{rata}', numeroRata || '')
+          .replace('{nome}', playerName)
+          .trim().replace(/\s+/g, ' '); // rimuove spazi doppi se variabile vuota
+
+      const result = (fees || []).map(fee => ({
+        ...fee,
+        fee_installment: (fee.fee_installment || [])
+          .sort((a, b) => (a.numero_rata || 0) - (b.numero_rata || 0))
+          .map(inst => ({ ...inst, causale_compilata: compilaCausale(fee.fee_config?.causale_template, inst.numero_rata) })),
+        iban,
+        nome_banca: nomeBanca,
+        intestatario
+      }));
+
+      res.json(result);
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
   });
 
   return router;

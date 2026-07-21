@@ -34,6 +34,8 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       // Staff: filtra per destinatario_user_id o destinatario_profilo o created_by
       const profilo = user.permessi?.profilo || ruolo;
       const filtered = (data || []).filter(n => {
+        // ricevuta_caricata: sempre visibile se nel destinatario_profilo
+        if (n.tipo === 'ricevuta_caricata' && n.destinatario_profilo && (n.destinatario_profilo.includes(profilo) || n.destinatario_profilo.includes(ruolo))) return true;
         if (n.created_by === user.id) return true;
         if (n.destinatario_user_id === user.id) return true;
         if (n.destinatario_profilo && (n.destinatario_profilo.includes(profilo) || n.destinatario_profilo.includes(ruolo))) return true;
@@ -51,7 +53,7 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       const wsId = user.workspace_id;
       if (!wsId) return res.json({ unread: 0 });
 
-      const { data, error } = await supabase.from('notification').select('id, destinatario_user_id, destinatario_profilo, created_by')
+      const { data, error } = await supabase.from('notification').select('id, tipo, destinatario_user_id, destinatario_profilo, created_by')
         .eq('workspace_id', wsId)
         .eq('letto', false);
       if (error) return res.status(400).json({ error: error.message });
@@ -65,6 +67,8 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       // Staff: filtra per destinatario (escludi created_by dal conteggio unread)
       const profilo = user.permessi?.profilo || ruolo;
       const count = (data || []).filter(n => {
+        // ricevuta_caricata: sempre contata se nel destinatario_profilo
+        if (n.tipo === 'ricevuta_caricata' && n.destinatario_profilo && (n.destinatario_profilo.includes(profilo) || n.destinatario_profilo.includes(ruolo))) return true;
         if (n.created_by === user.id) return false;
         if (n.destinatario_user_id === user.id) return true;
         if (n.destinatario_profilo && (n.destinatario_profilo.includes(profilo) || n.destinatario_profilo.includes(ruolo))) return true;

@@ -4,8 +4,15 @@ const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
 
-const CSV_PATH = path.join(__dirname, 'societa_lazio.csv');
+// Accetta CSV path da argomento CLI oppure usa il default lazio
+// es: node send_emails.js societa_campania.csv
+const csvArg = process.argv[2];
+const CSV_PATH = csvArg
+  ? path.resolve(__dirname, csvArg)
+  : path.join(__dirname, 'societa_lazio.csv');
 const TEMPLATE_PATH = path.join(__dirname, '../../press-kit/email-societa.md');
+
+console.log(`📂 CSV: ${CSV_PATH}`);
 const DELAY_MS = 2000; // 2 secondi tra un invio e l'altro per evitare blocchi Gmail
 
 // Leggi template

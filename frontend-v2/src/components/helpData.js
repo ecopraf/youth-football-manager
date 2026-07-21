@@ -191,10 +191,10 @@ export const PAGE_HELP = {
     desc: 'Comunicazioni in-app e segnalazioni assenze in un unico punto.',
     items: [
       'Tab Inviate: comunicazioni create da te (convocazioni, promemoria quote, avvisi)',
-      'Tab Ricevute: segnalazioni assenze, indisponibilità, notifiche da altri utenti',
+      'Tab Ricevute: assenze, indisponibilità, ricevute bonifico caricate dalle famiglie',
+      'Ricevute bonifico: ✅ Conferma (segna rata pagata), ❌ Rifiuta (notifica famiglia), 👁 Vedi (preview PDF/immagine)',
       'Click ○ per segnare come letta, click Apri per andare alla convocazione',
-      'Badge campanella in header mostra il totale non lette',
-      'Cleanup automatico: notifiche >30gg eliminate, lette prima di lunedì rimosse'
+      'Badge campanella in header mostra il totale non lette'
     ]
   },
   convocazioni: {
@@ -660,7 +660,7 @@ export const ELEMENT_HELP = {
   // === NOTIFICHE ===
   'notifications.tabs': {
     title: '📤/📥 Tab Inviate e Ricevute',
-    desc: '<strong>Inviate</strong> — Comunicazioni create dallo staff (convocazioni pubblicate, avvisi, comunicazioni manuali). Visibili a tutti i destinatari selezionati.<br><br><strong>Ricevute</strong> — Segnalazioni in arrivo: assenze comunicate da atleti/genitori e indisponibilità post-convocazione. Badge numerico indica le non lette.<br><br>Click ○ per segnare come letta. Click "Apri" per navigare alla partita/convocazione collegata.'
+    desc: '<strong>Inviate</strong> — Comunicazioni create dallo staff (convocazioni pubblicate, avvisi, promemoria quote). Lo stato lettura dei destinatari è indicato da ✅ Letta / ⏳ Non letta / 👁 per broadcast.<br><br><strong>Ricevute</strong> — Segnalazioni in arrivo: assenze atleti, indisponibilità post-convocazione, <strong>ricevute bonifico caricate dalle famiglie</strong>. Badge numerico indica le non lette.<br><br>Per le ricevute: bottoni <strong>✅ Conferma</strong> (segna rata come pagata), <strong>❌ Rifiuta</strong> (notifica famiglia di ricaricare), <strong>👁 Vedi</strong> (preview immagine/PDF).'
   },
 
   // === MODALE CONVOCAZIONI ===

@@ -73,6 +73,7 @@ WORKSPACE (società sportiva)
 | nome_campo | text | SI | | Campo di casa (migrato da facility) |
 | indirizzo_campo | text | SI | | Indirizzo campo di casa |
 | iban | text | SI | | IBAN per pagamenti |
+| nome_banca | text | SI | | Nome istituto bancario (es. "BLU BANCA SPA") |
 | updated_at | timestamptz | SI | | |
 
 **Endpoint:** `GET/PUT /api/workspaces/:id/anagrafica`  
@@ -514,12 +515,12 @@ Questo perché un giocatore può essere in più team (aggregato) e serve sapere 
 | id | uuid | NO | gen_random_uuid() | PK |
 | token | varchar(64) | NO | | UNIQUE |
 | utente_id | uuid | SI | | FK → users.id (chi l'ha creato) |
-| tipo | varchar(20) | NO | | genitore/osservatore |
+| tipo | varchar(20) | NO | | `famiglia` (link personale con player_id) / `ospite` (link di cortesia, solo partite/risultati) |
 | giocatore_id | uuid | SI | | Deprecato |
-| player_id | uuid | SI | | FK → player.id (link per genitore) |
+| player_id | uuid | SI | | FK → player.id (presente solo per tipo `famiglia`) |
 | squadre_accesso | uuid[] | SI | | Categorie visibili |
 | scadenza | timestamp | SI | | |
-| telefono | text | SI | | Contatto genitore |
+| telefono | text | SI | | Contatto (opzionale) |
 | created_at | timestamp | SI | now() | |
 
 ---
@@ -873,6 +874,72 @@ users.id
 │MATCH_STATS  │ └────────┘ │VOC│ └──────────────────┘
 └─────────────┘             └───┘
 ```
+
+---
+
+## 💰 Tabelle Quote (Fee)
+
+### FEE_CONFIG — Configurazione quota
+
+| Colonna | Tipo | Null | Default | Note |
+|---------|------|------|---------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| workspace_id | uuid | NO | | FK workspace |
+| category_id | uuid | SI | | Nullable = valida per tutte le categorie |
+| nome | text | NO | | Es: "Iscrizione 2025-26" |
+| importo_totale | numeric(10,2) | NO | | |
+| rate | jsonb | NO | | Array `{importo, scadenza_label, scadenza}` |
+| attiva | boolean | NO | true | |
+| causale_template | text | SI | | Template causale bonifico. Variabili: `{nome}`, `{rata}`, `{stagione}`. Es: "Iscrizione {stagione} Rata {rata} - {nome}" |
+| created_at | timestamptz | SI | now() | |
+| updated_at | timestamptz | SI | | |
+
+> IBAN, nome banca e intestatario si leggono da `workspace_anagrafica.iban`, `workspace_anagrafica.nome_banca` e `workspace.nome` — non duplicati qui.
+
+### FEE — Quota assegnata al giocatore
+
+| Colonna | Tipo | Null | Default | Note |
+|---------|------|------|---------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| fee_config_id | uuid | NO | | FK fee_config |
+| player_id | uuid | NO | | FK player |
+| team_id | uuid | NO | | FK team |
+| season_id | uuid | NO | | FK season |
+| importo_totale | numeric(10,2) | NO | | |
+| importo_pagato | numeric(10,2) | NO | 0 | Fonte di verità — aggiornato da pay/unpay |
+| stato | text | NO | | `da_pagare` / `parziale` / `pagata` |
+
+### FEE_INSTALLMENT — Rata singola
+
+| Colonna | Tipo | Null | Default | Note |
+|---------|------|------|---------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| fee_id | uuid | NO | | FK fee |
+| numero_rata | int | SI | | |
+| importo | numeric(10,2) | NO | | |
+| scadenza | date | SI | | |
+| scadenza_label | text | SI | | Es: "Ottobre 2025" |
+| stato | text | NO | | `da_pagare` / `parziale` / `pagata` |
+| data_pagamento | date | SI | | |
+| metodo_pagamento | text | SI | | Es: "Bonifico", "Contanti" |
+| ricevuta_numero | text | SI | | Numero ricevuta manuale |
+| note | text | SI | | |
+| ricevuta_path | text | SI | | Path file su Supabase Storage bucket `ricevute` |
+| ricevuta_uploaded_at | timestamptz | SI | | Timestamp upload ricevuta da genitore |
+| conferma_user_id | uuid | SI | | FK users — chi ha confermato il pagamento |
+| created_at | timestamptz | SI | now() | |
+
+> **Flusso ricevuta**: genitore carica → `ricevuta_path` valorizzato + notifica segreteria → segreteria conferma (`conferma_user_id` valorizzato, `stato` → `pagata`) o rifiuta (reset `ricevuta_path` + notifica genitore).
+
+---
+
+## 🗄️ Supabase Storage
+
+| Bucket | Visibilità | Max size | MIME consentiti | Uso |
+|--------|-----------|----------|-----------------|-----|
+| `ricevute` | Privato | 5MB | image/jpeg, image/png, image/webp, application/pdf | Ricevute bonifico caricate dai genitori. Path: `{workspace_id}/{season_id}/{player_id}/{installment_id}.{ext}` |
+
+> Accesso tramite signed URL (validità 1h) generato da `GET /api/fee-installments/:id/ricevuta`.
 
 ---
 

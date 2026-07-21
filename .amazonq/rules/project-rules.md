@@ -24,7 +24,7 @@ Solo dopo aver letto questi file l'agente può procedere con il task richiesto d
 
 Prima di scrivere QUALSIASI codice frontend, verificare:
 - [ ] Quali variabili `window.YFM.*` servono? (consultare sezione "Frontend Global State" in AGENTS.md)
-- [ ] L'endpoint backend esiste già? (consultare sezione "Backend Files" in AGENTS.md)
+- [ ] L'endpoint backend esiste già? (consultare sezione "Backend Files" in AGENTS.md — ogni router ha la mappa endpoint inline. Se non presente, verificare con `grep "router\." routes/NOME.js` prima di scrivere qualsiasi path frontend)
 - [ ] Le tabelle DB esistono? (consultare DATABASE_SCHEMA.md)
 - [ ] Il modulo è registrato nel router? (consultare `router.js`)
 - [ ] La sidebar ha la voce? (consultare `sidebarNav.js`)
@@ -337,7 +337,7 @@ Quando si scrive logica basata sul nome categoria, usare regex che copra entramb
 - superadmin/admin → sempre `true`
 - allenatore → controlla `getUserCapabilities(permessi)[modulo]` (fallback `true` se nessun permesso salvato — legacy)
 - staff → controlla `getUserCapabilities(permessi)[modulo]`
-- guest → capabilities dal profilo (atleta/genitore)
+- guest → capabilities dal profilo (`famiglia` o `ospite`)
 
 ### Sidebar filtrata
 - Ogni voce sidebar richiede una capability specifica (vedi `sidebarNav.js`)
@@ -345,6 +345,17 @@ Quando si scrive logica basata sul nome categoria, usare regex che copra entramb
 - Allenatore vede solo le voci per cui ha almeno `read` nel proprio profilo capabilities (fallback: tutto se nessun permesso)
 - Staff vede solo le voci per cui ha almeno `read`
 - Guest link: visibile solo per chi ha `guest_links` capability (admin, segreteria, dirigente)
+
+### Tipi Guest (OBBLIGATORIO — fonte di verità)
+
+| Valore DB (`guest_token.tipo`) | Label UI | Home caricata | Accesso quote/tesseramento |
+|---|---|---|---|
+| `famiglia` | 👨‍👩‍👦 Famiglia | `guestAtleta.js` | ✅ Sì (ha `player_id`) |
+| `ospite` | 👋 Ospite | `guestGenitore.js` | ❌ No (solo partite/risultati) |
+
+**Regola**: `ospite` è un link di cortesia per amici/parenti — NON vede quote, tesseramento, convocazioni personali, né upload ricevute. Solo calendario partite e risultati pubblici.
+
+**⚠️ Nomi storici da NON usare nel codice**: `atleta`, `genitore` — questi erano nomi di un refactoring intermedio (EPIC 11) mai completato nel DB. I valori reali nel DB sono `famiglia` e `ospite`.
 
 ### Guest JWT
 - Generato da `/api/guest/:token` con validità 24h
@@ -385,6 +396,7 @@ Quando si scrive logica basata sul nome categoria, usare regex che copra entramb
   }
   ```
 - **Porta locale backend**: 3002 (non 3001)
+- **Backend locale**: il backend locale viene sempre avviato/riavviato dall'utente — l'agente NON deve mai eseguire `node api/index.js` o comandi equivalenti. Se serve un riavvio, chiedere all'utente di farlo.
 - **Versione attuale**: v3.16 (frontend e backend allineati)
 - **Mai riutilizzare campi esistenti per scopi diversi** — se serve un nuovo dato, creare una colonna/tabella dedicata
 - **Preferire campi JSONB** per dati strutturati che non richiedono query dirette (metadati, configurazioni, layout)

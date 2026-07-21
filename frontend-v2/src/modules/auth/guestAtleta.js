@@ -3,7 +3,7 @@
  * Sezioni: notifiche, prossima convocazione, comunica indisponibilità,
  * calendario allenamenti, partite, stats personali
  */
-import { apiFetch } from '../../services/api.js';
+import { apiFetch, API_BASE } from '../../services/api.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
 
 export default async function loadGuestAtleta() {
@@ -25,7 +25,7 @@ export default async function loadGuestAtleta() {
       apiFetch(`/squadre/${teamId}/partite-future`).catch(() => []),
       apiFetch(`/squadre/${teamId}/allenamenti-futuri`).catch(() => []),
       apiFetch(`/absence/player/${playerId}`).catch(() => []),
-      apiFetch(`/fees?player_id=${playerId}&team_id=${teamId}`).catch(() => []),
+      apiFetch(`/fees/guest?team_id=${teamId}`).catch(() => null),
       apiFetch(`/registrations/player/${playerId}`).catch(() => null)
     ]);
     // Career matches: usato sia per badge stats che per grafici (1 sola chiamata)
@@ -161,32 +161,73 @@ function render(c, { playerName, playerId, teamId, notifications, trainings, car
     </div>`;
   }
 
-  // Situazione Quote (raggruppate per tipologia)
-  if (fees && fees.length > 0) {
+  // Situazione Quote con bonifico + upload ricevuta (task 21.10-21.13)
+  const feesData = fees; // da /fees/guest: array di fee con fee_installment annidati
+  const feeList = Array.isArray(feesData) ? feesData : [];
+  const feeRates = feeList.flatMap(f => (f.fee_installment || []).map(i => ({
+    ...i,
+    fee_config_id: f.fee_config_id,
+    fee_config_nome: f.fee_config?.nome || 'Quota',
+    causale: i.causale_compilata || '',
+    iban: f.iban || '',
+    intestatario: f.intestatario || '',
+    nome_banca: f.nome_banca || ''
+  })));
+  const iban = feeList[0]?.iban || '';
+  const intestatario = feeList[0]?.intestatario || '';
+  const nomeBanca = feeList[0]?.nome_banca || '';
+  if (feeRates.length > 0) {
     const today = new Date().toISOString().slice(0, 10);
-    const allInstallments = fees.flatMap(f => f.fee_installment || []);
-    const totale = allInstallments.reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
-    const pagato = allInstallments.filter(i => i.stato === 'pagata').reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
-    const scaduteCount = allInstallments.filter(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < today).length;
+    const totale = feeRates.reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
+    const pagato = feeRates.filter(i => i.stato === 'pagata').reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
+    const scaduteCount = feeRates.filter(i => i.stato !== 'pagata' && i.scadenza && i.scadenza.slice(0, 10) < today).length;
+
+    // Raggruppa per fee_config
+    const byConfig = {};
+    feeRates.forEach(r => {
+      const k = r.fee_config_id || 'default';
+      if (!byConfig[k]) byConfig[k] = { nome: r.fee_config_nome, rates: [] };
+      byConfig[k].rates.push(r);
+    });
+
     html += `<div class="ga-section">
-      <div class="ga-section-title">💰 Situazione Quote</div>
+      <div class="ga-section-title">💰 Le mie Quote</div>
       <div style="font-size:13px;color:#333;margin-bottom:8px;">Pagato: <strong>€${pagato.toFixed(0)}</strong> / €${totale.toFixed(0)}</div>
       ${scaduteCount > 0 ? `<div style="font-size:12px;color:#E74C3C;font-weight:600;margin-bottom:8px;">⚠️ ${scaduteCount} rat${scaduteCount === 1 ? 'a scaduta' : 'e scadute'}</div>` : ''}
-      ${fees.map(fee => {
-        const installments = (fee.fee_installment || []).sort((a, b) => (a.numero_rata || 0) - (b.numero_rata || 0));
-        const feePagato = installments.filter(i => i.stato === 'pagata').reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
-        const feeTotale = installments.reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
-        return `<div style="margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:4px;">${fee.fee_config?.nome || 'Quota'} <span style="font-weight:400;color:#888;">€${feePagato.toFixed(0)}/${feeTotale.toFixed(0)}</span></div>
-          <div style="display:flex;flex-direction:column;gap:3px;">
-            ${installments.map(i => {
+      ${Object.values(byConfig).map(cfg => {
+        const cfgPagato = cfg.rates.filter(i => i.stato === 'pagata').reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
+        const cfgTotale = cfg.rates.reduce((s, i) => s + (parseFloat(i.importo) || 0), 0);
+        return `<div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:4px;">${cfg.nome} <span style="font-weight:400;color:#888;">€${cfgPagato.toFixed(0)}/${cfgTotale.toFixed(0)}</span></div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            ${cfg.rates.sort((a, b) => (a.numero_rata || 0) - (b.numero_rata || 0)).map(i => {
               const isPagata = i.stato === 'pagata';
+              const hasRicevuta = !!i.ricevuta_path;
               const scad = i.scadenza ? new Date(i.scadenza).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) : '';
               const isScaduta = !isPagata && i.scadenza && i.scadenza.slice(0, 10) < today;
+              const isInScadenza = !isPagata && !isScaduta && i.scadenza && i.scadenza.slice(0, 10) <= new Date(Date.now() + 7*86400000).toISOString().slice(0, 10);
               const label = i.scadenza_label || `Rata ${i.numero_rata}`;
-              return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:8px;background:${isPagata ? '#d1fae5' : isScaduta ? '#fee2e2' : '#f8f9fa'};font-size:12px;">
-                <span>${isPagata ? '✅' : isScaduta ? '⚠️' : '⬜'} ${label} — €${parseFloat(i.importo || 0).toFixed(0)}</span>
-                <span style="color:#888;">${scad}</span>
+              let badge, bg;
+              if (isPagata)          { badge = '🟢 Pagata';              bg = '#d1fae5'; }
+              else if (hasRicevuta)  { badge = '📎 In attesa conferma'; bg = '#fef9c3'; }
+              else if (isScaduta)    { badge = '🔴 Scaduta';             bg = '#fee2e2'; }
+              else if (isInScadenza) { badge = '🟡 In scadenza';         bg = '#fef3c7'; }
+              else                   { badge = '⬜ Da pagare';            bg = '#f8f9fa'; }
+              return `<div style="border-radius:8px;background:${bg};padding:8px 10px;font-size:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span><strong>${label}</strong> — €${parseFloat(i.importo || 0).toFixed(0)}</span>
+                  <span style="color:#888;">${scad}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+                  <span style="font-size:11px;">${badge}</span>
+                  ${!isPagata && !hasRicevuta && iban ? `<button class="ga-upload-btn btn btn-secondary" data-inst-id="${i.id}" data-causale="${encodeURIComponent(i.causale || '')}" style="font-size:11px;padding:3px 8px;">📎 Carica ricevuta</button>` : ''}
+                  ${hasRicevuta && !isPagata ? `<span style="font-size:11px;color:#92400e;">Ricevuta caricata ✓</span>` : ''}
+                </div>
+                ${!isPagata && !hasRicevuta && iban ? `<div style="margin-top:6px;padding:6px 8px;background:rgba(0,0,0,0.04);border-radius:6px;font-size:11px;color:#555;line-height:1.6;">
+                  🏦 <strong>${intestatario}</strong>${nomeBanca ? ` — ${nomeBanca}` : ''}<br>
+                  IBAN: <code style="font-size:10px;">${iban}</code><br>
+                  Causale: <em>${i.causale || ''}</em>
+                </div>` : ''}
               </div>`;
             }).join('')}
           </div>
@@ -523,6 +564,53 @@ function bindEvents(c, playerId, teamId, motivi) {
       hideLoading();
       alert('Errore: ' + err.message);
     }
+  });
+
+  // Handler upload ricevuta bonifico (task 21.12)
+  c.querySelectorAll('.ga-upload-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const instId = btn.dataset.instId;
+      const causale = decodeURIComponent(btn.dataset.causale || '');
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/jpeg,image/png,application/pdf';
+      input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { alert('File troppo grande (max 5MB)'); return; }
+        const fd = new FormData();
+        fd.append('ricevuta', file);
+        btn.disabled = true;
+        btn.textContent = '⏳ Caricamento...';
+        try {
+          const token = sessionStorage.getItem('yfm_guest_jwt');
+          if (!token) throw new Error('Sessione guest scaduta, ricaricare la pagina');
+          const res = await fetch(`${API_BASE}/fee-installments/${instId}/upload-ricevuta`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: fd
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Errore upload');
+          // Feedback visivo: sostituisce il bottone con stato "in attesa"
+          const rataDiv = btn.closest('div[style*="border-radius:8px"]');
+          if (rataDiv) {
+            const actRow = rataDiv.querySelector('div[style*="margin-top:4px"]');
+            if (actRow) actRow.innerHTML = `<span style="font-size:11px;color:#92400e;">📎 In attesa conferma</span>`;
+            const bonDiv = rataDiv.querySelector('div[style*="margin-top:6px"]');
+            if (bonDiv) bonDiv.remove();
+            rataDiv.style.background = '#fef9c3';
+          }
+          // Toast
+          if (window.showToast) window.showToast('✅ Ricevuta caricata! La segreteria la verificherà a breve.', 'success');
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = '📎 Carica ricevuta';
+          alert('Errore: ' + err.message);
+        }
+      };
+      input.click();
+    });
   });
 }
 

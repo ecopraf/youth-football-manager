@@ -217,23 +217,23 @@
 
 ### EPIC 11: Sistema Atleta & Genitore (evoluzione Guest)
 
-> Sostituire il concetto generico di "Guest" con due ruoli distinti (Atleta e Genitore) con capabilities, home e notifiche differenziate. Infrastruttura guest_token invariata (nessuna registrazione), ma UX e permessi specifici per tipo.
+> Sostituire il concetto generico di "Guest" con due ruoli distinti (Famiglia e Ospite) con capabilities, home e notifiche differenziate. Infrastruttura guest_token invariata (nessuna registrazione), ma UX e permessi specifici per tipo.
 
 #### Fase 1: Tipi e Capabilities (backend)
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
 | 11.1 | Definire capabilities Atleta vs Genitore in `capabilities.js` (frontend + backend mirror) | ✅ | — | utils/capabilities.js, helpers/capabilities.js | ~5min |
-| 11.2 | Aggiornare `guest_token.tipo` per supportare valori `atleta` e `genitore` (retrocompat con esistenti) | ✅ | 11.1 | routes/auth.js, routes/guestLinks.js | ~5min |
+| 11.2 | Aggiornare `guest_token.tipo` per supportare valori `famiglia` e `ospite` (retrocompat con esistenti) | ✅ | 11.1 | routes/auth.js, routes/guestLinks.js | ~5min |
 | 11.3 | Differenziare JWT guest: includere `tipo` nelle capabilities check del middleware | ✅ | 11.2 | middleware/auth.js, helpers/capabilities.js | ~5min |
-| 11.4 | Endpoint: atleta può POST su `/api/absence-notification` solo per il proprio player_id | ✅ | 11.3 | routes/notification.js | ~5min |
-| 11.5 | Test funzionale capabilities atleta/genitore (permessi differenziati) | ✅ | 11.4 | tmp_test.js | ~5min |
+| 11.4 | Endpoint: tipo `famiglia` può POST su `/api/absence-notification` solo per il proprio player_id | ✅ | 11.3 | routes/notification.js | ~5min |
+| 11.5 | Test funzionale capabilities famiglia/ospite (permessi differenziati) | ✅ | 11.4 | tmp_test.js | ~5min |
 
 #### Fase 2: Home Atleta (frontend)
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 11.6 | Creare `modules/auth/guestAtleta.js` — Home atleta (notifiche, convocazioni, indisponibilità, allenamenti, partite, stats personali, classifica) | ✅ | 11.3 | modules/auth/guestAtleta.js | ~15min |
+| 11.6 | Creare `modules/auth/guestAtleta.js` — Home Famiglia (tipo=`famiglia`): notifiche, convocazioni, indisponibilità, allenamenti, partite, stats personali, quote, tesseramento | ✅ | 11.3 | modules/auth/guestAtleta.js | ~15min |
 | 11.6a | — Widget notifiche + convocazione prossima | ✅ | 11.6 | modules/auth/guestAtleta.js | ~5min |
 | 11.6b | — Form "Comunica indisponibilità" (data + motivo) | ✅ | 11.4, 11.6 | modules/auth/guestAtleta.js | ~5min |
 | 11.6c | — Sezioni calendario allenamenti + partite + stats personali + classifica | ✅ | 11.6 | modules/auth/guestAtleta.js | ~5min |
@@ -242,7 +242,7 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 11.7 | Creare `modules/auth/guestGenitore.js` — Home genitore (comunicazioni, convocazioni figlio, calendario, risultati, classifica, stats squadra) | ✅ | 11.3 | modules/auth/guestGenitore.js | ~15min |
+| 11.7 | Creare `modules/auth/guestGenitore.js` — Home Ospite (tipo=`ospite`): solo calendario partite, risultati pubblici. Nessuna quota, nessun dato personale | ✅ | 11.3 | modules/auth/guestGenitore.js | ~15min |
 | 11.7a | — Widget comunicazioni con badge priorità | ✅ | 11.7, 11.9 | modules/auth/guestGenitore.js | ~5min |
 | 11.7b | — Sezioni convocazioni figlio + calendario + risultati + classifica | ✅ | 11.7 | modules/auth/guestGenitore.js | ~5min |
 
@@ -250,7 +250,7 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 11.8 | Aggiornare router.js: guest `tipo=atleta` → guestAtleta, `tipo=genitore` → guestGenitore | ✅ | 11.6, 11.7 | router.js, modules/auth/guest.js | ~5min |
+| 11.8 | Aggiornare router.js: guest `tipo=famiglia` → guestAtleta, `tipo=ospite` → guestGenitore | ✅ | 11.6, 11.7 | router.js, modules/auth/guest.js | ~5min |
 
 #### Fase 5: Priorità notifiche
 
@@ -263,10 +263,10 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 11.11 | ALTER TABLE `notification` ADD `destinatario_tipo TEXT[]` (atleta/genitore/staff) | ✅ | — | migrazione SQL | ~3min |
+| 11.11 | ALTER TABLE `notification` ADD `destinatario_tipo TEXT[]` (famiglia/ospite/staff) | ✅ | — | migrazione SQL | ~3min |
 | 11.12 | UI creazione comunicazione: selezione destinatari (tipo + categorie) | ✅ | 11.11 | modules/team/notifications.js | ~10min |
 | 11.13 | Backend: filtro GET notifiche per `destinatario_tipo` in base al ruolo richiedente | ✅ | 11.11 | routes/notification.js | ~5min |
-| 11.14 | Notifiche convocazione differenziate: testo diverso per atleta vs genitore | ✅ | 11.11, 11.2 | routes/convocazioni.js | ~5min |
+| 11.14 | Notifiche convocazione differenziate: testo diverso per tipo `famiglia` vs `ospite` | ✅ | 11.11, 11.2 | routes/convocazioni.js | ~5min |
 
 #### Fase 7: UI generazione link (aggiornamento)
 
@@ -280,7 +280,7 @@
 **Note architetturali**:
 - L'infrastruttura `guest_token` resta invariata (link senza registrazione)
 - Il JWT guest contiene già `tipo` — basta usarlo per routing e capabilities
-- Le home atleta/genitore sono pagine standalone (non usano sidebar staff)
+- Le home famiglia/ospite sono pagine standalone (non usano sidebar staff)
 - La priorità notifiche è un campo semplice, non un sistema di regole complesso
 - Le comunicazioni fase 1 usano la tabella `notification` esistente con filtro `destinatario_tipo`
 
@@ -386,11 +386,11 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 12.56 | Nuova struttura `render()`: header + sezione Assegnazioni (card con tab template) + grid 2col desktop (Magazzino + Ordini) | ⬜ | — | modules/club/kit.js | ~15min |
-| 12.57 | Sezione Assegnazioni: tab pill per ogni template, filtri Tutti/Incompleti/Completi contestuali, lista giocatori/staff del template selezionato | ⬜ | 12.56 | modules/club/kit.js | ~15min |
-| 12.58 | Sezione Magazzino: card con tab pill per template, bundle per taglia collassabili (riusa logica esistente) | ⬜ | 12.56 | modules/club/kit.js | ~15min |
-| 12.59 | Sezione Ordini: card con tab "Da ordinare" / "In attesa fornitore" (unifica le due sezioni attuali) | ⬜ | 12.56 | modules/club/kit.js | ~10min |
-| 12.60 | CSS responsive: grid 2col desktop (Magazzino+Ordini), 1col mobile. Tab pill standard. Build test + docs | ⬜ | 12.57-12.59 | modules/club/kit.js | ~5min |
+| 12.56 | Nuova struttura `render()`: header + sezione Assegnazioni (card con tab template) + grid 2col desktop (Magazzino + Ordini) | ✅ | — | modules/club/kit.js | ~15min |
+| 12.57 | Sezione Assegnazioni: tab pill per ogni template, filtri Tutti/Incompleti/Completi contestuali, lista giocatori/staff del template selezionato | ✅ | 12.56 | modules/club/kit.js | ~15min |
+| 12.58 | Sezione Magazzino: card con tab pill per template, bundle per taglia collassabili (riusa logica esistente) | ✅ | 12.56 | modules/club/kit.js | ~15min |
+| 12.59 | Sezione Ordini: card con tab "Da ordinare" / "In attesa fornitore" (unifica le due sezioni attuali) | ✅ | 12.56 | modules/club/kit.js | ~10min |
+| 12.60 | CSS responsive: grid 2col desktop (Magazzino+Ordini), 1col mobile. Tab pill standard. Build test + docs | ✅ | 12.57-12.59 | modules/club/kit.js | ~5min |
 
 **Effort totale Fase 2**: ~2h30 (23 task)
 
@@ -1079,7 +1079,7 @@
 - Integrazione con EPIC 12 (checklist): il tesseramento può essere un item della checklist stagione
 - Capability: riusa `rosa: write` (chi gestisce la rosa gestisce anche i tesseramenti) oppure nuova `tesseramento: write` se serve granularità
 - Nessuna dipendenza da altre Epic (standalone)
-- **Accesso guest Famiglia**: il link Famiglia (tipo=`atleta` nel DB, label "👨‍👩‍👦 Famiglia" nella UI) ha `player_id` → mostra il tesseramento del proprio figlio. Il link Ospite (tipo=`genitore`, senza player_id) NON vede il tesseramento
+- **Accesso guest Famiglia**: il link Famiglia (tipo=`famiglia` nel DB, label "👨‍👩‍👦 Famiglia" nella UI) ha `player_id` → mostra il tesseramento del proprio figlio. Il link Ospite (tipo=`ospite`, senza player_id) NON vede il tesseramento
 - **Print Center guest**: la pagina `/print/tesseramento/:id` è accessibile con JWT guest (come le altre pagine print)
 
 **Evoluzione futura (v2)**:
@@ -1101,38 +1101,38 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 21.1 | Creare bucket `ricevute` su Supabase Storage (privato, max 5MB/file) | ⬜ | — | script migrazione | ~3min |
-| 21.2 | ALTER TABLE `fee_config`: ADD `iban TEXT`, `intestatario_conto TEXT`, `causale_template TEXT` | ⬜ | — | migrazione SQL | ~3min |
-| 21.3 | ALTER TABLE `fee_installment`: ADD `ricevuta_path TEXT`, `ricevuta_uploaded_at TIMESTAMPTZ`, `conferma_user_id UUID`, `pagato_online BOOLEAN DEFAULT false` | ⬜ | — | migrazione SQL | ~3min |
-| 21.4 | Aggiornare DATABASE_SCHEMA.md con nuove colonne | ⬜ | 21.2, 21.3 | .agents/knowledge/DATABASE_SCHEMA.md | ~2min |
+| 21.1 | Creare bucket `ricevute` su Supabase Storage (privato, max 5MB/file) | ✅ | — | script migrazione | ~3min |
+| 21.2 | ALTER TABLE `fee_config`: ADD `causale_template TEXT` (iban già in workspace_anagrafica, intestatario = workspace.nome) | ✅ | — | migrazione SQL | ~3min |
+| 21.3 | ALTER TABLE `fee_installment`: ADD `ricevuta_path TEXT`, `ricevuta_uploaded_at TIMESTAMPTZ`, `conferma_user_id UUID` | ✅ | — | migrazione SQL | ~3min |
+| 21.4 | Aggiornare DATABASE_SCHEMA.md con nuove colonne + sezione Storage | ✅ | 21.2, 21.3 | .agents/knowledge/DATABASE_SCHEMA.md | ~2min |
 
 #### Fase 2: Backend — Upload e Conferma
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 21.5 | Endpoint PUT `/api/fee-config/:id/payment-info` — salva IBAN, intestatario, causale template | ⬜ | 21.2 | routes/fees.js | ~5min |
-| 21.6 | Endpoint POST `/api/fees/installments/:id/upload-ricevuta` — multer upload + salva su Supabase Storage + aggiorna `ricevuta_path` + crea notification per segreteria | ⬜ | 21.1, 21.3 | routes/fees.js | ~12min |
-| 21.7 | Endpoint GET `/api/fees/installments/:id/ricevuta` — genera signed URL (1h) per download/preview | ⬜ | 21.6 | routes/fees.js | ~5min |
-| 21.8 | Endpoint PUT `/api/fees/installments/:id/conferma-pagamento` — segreteria conferma, aggiorna stato rata + `conferma_user_id` | ⬜ | 21.6 | routes/fees.js | ~5min |
-| 21.9 | Endpoint GET `/api/guest/fees` — rate del giocatore (guest atleta/genitore) con info bonifico | ⬜ | 21.5 | routes/fees.js | ~8min |
+| 21.5 | Endpoint PUT `/api/fee-config/:id/payment-info` — salva IBAN, intestatario, causale template | ✅ | 21.2 | routes/fees.js | ~5min |
+| 21.6 | Endpoint POST `/api/fees/installments/:id/upload-ricevuta` — multer upload + salva su Supabase Storage + aggiorna `ricevuta_path` + crea notification per segreteria | ✅ | 21.1, 21.3 | routes/fees.js | ~12min |
+| 21.7 | Endpoint GET `/api/fees/installments/:id/ricevuta` — genera signed URL (1h) per download/preview | ✅ | 21.6 | routes/fees.js | ~5min |
+| 21.8 | Endpoint PUT `/api/fees/installments/:id/conferma-pagamento` — segreteria conferma, aggiorna stato rata + `conferma_user_id` | ✅ | 21.6 | routes/fees.js | ~5min |
+| 21.9 | Endpoint GET `/api/guest/fees` — rate del giocatore (guest atleta/genitore) con info bonifico | ✅ | 21.5 | routes/fees.js | ~8min |
 
 #### Fase 3: Frontend Guest — Vista Quote + Upload
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 21.10 | Card "💰 Le mie quote" nella home genitore — lista rate con stato, scadenza, importo | ⬜ | 21.9 | modules/auth/guestGenitore.js | ~10min |
-| 21.11 | Dettaglio rata: mostra estremi bonifico (IBAN, intestatario, causale pre-compilata con nome atleta + tipo quota + numero rata) | ⬜ | 21.10 | modules/auth/guestGenitore.js | ~8min |
-| 21.12 | Bottone "📎 Carica ricevuta" — input file (JPG/PNG/PDF, max 5MB) + upload + feedback toast | ⬜ | 21.6, 21.11 | modules/auth/guestGenitore.js | ~10min |
-| 21.13 | Stato visivo rata: 🔴 scaduta, 🟡 in scadenza, 🟢 pagata, 📎 ricevuta caricata (in attesa conferma) | ⬜ | 21.10 | modules/auth/guestGenitore.js | ~5min |
-| 21.14 | Card "💰 Le mie quote" anche nella home atleta (read-only, senza upload) | ⬜ | 21.9 | modules/auth/guestAtleta.js | ~5min |
+| 21.10 | Card "💰 Le mie quote" nella home Famiglia (`guestAtleta.js`) — lista rate con stato, scadenza, importo | ✅ | 21.9 | modules/auth/guestAtleta.js | ~10min |
+| 21.11 | Dettaglio rata: mostra estremi bonifico (IBAN, intestatario, causale pre-compilata con nome atleta + tipo quota + numero rata) | ✅ | 21.10 | modules/auth/guestAtleta.js | ~8min |
+| 21.12 | Bottone "📎 Carica ricevuta" — input file (JPG/PNG/PDF, max 5MB) + upload + feedback toast | ✅ | 21.6, 21.11 | modules/auth/guestAtleta.js | ~10min |
+| 21.13 | Stato visivo rata: 🔴 scaduta, 🟡 in scadenza, 🟢 pagata, 📎 ricevuta caricata (in attesa conferma) | ✅ | 21.10 | modules/auth/guestAtleta.js | ~5min |
+| 21.14 | ~~Card "💰 Le mie quote" anche nella home atleta (read-only, senza upload)~~ — già incluso in 21.10-21.13 (unico modulo Famiglia) | ✅ | — | — | — |
 
 #### Fase 4: Frontend Segreteria — Notifica + Conferma
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 21.15 | Notifica in Centro Comunicazioni: "Rossi Marco ha caricato ricevuta per Rata 2 - Kit" con link diretto | ⬜ | 21.6 | modules/coach/notifications.js | ~8min |
-| 21.16 | Click notifica → modale preview ricevuta (immagine/PDF inline) + bottoni "✅ Conferma" / "❌ Rifiuta" | ⬜ | 21.7, 21.15 | modules/club/fees.js | ~10min |
-| 21.17 | Se rifiutata: notifica al genitore "Ricevuta non valida — ricaricare" + reset `ricevuta_path` | ⬜ | 21.16 | routes/fees.js | ~5min |
+| 21.15 | Notifica in Centro Comunicazioni: "Rossi Marco ha caricato ricevuta per Rata 2 - Kit" con link diretto | ✅ | 21.6 | modules/coach/notifications.js | ~8min |
+| 21.16 | Click notifica → modale preview ricevuta (immagine/PDF inline) + bottoni "✅ Conferma" / "❌ Rifiuta" | ✅ | 21.7, 21.15 | modules/coach/notifications.js | ~10min |
+| 21.17 | Se rifiutata: notifica alla famiglia "Ricevuta non valida — ricaricare" + reset `ricevuta_path` | ✅ | 21.16 | routes/fees.js | ~5min |
 | 21.18 | Vista quote admin: badge "📎" su rate con ricevuta caricata in attesa di conferma | ⬜ | 21.16 | modules/club/fees.js | ~5min |
 
 #### Fase 5: Config Bonifico — UI Segreteria
@@ -1385,6 +1385,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | v3.16.48 | feat: ordinamento alfabetico intelligente workspace (skip acronimi A.S.D., S.S.D., ecc.) |
 | v3.16.44 | feat: Quote — modale Configura Quote con ✏️ Modifica (nome/importo/rate/categoria), 📋 Duplica config, 🔄 Rigenera quote esistenti (batch ottimizzato, preserva pagamenti con logica residuo). Endpoint POST /fee-configs/:id/rigenera. Help in-app per pagina Quote. Fix showToast mancante |
 | v3.16.42 | feat: EPIC 12 guest UX — link Ospite senza comunicazioni, link Famiglia con sezione 💰 Situazione Quote (rate pagate/scadute), header semplificato (rimosso titolo, solo messaggio benvenuto). Fix nomi colonne fee_installment (stato/scadenza) |
+| v3.16.35 | feat: EPIC 21 Fase 3 — notifiche ricevuta bonifico in Centro Comunicazioni (card arancione + Conferma/Rifiuta/Vedi), badge campanella per segreteria, fix created_by guest null, fix tipo mancante in select unread, fix guard sessionStorage guest vs utente normale, modal custom conferma/rifiuta, spunta letta rimossa da tab Inviate |
 | v3.16.34 | feat: EPIC 3 Certificati Medici — badge "⚠️ Cert. scaduto" / "⏳ Cert. in scadenza" nelle convocazioni + banner riepilogativo se ≥1 convocato ha certificato scaduto/mancante |
 | v3.16.33 | fix: guest header — rimosso selettore squadra/stagione, avatar con logout (atleta: iniziali, genitore: G), fix loadSquadre per guest con workspaceInfo |
 | v3.16.32 | fix: aggiorna card dashboard in tempo reale dopo salvataggio convocazioni (refreshDashConvCards), data-conv-stato/alert attributes |

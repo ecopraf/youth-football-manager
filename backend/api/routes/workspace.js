@@ -71,8 +71,8 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
         const caps = user.permessi?.capabilities || user.permessi || {};
         if (caps.tesseramento !== 'write' && caps.rosa !== 'write') return res.status(403).json({ error: 'Non autorizzato' });
       }
-      const { forma_giuridica, matricola_figc, p_iva, codice_fiscale, sdi, indirizzo, telefono, email, sito_web, facebook, instagram, colori_sociali, sponsor_tecnico, nome_campo, indirizzo_campo, iban } = req.body;
-      const fields = { forma_giuridica, matricola_figc, p_iva, codice_fiscale, sdi, indirizzo, telefono, email, sito_web, facebook, instagram, colori_sociali, sponsor_tecnico, nome_campo, indirizzo_campo, iban, updated_at: new Date().toISOString() };
+      const { forma_giuridica, matricola_figc, p_iva, codice_fiscale, sdi, indirizzo, telefono, email, sito_web, facebook, instagram, colori_sociali, sponsor_tecnico, nome_campo, indirizzo_campo, iban, nome_banca } = req.body;
+      const fields = { forma_giuridica, matricola_figc, p_iva, codice_fiscale, sdi, indirizzo, telefono, email, sito_web, facebook, instagram, colori_sociali, sponsor_tecnico, nome_campo, indirizzo_campo, iban, nome_banca, updated_at: new Date().toISOString() };
       const { data: existing } = await supabase.from('workspace_anagrafica').select('id').eq('workspace_id', req.params.id).single();
       let result;
       if (existing) {

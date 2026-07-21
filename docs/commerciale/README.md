@@ -8,18 +8,24 @@ Ultimo aggiornamento: luglio 2026
 
 ```
 docs/commerciale/
-├── societa_lazio.csv       ← fonte di verità (339 società laziali)
-├── send_emails.js          ← invio massivo email + tracciamento CSV
-├── test_email.js           ← test invio su indirizzo personale
-├── run_gironi.js           ← scraper TC: recupera email per girone
-├── fill_emails.js          ← scraper TC: riempie email mancanti nel CSV
-├── clean_csv.js            ← pulizia: rimuove fake, duplicati, non laziali
-├── scraper.js              ← scraper base TC
-├── scraper_one.js          ← scraper singola società TC
-├── test_girone.js          ← test scraper su singolo girone
-├── fix_gironeA.js          ← fix manuale girone A
-├── gironi_status.json      ← stato avanzamento scraping per girone
-├── .env                    ← credenziali Gmail (non committare)
+├── societa_lazio.csv           ← fonte di verità (~400+ società laziali)
+├── societa_<regione>.csv       ← generati da scrape_golee_regione.js (es. societa_campania.csv)
+├── send_emails.js              ← invio massivo email + tracciamento CSV (accetta CSV path da CLI)
+├── test_email.js               ← test invio su indirizzo personale
+├── scrape_golee.js             ← scraper golee.it per provincia RM (Lazio — legacy)
+├── scrape_golee_regione.js     ← scraper golee.it generico per qualsiasi regione/province
+├── golee_results.json          ← output scraper lazio: tutti i club con email trovata
+├── golee_diff.json             ← diff lazio: nuovi/aggiornamenti rispetto al CSV
+├── golee_<regione>.json        ← output scraper per altre regioni
+├── run_gironi.js               ← scraper TC: recupera email per girone
+├── fill_emails.js              ← scraper TC: riempie email mancanti nel CSV
+├── clean_csv.js                ← pulizia: rimuove fake, duplicati, non laziali
+├── scraper.js                  ← scraper base TC
+├── scraper_one.js              ← scraper singola società TC
+├── test_girone.js              ← test scraper su singolo girone
+├── fix_gironeA.js              ← fix manuale girone A
+├── gironi_status.json          ← stato avanzamento scraping per girone
+├── .env                        ← credenziali Gmail (non committare)
 ├── package.json
 └── README.md
 ```
@@ -70,13 +76,38 @@ press-kit/
 
 ## Workflow
 
-1. **Scraping email** → `node run_gironi.js` (recupera email da TC per girone)
-2. **Pulizia** → `node clean_csv.js` (rimuove fake, duplicati, non laziali)
-3. **Test invio** → `node test_email.js` (invia a coppola.raffaele@gmail.com)
-4. **Invio massivo** → `node send_emails.js` (invia solo `Da contattare`, traccia `Inviato`)
+### Nuova regione (workflow completo)
+1. **Scraping** → `node scrape_golee_regione.js <regione> <province>`
+   ```bash
+   node scrape_golee_regione.js campania NA,CE,SA,AV,BN
+   node scrape_golee_regione.js toscana FI,PI,LI,AR,SI,GR,PT,PO,LU,MS
+   node scrape_golee_regione.js lombardia MI,BG,BS,CO,CR,LC,LO,MN,MB,PV,SO,VA
+   ```
+2. **Output**: `societa_<regione>.csv` già pronto con stato `Da contattare`
+3. **Test invio** → `node test_email.js`
+4. **Invio massivo** → `node send_emails.js societa_<regione>.csv`
 5. **Risposte** → aggiornare manualmente colonna `risposta` nel CSV
 
-> ⚠️ `send_emails.js` è rieseguibile senza duplicati: salta automaticamente `Inviato` ed `Escluso`
+> ⚠️ `send_emails.js` accetta il CSV come argomento CLI. Senza argomento usa `societa_lazio.csv` (default).
+
+### Fonte Tuttocampo (TC)
+1. **Scraping email** → `node run_gironi.js` (recupera email da TC per girone)
+2. **Pulizia** → `node clean_csv.js` (rimuove fake, duplicati, non laziali)
+
+### Fonte Golee — Lazio (aggiornamento CSV esistente)
+1. **Scraping** → `node scrape_golee.js` (visita golee.it/clubs/?sports=Calcio&provinces=RM)
+2. **Analisi diff** → leggere `golee_diff.json`:
+   - `nuovi`: società non nel CSV o con email mancante → aggiungere/aggiornare CSV
+   - `aggiornamenti`: email diversa da CSV → aggiungere come **nuova riga** (non sovrascrivere — entrambe potrebbero essere valide)
+3. **Aggiornamento CSV** → aggiornare email mancanti + appendere nuove righe
+4. **Reset stato** → impostare `Da contattare` sulle righe aggiornate
+
+### Note operative Golee (valide per tutti gli script)
+- Le email NON sono in `mailto:` links ma nel testo della pagina → regex su `document.body.innerText`
+- Filtrare sempre: `.pec.`, `golee`, `lnd.it` (indirizzi di sistema inutili)
+- Timeout: usare `domcontentloaded` + 3000ms wait (non `networkidle2` che causa timeout)
+- Se Golee ha email diversa da CSV: aggiungere come riga separata con suffisso `(2)` nel nome, non sovrascrivere
+- Alcuni club appaiono in più province → `scrape_golee_regione.js` deduplica automaticamente per nome normalizzato
 
 ---
 
@@ -92,16 +123,37 @@ press-kit/
 
 | Stato | Conteggio |
 |---|---|
-| Inviate | ~128 |
+| Inviate | ~173 (128 batch TC + 45 batch Golee) |
 | Da contattare | ~0 (batch completato) |
 | Escluse | ~17 |
-| Senza email | ~198 |
-| **Totale società** | **327** |
+| Senza email | ~200+ |
+| **Totale società** | **400+** |
+
+### Batch inviati
+| Data | Fonte | Quantità | Esito |
+|---|---|---|---|
+| luglio 2026 | Tuttocampo (gironi) | ~128 | ✅ |
+| luglio 2026 | Golee.it scraping | 45 | ✅ 45/0 errori |
 
 ---
 
 ## Fonti per trovare le società
 
 - **Tuttocampo Lazio** → https://www.tuttocampo.it/Lazio
+- **Golee.it (per regione)** → https://golee.it/clubs/?sports=Calcio&provinces=XX (sostituire XX con sigla provincia)
 - **FIGC Lazio** → https://www.figclazio.it
 - **LND Lazio** → https://lazio.lnd.it
+
+### Province per regione (riferimento rapido)
+| Regione | Province |
+|---|---|
+| Lazio | RM,VT,RI,LT,FR |
+| Campania | NA,CE,SA,AV,BN |
+| Toscana | FI,PI,LI,AR,SI,GR,PT,PO,LU,MS |
+| Lombardia | MI,BG,BS,CO,CR,LC,LO,MN,MB,PV,SO,VA |
+| Piemonte | TO,AL,AT,BI,CN,NO,VB,VC |
+| Veneto | VE,PD,VR,VI,TV,BL,RO |
+| Emilia-Romagna | BO,FE,FO,MO,PC,PR,RA,RE,RN |
+| Sicilia | PA,CT,ME,AG,CL,EN,RG,SR,TP |
+| Puglia | BA,BR,FG,LE,TA,BT |
+| Calabria | RC,CZ,CS,KR,VV |
