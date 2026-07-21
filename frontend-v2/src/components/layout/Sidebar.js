@@ -106,7 +106,7 @@ export function setupLayout() {
 }
 
 export function setupGuestLayout(tipo, playerName) {
-  const isAtleta = tipo === 'atleta';
+  const isAtleta = tipo === 'famiglia';
   const icon = isAtleta ? '🏃' : '👪';
   const label = playerName || (isAtleta ? 'Atleta' : 'Genitore');
   const firstName = playerName ? playerName.split(' ')[0] : label;
@@ -123,10 +123,7 @@ export function setupGuestLayout(tipo, playerName) {
         <div class="sidebar-info-workspace" id="workspaceName">${label}</div>
       </div>
       <nav class="sidebar-nav">
-        <a href="#" class="active" data-page="${isAtleta ? 'guestAtleta' : 'guestGenitore'}">🏠 Home</a>
-        <a href="#" data-page="calendar">📅 Calendario</a>
-
-        <a href="#" data-page="club">🏢 Società</a>
+        ${buildNavHtml({ isGuest: true, user: { guestTipo: tipo } })}
       </nav>
       <div class="sidebar-user" style="display:flex;">
         <div class="sidebar-user-avatar">${icon}</div>

@@ -4,7 +4,7 @@
  */
 
 export function buildNavHtml({ user, isGuest, isSuperadmin }) {
-  if (isGuest) return buildGuestNav();
+  if (isGuest) return buildGuestNav(user?.guestTipo);
 
   const showForRole = (roles) => {
     if (!user) return false;
@@ -86,9 +86,14 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
   return html;
 }
 
-function buildGuestNav() {
+function buildGuestNav(tipoParam) {
+  const guestTipo = tipoParam || sessionStorage.getItem('guest_tipo');
+  const homeTarget = guestTipo === 'ospite' ? 'guestGenitore' : 'guestAtleta';
   let html = '';
-  html += navItem('dashboard', '🏠', 'Dashboard', 'Panoramica', true);
+  html += navItem(homeTarget, '🏠', 'Home', 'Panoramica', true);
+  if (guestTipo !== 'ospite') {
+    html += navItem('guestFees', '💰', 'Quote', 'Le mie quote');
+  }
   html += sectionTitle('⚽ Team');
   html += navItem('roster', '👕', 'Rosa', 'Lista giocatori');
   html += navItem('calendar', '📅', 'Calendario', 'Calendario partite');
