@@ -77,11 +77,12 @@ press-kit/
 ## Workflow
 
 ### Nuova regione (workflow completo)
-1. **Scraping** → `node scrape_golee_regione.js <regione> <province>`
+1. **Scraping** → `node scrape_golee_regione.js <regione>` (province auto-rilevate)
    ```bash
-   node scrape_golee_regione.js campania NA,CE,SA,AV,BN
-   node scrape_golee_regione.js toscana FI,PI,LI,AR,SI,GR,PT,PO,LU,MS
-   node scrape_golee_regione.js lombardia MI,BG,BS,CO,CR,LC,LO,MN,MB,PV,SO,VA
+   node scrape_golee_regione.js campania
+   node scrape_golee_regione.js lombardia
+   node scrape_golee_regione.js italia        # tutte le regioni in un colpo
+   node scrape_golee_regione.js --list        # mostra regioni disponibili
    ```
 2. **Output**: `societa_<regione>.csv` già pronto con stato `Da contattare`
 3. **Test invio** → `node test_email.js`
@@ -89,6 +90,7 @@ press-kit/
 5. **Risposte** → aggiornare manualmente colonna `risposta` nel CSV
 
 > ⚠️ `send_emails.js` accetta il CSV come argomento CLI. Senza argomento usa `societa_lazio.csv` (default).
+> ⚠️ Le province sono mappate internamente in `scrape_golee_regione.js` — non serve passarle manualmente.
 
 ### Fonte Tuttocampo (TC)
 1. **Scraping email** → `node run_gironi.js` (recupera email da TC per girone)
@@ -121,19 +123,43 @@ press-kit/
 
 ## Stato Attuale (luglio 2026)
 
+### Lazio (`societa_lazio.csv`)
 | Stato | Conteggio |
 |---|---|
-| Inviate | ~173 (128 batch TC + 45 batch Golee) |
-| Da contattare | ~0 (batch completato) |
+| Inviate | ~173 (128 batch TC + 45 batch Golee RM) |
+| Da contattare | ~0 |
 | Escluse | ~17 |
-| Senza email | ~200+ |
-| **Totale società** | **400+** |
+| **Totale** | **400+** |
+
+### CSV regionali raccolti (Golee — pronti per invio)
+| Regione | Club con email | File CSV |
+|---|---|---|
+| Lombardia | 575 | `societa_lombardia.csv` |
+| Emilia-Romagna | 219 | `societa_emilia-romagna.csv` |
+| Veneto | 194 | `societa_veneto.csv` |
+| Piemonte | 165 | `societa_piemonte.csv` |
+| Campania | 111 | `societa_campania.csv` |
+| Toscana | 80 | `societa_toscana.csv` |
+| Friuli | 80 | `societa_friuli.csv` |
+| Sardegna | 74 | `societa_sardegna.csv` |
+| Sicilia | 78 | `societa_sicilia.csv` |
+| Puglia | 72 | `societa_puglia.csv` |
+| Calabria | 63 | `societa_calabria.csv` |
+| Trentino | 57 | `societa_trentino.csv` |
+| Abruzzo | 46 | `societa_abruzzo.csv` |
+| Marche | 43 | `societa_marche.csv` |
+| Liguria | 37 | `societa_liguria.csv` |
+| Umbria | 33 | `societa_umbria.csv` |
+| Basilicata | 15 | `societa_basilicata.csv` |
+| Molise | 5 | `societa_molise.csv` |
+| Valle d'Aosta | 5 | `societa_valle-d-aosta.csv` |
+| **TOTALE** | **~1.953** | |
 
 ### Batch inviati
-| Data | Fonte | Quantità | Esito |
-|---|---|---|---|
-| luglio 2026 | Tuttocampo (gironi) | ~128 | ✅ |
-| luglio 2026 | Golee.it scraping | 45 | ✅ 45/0 errori |
+| Data | Regione | Fonte | Quantità | Esito |
+|---|---|---|---|---|
+| luglio 2026 | Lazio | Tuttocampo (gironi) | ~128 | ✅ |
+| luglio 2026 | Lazio | Golee.it (RM) | 45 | ✅ |
 
 ---
 
@@ -144,16 +170,5 @@ press-kit/
 - **FIGC Lazio** → https://www.figclazio.it
 - **LND Lazio** → https://lazio.lnd.it
 
-### Province per regione (riferimento rapido)
-| Regione | Province |
-|---|---|
-| Lazio | RM,VT,RI,LT,FR |
-| Campania | NA,CE,SA,AV,BN |
-| Toscana | FI,PI,LI,AR,SI,GR,PT,PO,LU,MS |
-| Lombardia | MI,BG,BS,CO,CR,LC,LO,MN,MB,PV,SO,VA |
-| Piemonte | TO,AL,AT,BI,CN,NO,VB,VC |
-| Veneto | VE,PD,VR,VI,TV,BL,RO |
-| Emilia-Romagna | BO,FE,FO,MO,PC,PR,RA,RE,RN |
-| Sicilia | PA,CT,ME,AG,CL,EN,RG,SR,TP |
-| Puglia | BA,BR,FG,LE,TA,BT |
-| Calabria | RC,CZ,CS,KR,VV |
+> Le province per ogni regione sono mappate internamente in `scrape_golee_regione.js`.
+> Usa `node scrape_golee_regione.js --list` per vedere l'elenco completo.

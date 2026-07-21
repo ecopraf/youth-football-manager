@@ -226,9 +226,12 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
 
       // Filtra per destinatario_tipo se specificato
       let filtered = data || [];
+      // Escludi sempre ricevuta_caricata dall'endpoint guest (è per segreteria/admin)
+      filtered = filtered.filter(n => n.tipo !== 'ricevuta_caricata');
       if (tipoFilter) {
         filtered = filtered.filter(n => {
-          if (!n.destinatario_tipo || n.destinatario_tipo.length === 0) return true;
+          // Solo null/undefined = broadcast; array vuoto [] NON è broadcast
+          if (!n.destinatario_tipo) return true;
           return n.destinatario_tipo.includes(tipoFilter);
         });
       }

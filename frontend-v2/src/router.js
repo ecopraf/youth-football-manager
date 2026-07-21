@@ -4,6 +4,7 @@ export function initRouter() {
     guest: () => import('./modules/auth/guest.js'),
     guestAtleta: () => import('./modules/auth/guestAtleta.js'),
     guestGenitore: () => import('./modules/auth/guestGenitore.js'),
+    guestFees: () => import('./modules/auth/guestFees.js'),
     users: () => import('./modules/admin/users.js'),
     guestLinks: () => import('./modules/admin/guestLinks.js'),
     dashboard: () => import('./modules/team/dashboard.js'),
@@ -173,7 +174,7 @@ export function initRouter() {
     console.log('[ROUTER] navigateTo chiamato con:', page);
     
     const publicPages = ['login', 'guest'];
-    const guestAllowedPages = ['dashboard', 'calendar', 'stats', 'club', 'absence', 'matchCenter', 'guestAtleta', 'guestGenitore', 'print-tesseramento'];
+    const guestAllowedPages = ['dashboard', 'calendar', 'stats', 'club', 'absence', 'matchCenter', 'guestAtleta', 'guestGenitore', 'guestFees', 'print-tesseramento'];
     
     if (!publicPages.includes(page)) {
       const isGuest = window.YFM.isGuest();

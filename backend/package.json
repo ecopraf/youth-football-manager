@@ -3,10 +3,15 @@
   "version": "1.0.0",
   "main": "api/index.js",
   "scripts": {
-    "start": "node api/index.js"
+    "start": "node api/index.js",
+    "test:e2e": "node scripts/puppeteer/test-e2e.js",
+    "screenshots": "node scripts/puppeteer/screenshots.js",
+    "screenshots:local": "YFM_URL=http://localhost:5173 node scripts/puppeteer/screenshots.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.45.0",
+    "adm-zip": "^0.6.0",
+    "archiver": "^8.0.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
     "cors": "^2.8.5",

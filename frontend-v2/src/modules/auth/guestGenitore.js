@@ -6,6 +6,10 @@ import { apiFetch } from '../../services/api.js';
 
 export default async function loadGuestGenitore() {
   const c = document.getElementById('pageContent');
+  if (!window.YFM.guestTeamId) {
+    const gs = sessionStorage.getItem('yfm_guest');
+    if (gs) { try { const d = JSON.parse(gs); window.YFM.guestTeamId = d.team_id || null; } catch {} }
+  }
   const teamId = window.YFM.guestTeamId || window.YFM.squadraId;
 
   if (!teamId) {

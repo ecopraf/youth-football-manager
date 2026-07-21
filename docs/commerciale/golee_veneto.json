@@ -1,0 +1,972 @@
+[
+  {
+    "name": "A.S.D. Alpago",
+    "email": "alpagocalcio@libero.it",
+    "provincia": "BL"
+  },
+  {
+    "name": "ASD PLAVIS2021",
+    "email": "asdplavis2021@gmail.com",
+    "provincia": "BL"
+  },
+  {
+    "name": "Unione Cadore Domegge",
+    "email": "info@unionecadoredomegge.com",
+    "provincia": "BL"
+  },
+  {
+    "name": "A.S.D. Attivamente scuola e sport",
+    "email": "attivamentescuolasport@gmail.com",
+    "provincia": "BL"
+  },
+  {
+    "name": "Inter Prisco",
+    "email": "pieralessandrombezele@yahoo.it",
+    "provincia": "BL"
+  },
+  {
+    "name": "A.S.D. PEDAVENA CALCIO",
+    "email": "sgpedavenacalcio@gmail.com",
+    "provincia": "BL"
+  },
+  {
+    "name": "Calcio San Giorgio In Bosco A.S.D.",
+    "email": "segreteria@calciosangiorgioinbosco.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. Union Voltaroncaglia",
+    "email": "segreteria@voltaroncaglia.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "Bioimis Tombolo Calcio",
+    "email": "asdtombolocalcio@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "Ssdarl Mestrinorubano F.C.",
+    "email": "mestrinorubanofc@mestrinorubanofc.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "Cittadella Women S.S.D.A.R.L.",
+    "email": "info@cittadellawomen.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "U.S. Arcella Padova Asd",
+    "email": "segreteria@usarcella.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "Polisportiva Olympia ASD",
+    "email": "dibaseolympia@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "Pol.Dil. Sacra Famiglia",
+    "email": "sacrafamig@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "Us Torre",
+    "email": "info@ustorrepadova.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "Pol. Euganea Rovolon A.S.D.",
+    "email": "poleuganea@libero.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. Calcio Montegrotto",
+    "email": "calciomontegrotto@alice.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. Janus Nova 2017",
+    "email": "janusnova2017@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "ASD Gianesini",
+    "email": "gianesinicalcio.1949@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "Ssdarl Calcio Padova C5",
+    "email": "info@calciopadovac5.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "U.S. Crocefisso A.S.D.",
+    "email": "CROCEFISSOASD@ALICE.IT",
+    "provincia": "PD"
+  },
+  {
+    "name": "Pol. Mottinello Nuovo",
+    "email": "info@polmottinello.net",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. S.Caterina Stanghella",
+    "email": "asdscaterinastanghella@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "AQS BORGO VENETO ASD",
+    "email": "segreteria@aqsborgoveneto.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. San Martino Saonara",
+    "email": "sanmartinosaonara@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "LIONS VILLANOVA",
+    "email": "asdlionsvillanova@libero.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.C.D. Villafranchese",
+    "email": "acdvillafranchese@gamil.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. Armistizio Esedradonbosco",
+    "email": "segreteria@calcioarmistizio-esedradonbosco.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "U.S. Medoacus ASD",
+    "email": "usmedoacuscalcio@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "PIOVESE SSD ARL",
+    "email": "info@piovesecalcio.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "Polisportiva Corte",
+    "email": "polisportivacorte1976@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "Academy Noventa Padovana ssd arl",
+    "email": "segreteria@academynoventapadovana.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "ATLETICO 2000",
+    "email": "atletico2k@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. Calcio Casalserugo Maserà",
+    "email": "casalserugomasera@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "ACD CURTAROLESE 97",
+    "email": "Segreteria.curtarolese97@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "ASD POLISPORTIVA BRENTELLA",
+    "email": "info@polisbrentella.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "FIDES ASD",
+    "email": "hello@asdfides.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "ASD NEXT TEAM",
+    "email": "asdnexteam@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "Asd Carpine 2016",
+    "email": "carpine2016@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "ASD Atletico Lissaro 88",
+    "email": "diego.rocco@atleticolissaro88.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.C.D. Women Virtus Padova",
+    "email": "Womenvirtuspadova@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "ASD Sport Ing Padova",
+    "email": "ingcalciopd@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "ASD US SANT'AGOSTINO",
+    "email": "santasegreteria@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "U.S. R.E.A.L. PADOVA A.S.D.",
+    "email": "info@realpadova.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. CALCIO SAONARA VILLATORA",
+    "email": "saovilla.info@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "ASD Calcio Veneto For Disable",
+    "email": "veneto@calciovenetofd.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. ARZERELLO SPORT",
+    "email": "infoarzerellosport@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "Academy Plateola 1911",
+    "email": "segreteria@calcioplateola1911.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. CALCIO UNION CUS",
+    "email": "info@unioncus.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "ACD Justinense",
+    "email": "acdjustinense@libero.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. Grantorto",
+    "email": "asdgrantorto@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "SPORTVISION ACADEMY ASD",
+    "email": "sportvision.academy@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "Novacalcio asd",
+    "email": "asdnovacalcio@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "ASD SAVIO 1971",
+    "email": "asdsavio1971@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "LUPARENSE F.C. S.S.D. a r.l.",
+    "email": "1asquadraluparensefc@gmail.com",
+    "provincia": "PD"
+  },
+  {
+    "name": "ASD THERMAL TEOLO",
+    "email": "segreteria@thermalteolo.it",
+    "provincia": "PD"
+  },
+  {
+    "name": "A.S.D. Canalbianco Acv",
+    "email": "asdcanalbiancoacv@gmail.com",
+    "provincia": "RO"
+  },
+  {
+    "name": "A.S.D. Union River",
+    "email": "union.river@libero.it",
+    "provincia": "RO"
+  },
+  {
+    "name": "Associazione Polisportiva Grignano Dilettantistica",
+    "email": "apgdgrignano@gmail.com",
+    "provincia": "RO"
+  },
+  {
+    "name": "ASD GS Duomo",
+    "email": "segreteria@scuolacalcioduomo.it",
+    "provincia": "RO"
+  },
+  {
+    "name": "ACD BOARA POLESINE",
+    "email": "sg.boara2016@virgilio.it",
+    "provincia": "RO"
+  },
+  {
+    "name": "Us Calcio Badia",
+    "email": "calciobadia@libero.it",
+    "provincia": "RO"
+  },
+  {
+    "name": "Polisportiva San Bortolo",
+    "email": "info@polisportivasanbortolo.it",
+    "provincia": "RO"
+  },
+  {
+    "name": "A. S. D. Zigoni Oderzo",
+    "email": "asdzigoni@legalmail.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "Asd Pederobba 2015",
+    "email": "asd.pederobba2015@libero.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.S.D. Futsal Giorgione",
+    "email": "futsalgiorgione@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.C.D. Orsago",
+    "email": "calciorsago@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.S.D. LA RONCA",
+    "email": "info@calciolaronca.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.C.D. Portomansuè",
+    "email": "portomansue.calcio@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.S.D. Fregona Calcio",
+    "email": "ASFREGONACALCIO@outlook.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "U.S.D. Barbisano Eclisse A.S.D.",
+    "email": "barbisanoeclisse@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.S.D. MonteValdo",
+    "email": "acdvaldosport@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "Mareno Gialloblu S.S.D.",
+    "email": "marenogialloblu@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "MONTEGRAPPA S.S.D.aR.L.",
+    "email": "segreteria@montegrappassd.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.S.D. C.A. San Giuseppe",
+    "email": "casangiuseppe@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.S.D. Vittorio Falmec S.M.Colle",
+    "email": "calciovittoriocolle@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "SSD GODIGESE A R.L.",
+    "email": "godigesecalcio@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "CALCIO CORDIGNANO A.S.D.",
+    "email": "cordignanocalcio@libero.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.S.D. Union Feletto Vallata",
+    "email": "felettovallata@libero.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "ASD ALBAREDO INSIEME",
+    "email": "segreteria@asdalbaredoinsieme.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "DINAMO",
+    "email": "infoathleticdinamo@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.S.D. CIRCOLO OSPEDALIERI TREVISO",
+    "email": "segreteriaospedalieri@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.S.D. Calcio Caerano",
+    "email": "segreteria.calciocaerano@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "ASD CAPPELLA MAGGIORE FREGONA",
+    "email": "info@asdcappellamaggiorefregona.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "F.C. Casale ASD",
+    "email": "f.c.casale@calciocasale.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.P.S. Professional",
+    "email": "professionallab2026@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "Roncade Calcio",
+    "email": "segreteria@roncadecalcio.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "USD S.ELENA",
+    "email": "segreteria.ussantelena@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "ASD Calcio Femminile Vittorio Veneto",
+    "email": "cfvittorioveneto@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "San Gaetano Calcio ASD",
+    "email": "sangaetanocalcio@tiscali.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.S.D. CAMPOLONGO",
+    "email": "calcio@campolongo.org",
+    "provincia": "TV"
+  },
+  {
+    "name": "ValdoSport 1957 A.S.D.",
+    "email": "valdosport1957@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "Master Ability Football Evolution ASD",
+    "email": "masterabilityfe@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "Calcio Montebelluna S.r.l.",
+    "email": "segreteria@calciomontebelluna1919.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "ASD MONTELLO",
+    "email": "calciomontello@libero.it",
+    "provincia": "TV"
+  },
+  {
+    "name": "ASD ZERO BRANCO FBC 1932",
+    "email": "info@zerobrancofbc.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "ASD CALCIO SAN FIOR",
+    "email": "calciosanfior@gmail.com",
+    "provincia": "TV"
+  },
+  {
+    "name": "A.C.D. Robeganese Fulgor Salzano",
+    "email": "segreteria@robeganese.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "Academy F.C. Spinea 1966 S.S.D. A R.L.",
+    "email": "academy@fcspinea1966.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "Spinea 1966 S.S.D. A R.L.",
+    "email": "segreteria@fcspinea1966.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "A.S.D. Calcio Cavallino",
+    "email": "calciocavallino@libero.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "A.S.D. Calcio Marghera",
+    "email": "segreteria@calciomarghera.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "A.S.D. Stra Riviera Del Brenta",
+    "email": "calciostra@gmail.com",
+    "provincia": "VE"
+  },
+  {
+    "name": "Unione Graticolato Gelsi S.S.D.A.R.L.",
+    "email": "segreteria@graticolatogelsi.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "A.S.D. Calcio Meolo",
+    "email": "calciomeolo@gmail.com",
+    "provincia": "VE"
+  },
+  {
+    "name": "Asd Nuovo San Pietro",
+    "email": "nuovocalciosanpietro@gmail.com",
+    "provincia": "VE"
+  },
+  {
+    "name": "UNICA S.S.D. A R.L.",
+    "email": "unicassd@ugroup.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "U.S.D. FOSSO'",
+    "email": "fossocalcio@gmail.com",
+    "provincia": "VE"
+  },
+  {
+    "name": "DOLO1909PIANIGA S.S.D.A.R.L.",
+    "email": "segreteria.ssddolo1909pianiga@gmail.com",
+    "provincia": "VE"
+  },
+  {
+    "name": "Asd Città di Caorle La Salute",
+    "email": "caorlelasalutecalcio@gmail.com",
+    "provincia": "VE"
+  },
+  {
+    "name": "F.C. CALVI NOALE SSD a R.L.",
+    "email": "fccalvinoalessdarl@legalmail.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "A.S.D. Favaro 1948",
+    "email": "asfavaro1948@tiscali.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "ASD Polisportiva Bibione",
+    "email": "polisportivabibione@libero.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "ASD Dogado Calcio",
+    "email": "dogadocalcio@gmail.com",
+    "provincia": "VE"
+  },
+  {
+    "name": "UNION SPINEA FC",
+    "email": "segreteria@unionspinea.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "ASD AUDACE San donà",
+    "email": "amatoriaudacesandona@gmail.com",
+    "provincia": "VE"
+  },
+  {
+    "name": "KRAV MANGA. S.S.D S.P.A",
+    "email": "kevinbellugi48@gmail.com",
+    "provincia": "VE"
+  },
+  {
+    "name": "US MIRANESE ASD",
+    "email": "usdmiranese@legalmail.it",
+    "provincia": "VE"
+  },
+  {
+    "name": "Atletico Badia",
+    "email": "atletico_badia@yahoo.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.D.Calcio Illasi",
+    "email": "ILLASICALCIO@GMAIL.COM",
+    "provincia": "VR"
+  },
+  {
+    "name": "Ssdarl Nogara Calcio",
+    "email": "nogaracalcio@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "U.S.D. Sampietrina",
+    "email": "INFO@SAMPIETRINA.IT",
+    "provincia": "VR"
+  },
+  {
+    "name": "ASD-PSV TERRAZZO",
+    "email": "asdpsvterrazzo2021@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.S.D. Real Minerbe 2014",
+    "email": "realminerbe@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.S.D. Calcio San Giovanni Lupatoto",
+    "email": "segreteria@ifasgl.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.S.D. CISANO JUVENTINA BARDOLINO",
+    "email": "CISANOJUVENTINABARDOLINO2022@GMAIL.COM",
+    "provincia": "VR"
+  },
+  {
+    "name": "AVESA H.S.M.",
+    "email": "info@usavesa.it",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.C. Gabetti Valeggio Asd",
+    "email": "valeggiocalcio@alice.it",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.C. Zevio 1925 A.s.d.",
+    "email": "segreteria@aczevio1925.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.C.D. Olimpica Dossobuono",
+    "email": "segreteria.olimpicadossobuono@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "Asd Pro Sambonifacese 1921",
+    "email": "prosambo1921@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "Polisportiva Csi Cadidavid asd",
+    "email": "polisportivacsicadidavid@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "I.F.A. Verona S.S.D. S.R.L.",
+    "email": "segreteria@ifaverona.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "Asd Boys Gazzo",
+    "email": "segreteria.boysgazzo@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "GSD AMBROSIANA CALCIO",
+    "email": "ambro.segreteria@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "MOZZECANE 1970",
+    "email": "mozzecane1970asd@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "Asd Fumanese Calcio",
+    "email": "asdfumanesecalcio@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "ACD OPPEANO",
+    "email": "acdoppeano@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.C CHIEVO ACADEMY SSD ARL",
+    "email": "chievoacademy@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "UNIONE SPORTIVA SELVA DI PROGNO A.S.D.",
+    "email": "u.s.selvadiprogno@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "POLISPORTIVA CASELLE CALCIO A.S.D.",
+    "email": "pol.caselle.calcio@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "ASD POLISPORTIVA CALURI",
+    "email": "POLISPORTIVACALURI@GMAIL.COM",
+    "provincia": "VR"
+  },
+  {
+    "name": "Asd Villafranca Veronese",
+    "email": "relazioniesterne@asvillafranca.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.C.D. POVEGLIANO VERONESE",
+    "email": "eliomarcazzan00@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "Polisportiva la Vetta",
+    "email": "polisportivalavetta@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "ASD Pastrengo 2006",
+    "email": "uspastrengo2006@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "POLISPORTIVA NIEVO ASD Affiliata CSI-FIGC-FIJLKAM",
+    "email": "segreteria@polisportivanievo.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "ASD SS PALLONETTO",
+    "email": "asdsspallonetto@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.S.D. Pescantina Settimo",
+    "email": "asdpescantinasettimo@libero.it",
+    "provincia": "VR"
+  },
+  {
+    "name": "Unione Sportiva Sant'Anna d'Alfaedo ASD",
+    "email": "ussantannadalfaedo@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "Pedemonte Calcio",
+    "email": "DOMENICO.FARINA@PCERT.POSTECERT.IT",
+    "provincia": "VR"
+  },
+  {
+    "name": "US ALBARONCO 2024 ASD",
+    "email": "usalbaronco2024asd@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "Asd Union Cologna Minerbe 1919",
+    "email": "unioncolognaminerbe@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "A.S.D NAPOLEONICA",
+    "email": "asdnapoleonica@gmail.com",
+    "provincia": "VR"
+  },
+  {
+    "name": "FC Arzignano Valchiampo srl",
+    "email": "calcioarzignano@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "A.C. San Vitale 1995",
+    "email": "acsanvitale1995@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "Ssdarl Calcio Schio",
+    "email": "calcioschio2016@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "A.S.D. Calcio Colceresa",
+    "email": "info@colceresacalcio.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "A.S.D. Real S.Zeno Arzignano",
+    "email": "calcio@realsanzenoarzignano.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "Pedezzi 1950",
+    "email": "info@pedezzi1950.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "A.S.D. Alte Ceccato",
+    "email": "info@altecalcio.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "U.S.D. Montebello 1911",
+    "email": "usdmontebello@libero.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "Noventa Junior",
+    "email": "asdnoventajunior@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "U.S.D. Malo 1908",
+    "email": "info@usmalo1908.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "ASD PGS CONCORDIA CALCIO SCHIO",
+    "email": "direttivo@pgsconcordia.net",
+    "provincia": "VI"
+  },
+  {
+    "name": "FC BASSANO",
+    "email": "segreteria.cittadibassano1903@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "U.S. BASSANESE A.S.D.",
+    "email": "segreteria.bassanese@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "A.S.D. Bissarese",
+    "email": "bissarese@libero.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "ASD RIVIERA BERICA",
+    "email": "asdrivieraberica@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "LEODARI CALDOGNO ASD",
+    "email": "info@caldognocalcio.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "Pol. Dil. Arsenal Cusinati 2013",
+    "email": "arsenalcusinati@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "Brendola",
+    "email": "segreteria@brendolacalcio.eu",
+    "provincia": "VI"
+  },
+  {
+    "name": "Valle Agno Academy SSDaRL",
+    "email": "segreteria@valleagnoacademy.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "Azzurra Sandrigo U.S.D.",
+    "email": "info@azzurrasandrigo.org",
+    "provincia": "VI"
+  },
+  {
+    "name": "ALTO ACADEMY SSDARL",
+    "email": "segreteria@altoacademy.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "Asd CalcioNovoledo Villaverla",
+    "email": "novoledovillaverla@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "ASD AZZURRA MAGLIO",
+    "email": "asdazzurramaglio@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "VICENZA WOMEN'S FOOTBALL CLUB SSD RL",
+    "email": "segreteria@vicenzacalciofemminile.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "Associazione Sportiva Dilettantistica Cresole 80",
+    "email": "sscresole80@libero.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "AC Due Monti",
+    "email": "segreteria@duemonti.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "SSD UNION EUROCASSOLA A RL",
+    "email": "info@eurocassola.org",
+    "provincia": "VI"
+  },
+  {
+    "name": "Ac Giavenale asd",
+    "email": "acgiavenale@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "ASD CARTIGLIANO CALCIO",
+    "email": "segreteria@cartiglianocalcio.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "ASD Rivereel Sossano",
+    "email": "segreteria@rivereel.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "ASD SOVIZZO CALCIO",
+    "email": "segreteria@sovizzocalcio.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "Thiene 1908 S.S.D.a R.L.",
+    "email": "segreteria@thienecalcio1908.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "A.S.D. NOVA GENS",
+    "email": "novagens1914@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "A.S.D. CONCORDIA BASSANO",
+    "email": "info@asdconcordiabassano.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "Montebello Calcio 1911 SSDRL",
+    "email": "segreteria@usdmontebello.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "ASD UC Montecchio Maggiore",
+    "email": "segreteria@ucmontecchiomaggiore.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "A.C. LONGA 90",
+    "email": "longa.90@libero.it",
+    "provincia": "VI"
+  },
+  {
+    "name": "Asd Calcio Tezze",
+    "email": "asdcalciotezze@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "ASD San Vito Bassano",
+    "email": "asdsanvitobassano@gmail.com",
+    "provincia": "VI"
+  },
+  {
+    "name": "UNIONE LA ROCCA ALTAVILLA SSDRL",
+    "email": "unionelarocca@gmail.com",
+    "provincia": "VI"
+  }
+]

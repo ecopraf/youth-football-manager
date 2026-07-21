@@ -3,9 +3,18 @@
  */
 const express = require('express');
 const multer = require('multer');
+const AdmZip = require('adm-zip');
 const { handleDbError } = require('../helpers/dbErrors');
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const ALLOWED_MIMETYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_MIMETYPES.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Formato non supportato. Usa PDF, JPG o PNG.'));
+  }
+});
 
 module.exports = function createFeesRouter({ supabase, authMiddleware }) {
   const router = express.Router();
@@ -56,13 +65,16 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
   // PUT /api/fee-configs/:id — aggiorna solo il template config
   router.put('/api/fee-configs/:id', authMiddleware, async (req, res) => {
     try {
-      const { nome, importo_totale, rate, category_id, attiva } = req.body;
+      const { nome, importo_totale, rate, category_id, attiva, iban, intestatario, causale_template } = req.body;
       const updates = { updated_at: new Date().toISOString() };
       if (nome !== undefined) updates.nome = nome;
       if (importo_totale !== undefined) updates.importo_totale = parseFloat(importo_totale);
       if (rate !== undefined) updates.rate = rate;
       if (category_id !== undefined) updates.category_id = category_id || null;
       if (attiva !== undefined) updates.attiva = attiva;
+      if (iban !== undefined) updates.iban = iban;
+      if (intestatario !== undefined) updates.intestatario = intestatario;
+      if (causale_template !== undefined) updates.causale_template = causale_template;
       const { data, error } = await supabase.from('fee_config').update(updates).eq('id', req.params.id).select().single();
       if (error) return handleDbError(error, res);
       res.json(data);
@@ -94,7 +106,7 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
       const allNewInsts = [];
       const feeStatusUpdates = [];
       for (const fee of fees) {
-        const totalePagato = parseFloat(fee.importo_pagato) || 0;
+        const totalePagato = Math.max(0, parseFloat(fee.importo_pagato) || 0);
         let residuoPagato = totalePagato;
         const insts = [];
         let primaRataNonCoperta = -1;
@@ -403,7 +415,12 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
   });
 
   // 21.6 — POST /api/fee-installments/:id/upload-ricevuta
-  router.post('/api/fee-installments/:id/upload-ricevuta', authMiddleware, upload.single('ricevuta'), async (req, res) => {
+  router.post('/api/fee-installments/:id/upload-ricevuta', authMiddleware, (req, res, next) => {
+    upload.single('ricevuta')(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      next();
+    });
+  }, async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: 'File mancante' });
 
@@ -585,6 +602,101 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
       }));
 
       res.json(result);
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
+  // 21.21 — POST /api/fees/archivio-ricevute — genera ZIP ricevute stagione + CSV riepilogo
+  router.post('/api/fees/archivio-ricevute', authMiddleware, async (req, res) => {
+    try {
+      const { season_id } = req.body;
+      if (!season_id) return res.status(400).json({ error: 'season_id obbligatorio' });
+
+      // Prima recupera i fee_id della stagione
+      const { data: season } = await supabase.from('season').select('nome').eq('id', season_id).single();
+      const { data: team } = await supabase.from('team').select('nome, category:category_id(nome, workspace:workspace_id(nome_breve, nome))').eq('id', req.body.team_id || '').single();
+      const seasonName = (season?.nome || '').replace(/[^a-zA-Z0-9\-_]/g, '_');
+      const categoryName = (team?.category?.nome || '').replace(/[^a-zA-Z0-9\-_]/g, '_');
+      const workspaceName = (team?.category?.workspace?.nome_breve || team?.category?.workspace?.nome || '').replace(/[^a-zA-Z0-9\-_]/g, '_');
+      const zipName = `ricevute_${workspaceName ? workspaceName + '_' : ''}${categoryName ? categoryName + '_' : ''}${seasonName}`;
+
+      const { data: fees } = await supabase
+        .from('fee')
+        .select('id, player_id, fee_config_id, player:player_id(nome, cognome), fee_config:fee_config_id(nome)')
+        .eq('season_id', season_id);
+      if (!fees || fees.length === 0) return res.status(404).json({ error: 'Nessuna quota per questa stagione' });
+
+      const feeMap = Object.fromEntries(fees.map(f => [f.id, f]));
+      const feeIds = fees.map(f => f.id);
+
+      // Recupera rate con ricevuta
+      const { data: installments, error } = await supabase
+        .from('fee_installment')
+        .select('id, numero_rata, ricevuta_path, stato, importo, data_pagamento, fee_id')
+        .in('fee_id', feeIds)
+        .not('ricevuta_path', 'is', null);
+
+      if (error) return res.status(500).json({ error: error.message });
+      const valid = (installments || []).filter(i => i.ricevuta_path && !i.ricevuta_path.startsWith('archived:'));
+      if (valid.length === 0) return res.status(404).json({ error: 'Nessuna ricevuta da archiviare' });
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${zipName}.zip"`);
+
+      const zip = new AdmZip();
+
+      const csvRows = ['Giocatore,Quota,Rata,Importo,Stato,Data Pagamento,File'];
+      for (const inst of valid) {
+        const fee = feeMap[inst.fee_id];
+        const player = fee?.player;
+        const playerName = player ? `${player.cognome} ${player.nome}` : 'Sconosciuto';
+        const quotaNome = fee?.fee_config?.nome || 'Quota';
+        csvRows.push(`"${playerName}","${quotaNome}",${inst.numero_rata},${inst.importo},${inst.stato},${inst.data_pagamento || ''},${inst.ricevuta_path}`);
+
+        const { data: fileData, error: dlErr } = await supabase.storage.from('ricevute').download(inst.ricevuta_path);
+        if (!dlErr && fileData) {
+          const buf = Buffer.from(await fileData.arrayBuffer());
+          const ext = inst.ricevuta_path.split('.').pop();
+          const safeName = playerName.replace(/[^a-zA-Z0-9]/g, '_');
+          const safeQuota = quotaNome.replace(/[^a-zA-Z0-9]/g, '_');
+          zip.addFile(`${safeName}/${safeQuota}_rata_${inst.numero_rata}.${ext}`, buf);
+        }
+      }
+
+      zip.addFile('riepilogo.csv', Buffer.from(csvRows.join('\n'), 'utf8'));
+      const zipBuffer = zip.toBuffer();
+      res.setHeader('Content-Length', zipBuffer.length);
+      res.end(zipBuffer);
+    } catch (err) { if (!res.headersSent) res.status(500).json({ error: 'Errore server' }); }
+  });
+
+  // 21.22 — DELETE /api/fees/ricevute-stagione — elimina file Storage dopo download
+  router.delete('/api/fees/ricevute-stagione', authMiddleware, async (req, res) => {
+    try {
+      const { season_id } = req.body;
+      if (!season_id) return res.status(400).json({ error: 'season_id obbligatorio' });
+
+      const { data: feeIds } = await supabase.from('fee').select('id').eq('season_id', season_id);
+      if (!feeIds || feeIds.length === 0) return res.json({ deleted: 0 });
+
+      const { data: installments } = await supabase
+        .from('fee_installment')
+        .select('id, ricevuta_path')
+        .in('fee_id', feeIds.map(f => f.id))
+        .not('ricevuta_path', 'is', null)
+        .not('ricevuta_path', 'like', 'archived:%');
+
+      const toDelete = (installments || []).filter(i => i.ricevuta_path);
+      if (toDelete.length === 0) return res.json({ deleted: 0 });
+
+      await supabase.storage.from('ricevute').remove(toDelete.map(i => i.ricevuta_path));
+
+      for (const inst of toDelete) {
+        await supabase.from('fee_installment').update({
+          ricevuta_path: `archived:${inst.ricevuta_path}`
+        }).eq('id', inst.id);
+      }
+
+      res.json({ deleted: toDelete.length });
     } catch (err) { res.status(500).json({ error: 'Errore server' }); }
   });
 

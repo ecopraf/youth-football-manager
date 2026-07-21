@@ -217,7 +217,7 @@ Le tabelle reali nel DB Supabase sono:
 
 **Colonne notevoli `fee_config`**: `workspace_id UUID`, `nome TEXT`, `importo_totale NUMERIC(10,2)`, `rate JSONB` (array di {importo, scadenza_label, scadenza}), `category_id UUID` (nullable), `attiva BOOLEAN`
 
-**Colonne notevoli `fee_installment`**: `fee_id UUID`, `numero_rata INT`, `importo NUMERIC(10,2)`, `scadenza DATE`, `scadenza_label TEXT`, `stato TEXT` (da_pagare, pagata, parziale), `data_pagamento DATE`, `metodo_pagamento TEXT`, `ricevuta_numero TEXT`, `note TEXT`
+**Colonne notevoli `fee_installment`**: `fee_id UUID`, `numero_rata INT`, `importo NUMERIC(10,2)`, `scadenza DATE`, `scadenza_label TEXT`, `stato TEXT` (da_pagare, pagata, parziale), `data_pagamento DATE`, `metodo_pagamento TEXT`, `ricevuta_numero TEXT`, `note TEXT`, `ricevuta_path TEXT` (null = nessuna ricevuta, `archived:<path>` = archiviata e rimossa da Storage)
 
 **Colonne notevoli `import_log`**: `tipo TEXT` (calendario_pdf, calendario_testo, calendario_tuttocampo, rosa_xls, rosa_tuttocampo, formazioni_tuttocampo), `dettagli JSONB`, `record_importati INT`, `esito TEXT`
 
@@ -356,6 +356,20 @@ Quando si scrive logica basata sul nome categoria, usare regex che copra entramb
 **Regola**: `ospite` è un link di cortesia per amici/parenti — NON vede quote, tesseramento, convocazioni personali, né upload ricevute. Solo calendario partite e risultati pubblici.
 
 **⚠️ Nomi storici da NON usare nel codice**: `atleta`, `genitore` — questi erano nomi di un refactoring intermedio (EPIC 11) mai completato nel DB. I valori reali nel DB sono `famiglia` e `ospite`.
+
+**⚠️ Controllo tipo guest (CRITICO)**: in `setupGuestLayout` e ovunque si distingua il tipo guest, usare SEMPRE `tipo === 'famiglia'` (NON `tipo === 'atleta'`). Stesso vale per `sessionStorage.getItem('guest_tipo') === 'famiglia'`.
+
+**⚠️ JWT guest in sessionStorage**: il JWT non è in `sessionStorage.getItem('yfm_guest_jwt')` (non esiste). È dentro l'oggetto `yfm_guest`:
+```javascript
+// ❌ SBAGLIATO
+const token = sessionStorage.getItem('yfm_guest_jwt');
+// ✅ CORRETTO
+const guestRaw = sessionStorage.getItem('yfm_guest');
+let token = null;
+try { token = guestRaw ? JSON.parse(guestRaw).jwt : null; } catch { token = null; }
+```
+
+**⚠️ Variabili guest in memoria**: `window.YFM.guestPlayerId/guestTeamId/guestPlayerName` sono settate solo al login guest e non sopravvivono a navigazione/reload. Ogni modulo guest DEVE ripristinarle da `sessionStorage('yfm_guest')` come fallback (vedi pattern in AGENTS.md).
 
 ### Guest JWT
 - Generato da `/api/guest/:token` con validità 24h

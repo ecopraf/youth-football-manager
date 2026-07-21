@@ -65,8 +65,10 @@ git status
 
 ### Backend Dependencies
 - `express`, `cors`, `bcryptjs`, `jsonwebtoken`
+  - CORS config: `exposedHeaders: ['Content-Disposition']` (necessario per download file con filename dal backend)
 - `@supabase/supabase-js`, `pg`
 - `multer` (upload file PDF/XLS)
+- `adm-zip` (generazione ZIP archiviazione ricevute)
 - `xlsx` (parsing tabulato atleti FIGC .xlsx)
 - `pdf-parse@1.1.1` (parsing PDF calendario SGS/LND)
 - `cheerio` (parsing HTML Tuttocampo)
@@ -173,8 +175,9 @@ api/
                                   `POST /api/fee-configs/:id/rigenera` `PUT /api/fee-configs/:id/payment-info`
                                   `GET /api/fees` `POST /api/fees-generate` `DELETE /api/fees/:id` `DELETE /api/fees-batch`
                                   `POST /api/fees/notify` `GET /api/fees/guest`
+                                  `POST /api/fees/archivio-ricevute` (ZIP ricevute stagione + CSV) `DELETE /api/fees/ricevute-stagione` (pulizia Storage + marca archived:)
                                   `PUT /api/fee-installments/:id/pay` `PUT /api/fee-installments/:id/unpay`
-                                  `POST /api/fee-installments/:id/upload-ricevuta` `GET /api/fee-installments/:id/ricevuta` `PUT /api/fee-installments/:id/conferma-pagamento`
+                                  `POST /api/fee-installments/:id/upload-ricevuta` (formati: PDF/JPG/PNG, max 5MB) `GET /api/fee-installments/:id/ricevuta` `PUT /api/fee-installments/:id/conferma-pagamento`
     ├── kit.js                  — Kit templates CRUD, stock generate/restock, assignments singoli e batch, bundle model, flusso ordine evaso
                                   `GET|POST /api/kit-templates` `GET|PUT|DELETE /api/kit-templates/:id`
                                   `GET /api/kit-stock` `POST /api/kit-stock/generate` `POST /api/kit-stock/restock`
@@ -203,6 +206,17 @@ backend/scripts/
 ├── import-loghi-gr.js         — Batch download loghi da tutti i gironi GR
 └── scrape-logos.js            — Scraping loghi da Tuttocampo
 ```
+
+### Testing con Puppeteer
+Puppeteer è disponibile via `npx` (cache in `~/.npm/_npx/`) e in `docs/commerciale/node_modules/puppeteer`.
+Non è una dipendenza del progetto principale ma può essere usato per test E2E headless:
+```bash
+# Eseguire uno script di test
+/Users/Raffaele/.nvm/versions/node/v24.18.0/bin/node -e "const p = require('/Users/Raffaele/.npm/_npx/55158e48eb5c59f7/node_modules/puppeteer'); ..."
+# Oppure via npx
+npx puppeteer ...
+```
+**Limiti**: richiede backend locale avviato dall'utente (porta 3002) e frontend su localhost:5173 (`npm run dev`).
 
 ### Endpoint Wizard Loghi (solo superadmin, locale)
 - `POST /api/gr/logos-wizard` — body: `{levels: [1], championshipIds: ['49','55']}` → scan gironi, scarica nuovi, rileva aggiornamenti
@@ -706,6 +720,14 @@ Tutte le variabili globali disponibili nel frontend dopo il login e la selezione
 | `window.YFM.guestPlayerName` | String | Nome giocatore (solo tipo `famiglia`) |
 | `window.YFM.guestSquadreAccesso` | Array | category_id accessibili |
 
+> ⚠️ **ATTENZIONE**: `guestPlayerId`, `guestTeamId`, `guestPlayerName` sono variabili **in memoria** settate solo durante il flusso di login guest (`guest.js`). NON sopravvivono a un reload della pagina. Ogni modulo guest che le usa DEVE ripristinarle da `sessionStorage` come fallback:
+> ```javascript
+> if (!window.YFM.guestPlayerId) {
+>   const gs = sessionStorage.getItem('yfm_guest');
+>   if (gs) { try { const d = JSON.parse(gs); window.YFM.guestPlayerId = d.player_id || null; window.YFM.guestTeamId = d.team_id || null; window.YFM.guestPlayerName = d.player_name || null; } catch {} }
+> }
+> ```
+
 ### Preferenze utente (settate in `modules/team/dashboard.js`)
 
 | Variabile | Tipo | Descrizione |
@@ -722,6 +744,8 @@ Tutte le variabili globali disponibili nel frontend dopo il login e la selezione
 | `window.YFM.workspaceId` | `window.YFM.activeWorkspaceId` | Prefisso `active` |
 | `window.YFM.user` | `window.YFM.getUser()` | È una funzione, non una proprietà |
 | `loadXxx()` senza `await loadData()` | Chiamare `await loadData()` alla fine di `loadXxx()` | La funzione `load*` deve sempre popolare i dati dopo aver costruito il DOM e registrato gli event listener |
+| `sessionStorage.getItem('yfm_guest_jwt')` | `JSON.parse(sessionStorage.getItem('yfm_guest')).jwt` | `yfm_guest_jwt` NON ESISTE — il JWT è dentro l'oggetto `yfm_guest` |
+| `tipo === 'atleta'` in `setupGuestLayout` | `tipo === 'famiglia'` | Il valore reale nel DB è `famiglia`, non `atleta` (nome storico deprecato) |
 
 ### 🔄 Aggiornamento obbligatorio
 

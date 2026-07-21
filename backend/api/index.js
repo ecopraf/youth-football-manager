@@ -25,7 +25,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'yfm-secret-key-change-in-productio
 
 // CORS ottimizzato
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'apikey'] }));
+  allowedHeaders: ['Content-Type', 'Authorization', 'apikey'],
+  exposedHeaders: ['Content-Disposition'] }));
 app.use(express.json({ limit: '5mb' }));
 
 // Health con warmup

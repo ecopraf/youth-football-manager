@@ -1133,23 +1133,23 @@
 | 21.15 | Notifica in Centro Comunicazioni: "Rossi Marco ha caricato ricevuta per Rata 2 - Kit" con link diretto | ✅ | 21.6 | modules/coach/notifications.js | ~8min |
 | 21.16 | Click notifica → modale preview ricevuta (immagine/PDF inline) + bottoni "✅ Conferma" / "❌ Rifiuta" | ✅ | 21.7, 21.15 | modules/coach/notifications.js | ~10min |
 | 21.17 | Se rifiutata: notifica alla famiglia "Ricevuta non valida — ricaricare" + reset `ricevuta_path` | ✅ | 21.16 | routes/fees.js | ~5min |
-| 21.18 | Vista quote admin: badge "📎" su rate con ricevuta caricata in attesa di conferma | ⬜ | 21.16 | modules/club/fees.js | ~5min |
+| 21.18 | Vista quote admin: badge "📎" su rate con ricevuta caricata in attesa di conferma | ✅ | 21.16 | modules/club/fees.js | ~5min |
 
 #### Fase 5: Config Bonifico — UI Segreteria
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 21.19 | Sezione "Estremi pagamento" nella pagina Fee Config — form IBAN + intestatario + causale template | ⬜ | 21.5 | modules/club/fees.js | ~8min |
-| 21.20 | Anteprima causale: mostra esempio compilato (es. "Iscrizione 2025-26 Rata 2 - Rossi Marco") | ⬜ | 21.19 | modules/club/fees.js | ~3min |
+| 21.19 | Sezione "Estremi pagamento" nella pagina Fee Config — form causale template (IBAN/intestatario da workspace) | ✅ | 21.5 | modules/club/fees.js | ~8min |
+| 21.20 | Anteprima causale: mostra esempio compilato (es. "Iscrizione 2025-26 Rata 2 - Rossi Marco") | ✅ | 21.19 | modules/club/fees.js | ~3min |
 
 #### Fase 6: Archiviazione Stagionale
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 21.21 | Endpoint POST `/api/fees/archivio-ricevute` — genera ZIP con tutte le ricevute della stagione (organizzate per giocatore/quota) + riepilogo CSV | ⬜ | 21.6 | routes/fees.js | ~15min |
-| 21.22 | Endpoint DELETE `/api/fees/ricevute-stagione` — elimina file da Storage dopo conferma download | ⬜ | 21.21 | routes/fees.js | ~5min |
-| 21.23 | Frontend: bottone "📦 Archivia ricevute stagione" in pagina Quote (solo admin) — download ZIP + conferma pulizia | ⬜ | 21.21 | modules/club/fees.js | ~8min |
-| 21.24 | Dopo pulizia: rate con `ricevuta_path` mostrano "📁 Archiviata" invece del link download | ⬜ | 21.22 | modules/club/fees.js | ~3min |
+| 21.21 | Endpoint POST `/api/fees/archivio-ricevute` — genera ZIP con tutte le ricevute della stagione (organizzate per giocatore/quota) + riepilogo CSV | ✅ | 21.6 | routes/fees.js | ~15min |
+| 21.22 | Endpoint DELETE `/api/fees/ricevute-stagione` — elimina file da Storage dopo conferma download | ✅ | 21.21 | routes/fees.js | ~5min |
+| 21.23 | Frontend: bottone "📦 Archivia ricevute stagione" in pagina Quote (solo admin) — download ZIP + conferma pulizia | ✅ | 21.21 | modules/club/fees.js | ~8min |
+| 21.24 | Dopo pulizia: rate con `ricevuta_path` mostrano "📁 Archiviata" invece del link download | ✅ | 21.22 | modules/club/fees.js | ~3min |
 
 #### Fase 7 (Futura): Stripe Connect — Pagamento Online
 
@@ -1385,6 +1385,8 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 | v3.16.48 | feat: ordinamento alfabetico intelligente workspace (skip acronimi A.S.D., S.S.D., ecc.) |
 | v3.16.44 | feat: Quote — modale Configura Quote con ✏️ Modifica (nome/importo/rate/categoria), 📋 Duplica config, 🔄 Rigenera quote esistenti (batch ottimizzato, preserva pagamenti con logica residuo). Endpoint POST /fee-configs/:id/rigenera. Help in-app per pagina Quote. Fix showToast mancante |
 | v3.16.42 | feat: EPIC 12 guest UX — link Ospite senza comunicazioni, link Famiglia con sezione 💰 Situazione Quote (rate pagate/scadute), header semplificato (rimosso titolo, solo messaggio benvenuto). Fix nomi colonne fee_installment (stato/scadenza) |
+| v3.16.87 | feat: EPIC 21 Fase 6 — archiviazione stagionale ricevute (ZIP+CSV per giocatore/quota, filename Società_Categoria_Stagione), validazione formato upload PDF/JPG/PNG (fileFilter multer + client-side), badge 📁 Archiviata in UI, CORS exposedHeaders Content-Disposition, dipendenza adm-zip |
+| v3.16.86 | fix: sidebar guest — voce Quote mancante per tipo famiglia |
 | v3.16.35 | feat: EPIC 21 Fase 3 — notifiche ricevuta bonifico in Centro Comunicazioni (card arancione + Conferma/Rifiuta/Vedi), badge campanella per segreteria, fix created_by guest null, fix tipo mancante in select unread, fix guard sessionStorage guest vs utente normale, modal custom conferma/rifiuta, spunta letta rimossa da tab Inviate |
 | v3.16.34 | feat: EPIC 3 Certificati Medici — badge "⚠️ Cert. scaduto" / "⏳ Cert. in scadenza" nelle convocazioni + banner riepilogativo se ≥1 convocato ha certificato scaduto/mancante |
 | v3.16.33 | fix: guest header — rimosso selettore squadra/stagione, avatar con logout (atleta: iniziali, genitore: G), fix loadSquadre per guest con workspaceInfo |

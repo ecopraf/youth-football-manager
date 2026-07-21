@@ -1,4 +1,4 @@
-import { apiFetch } from '../../services/api';
+import { apiFetch, API_BASE } from '../../services/api';
 import { showLoading, hideLoading } from '../../utils/ui';
 
 function showToast(msg, type = 'info') {
@@ -77,6 +77,7 @@ function render(c, isAdmin) {
       <h1 class="page-title">💰 Quote</h1>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         ${isAdmin ? '<button class="btn btn-primary" id="btnConfigFee" style="font-size:13px;">⚙️ Configura Quote</button>' : ''}
+        ${isAdmin ? '<button class="btn btn-secondary" id="btnArchiviaRicevute" style="font-size:13px;">📦 Archivia ricevute</button>' : ''}
       </div>
     </div>
     <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
@@ -108,6 +109,8 @@ function render(c, isAdmin) {
   });
 
   c.querySelector('#btnConfigFee')?.addEventListener('click', showConfigModal);
+
+  c.querySelector('#btnArchiviaRicevute')?.addEventListener('click', () => showArchiviaModal());
 }
 
 function renderTable(filter, isAdmin) {
@@ -475,7 +478,7 @@ function showInstallmentsModal(fee, isAdmin) {
           return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${pagata ? '#f0fdf4' : inst.stato === 'parziale' ? '#fefce8' : '#fafafa'};border-radius:10px;border:1px solid ${pagata ? '#bbf7d0' : inst.stato === 'parziale' ? '#fde68a' : '#eee'};cursor:${isAdmin ? 'pointer' : 'default'};">
             ${isAdmin ? `<input type="checkbox" class="inst-check" data-idx="${i}" ${pagata ? 'checked' : ''} style="width:18px;height:18px;accent-color:#27AE60;">` : `<span style="font-size:16px;">${pagata ? '✅' : inst.stato === 'parziale' ? '🟡' : '⬜'}</span>`}
             <div style="flex:1;">
-              <div style="font-size:13px;font-weight:500;">${inst.scadenza_label || 'Rata ' + inst.numero_rata}</div>
+              <div style="font-size:13px;font-weight:500;">${inst.scadenza_label || 'Rata ' + inst.numero_rata}${inst.ricevuta_path?.startsWith('archived:') ? ' <span style="font-size:11px;background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;border-radius:6px;padding:1px 6px;">📁 Archiviata</span>' : inst.ricevuta_path && !pagata ? ' <span style="font-size:11px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:6px;padding:1px 6px;font-weight:600;">📎 in attesa</span>' : ''}</div>
               <div style="font-size:11px;color:#888;">${inst.scadenza ? new Date(inst.scadenza).toLocaleDateString('it-IT') : ''}</div>
               ${inst.note ? `<div style="font-size:11px;color:#d97706;font-weight:500;margin-top:2px;">💳 ${inst.note}</div>` : ''}
             </div>
@@ -800,6 +803,16 @@ function showEditConfigModal(cfg, onDone) {
       </div>
       <div id="editRateList"></div>
       <div id="editTotaleCheck" style="font-size:12px;color:#888;"></div>
+      <hr style="border:none;border-top:1px solid #eee;margin:4px 0;">
+      <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;">🏦 Bonifico</div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px;">IBAN e intestatario si configurano nelle Impostazioni Workspace. Qui puoi personalizzare la causale per questa quota.</div>
+      <div><label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Template causale</label>
+        <textarea id="editCausale" rows="2" placeholder="{quota} Rata {rata} - {atleta}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;resize:vertical;font-size:13px;font-family:inherit;">${(cfg.causale_template || '{quota} Rata {rata} - {atleta}').replace(/</g,'&lt;')}</textarea>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+          ${[['Nome quota','{quota}'],['Rata','{rata}'],['Atleta','{atleta}'],['Stagione','{stagione}']].map(([label,v])=>`<button type="button" class="causale-tag" data-var="${v}" title="Inserisce ${v}" style="font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid #667eea;color:#667eea;background:#f0f4ff;cursor:pointer;">${label}</button>`).join('')}
+        </div>
+      </div>
+      <div id="editCausalePreview" style="font-size:11px;color:#667eea;background:#f0f4ff;border-radius:6px;padding:6px 10px;margin-top:6px;display:none;"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
       <button class="btn btn-secondary" id="editCancelBtn">Annulla</button>
@@ -883,6 +896,34 @@ function showEditConfigModal(cfg, onDone) {
 
   renderRate();
 
+  // Causale: tag cliccabili + anteprima
+  const causaleInput = ov.querySelector('#editCausale');
+  const causalePreview = ov.querySelector('#editCausalePreview');
+  function updateCausalePreview() {
+    const tmpl = causaleInput.value.trim();
+    if (!tmpl) { causalePreview.style.display = 'none'; return; }
+    const esempio = tmpl
+      .replace(/\{quota\}/g, cfg.nome)
+      .replace(/\{rata\}/g, '1')
+      .replace(/\{atleta\}/g, 'Rossi Marco')
+      .replace(/\{stagione\}/g, new Date().getFullYear() + '/' + (new Date().getFullYear() + 1));
+    causalePreview.textContent = '👁 ' + esempio;
+    causalePreview.style.display = 'block';
+  }
+  causaleInput.addEventListener('input', updateCausalePreview);
+  ov.querySelectorAll('.causale-tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = btn.dataset.var;
+      const start = causaleInput.selectionStart;
+      const end = causaleInput.selectionEnd;
+      causaleInput.value = causaleInput.value.slice(0, start) + v + causaleInput.value.slice(end);
+      causaleInput.focus();
+      causaleInput.setSelectionRange(start + v.length, start + v.length);
+      updateCausalePreview();
+    });
+  });
+  updateCausalePreview();
+
   const closeEdit = () => ov.remove();
   ov.addEventListener('click', e => { if (e.target === ov) closeEdit(); });
   ov.querySelector('#editCancelBtn').addEventListener('click', closeEdit);
@@ -896,7 +937,8 @@ function showEditConfigModal(cfg, onDone) {
     try {
       await apiFetch('/fee-configs/' + cfg.id, { method: 'PUT', body: JSON.stringify({
         nome, importo_totale, category_id,
-        rate: rate.map(r => ({ importo: parseFloat(r.importo), scadenza_label: r.scadenza_label || null, scadenza: r.scadenza || null }))
+        rate: rate.map(r => ({ importo: parseFloat(r.importo), scadenza_label: r.scadenza_label || null, scadenza: r.scadenza || null })),
+        causale_template: ov.querySelector('#editCausale').value.trim() || null
       })});
       showToast('✅ Configurazione aggiornata', 'success');
       closeEdit();
@@ -925,4 +967,83 @@ async function applyConfigToTeam(cfgId) {
     hideLoading();
     alert(err.message);
   }
+}
+
+// 21.21-21.23 — Archiviazione stagionale ricevute
+function showArchiviaModal() {
+  const seasonId = window.YFM.currentSeasonId;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="font-size:32px;text-align:center;margin-bottom:8px;">📦</div>
+      <div style="font-weight:700;font-size:16px;text-align:center;margin-bottom:8px;">Archivia ricevute stagione</div>
+      <p style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">
+        Scarica uno ZIP con tutte le ricevute caricate questa stagione + riepilogo CSV.<br>
+        Dopo il download puoi eliminare i file dallo Storage per liberare spazio.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button id="btnDownloadZip" class="btn btn-primary" style="width:100%;">⬇️ Scarica ZIP ricevute</button>
+        <button id="btnPulisciStorage" class="btn btn-secondary" style="width:100%;color:#dc2626;border-color:#fca5a5;" disabled>🗑️ Elimina file dallo Storage</button>
+        <button id="btnChiudiArchivia" class="btn btn-secondary" style="width:100%;">Annulla</button>
+      </div>
+      <p id="archiviaNote" style="font-size:11px;color:#888;text-align:center;margin-top:10px;display:none;">
+        ✅ ZIP scaricato. Ora puoi eliminare i file dallo Storage.
+      </p>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector('#btnChiudiArchivia').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+  overlay.querySelector('#btnDownloadZip').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#btnDownloadZip');
+    btn.disabled = true;
+    btn.textContent = '⏳ Generazione ZIP...';
+    try {
+      const res = await fetch(API_BASE + '/fees/archivio-ricevute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('yfm_token')}` },
+        body: JSON.stringify({ season_id: seasonId, team_id: window.YFM.squadraId })
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Errore download'); }
+      const blob = await res.blob();
+      const disposition = res.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/);
+      const filename = match ? match[1] : `ricevute_${(window.YFM.getSocietaName() || '').replace(/[^a-zA-Z0-9]/g,'_')}_${seasonId}.zip`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+      overlay.querySelector('#archiviaNote').style.display = 'block';
+      overlay.querySelector('#btnPulisciStorage').disabled = false;
+      btn.textContent = '✅ ZIP scaricato';
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = '⬇️ Scarica ZIP ricevute';
+      showToast('❌ ' + err.message, 'error');
+    }
+  });
+
+  overlay.querySelector('#btnPulisciStorage').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#btnPulisciStorage');
+    btn.disabled = true;
+    btn.textContent = '⏳ Eliminazione...';
+    try {
+      const res = await fetch(API_BASE + '/fees/ricevute-stagione', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('yfm_token')}` },
+        body: JSON.stringify({ season_id: seasonId })
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Errore eliminazione');
+      showToast(`✅ ${d.deleted} file eliminati dallo Storage`, 'success');
+      close();
+      loadFees();
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = '🗑️ Elimina file dallo Storage';
+      showToast('❌ ' + err.message, 'error');
+    }
+  });
 }
