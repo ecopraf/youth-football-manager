@@ -299,7 +299,6 @@ frontend-v2/src/
     │   └── registration.js    — Tesseramento atleti
     └── import/
         └── importCenter.js    — Hub import (XLS, PDF, TC)
-```
 
 - **App**: https://youth-football-manager.vercel.app
 - **Backend API**: https://youth-football-manager-backend.vercel.app/api
