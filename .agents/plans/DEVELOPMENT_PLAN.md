@@ -605,6 +605,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.90 | fix: stampa mobile convocazione (@page 10mm, padding 0, font 11px) e distinta (@page 6mm, font 7-8px) per evitare seconda pagina. feat: import center alert→showToast con durata import (t0/Date.now()) su tutti i flussi (PDF, testo, GR calendario, GR marcatori, formazioni, loghi). docs: DEVELOPMENT_PLAN archiviazione epic 6/16/20/21, nuovi EPIC 24/25/26, DEVELOPMENT_PLAN_ARCHIVE.md creato, AGENTS.md e project-rules.md aggiornati con regole archiviazione |
 | v3.16.82 | feat: tab Valutazioni nel Match Center — gruppi Titolari/Subentrati/Non entrati, minutaggio da getHalfDuration() (U16=80'), assist da e.assist_id (GOAL mergiato), SV per <5min e corner case sub all'ultimo minuto (Math.max(1,...)), formazioneIniziale per gruppi corretti, showToast locale, voto nullable in DB. fix: tab MC mobile emoji+label abbreviata (flex:1, no scroll), header MC mobile (flex:1, word-break), overflow-x:clip su .content (permette scroll figli) |
 | v3.16.81 | fix: guestLinks — loadGuestLinks non chiamava loadData() (griglia sempre vuota), rimosso riferimento a #linksTableBody (vecchio DOM) nel catch |
 | v3.16.80 | fix: kit modale assegnazione — articolo con sostituzione `in_attesa` mostrato con sfondo grigio + icona 🔄 + badge "in attesa sostituzione" invece di ✅ verde (Santangelo Tuta rappresentanza) |
