@@ -533,7 +533,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
             match_id: req.params.matchId, tipo_evento: e.tipo, minuto: parseInt(e.minuto) || null,
             player_id: e.principale_id || null,
             player_id_secondario: e.tipo === 'SUB' ? (e.assist_id || null) : null,
-            note: e.autogol ? 'autogol' : (e.rigore ? 'rigore' : null)
+          note: e.tipo === 'SUBITO' ? (e.principale || null) : (e.autogol ? 'autogol' : (e.rigore ? 'rigore' : null))
           });
           if (e.tipo === 'GOAL' && e.assist_id) {
             inserts.push({

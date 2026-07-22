@@ -734,3 +734,22 @@
 | 27.12 | helpData.js + docs aggiornati | ✅ |
 
 ---
+
+### EPIC 14: Match Center Evolution
+
+> Iniziato: 22 Luglio 2026 | Completato: 23 Luglio 2026
+
+| ID | Task | Stato |
+|----|------|-------|
+| 14.1 | Layout 2 colonne desktop | ✅ |
+| 14.2 | CSS responsive mobile | ✅ |
+| 14.3-14.8 | Tab Dettagli + Riorganizzazione tab | ❌ Cancellati |
+| 14.9 | Quick Action Rigore (sostituisce Autogol) | ✅ |
+| 14.10 | Riordino logico quick actions | ✅ |
+| 14.11 | Timeline visuale algoritmo tracks + tooltip fixed | ✅ |
+| 14.12 | Build test | ✅ |
+| 14.13 | Docs aggiornati | ✅ |
+
+**Risultati**: timeline tracks (sopra=GOAL/SUB/SUBITO, sotto=YELLOW/RED), tooltip position:fixed, punteggio progressivo sui gol, badge RIG/AUT nel card evento, match_event.note per SUBITO = nome avversario, fmtName() uniformata, caricamento ottimizzato Promise.all.
+
+---

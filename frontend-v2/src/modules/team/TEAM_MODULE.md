@@ -160,6 +160,8 @@ roster.js
 ## Note critiche
 
 - `gol_casa` = gol NOSTRI, `gol_ospite` = gol AVVERSARIO — indipendente da Casa/Trasferta
+- Timeline visuale MC: algoritmo tracks (sopra=GOAL/SUB/SUBITO, sotto=YELLOW/RED), MIN_DIST_PCT=8%, tooltip fixed via JS (mouseenter/touchstart), punteggio progressivo visibile sui gol
+- `match_event.note` per SUBITO = nome giocatore avversario (testo libero); per GOAL = `'autogol'`/`'rigore'`
 - `live_meta` JSONB su `match`: `{stato, start_1t, end_1t, start_2t, end_match}`
 - `formazione_meta` JSONB su `match`: `{modulo, positions, modulo_finale}`
 - Convocazioni: `risposta=null` → disponibile, `risposta='indisponibile'` → assente

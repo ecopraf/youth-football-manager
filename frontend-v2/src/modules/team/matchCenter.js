@@ -41,7 +41,7 @@ export default async function loadMatchCenter() {
       const tipo = e.tipo_evento || e.tipo;
       return {
         ...e, tipo,
-        principale: e.player_name || '', principale_id: e.player_id || null,
+        principale: tipo === 'SUBITO' ? (e.note || '') : (e.player_name || ''), principale_id: e.player_id || null,
         assist_name: tipo !== 'SUB' ? (e.player_name_secondary || '') : '',
         assist_id: e.player_id_secondario || null,
         sub_in: tipo === 'SUB' ? (e.player_name_secondary || '') : '',
@@ -500,6 +500,7 @@ function getStyles() {
 .mc-tl-badge{display:inline-block;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;margin-left:6px;vertical-align:middle;}
 .mc-tl-badge-rig{background:#3498DB20;color:#3498DB;border:1px solid #3498DB;}
 .mc-tl-badge-aut{background:#E74C3C20;color:#E74C3C;border:1px solid #E74C3C;}
+@media(max-width:500px){.mc-tl-min{font-size:10px;min-width:22px;}.mc-tl-icon{font-size:15px;}.mc-tl-player{font-size:12px;}.mc-tl-sub{font-size:10px;}.mc-tl-score{font-size:10px;}}
 .mc-tl-menu{position:absolute;top:8px;right:8px;cursor:pointer;font-size:18px;color:#999;padding:6px;border-radius:4px;}
 .mc-tl-menu:hover{color:#333;background:#f0f0f0;}
 .mc-tl-dropdown{position:absolute;top:28px;right:8px;background:white;border:1px solid #eee;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:10;display:none;}
@@ -726,9 +727,99 @@ function getQuickActions(mid) {
 }
 
 // ── TIMELINE ──
+// Formatta nome giocatore: "Cognome N."
+function fmtName(g) { return g ? g.cognome + (g.nome ? ' ' + g.nome.charAt(0) + '.' : '') : ''; }
+function getVisualTimeline() {
+  if (eventi.length === 0) return '';
+  const totalMin = getHalfDuration() * 2;
+  const half = getHalfDuration();
+  const EVT_VIS = { GOAL: { icon: '⚽', color: '#27AE60' }, SUBITO: { icon: '🥅', color: '#E74C3C' }, YELLOW: { icon: '🟨', color: '#F39C12' }, RED: { icon: '🟥', color: '#E74C3C' }, SUB: { icon: '🔄', color: '#667eea' }, RIGORE: { icon: '🎯', color: '#27AE60' }, AUTOGOL: { icon: '🔄', color: '#E74C3C' } };
+  const sorted = [...eventi].sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0));
+
+  // Punteggio progressivo
+  let runCasa = 0, runOspite = 0;
+  const scores = sorted.map(e => {
+    if ((e.tipo === 'GOAL' || e.tipo === 'RIGORE') && !e.autogol) runCasa++;
+    else if (e.tipo === 'SUBITO' || (e.tipo === 'GOAL' && e.autogol)) runOspite++;
+    return (e.tipo === 'GOAL' || e.tipo === 'RIGORE' || e.tipo === 'SUBITO') ? `${runCasa}-${runOspite}` : null;
+  });
+
+  // Algoritmo tracks: ogni evento va nella prima track con spazio sufficiente
+  // Track sopra la barra per gol/sostituzioni, track sotto per cartellini
+  const ABOVE_TYPES = new Set(['GOAL','RIGORE','SUB','SUBITO']);
+  const MIN_DIST_PCT = 8; // distanza minima tra eventi sulla stessa track (%)
+  const tracksAbove = []; // array di track, ognuna = array di pct assegnati
+  const tracksBelow = [];
+
+  const trackAssign = sorted.map((e) => {
+    const pct = Math.min(97, Math.max(2, (parseInt(e.minuto) || 0) / totalMin * 100));
+    const pool = ABOVE_TYPES.has(e.tipo) ? tracksAbove : tracksBelow;
+    let trackIdx = pool.findIndex(t => t.every(p => Math.abs(p - pct) >= MIN_DIST_PCT));
+    if (trackIdx === -1) { pool.push([pct]); trackIdx = pool.length - 1; }
+    else pool[trackIdx].push(pct);
+    return { pct, trackIdx, above: ABOVE_TYPES.has(e.tipo) };
+  });
+
+  const TRACK_STEP = 28; // px tra una track e la successiva
+  const BASE_DIST = 18;  // distanza track 0 dalla barra
+
+  const dots = sorted.map((e, i) => {
+    const { pct, trackIdx, above } = trackAssign[i];
+    const cfg = EVT_VIS[e.tipo] || { icon: '●', color: '#888' };
+    const score = scores[i];
+    const min = e.minuto ? e.minuto + "'" : '';
+    const dist = BASE_DIST + trackIdx * TRACK_STEP;
+    const lineH = dist - 3;
+
+    // Popover content
+    let detail = e.principale || '';
+    if (e.tipo === 'SUB' && e.sub_in) detail += ` → ${e.sub_in}`;
+    if (e.assist_name) detail += ` (🅰️ ${e.assist_name})`;
+    if (score) detail += ` ${score}`;
+    const dot = `<div style="font-size:14px;line-height:1;cursor:pointer;" class="mc-vtl-dot" data-i="${i}" data-detail="${encodeURIComponent(detail || min)}" data-above="${above ? 1 : 0}">${cfg.icon}<div style="font-size:8px;color:${cfg.color};font-weight:700;text-align:center;margin-top:1px;white-space:nowrap;">${min}</div>${score ? `<div style="font-size:9px;font-weight:800;color:${cfg.color};text-align:center;line-height:1;white-space:nowrap;">${score}</div>` : ''}</div>`;
+
+    if (above) {
+      return `<div style="position:absolute;left:${pct}%;transform:translateX(-50%);">
+        <div style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:1px;height:${lineH}px;background:${cfg.color};opacity:0.3;"></div>
+        <div style="position:absolute;bottom:${dist}px;left:50%;transform:translateX(-50%);text-align:center;">${dot}</div>
+      </div>`;
+    } else {
+      return `<div style="position:absolute;left:${pct}%;transform:translateX(-50%);">
+        <div style="position:absolute;top:2px;left:50%;transform:translateX(-50%);width:1px;height:${lineH}px;background:${cfg.color};opacity:0.3;"></div>
+        <div style="position:absolute;top:${dist}px;left:50%;transform:translateX(-50%);text-align:center;">${dot}</div>
+      </div>`;
+    }
+  }).join('');
+
+  const maxTracksAbove = tracksAbove.length || 1;
+  const maxTracksBelow = tracksBelow.length || 1;
+  const marginTop = BASE_DIST + (maxTracksAbove - 1) * TRACK_STEP + 32;
+  const marginBot = BASE_DIST + (maxTracksBelow - 1) * TRACK_STEP + 32;
+  const halfPct = (half / totalMin) * 100;
+
+  return `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:10px 12px;margin-bottom:12px;overflow:hidden;">
+    <style>
+      .mc-vtl-dot { cursor:pointer; }
+      #mc-vtl-tooltip { position:fixed;background:#1a1a2e;color:white;border-radius:8px;padding:5px 10px;font-size:11px;white-space:nowrap;z-index:9999;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:none; }
+      @media(max-width:500px){.mc-vtl-bar{margin-top:${marginTop - 10}px!important;margin-bottom:${marginBot - 10}px!important;}}
+    </style>
+    <div id="mc-vtl-tooltip"></div>
+    <div style="font-size:9px;font-weight:700;color:#bbb;margin-bottom:6px;letter-spacing:0.5px;">TIMELINE VISUALE</div>
+    <div class="mc-vtl-bar" style="position:relative;height:3px;background:#e5e7eb;border-radius:2px;margin:${marginTop}px 4px ${marginBot}px;">
+      <div style="position:absolute;left:0;top:0;height:100%;width:${halfPct}%;background:#667eea;border-radius:2px 0 0 2px;"></div>
+      <div style="position:absolute;left:${halfPct}%;top:0;height:100%;width:${100 - halfPct}%;background:#a5b4fc;border-radius:0 2px 2px 0;"></div>
+      <div style="position:absolute;left:${halfPct}%;top:-5px;width:2px;height:13px;background:#4338ca;"></div>
+      <div style="position:absolute;left:0;top:8px;font-size:8px;color:#bbb;">0'</div>
+      <div style="position:absolute;left:${halfPct}%;top:8px;transform:translateX(-50%);font-size:8px;color:#4338ca;font-weight:700;">${half}'</div>
+      <div style="position:absolute;right:0;top:8px;font-size:8px;color:#bbb;">${totalMin}'</div>
+      ${dots}
+    </div>
+  </div>`;
+}
+
 function getTimeline(mid) {
   const sorted = [...eventi].sort((a, b) => (parseInt(a.minuto) || 0) - (parseInt(b.minuto) || 0));
-  let html = '<div class="mc-tl-title" data-help="mc.timeline">📋 Timeline Eventi</div><div class="mc-tl-grid">';
+  let html = getVisualTimeline() + '<div class="mc-tl-title" data-help="mc.timeline">📋 Timeline Eventi</div><div class="mc-tl-grid">';
   if (sorted.length === 0) {
     html += '<div class="mc-tl-empty">Nessun evento registrato.<br>Usa le azioni rapide per aggiungere.</div>';
   } else {
@@ -737,19 +828,20 @@ function getTimeline(mid) {
     sorted.forEach((e, i) => {
       if (e.tipo === 'GOAL' && !e.autogol) runCasa++;
       if (e.tipo === 'SUBITO' || (e.tipo === 'GOAL' && e.autogol)) runOspite++;
+      const realIdx = eventi.indexOf(e);
       const cfg = EVT_CONFIG[e.tipo] || { icon: '●', label: e.tipo };
-      const menuHtml = isReadOnly ? '' : `<span class="mc-tl-menu" data-idx="${i}">⋮</span><div class="mc-tl-dropdown" id="tldd${i}"><button data-edit="${i}">✏️ Modifica</button><button data-del="${i}">🗑️ Elimina</button></div>`;
+      const menuHtml = isReadOnly ? '' : `<span class="mc-tl-menu" data-idx="${realIdx}">⋮</span><div class="mc-tl-dropdown" id="tldd${realIdx}"><button data-edit="${realIdx}">✏️ Modifica</button><button data-del="${realIdx}">🗑️ Elimina</button></div>`;
       let subLine = '';
       if (e.assist_name) subLine = `<div class="mc-tl-sub">🅰️ ${e.assist_name}</div>`;
       if (e.tipo === 'SUB' && e.sub_in) subLine = `<div class="mc-tl-sub">⬅️ Entra: ${e.sub_in}</div>`;
-      let badges = '';
-      if (e.rigore) badges += '<span class="mc-tl-badge mc-tl-badge-rig">RIG</span>';
-      if (e.autogol) badges += '<span class="mc-tl-badge mc-tl-badge-aut">AUT</span>';
+      let iconHtml = `<div class="mc-tl-icon">${cfg.icon}</div>`;
+      if (e.tipo === 'GOAL' && e.rigore) iconHtml = `<span class="mc-tl-badge mc-tl-badge-rig" style="font-size:10px;padding:3px 6px;">RIG</span>`;
+      if (e.tipo === 'GOAL' && e.autogol) iconHtml = `<span class="mc-tl-badge mc-tl-badge-aut" style="font-size:10px;padding:3px 6px;">AUT</span>`;
       html += `<div class="mc-tl-item">
         <div class="mc-tl-min">${e.minuto ? e.minuto + "'" : '—'}</div>
-        <div class="mc-tl-icon">${cfg.icon}</div>
+        ${iconHtml}
         <div class="mc-tl-body">
-          <div class="mc-tl-player">${e.principale || cfg.label} ${badges}</div>
+          <div class="mc-tl-player">${e.principale || cfg.label}</div>
           ${subLine}
           ${e.tipo === 'GOAL' || e.tipo === 'SUBITO' ? `<div class="mc-tl-score">${runCasa} - ${runOspite}</div>` : ''}
         </div>
@@ -923,6 +1015,36 @@ function bindEvents(mid) {
   // Drawer save
   document.getElementById('drSave')?.addEventListener('click', () => saveEventFromDrawer(mid));
 
+  // Tooltip globale per mc-vtl-dot (hover desktop + touch mobile)
+  const vtlTooltip = document.getElementById('mc-vtl-tooltip');
+  let vtlTooltipTimer = null;
+  document.querySelectorAll('.mc-vtl-dot').forEach(dot => {
+    const detail = decodeURIComponent(dot.dataset.detail || '');
+    const above = dot.dataset.above === '1';
+    const show = () => {
+      if (!vtlTooltip || !detail) return;
+      const r = dot.getBoundingClientRect();
+      vtlTooltip.textContent = detail;
+      vtlTooltip.style.display = 'block';
+      const tw = vtlTooltip.offsetWidth;
+      let left = r.left + r.width / 2 - tw / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+      const top = above ? r.top - 36 : r.bottom + 8;
+      vtlTooltip.style.left = left + 'px';
+      vtlTooltip.style.top = top + 'px';
+    };
+    const hide = () => { if (vtlTooltip) vtlTooltip.style.display = 'none'; };
+    dot.addEventListener('mouseenter', show);
+    dot.addEventListener('mouseleave', hide);
+    dot.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (vtlTooltip?.style.display === 'block') { hide(); return; }
+      show();
+      clearTimeout(vtlTooltipTimer);
+      vtlTooltipTimer = setTimeout(hide, 2500);
+    }, { passive: false });
+  });
+
   // Timeline menu ⋮
   document.querySelectorAll('.mc-tl-menu').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -1077,6 +1199,10 @@ function openDrawerForEdit(idx) {
   openDrawer(e.tipo, idx);
   document.getElementById('drMin').value = e.minuto || '';
   document.getElementById('drPlayer').value = e.principale_id || '';
+  if (e.tipo === 'SUBITO') {
+    const t = document.getElementById('drSubitoText');
+    if (t) t.value = e.principale !== 'N.9 Avversario' ? (e.principale || '') : '';
+  }
 }
 
 function closeDrawer() {
@@ -1114,8 +1240,8 @@ function saveEventFromDrawer(mid) {
     const gIn = giocatori.find(x => x.calciatoreId === inId);
     evento = {
       tipo: 'SUB', minuto,
-      principale: gOut ? gOut.cognome + ' ' + gOut.nome : '', principale_id: outId,
-      sub_in: gIn ? gIn.cognome + ' ' + gIn.nome : '', sub_in_id: inId,
+      principale: gOut ? fmtName(gOut) : '', principale_id: outId,
+      sub_in: gIn ? fmtName(gIn) : '', sub_in_id: inId,
       assist_name: '', assist_id: inId || null, autogol: false
     };
   } else {
@@ -1133,12 +1259,12 @@ function saveEventFromDrawer(mid) {
       principale = subitoText || 'N.9 Avversario';
     } else if (playerId) {
       const g = giocatori.find(x => x.calciatoreId === playerId);
-      principale = g ? g.cognome + ' ' + g.nome : '';
+      principale = g ? fmtName(g) : '';
       principale_id = playerId;
     }
     if (assistId) {
       const a = giocatori.find(x => x.calciatoreId === assistId);
-      assist_name = a ? a.cognome + ' ' + a.nome : '';
+      assist_name = a ? fmtName(a) : '';
       assist_id = assistId;
     }
     evento = { tipo, minuto, principale, principale_id: principale_id || null, assist_name, assist_id: assist_id || null, autogol: (tipo === 'GOAL' && document.getElementById('drAutogol')?.checked) || false, rigore: (tipo === 'GOAL' && document.getElementById('drRigore')?.checked) || false };
@@ -1355,8 +1481,8 @@ function performLiveSub(mid, outPid, inPid, minuto) {
   // Add SUB event
   eventi.push({
     tipo: 'SUB', minuto,
-    principale: gOut ? gOut.cognome + ' ' + gOut.nome : '', principale_id: outPid,
-    sub_in: gIn ? gIn.cognome + ' ' + gIn.nome : '', sub_in_id: inPid,
+    principale: gOut ? fmtName(gOut) : '', principale_id: outPid,
+    sub_in: gIn ? fmtName(gIn) : '', sub_in_id: inPid,
     assist_name: '', assist_id: inPid, autogol: false, rigore: false
   });
   // Swap in formazioneData
@@ -1723,10 +1849,10 @@ function openPasteEventsModal(mid) {
     if (parsedData.events.length > 0) {
       parsedData.events.forEach(pe => {
         const matched = matchPlayerByName(pe.principale);
-        if (matched) { pe.principale = matched.cognome + ' ' + matched.nome; pe.principale_id = matched.calciatoreId; }
+        if (matched) { pe.principale = fmtName(matched); pe.principale_id = matched.calciatoreId; }
         if (pe.sub_in) {
           const sm = matchPlayerByName(pe.sub_in);
-          if (sm) { pe.sub_in = sm.cognome + ' ' + sm.nome; pe.sub_in_id = sm.calciatoreId; }
+          if (sm) { pe.sub_in = fmtName(sm); pe.sub_in_id = sm.calciatoreId; }
         }
       });
       eventi.push(...parsedData.events);

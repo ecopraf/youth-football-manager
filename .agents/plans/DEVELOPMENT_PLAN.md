@@ -52,7 +52,7 @@
 
 ## 3. Epics & Micro-Task
 
-> **Epic completati archiviati** in `DEVELOPMENT_PLAN_ARCHIVE.md`: EPIC 1, 2, 3, 6, 8, 9, 10, 11, 12, 16, 18, 20, 21 (Fase 1-6), 24, 25, 27.
+> **Epic completati archiviati** in `DEVELOPMENT_PLAN_ARCHIVE.md`: EPIC 1, 2, 3, 6, 8, 9, 10, 11, 12, 16, 18, 20, 21 (Fase 1-6), 24, 25, 27, **14**.
 
 ### EPIC 4: Anagrafica Avversari (evoluzione team_logo)
 
@@ -138,67 +138,6 @@
 - `config_attiva_dal` evita che le sessioni virtuali da `training_config` vengano generate prima dell'inizio effettivo della stagione regolare
 - Il wizard Open Day crea N sessioni in batch con fase=openday
 - Il wizard Ritiro crea sessioni doppie (AM+PM) per ogni giorno del periodo
-
----
-
-### EPIC 14: Match Center Evolution
-
-> Iniziato: 22 Luglio 2026
-
-> Redesign UX del Match Center: layout 2 colonne desktop, tab Dettagli (arbitro/campo/meteo), riorganizzazione tab, Quick Action Rigore separata. Obiettivo: più operativo da bordo campo, migliore uso spazio su desktop.
-
-#### Fase 1: Layout 2 colonne desktop
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 14.1 | Ristrutturare `getBody()` con grid 2 colonne (timeline sx, azioni rapide dx) su desktop >768px | ✅ | — | modules/team/matchCenter.js | ~8min |
-| 14.2 | CSS responsive: collassare a 1 colonna su mobile (azioni sopra, timeline sotto) | ✅ | 14.1 | modules/team/matchCenter.js | ~5min |
-
-#### Fase 2: Tab Dettagli partita
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 14.3 | Migrazione DB: ALTER TABLE `match` ADD `arbitro` TEXT, `assistenti` TEXT, `meteo` TEXT | ❌ | — | — | Cancellato: dati già in distinta_meta, overhead non giustificato |
-| 14.4 | Backend: includere nuovi campi in GET/PUT `/partite/:id` | ❌ | 14.3 | — | Cancellato |
-| 14.5 | Frontend: tab "Dettagli" con form (arbitro, assistenti, campo, meteo) | ❌ | 14.4 | — | Cancellato |
-| 14.6 | Auto-save debounce sui campi Dettagli | ❌ | 14.5 | — | Cancellato |
-
-#### Fase 3: Riorganizzazione tab
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 14.7 | Riordinare tab: Eventi, Formazione, Dettagli, Note, Import | ❌ | 14.5 | — | Cancellato (dipendeva da tab Dettagli) |
-| 14.8 | Badge contatore tab Eventi + badge Dettagli se compilati | ❌ | 14.7 | — | Cancellato |
-
-#### Fase 4: Quick Actions
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 14.9 | Sostituire Autogol con Rigore 🎯 nella griglia quick actions | ✅ | — | modules/team/matchCenter.js | ~3min |
-| 14.10 | Riordino logico: Gol/Rigore/Gol Subito • Sostituzione/Ammonizione/Espulsione | ✅ | 14.9 | modules/team/matchCenter.js | ~2min |
-
-#### Fase 5: Timeline Visuale
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 14.11 | Timeline orizzontale 0’→90’ con icone eventi posizionate al minuto (SVG, read-only, calcolata da eventi esistenti) | ⬜ | — | modules/team/matchCenter.js | ~25min |
-
-#### Fase 6: Finalizzazione
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 14.12 | Test build frontend + syntax check backend | ⬜ | 14.11 | — | ~2min |
-| 14.13 | Aggiornare docs (DEVELOPMENT_PLAN, AGENTS.md) | ⬜ | 14.12 | .agents/ | ~3min |
-
-**Effort totale stimato**: ~53min (12 task)
-
-**Note architetturali**:
-- Il layout 2 colonne usa CSS Grid (`grid-template-columns: 1fr 280px` su desktop, `1fr` su mobile)
-- I nuovi campi DB (`arbitro`, `assistenti`, `meteo`) sono TEXT semplici — no JSONB
-- Il tab Dettagli riusa il pattern auto-save debounce già implementato per Note
-- Il tab Import resta ultimo (meno usato)
-- La Quick Action Rigore è un shortcut UX — internamente crea un evento GOAL con flag `rigore=true`
-- `indirizzo_campo` e `note_avversario` esistono già in DB — il tab Dettagli li espone in modo editabile
 
 ---
 
@@ -447,7 +386,6 @@
 EPIC 4 (Opponent) ──→ nessuna dipendenza
 EPIC 7 (Tornei) ──→ nessuna dipendenza
 EPIC 13 (Preseason) ──→ nessuna dipendenza
-EPIC 14 (Match Center Evolution) ──→ nessuna dipendenza
 EPIC 15 (PWA Offline-First) ──→ nessuna dipendenza
 EPIC 19 (PWA Guest Push) ──→ dipende da EPIC 11 ✅ + EPIC 12 ✅ (archiviati)
 EPIC 22 (Capabilities) ──→ nessuna dipendenza
@@ -496,6 +434,7 @@ Ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.17.x | feat: EPIC 14 Match Center Evolution completato — timeline visuale con algoritmo tracks (sopra=GOAL/SUB/SUBITO, sotto=YELLOW/RED), tooltip fixed al hover/tap, punteggio progressivo sui gol. fix: badge RIG/AUT al posto dell'icona nel card evento. fix: salvataggio nome avversario in `match_event.note` per eventi SUBITO. fix: fmtName() usata in tutti i punti di salvataggio evento (nomi uniformi Cognome N.). |
 | v3.16.99 | fix: dashboard widget convocazione role-aware — segreteria/read vede `👁 Vedi convocazione` + badge `✅ Pubblicata`, mister/write vede `Vedi/Modifica` + PDF. fix: inbox notifica convocazione apre direttamente `openConvocation(riferimento_id, true)` invece di navigare al calendario. fix: capability `convocazioni` segreteria da `write` a `read` (DB + profilo default `capabilities.js`) |
 | v3.16.99 | feat: sidebar modulare per ruolo — `sidebarNav.js` refactoring con builder functions; ordine default Team→Coach→Performance→Segreteria→Club→Amministrazione; sezione Club: Staff→Società→Stagioni; profilo `segreteria` vede Segreteria in cima. feat: organigramma societario spostato in `staff.js` (CRUD admin: Staff Tecnico + Dirigenti + Organigramma); `club.js` diventa vetrina read-only (Riferimenti Societari + Organigramma read-only). Nuovo endpoint `GET /api/workspaces/:id/organigramma`. fix: inbox `filtroSquadra` inizializzato con `window.YFM.squadraId` (evita cross-categoria), dropdown pre-selezionato sulla squadra attiva |
 | v3.16.99 | feat: EPIC 24 Inbox Comunicazioni — backend `inbox.js` (GET /inbox aggrega notification+absence_notification, PUT mark-read batch, PUT mark-all-read), capability `inbox` (default write per segreteria+admin), pagina `modules/club/inbox.js` (tab Tutti/Assenze/Convocazioni/Bonifici/Avvisi, badge non letti, espansione inline, azioni rapide, paginazione, archivio 30gg, filtro squadra), sidebar voce 📬 Inbox, router inbox, helpData inbox |
