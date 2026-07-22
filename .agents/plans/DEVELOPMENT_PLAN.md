@@ -143,44 +143,52 @@
 
 ### EPIC 14: Match Center Evolution
 
+> Iniziato: 22 Luglio 2026
+
 > Redesign UX del Match Center: layout 2 colonne desktop, tab Dettagli (arbitro/campo/meteo), riorganizzazione tab, Quick Action Rigore separata. Obiettivo: più operativo da bordo campo, migliore uso spazio su desktop.
 
 #### Fase 1: Layout 2 colonne desktop
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 14.1 | Ristrutturare `getBody()` con grid 2 colonne (timeline sx, azioni rapide dx) su desktop >768px | ⬜ | — | modules/team/matchCenter.js | ~8min |
-| 14.2 | CSS responsive: collassare a 1 colonna su mobile (azioni sopra, timeline sotto) | ⬜ | 14.1 | modules/team/matchCenter.js | ~5min |
+| 14.1 | Ristrutturare `getBody()` con grid 2 colonne (timeline sx, azioni rapide dx) su desktop >768px | ✅ | — | modules/team/matchCenter.js | ~8min |
+| 14.2 | CSS responsive: collassare a 1 colonna su mobile (azioni sopra, timeline sotto) | ✅ | 14.1 | modules/team/matchCenter.js | ~5min |
 
 #### Fase 2: Tab Dettagli partita
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 14.3 | Migrazione DB: ALTER TABLE `match` ADD `arbitro` TEXT, `assistenti` TEXT, `meteo` TEXT | ⬜ | — | migrazione SQL | ~3min |
-| 14.4 | Backend: includere nuovi campi in GET `/partite/:id/dettaglio` e PUT `/partite/:id` | ⬜ | 14.3 | routes/match.js | ~5min |
-| 14.5 | Frontend: creare tab "Dettagli" con form (arbitro, assistenti, campo, meteo, note avversario) | ⬜ | 14.4 | modules/team/matchCenter.js | ~10min |
-| 14.6 | Auto-save debounce sui campi Dettagli (come Note) | ⬜ | 14.5 | modules/team/matchCenter.js | ~5min |
+| 14.3 | Migrazione DB: ALTER TABLE `match` ADD `arbitro` TEXT, `assistenti` TEXT, `meteo` TEXT | ❌ | — | — | Cancellato: dati già in distinta_meta, overhead non giustificato |
+| 14.4 | Backend: includere nuovi campi in GET/PUT `/partite/:id` | ❌ | 14.3 | — | Cancellato |
+| 14.5 | Frontend: tab "Dettagli" con form (arbitro, assistenti, campo, meteo) | ❌ | 14.4 | — | Cancellato |
+| 14.6 | Auto-save debounce sui campi Dettagli | ❌ | 14.5 | — | Cancellato |
 
 #### Fase 3: Riorganizzazione tab
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 14.7 | Riordinare tab: Eventi (default), Formazione, Dettagli, Note, Import | ⬜ | 14.5 | modules/team/matchCenter.js | ~3min |
-| 14.8 | Badge contatore su tab Eventi (già presente) + badge su Dettagli se compilati | ⬜ | 14.7 | modules/team/matchCenter.js | ~3min |
+| 14.7 | Riordinare tab: Eventi, Formazione, Dettagli, Note, Import | ❌ | 14.5 | — | Cancellato (dipendeva da tab Dettagli) |
+| 14.8 | Badge contatore tab Eventi + badge Dettagli se compilati | ❌ | 14.7 | — | Cancellato |
 
-#### Fase 4: Quick Action Rigore separata
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 14.9 | Aggiungere bottone "Rigore" nella griglia Quick Actions (icona 🎯) | ⬜ | — | modules/team/matchCenter.js | ~3min |
-| 14.10 | Click su Rigore → apre drawer con tipo GOAL + checkbox Rigore pre-selezionato | ⬜ | 14.9 | modules/team/matchCenter.js | ~3min |
-
-#### Fase 5: Finalizzazione
+#### Fase 4: Quick Actions
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 14.11 | Test build frontend + syntax check backend | ⬜ | 14.10 | — | ~2min |
-| 14.12 | Aggiornare docs (DEVELOPMENT_PLAN, AGENTS.md, DATABASE_SCHEMA) | ⬜ | 14.11 | .agents/ | ~3min |
+| 14.9 | Sostituire Autogol con Rigore 🎯 nella griglia quick actions | ✅ | — | modules/team/matchCenter.js | ~3min |
+| 14.10 | Riordino logico: Gol/Rigore/Gol Subito • Sostituzione/Ammonizione/Espulsione | ✅ | 14.9 | modules/team/matchCenter.js | ~2min |
+
+#### Fase 5: Timeline Visuale
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 14.11 | Timeline orizzontale 0’→90’ con icone eventi posizionate al minuto (SVG, read-only, calcolata da eventi esistenti) | ⬜ | — | modules/team/matchCenter.js | ~25min |
+
+#### Fase 6: Finalizzazione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 14.12 | Test build frontend + syntax check backend | ⬜ | 14.11 | — | ~2min |
+| 14.13 | Aggiornare docs (DEVELOPMENT_PLAN, AGENTS.md) | ⬜ | 14.12 | .agents/ | ~3min |
 
 **Effort totale stimato**: ~53min (12 task)
 

@@ -62,15 +62,27 @@ export default async function loadMatchCenter() {
     });
 
     // Load players: formazione → convocati → rosa
-    giocatori = await loadGiocatori(mid);
-    // Check if convocazioni are published (notification sent, not just saved)
-    const convStato = await apiFetch('/partite/' + mid + '/convocazioni-stato').catch(() => ({ published: false }));
+    // Parallelizza: convocazioni-stato, calciatori e formazione in parallelo
+    const [convStato, allPlayersRes, formRes] = await Promise.all([
+      apiFetch('/partite/' + mid + '/convocazioni-stato').catch(() => ({ published: false })),
+      apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []),
+      apiFetch('/partite/' + mid + '/formazione').catch(() => ({ formazione: [], meta: {} }))
+    ]);
     convPubblicata = convStato.published === true;
-    // Load full player data + formation for the Formation tab
-    allPlayers = await apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []);
-    const formRes = await apiFetch('/partite/' + mid + '/formazione').catch(() => ({ formazione: [], meta: {} }));
+    allPlayers = allPlayersRes;
     const apiFormazione = formRes?.formazione || [];
     const apiMeta = formRes?.meta || {};
+    // Costruisce giocatori dai dati già caricati (no fetch duplicati)
+    if (apiFormazione.length > 0) {
+      const map = {}; allPlayers.forEach(g => { map[g.id] = g; });
+      giocatori = apiFormazione.map(f => {
+        const id = f.calciatoreId || f.player_id;
+        return { calciatoreId: id, nome: map[id]?.nome || '', cognome: map[id]?.cognome || '', is_starter: f.is_starter, is_captain: f.is_captain, numero_maglia: f.numeroMaglia || f.numero_maglia };
+      }).sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
+    } else {
+      giocatori = allPlayers.map(g => ({ calciatoreId: g.id, nome: g.nome || '', cognome: g.cognome || '' }))
+        .sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
+    }
     formazioneData = convertApiFormation(apiFormazione, allPlayers, apiMeta);
     moduloIniziale = formazioneData?.modulo || null;
     // Build jersey map from saved formation
@@ -703,11 +715,11 @@ function getQuickActions(mid) {
   }
   const actions = [
     { icon: '⚽', label: 'Gol', tipo: 'GOAL' },
+    { icon: '🎯', label: 'Rigore', tipo: 'RIGORE' },
+    { icon: '🥅', label: 'Gol Subito', tipo: 'SUBITO' },
+    { icon: '🔄', label: 'Sostituzione', tipo: 'SUB' },
     { icon: '🟨', label: 'Ammonizione', tipo: 'YELLOW' },
     { icon: '🟥', label: 'Espulsione', tipo: 'RED' },
-    { icon: '🔄', label: 'Sostituzione', tipo: 'SUB' },
-    { icon: '🥅', label: 'Gol Subito', tipo: 'SUBITO' },
-    { icon: '🪷', label: 'Autogol', tipo: 'AUTOGOL' }
   ];
   const btns = actions.map(a => `<div class="mc-qa-btn" data-tipo="${a.tipo}"><span class="qa-icon">${a.icon}</span><span class="qa-label">${a.label}</span></div>`).join('');
   return `<div class="mc-qa-card" data-help="mc.quickActions"><div class="mc-qa-title">Azioni rapide</div><div class="mc-qa">${btns}</div></div>`;
@@ -851,10 +863,7 @@ function bindEvents(mid) {
 
   // Quick actions → open drawer
   document.querySelectorAll('.mc-qa-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (btn.dataset.tipo === 'AUTOGOL') { openDrawer('AUTOGOL'); return; }
-      openDrawer(btn.dataset.tipo);
-    });
+    btn.addEventListener('click', () => openDrawer(btn.dataset.tipo));
   });
 
   // Drawer cancel/close
