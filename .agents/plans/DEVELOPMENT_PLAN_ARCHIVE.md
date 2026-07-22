@@ -6,7 +6,7 @@
 ---
 
 ### EPIC 1: Pulizia DB — Rimuovere ridondanze team
-
+> Completato: 2026
 > Le colonne `allenatore_id/dirigente_id/preparatore_id/portieri_id` su `team` sono ridondanti perché esiste `team_staff`.
 
 | ID | Task | Stato | Dipende da | File | Effort |
@@ -19,7 +19,7 @@
 ---
 
 ### EPIC 2: Modulo Infortuni
-
+> Completato: 2026
 > Tracciare infortuni con date, tipo, gravità. Cambio automatico stato giocatore.
 
 | ID | Task | Stato | Dipende da | File | Effort |
@@ -36,7 +36,7 @@
 ---
 
 ### EPIC 3: Certificati Medici (alert + warning convocazioni)
-
+> Completato: 2026
 > Potenziare la gestione certificati medici esistente (`player.data_visita_medica`) con alert intelligenti e warning nelle convocazioni. Nessuna tabella nuova — il campo scadenza su player è sufficiente.
 
 | ID | Task | Stato | Dipende da | File | Effort |
@@ -48,7 +48,7 @@
 ---
 
 ### EPIC 8: Redesign Stagioni & Categorie
-
+> Completato: 2026
 > Stagione = 01/07→30/06. Wizard creazione con migrazione. Dropdown solo stagione attiva. Carriera cross-season.
 
 | ID | Task | Stato | Dipende da | File | Effort |
@@ -67,7 +67,7 @@
 ---
 
 ### EPIC 9: Workspace Hub (superadmin)
-
+> Completato: 2026
 > Pagina workspace centralizzata con tab Info (modificabile), Stagioni, Utenti.
 
 | ID | Task | Stato | Dipende da | File | Effort |
@@ -81,7 +81,7 @@
 ---
 
 ### EPIC 10: Dashboard Personalizzabile
-
+> Completato: 2026
 > Riordino e show/hide widget dashboard per utente. Preferenze salvate in DB.
 
 | ID | Task | Stato | Dipende da | File | Effort |
@@ -95,7 +95,7 @@
 ---
 
 ### EPIC 11: Sistema Atleta & Genitore (evoluzione Guest)
-
+> Completato: 2026
 > Sostituire il concetto generico di "Guest" con due ruoli distinti (Famiglia e Ospite) con capabilities, home e notifiche differenziate.
 
 #### Fase 1: Tipi e Capabilities (backend)
@@ -142,7 +142,7 @@
 ---
 
 ### EPIC 12: Club Operations — Fase 1 (Quote + Kit + Checklist)
-
+> Completato: 2026
 > Digitalizzare i flussi operativi della segreteria: gestione quote economiche, kit sportivo, checklist inizio stagione. Dashboard action-driven per segreteria. Posizionamento: da app-allenatore a piattaforma di società.
 
 #### Fase 1: Gestione Quote
@@ -298,7 +298,7 @@
 ---
 
 ### EPIC 18: Refactoring Stagioni — Rimozione "attiva" e Assegnazione Esplicita
-
+> Completato: 2026
 > Eliminare il concetto di "stagione attiva" come flag globale. Ogni utente/staff vede solo le stagioni assegnate. La stellina indica la più recente (calcolata al volo). Staff assegnato per stagione con migrazione esplicita. Selettore stagione/categoria con logica di persistenza intelligente.
 
 **Problema attuale**: `season.attiva` è un flag globale per workspace che crea bug (staff assegnato alla stagione sbagliata), obbliga un'azione manuale ("attiva stagione"), e non riflette la realtà multi-utente.
@@ -410,7 +410,7 @@
 | Legacy (no stagioni_accesso) | Stagione più recente del workspace |
 
 ### EPIC 16: Print Center (Hub Documentale)
-
+> Completato: 2026
 > Hub centralizzato per tutti i documenti stampabili/condivisibili della società. Risolve il problema stampa Android (pagine standalone `/print/...`), centralizza l'accesso ai documenti, introduce varianti e cronologia. Differenziatore commerciale: "apri il Print Center, stampa in 2 tap".
 
 **Valore commerciale**: Nessuna app sportiva giovanile offre un hub documentale centralizzato. Per segreteria/dirigente è il punto di riferimento naturale. Risolve elegantemente il problema Android con pagine dedicate A4-optimized.
@@ -503,7 +503,7 @@
 - Template personalizzabili per workspace
 
 ### EPIC 20: Modulo Tesseramento Atleti
-
+> Completato: 2026
 > Digitalizzare il processo di tesseramento: template modulo personalizzabile per società (logo, dati, clausole), generazione PDF pre-compilato con dati atleta, checklist documenti con tracking stato, vista aggregata per squadra. Ogni società configura il proprio template una volta, poi genera moduli per ogni atleta con un click.
 
 **Valore commerciale**: Elimina il lavoro manuale della segreteria (compilare moduli a mano per 20+ atleti). PDF professionale con logo società. Tracking chi ha consegnato cosa. Integrazione con Print Center.
@@ -624,7 +624,7 @@
 ---
 
 ### EPIC 21: Pagamento Quote — Bonifico + Upload Ricevuta ✅
-
+> Completato: 2026
 > Fase 1-6 completate. Fase 7 (Stripe) spostata in EPIC 26.
 
 #### Fase 1-6: Completate ✅
@@ -648,7 +648,7 @@
 ---
 
 ### EPIC 6: Polish pre-stagione
-
+> Completato: 2026
 > Bug fix, UX improvements, preparazione per utenti reali.
 
 | ID | Task | Stato | Dipende da | File | Effort |
@@ -660,5 +660,77 @@
 | 6.2 | Report presenze allenamenti (stampabile) | ✅ | — | modules/print/printPresenze.js, router.js, printCenter.js | ~10min |
 | 6.3 | Import_log: aggiungere `durata_import`, `warnings` | ❌ | — | — | Cancellato: durata mostrata in-UI al momento dell'import (Date.now() diff), nessun valore nel persistirla |
 | 6.4 | Document: aggiungere colonna `cartella` | ❌ | — | — | Cancellato: tabella `document` non esiste nell'app, feature mai implementata |
+
+---
+
+### EPIC 24: Inbox Comunicazioni ✅
+> Completato: 22 Luglio 2026
+
+> Vista organizzata per admin/segreteria che aggrega tutte le comunicazioni in entrata: risposte convocazioni, notifiche bonifici, avvisi generali. Badge campanellina role-aware (segreteria → inbox, mister → notifications).
+
+| ID | Task | Stato |
+|----|------|-------|
+| 24.1 | GET /api/inbox — aggrega notification + absence_notification, filtro days/tipo/letto | ✅ |
+| 24.2 | PUT /api/inbox/mark-read — segna letti in batch | ✅ |
+| 24.3 | PUT /api/inbox/mark-all-read | ✅ |
+| 24.4 | Registrare router inbox in index.js | ✅ |
+| 24.5 | Pagina inbox.js — tab Tutti/Convocazioni/Bonifici/Avvisi, filtro periodo (7gg/30gg/Tutte), toggle solo non letti | ✅ |
+| 24.6 | Card per ogni item con icona tipo, preview, data relativa, badge Nuovo | ✅ |
+| 24.7 | Azioni rapide inline: convocazione → openConvocation(riferimento_id, true); bonifico → Conferma/Rifiuta | ✅ |
+| 24.8 | Paginazione — carica 20 item, bottone Carica altri | ✅ |
+| 24.9 | Archivio messaggi letti collassato | ✅ |
+| 24.10 | Filtro squadra — dropdown pre-selezionato su window.YFM.squadraId | ✅ |
+| 24.11 | Sidebar voce 📬 Inbox con badge non letti | ✅ |
+| 24.12 | Router route inbox | ✅ |
+| 24.13 | Campanellina role-aware: segreteria/admin → inbox, mister/staff → notifications | ✅ |
+| 24.14 | helpData.js entry inbox | ✅ |
+| 24.15 | AGENTS.md aggiornato | ✅ |
+
+**Note**: capability `convocazioni` segreteria → `read` (non `write`). Notifica convocazione pubblicata va a `['segreteria','dirigente']` (rimosso `osservatore`). Backend joina `fee_installment` per stato bonifico (✅ Confermato / ❌ Rifiutato / bottoni se in attesa).
+
+---
+
+### EPIC 25: Raise Ticket — Segnalazione Bug & Supporto ✅
+> Completato: 22 Luglio 2026
+
+> Widget flottante FAB ⚡ accessibile da tutte le pagine autenticate per segnalare bug, suggerimenti, domande. Ticket inviato via email con contesto automatico (URL, build, workspace, ruolo, user agent).
+
+| ID | Task | Stato |
+|----|------|-------|
+| 25.1 | nodemailer installato + configurazione Gmail SMTP in .env | ✅ |
+| 25.2 | POST /api/support/ticket — raccoglie contesto + invia email | ✅ |
+| 25.3 | Email template HTML con tipo, descrizione, contesto tecnico, screenshot inline | ✅ |
+| 25.4 | Registrare router support in index.js | ✅ |
+| 25.5 | FAB ⚡ unificato (Guida + Segnala) — position:fixed bottom-right | ✅ |
+| 25.6 | Modal ticket — tipo pill (🐛/💡/❓), textarea, upload screenshot | ✅ |
+| 25.7 | Paste screenshot da clipboard con preview | ✅ |
+| 25.8 | Raccolta contesto automatico (URL, build, workspace, ruolo, userAgent) | ✅ |
+| 25.9 | Submit + toast feedback + chiusura automatica | ✅ |
+| 25.10 | Rate limit: max 5 ticket/giorno per user_id (DB), superadmin escluso | ✅ |
+| 25.11 | initSupportWidget() in main.js dopo login | ✅ |
+| 25.12 | Widget nascosto su pagine print | ✅ |
+| 25.13 | AGENTS.md aggiornato | ✅ |
+
+---
+
+### EPIC 27: Support Ticket Management ✅
+> Completato: 22 Luglio 2026
+
+> Persistenza ticket nel DB + pagina superadmin per gestione con risposta via email e pulizia.
+
+| ID | Task | Stato |
+|----|------|-------|
+| 27.1 | CREATE TABLE support_ticket + RLS deny anon | ✅ |
+| 27.2 | POST /support/ticket aggiornato — salva nel DB + invia email | ✅ |
+| 27.3 | GET /support/tickets (solo superadmin) — filtri stato/workspace | ✅ |
+| 27.4 | PUT /support/tickets/:id/rispondi — risposta email + chiude ticket | ✅ |
+| 27.5 | PUT /support/tickets/:id/stato | ✅ |
+| 27.6 | DELETE /support/tickets/:id | ✅ |
+| 27.7 | DELETE /support/tickets/chiusi | ✅ |
+| 27.8 | Frontend supportTickets.js — lista con filtri, card espandibile | ✅ |
+| 27.9 | Dettaglio ticket inline + form risposta | ✅ |
+| 27.10 | Azioni: Chiudi, Elimina, Pulisci chiusi (confirm modal) | ✅ |
+| 27.11 | Sidebar voce 🎫 Ticket (solo superadmin) + route supportTickets | ✅ |
+| 27.12 | helpData.js + docs aggiornati | ✅ |
 
 ---

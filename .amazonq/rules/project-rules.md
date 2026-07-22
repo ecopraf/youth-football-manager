@@ -156,6 +156,33 @@ curl -s 'https://csxdlxbhcnyfppojwwzy.supabase.co/rest/v1/TABELLA?select=*' \
 - **JWT_SECRET**: `aEj1OXdTHxSHD8iObjFov1jJ06RoyM1Ormf8KBb0uPI=`
 - **Node path**: `/Users/Raffaele/.nvm/versions/node/v24.18.0/bin/node`
 
+## Gestione Date Epic
+
+### Formato date nei Development Plan
+
+**Epic attivi** (DEVELOPMENT_PLAN.md): quando si inizia un epic, aggiungere subito sotto il titolo:
+```
+> Iniziato: GG Mese YYYY
+```
+
+**Epic archiviati** (DEVELOPMENT_PLAN_ARCHIVE.md): quando si sposta un epic completato:
+```
+> Iniziato: GG Mese YYYY | Completato: GG Mese YYYY
+```
+Se iniziato e completato lo stesso giorno, la riga resta su una sola linea.
+Epic archiviati prima dell'adozione di questa regola usano `> Completato: 2026` (anno generico).
+
+### Allineamento Development Plan alla chiusura di un Epic
+
+Quando un epic è completato (tutti i task ✅):
+1. Aggiungere `| Completato: GG Mese YYYY` alla riga `> Iniziato:` nel DEVELOPMENT_PLAN
+2. Copiare il blocco epic in DEVELOPMENT_PLAN_ARCHIVE.md con la riga data completa
+3. Rimuovere il blocco dal DEVELOPMENT_PLAN
+4. Aggiornare la nota `> Epic completati archiviati` e la sezione `## 4. Dipendenze`
+5. Tutto nello stesso commit dei file modificati
+
+---
+
 ## Documentazione Obbligatoria
 
 Dopo ogni task completato, l'agente DEVE aggiornare:

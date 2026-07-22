@@ -52,7 +52,7 @@
 
 ## 3. Epics & Micro-Task
 
-> **Epic completati archiviati** in `DEVELOPMENT_PLAN_ARCHIVE.md`: EPIC 1, 2, 3, 6, 8, 9, 10, 11, 12, 16, 18, 20, 21 (Fase 1-6).
+> **Epic completati archiviati** in `DEVELOPMENT_PLAN_ARCHIVE.md`: EPIC 1, 2, 3, 6, 8, 9, 10, 11, 12, 16, 18, 20, 21 (Fase 1-6), 24, 25, 27.
 
 ### EPIC 4: Anagrafica Avversari (evoluzione team_logo)
 
@@ -387,157 +387,6 @@
 
 ---
 
-### EPIC 24: Inbox Comunicazioni
-
-> Vista organizzata per admin/segreteria che aggrega tutte le comunicazioni in entrata in un'unica pagina strutturata: assenze atleti, risposte convocazioni, notifiche bonifici, avvisi generali. Complementare alla campanellina (che rimane per il badge globale) — l'inbox è la vista dettaglio con azioni rapide e archivio.
-
-**Valore commerciale**: Con l'aumento degli utenti e delle comunicazioni, la campanellina da sola non basta. L'inbox permette a segreteria e admin di avere tutto sotto controllo senza perdere messaggi importanti, con azioni rapide inline (conferma bonifico, vai alla partita, segna letto).
-
-**Prerequisito**: Tabelle `notification` e `absence_notification` già esistenti e popolate.
-
-#### Fase 1: Backend — Endpoint aggregati
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 24.1 | Endpoint `GET /api/inbox?workspace_id=X&team_id=Y&tipo=all\|assenze\|avvisi\|convocazioni&letto=all\|true\|false&limit=50&offset=0` — aggrega `notification` + `absence_notification` in lista unificata ordinata per data desc, con contatori per tipo | ✅ | — | backend/api/routes/inbox.js (nuovo) | ~15min |
-| 24.2 | Endpoint `PUT /api/inbox/mark-read` — body `{ids: [...], tipo: 'notification'\|'absence'}` — segna letti in batch | ✅ | 24.1 | backend/api/routes/inbox.js | ~8min |
-| 24.3 | Endpoint `PUT /api/inbox/mark-all-read` — segna tutti letti per workspace+team (filtro tipo opzionale) | ✅ | 24.1 | backend/api/routes/inbox.js | ~5min |
-| 24.4 | Registrare router inbox in `index.js` | ✅ | 24.1 | backend/api/index.js | ~2min |
-
-#### Fase 2: Pagina Inbox Frontend
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 24.5 | Creare `modules/club/inbox.js` — struttura pagina con header (titolo + "Segna tutti letti"), tab bar pill: Tutti / Assenze / Convocazioni / Avvisi / Bonifici, summary contatori non letti per tab | ✅ | 24.1 | modules/club/inbox.js | ~10min |
-| 24.6 | Lista messaggi — card per ogni item con: icona tipo (🏃 assenza, 📋 convocazione, 💰 bonifico, 📢 avviso), titolo, testo preview, data relativa (es. "2 ore fa"), badge "Nuovo" se non letto, sfondo leggermente diverso per non letti | ✅ | 24.5 | modules/club/inbox.js | ~12min |
-| 24.7 | Azioni rapide inline per tipo: assenza → "Vai all'allenamento"; convocazione indisponibile → "Vai alla partita"; bonifico → "Conferma / Rifiuta" (riusa modal esistente da fees.js); avviso generico → "Segna letto" | ✅ | 24.6 | modules/club/inbox.js | ~15min |
-| 24.8 | Paginazione — carica 20 item alla volta, bottone "Carica altri" in fondo | ✅ | 24.6 | modules/club/inbox.js | ~8min |
-| 24.9 | Sezione "Archivio" — messaggi letti con data > 30gg collassati in accordion, espandibile con click | ✅ | 24.6 | modules/club/inbox.js | ~8min |
-| 24.10 | Filtro squadra — se admin con più squadre, dropdown per filtrare per categoria | ✅ | 24.5 | modules/club/inbox.js | ~5min |
-
-#### Fase 3: Integrazione
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 24.11 | Sidebar: voce "📬 Inbox" con badge contatore non letti, visibile a admin/segreteria/dirigente | ✅ | 24.5 | components/layout/sidebarNav.js | ~5min |
-| 24.12 | Router: registrare route `inbox` | ✅ | 24.5 | router.js | ~2min |
-| 24.13 | Campanellina: click naviga a `/inbox` invece di aprire dropdown (il dropdown rimane solo per preview rapida top 3) | ❌ | 24.5 | components/layout/header.js | ~8min |
-| 24.14 | helpData.js: aggiungere entry per pagina inbox | ✅ | 24.5 | components/helpData.js | ~3min |
-| 24.15 | Test build + aggiornare AGENTS.md | ✅ | 24.14 | .agents/AGENTS.md | ~3min |
-
-**Effort totale stimato**: ~1h 49min (15 task)
-
-**Priorità implementazione**:
-1. Fase 1 (Backend) — endpoint aggregati, 30min
-2. Fase 2 (Pagina) — lista + azioni rapide, 58min
-3. Fase 3 (Integrazione) — sidebar + router + campanellina, 21min
-
-**Note architetturali**:
-- Nessuna tabella DB nuova — tutto basato su `notification` + `absence_notification` esistenti
-- Il tipo "bonifico" è un sottoinsieme di `notification` con `tipo = 'ricevuta_bonifico'` — filtrato lato backend
-- La campanellina mantiene il suo dropdown per preview rapida (top 3 non letti) — l'inbox è la vista completa
-- Capability richiesta: visibile a chi ha ruolo admin/segreteria/dirigente
-- L'archivio 30gg è calcolato lato frontend — filtra la lista già caricata
-- Azioni bonifico riusano gli endpoint esistenti `PUT /api/fees/installments/:id/conferma-bonifico` e `/rifiuta-bonifico`
-- Mobile: card full-width, azioni rapide come bottoni piccoli sotto il testo
-
----
-
-### EPIC 25: Raise Ticket — Segnalazione Bug & Supporto
-
-> Widget flottante discreto accessibile da tutte le pagine autenticate che permette agli utenti di segnalare problemi, inviare suggerimenti o chiedere supporto. Il ticket viene inviato via email a `youthfootballmanager@gmail.com` con contesto automatico (URL, versione build, workspace, ruolo, user agent). Supporta allegato screenshot (upload o paste da clipboard).
-
-**Valore commerciale**: Con più società a bordo e utenti con esperienze diverse, il supporto diventa critico. Un sistema di ticket integrato riduce la frizione e fornisce contesto tecnico automatico che accelera la risoluzione. Professionalizza l'immagine del prodotto.
-
-**Prerequisito**: Configurare Gmail App Password per SMTP in `.env`.
-
-#### Fase 1: Backend — Endpoint + Email
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 25.1 | Installare `nodemailer` (`npm install nodemailer`) + configurare transporter Gmail SMTP con `SUPPORT_EMAIL_USER` e `SUPPORT_EMAIL_PASS` in `.env` | ✅ | — | backend/package.json, backend/.env | ~5min |
-| 25.2 | Endpoint `POST /api/support/ticket` (auth opzionale) — body: `{tipo, descrizione, url_pagina, screenshot_base64?}` — raccoglie contesto server-side e invia email a `youthfootballmanager@gmail.com` | ✅ | 25.1 | backend/api/routes/support.js (nuovo) | ~15min |
-| 25.3 | Email template HTML — sezioni: Tipo ticket (🐛 Bug / 💡 Suggerimento / ❓ Domanda), Descrizione utente, Contesto tecnico (URL, build version, workspace, ruolo, user agent, timestamp), Screenshot inline se allegato | ✅ | 25.2 | backend/api/routes/support.js | ~10min |
-| 25.4 | Registrare router support in `index.js` | ✅ | 25.2 | backend/api/index.js | ~2min |
-
-#### Fase 2: Widget Frontend
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 25.5 | Creare `components/supportWidget.js` — bottone flottante `❓` in basso a destra (`position:fixed; bottom:24px; right:24px; z-index:1500`), visibile su tutte le pagine autenticate (escluso pagine print) | ✅ | — | components/supportWidget.js (nuovo) | ~8min |
-| 25.6 | Modal ticket — campi: tipo (pill: 🐛 Bug / 💡 Suggerimento / ❓ Domanda), textarea descrizione (placeholder contestuale per tipo), upload screenshot opzionale (accept: image/*, max 2MB) | ✅ | 25.5 | components/supportWidget.js | ~12min |
-| 25.7 | Paste screenshot da clipboard — listener `paste` sulla modal che intercetta immagini dagli appunti e le mostra come preview con bottone rimuovi | ✅ | 25.6 | components/supportWidget.js | ~10min |
-| 25.8 | Raccolta contesto automatico: `window.location.href`, `window.YFM.buildVersion`, `window.YFM.workspaceName`, ruolo utente da sessionStorage, `navigator.userAgent` — inclusi nel payload senza input utente | ✅ | 25.6 | components/supportWidget.js | ~5min |
-| 25.9 | Submit + feedback — spinner durante invio, toast "✅ Segnalazione inviata!" su successo, chiusura automatica modal dopo 2s | ✅ | 25.6 | components/supportWidget.js | ~8min |
-| 25.10 | Throttle anti-spam — max 3 ticket per sessione (contatore in sessionStorage), oltre il limite mostra messaggio con email diretta | ✅ | 25.9 | components/supportWidget.js | ~5min |
-
-#### Fase 3: Integrazione
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 25.11 | Inizializzare `supportWidget` in `main.js` dopo il login (non per guest) — `initSupportWidget()` chiamata dopo `setupLayout()` | ✅ | 25.5 | main.js | ~3min |
-| 25.12 | Nascondere widget su pagine print — check `window.location.hash.includes('print')` prima di mostrare il bottone | ✅ | 25.5 | components/supportWidget.js | ~2min |
-| 25.13 | Test build + aggiornare AGENTS.md con nuovo router e componente | ✅ | 25.11 | .agents/AGENTS.md | ~3min |
-
-**Effort totale stimato**: ~1h 28min (13 task)
-
-**Priorità implementazione**:
-1. Fase 1 (Backend + Email) — infrastruttura, 32min
-2. Fase 2 (Widget) — UX completa, 48min
-3. Fase 3 (Integrazione) — collegamento app, 8min
-
-**Note architetturali**:
-- Nessuna tabella DB — i ticket vanno direttamente via email, nessuno storage interno
-- Gmail SMTP: usare App Password (non password account) — generare da Google Account → Sicurezza → Password app
-- Screenshot: convertito in base64 lato frontend, inviato come stringa nel body JSON (max 2MB), incluso nell'email come `<img>` inline
-- Il widget NON è visibile ai guest
-- `Reply-To` impostata sull'email dell'utente che ha inviato il ticket per risposta diretta
-- Tipo "Bug" pre-selezionato di default
-- **Non implementare ora**: dashboard ticket, stati aperto/chiuso, assegnazione, SLA
-
----
-
-### EPIC 27: Support Ticket Management
-
-> Persistenza ticket nel DB + pagina superadmin per gestione ticket con risposta via email e pulizia.
-
-**Prerequisito**: EPIC 25 ✅ (widget ticket già funzionante, endpoint `/support/ticket` già esistente).
-
-#### Fase 1: Persistenza ticket nel DB
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 27.1 | Migrazione DB: CREATE TABLE `support_ticket` (id UUID PK, workspace_id UUID nullable, user_id UUID nullable, email TEXT, nome TEXT, ruolo TEXT, pagina TEXT, tipo TEXT, descrizione TEXT, build TEXT, user_agent TEXT, stato TEXT DEFAULT 'aperto', risposta TEXT, risposta_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now()) + RLS deny anon | ✅ | — | migrazione SQL | ~5min |
-| 27.2 | Aggiornare `POST /api/support/ticket` — salva nel DB oltre a inviare email | ✅ | 27.1 | backend/api/routes/support.js | ~5min |
-
-#### Fase 2: Pagina superadmin
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 27.3 | Backend: `GET /api/support/tickets` (solo superadmin) — lista con filtri `stato` (aperto/chiuso/tutti) e `workspace_id` | ✅ | 27.1 | backend/api/routes/support.js | ~8min |
-| 27.4 | Backend: `PUT /api/support/tickets/:id/rispondi` — salva risposta + cambia stato a 'chiuso' + invia email all'utente | ✅ | 27.3 | backend/api/routes/support.js | ~10min |
-| 27.5 | Backend: `PUT /api/support/tickets/:id/stato` — cambia stato (aperto/chiuso) senza risposta | ✅ | 27.3 | backend/api/routes/support.js | ~3min |
-| 27.6 | Backend: `DELETE /api/support/tickets/:id` — elimina singolo ticket | ✅ | 27.3 | backend/api/routes/support.js | ~3min |
-| 27.7 | Backend: `DELETE /api/support/tickets/chiusi` — elimina tutti i ticket con stato='chiuso' | ✅ | 27.3 | backend/api/routes/support.js | ~3min |
-| 27.8 | Frontend: creare `modules/admin/supportTickets.js` — lista ticket con filtri stato/workspace, card per ticket con tipo/pagina/build/data/stato badge | ✅ | 27.3 | modules/admin/supportTickets.js (nuovo) | ~12min |
-| 27.9 | Frontend: dettaglio ticket — espansione inline con descrizione completa + form risposta textarea + bottone Invia Risposta | ✅ | 27.8 | modules/admin/supportTickets.js | ~10min |
-| 27.10 | Frontend: azioni ticket — bottone Chiudi (senza risposta), 🗑️ Elimina singolo (confirm modal), 🧹 "Pulisci ticket chiusi" (confirm con conteggio) | ✅ | 27.8 | modules/admin/supportTickets.js | ~8min |
-| 27.11 | Sidebar + router: voce "🎫 Ticket" visibile solo superadmin, route `supportTickets` | ✅ | 27.8 | sidebarNav.js, router.js | ~3min |
-| 27.12 | helpData.js + test build + aggiornare docs | ✅ | 27.11 | helpData.js, AGENTS.md, DEVELOPMENT_PLAN.md | ~5min |
-
-**Effort totale stimato**: ~75min (12 task)
-
-**Note architetturali**:
-- `workspace_id` e `user_id` nullable per ticket inviati da utenti non autenticati (futuro)
-- La risposta viene inviata all'email del mittente (già nel body del ticket)
-- Stato: `aperto` (default) → `chiuso` (dopo risposta o chiusura manuale)
-- Eliminazione: hard delete diretto, nessuna soft-delete
-- `DELETE /api/support/tickets/chiusi` è un endpoint dedicato (non batch generico) per semplicità
-- Visibilità: solo superadmin (ruolo `superadmin` nel JWT)
-- Screenshot non salvato nel DB (solo inviato via email) — troppo pesante per storage DB
-
----
-
 ### EPIC 26: Pagamenti Online (Stripe Connect)
 
 > Permettere ai genitori di pagare le quote direttamente in app tramite carta di credito. Ogni workspace collega il proprio account Stripe. Fase naturale successiva a EPIC 21 (bonifico + upload ricevuta, già completato).
@@ -584,11 +433,10 @@
 
 ## 4. Dipendenze tra Epic
 
-> Epic 1, 2, 3, 6, 8, 9, 10, 11, 12, 16, 18, 20, 21 archiviati in `DEVELOPMENT_PLAN_ARCHIVE.md`.
+> Epic 1, 2, 3, 6, 8, 9, 10, 11, 12, 16, 18, 20, 21, 24, 25, 27 archiviati in `DEVELOPMENT_PLAN_ARCHIVE.md`.
 
 ```
 EPIC 4 (Opponent) ──→ nessuna dipendenza
-EPIC 6 (Polish) ──→ nessuna dipendenza
 EPIC 7 (Tornei) ──→ nessuna dipendenza
 EPIC 13 (Preseason) ──→ nessuna dipendenza
 EPIC 14 (Match Center Evolution) ──→ nessuna dipendenza
@@ -596,26 +444,19 @@ EPIC 15 (PWA Offline-First) ──→ nessuna dipendenza
 EPIC 19 (PWA Guest Push) ──→ dipende da EPIC 11 ✅ + EPIC 12 ✅ (archiviati)
 EPIC 22 (Capabilities) ──→ nessuna dipendenza
 EPIC 23 (Player Performance Center) ──→ nessuna dipendenza
-EPIC 24 (Inbox Comunicazioni) ──→ nessuna dipendenza
-EPIC 25 (Raise Ticket) ──→ nessuna dipendenza
 EPIC 26 (Stripe) ──→ dipende da EPIC 21 ✅ (archiviato)
-EPIC 27 (Support Ticket Management) ──→ dipende da EPIC 25 ✅
 ```
 
-Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
-1. **EPIC 25** (Raise Ticket, ~1h28) → supporto utenti, priorità con nuove società a bordo
-2. **EPIC 24** (Inbox Comunicazioni, ~1h49) → controllo comunicazioni, valore operativo immediato
-3. **EPIC 23** (Player Performance Center, ~2h38) → decision support per allenatori, differenziatore forte
-4. **EPIC 17** (Piano Gara, ~4h15) → differenziatore forte, nessuna app giovanile lo offre
-5. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
-6. **EPIC 14** (Match Center evolution, ~53min) → UX bordo campo
-7. **EPIC 22** (Capabilities, ~1h20) → gestione permessi avanzata
-8. **EPIC 26** (Stripe, ~1h08) → pagamenti online, dipendenze già soddisfatte
-9. **EPIC 19** (PWA Guest Push) → engagement famiglie, dipendenze già soddisfatte
-10. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro
-11. **EPIC 6** (polish, 33min) → UX
-12. **EPIC 7** (tornei, 37min) → nice-to-have
-13. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno
+Ordine consigliato per impatto/effort:
+1. **EPIC 23** (Player Performance Center, ~2h38) → decision support allenatori, differenziatore forte
+2. **EPIC 14** (Match Center Evolution, ~53min) → UX bordo campo
+3. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
+4. **EPIC 22** (Capabilities, ~1h20) → gestione permessi avanzata
+5. **EPIC 26** (Stripe, ~1h08) → pagamenti online
+6. **EPIC 19** (PWA Guest Push) → engagement famiglie
+7. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro
+8. **EPIC 7** (tornei, 37min) → nice-to-have
+9. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno
 
 ---
 
