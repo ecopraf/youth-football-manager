@@ -14,9 +14,11 @@ Questo progetto lavora per **micro-task atomici** (max 15min ciascuno), organizz
 
 All'inizio di ogni nuova conversazione, l'agente DEVE leggere i seguenti file per allinearsi:
 
-1. **`.agents/plans/DEVELOPMENT_PLAN.md`** — ⭐ FONTE DI VERITÀ: stato, task, priorità, dipendenze
+1. **`.agents/plans/DEVELOPMENT_PLAN.md`** — ⭐ FONTE DI VERITÀ: stato, task, priorità, dipendenze (epic attivi)
 2. **`backend/.env`** — Credenziali DB, Supabase, JWT
 3. **`.agents/AGENTS.md`** — Entry point, schema DB, comandi, workflow, **global state frontend**
+
+> Epic completati sono in **`.agents/plans/DEVELOPMENT_PLAN_ARCHIVE.md`** — consultare solo se serve storia pregressa, NON leggere di default.
 
 Solo dopo aver letto questi file l'agente può procedere con il task richiesto dall'utente.
 

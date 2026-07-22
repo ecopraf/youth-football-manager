@@ -4,6 +4,15 @@ import { formatDate } from '../../utils/formatters.js';
 import { isOurTeam } from '../../utils/teamMatch.js';
 import { invalidateDashboardCache } from '../team/dashboard.js';
 
+function showToast(msg, type = 'success') {
+  const t = document.createElement('div');
+  const bg = type === 'error' ? '#e74c3c' : type === 'warning' ? '#f39c12' : '#27AE60';
+  t.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:${bg};color:white;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2);max-width:90vw;text-align:center;`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
 export default async function loadImportCenter() {
   const c = document.getElementById('pageContent');
   const teamId = window.YFM.squadraId;
@@ -168,7 +177,7 @@ function openImportPdf() {
   document.getElementById('pdfSearch').addEventListener('click', async () => {
     const file = document.getElementById('pdfFile').files[0];
     const name = document.getElementById('pdfTeamName').value.trim();
-    if (!file || !name) { alert('Seleziona un PDF e inserisci il nome squadra'); return; }
+    if (!file || !name) { showToast('Seleziona un PDF e inserisci il nome squadra', 'error'); return; }
 
     const resultDiv = document.getElementById('pdfResult');
     resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Analisi PDF...</div>';
@@ -212,7 +221,7 @@ function openImportPdf() {
 
 async function pdfExtractAndImport(file, searchName, modal) {
   const checked = document.querySelectorAll('input[name="pdfCat"]:checked');
-  if (checked.length === 0) { alert('Seleziona almeno una categoria'); return; }
+  if (checked.length === 0) { showToast('Seleziona almeno una categoria', 'error'); return; }
 
   const resultDiv = document.getElementById('pdfResult');
   resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Estrazione calendario...</div>';
@@ -254,6 +263,7 @@ async function pdfExtractAndImport(file, searchName, modal) {
     showLoading('Importazione...');
     try {
       const girone = checked[0]?.dataset?.gir || null;
+      const t0 = Date.now();
       const resp = await fetch(`${API_BASE}/calendario/import`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -261,13 +271,14 @@ async function pdfExtractAndImport(file, searchName, modal) {
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error);
+      const durata = ((Date.now() - t0) / 1000).toFixed(1);
       hideLoading();
       modal.close();
-      alert(`✅ Importate ${data.inserite} partite!`);
+      showToast(`✅ Importate ${data.inserite} partite in ${durata}s`);
       invalidateDashboardCache(); loadImportCenter();
     } catch (err) {
       hideLoading();
-      alert('Errore: ' + err.message);
+      showToast('Errore: ' + err.message, 'error');
     }
   });
 }
@@ -305,7 +316,7 @@ function openImportText() {
   document.getElementById('txtSearch').addEventListener('click', async () => {
     const text = document.getElementById('txtCalendar').value.trim();
     const name = document.getElementById('txtTeamName').value.trim();
-    if (!text || !name) { alert('Inserisci testo e nome squadra'); return; }
+    if (!text || !name) { showToast('Inserisci testo e nome squadra', 'error'); return; }
 
     const resultDiv = document.getElementById('txtResult');
     resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Analisi testo...</div>';
@@ -356,24 +367,26 @@ function openImportText() {
 
       document.getElementById('txtConfirm').addEventListener('click', async () => {
         const compValue = document.getElementById('selComp').value;
-        if (!compValue) { alert('Seleziona una competizione'); return; }
+        if (!compValue) { showToast('Seleziona una competizione', 'error'); return; }
         showLoading('Importazione...');
         try {
           const partite = data.partite.map(p => ({
             ...p,
             competizione: compValue
           }));
+          const t0 = Date.now();
           const resp = await apiFetch('/calendario/import', {
             method: 'POST',
             body: JSON.stringify({ squadraId: window.YFM.squadraId, partite })
           });
+          const durata = ((Date.now() - t0) / 1000).toFixed(1);
           hideLoading();
           modal.close();
-          alert(`✅ Importate ${resp.inserite} partite!`);
+          showToast(`✅ Importate ${resp.inserite} partite in ${durata}s`);
           invalidateDashboardCache(); loadImportCenter();
         } catch (err) {
           hideLoading();
-          alert('Errore: ' + err.message);
+          showToast('Errore: ' + err.message, 'error');
         }
       });
     } catch (err) {
@@ -439,27 +452,28 @@ async function openImportFormations() {
 
     document.getElementById('fmImport').addEventListener('click', async () => {
       const teamName = document.getElementById('fmTeamName').value.trim();
-      if (!teamName) { alert('Inserisci il nome squadra su Tuttocampo'); return; }
+      if (!teamName) { showToast('Inserisci il nome squadra su Tuttocampo', 'error'); return; }
       const matchIds = [...document.querySelectorAll('.fmCheck:checked')].map(cb => cb.value);
       if (matchIds.length === 0) return;
 
       showLoading(`Importazione formazioni (${matchIds.length} partite)...`);
+      const t0 = Date.now();
       try {
         const resp = await apiFetch('/import-formations-batch', {
           method: 'POST',
           body: JSON.stringify({ matchIds, teamId: window.YFM.squadraId, teamName })
         });
+        const durata = ((Date.now() - t0) / 1000).toFixed(1);
         hideLoading();
         modal.close();
-        const ok = resp.results?.filter(r => r.ok).length || 0;
         const fail = resp.results?.filter(r => !r.ok).length || 0;
-        let msg = `✅ Formazioni importate: ${resp.imported}/${resp.total}`;
-        if (fail > 0) msg += `\n⚠️ ${fail} partite con errori`;
-        alert(msg);
+        let msg = `✅ Formazioni importate: ${resp.imported}/${resp.total} in ${durata}s`;
+        if (fail > 0) msg += ` (⚠️ ${fail} errori)`;
+        showToast(msg);
         invalidateDashboardCache(); loadImportCenter();
       } catch (err) {
         hideLoading();
-        alert('Errore: ' + err.message);
+        showToast('Errore: ' + err.message, 'error');
       }
     });
   } catch (err) {
@@ -617,7 +631,7 @@ function openGrConfig() {
       loadImportCenter();
     } catch (err) {
       hideLoading();
-      alert('❌ ' + err.message);
+      showToast('❌ ' + err.message, 'error');
     }
   });
 
@@ -662,26 +676,26 @@ function openGrConfig() {
       invalidateDashboardCache();
       hideLoading();
       modal.close();
-      alert('✅ Girone configurato per ' + teamName + '!');
+      showToast(`✅ Girone configurato per ${teamName}!`);
     } catch (err) {
       hideLoading();
-      alert('❌ ' + err.message);
+      showToast('❌ ' + err.message, 'error');
     }
   });
 
   // Fallback URL manuale
   document.getElementById('grSaveUrl')?.addEventListener('click', async () => {
     const url = document.getElementById('grUrl').value.trim();
-    if (!url) { alert('Inserisci un URL'); return; }
+    if (!url) { showToast('Inserisci un URL', 'error'); return; }
     showLoading('Salvataggio...');
     try {
       await apiFetch('/gr/configure', { method: 'POST', body: JSON.stringify({ teamId: window.YFM.squadraId, url }) });
       hideLoading();
       modal.close();
-      alert('✅ URL configurato!');
+      showToast('✅ URL configurato!');
     } catch (err) {
       hideLoading();
-      alert('❌ ' + err.message);
+      showToast('❌ ' + err.message, 'error');
     }
   });
 }
@@ -690,7 +704,7 @@ function openGrConfig() {
 async function openGrUnifiedImport() {
   const sq = window.YFM.getSquadra();
   if (!sq?.classifica_url) {
-    alert('⚠️ Configura prima l\'URL del girone nella card "Imposta link girone"');
+    showToast('⚠️ Configura prima il girone nella card Imposta link girone', 'error');
     return;
   }
 
@@ -779,7 +793,7 @@ async function openGrUnifiedImport() {
   document.getElementById('grImpStart').addEventListener('click', async () => {
     const doCalendario = document.getElementById('grImpCalendario').checked;
     const doMarcatori = document.getElementById('grImpMarcatori').checked;
-    if (!doCalendario && !doMarcatori) { alert('Seleziona almeno un\'opzione'); return; }
+    if (!doCalendario && !doMarcatori) { showToast('Seleziona almeno un\'opzione', 'error'); return; }
 
     const btn = document.getElementById('grImpStart');
     btn.disabled = true;
@@ -857,17 +871,19 @@ async function openGrCalendario() {
       const mode = document.querySelector('input[name="grCalMode"]:checked')?.value || 'all';
       showLoading('Importazione...');
       try {
+        const t0cal = Date.now();
         const resp = await apiFetch('/gr/import-calendario/' + window.YFM.squadraId, {
           method: 'POST',
           body: JSON.stringify({ mode })
         });
+        const durata = ((Date.now() - t0cal) / 1000).toFixed(1);
         hideLoading();
         modal.close();
-        alert(`✅ Calendario importato!\n• Importate: ${resp.imported}\n• Aggiornate: ${resp.updated || 0}\n• Già presenti: ${resp.skipped}\n• Totale: ${resp.total}`);
+        showToast(`✅ Calendario importato in ${durata}s — ${resp.imported} nuove, ${resp.updated||0} aggiornate, ${resp.skipped} già presenti`);
         invalidateDashboardCache(); loadImportCenter();
       } catch (err) {
         hideLoading();
-        alert('❌ ' + err.message);
+        showToast('❌ ' + err.message, 'error');
       }
     });
   } catch (err) {
@@ -881,7 +897,7 @@ async function openGrEventi() {
   const teamId = window.YFM.squadraId;
   const sq = window.YFM.getSquadra();
   if (!sq?.classifica_url) {
-    alert('Configura prima l\'URL del girone nella sezione "Imposta link girone"');
+    showToast('⚠️ Configura prima il girone nella sezione Imposta link girone', 'error');
     return;
   }
 
@@ -919,29 +935,23 @@ async function openGrEventi() {
     document.getElementById('grEventiConfirm').addEventListener('click', async () => {
       const selected = [];
       document.querySelectorAll('.gr-ev-check:checked').forEach(cb => selected.push(data.matches[+cb.dataset.idx]));
-      if (!selected.length) { alert('Seleziona almeno una partita'); return; }
+      if (!selected.length) { showToast('Seleziona almeno una partita', 'error'); return; }
       document.getElementById('grEventiConfirm').disabled = true;
       document.getElementById('grEventiConfirm').textContent = 'Importazione...';
       try {
+        const t0ev = Date.now();
         const result = await apiFetch('/gr/match-events/import', {
           method: 'POST',
           body: JSON.stringify({ teamId, matches: selected.map(m => m.gr_match_id) })
         });
+        const durata = ((Date.now() - t0ev) / 1000).toFixed(1);
         modal.close();
-        let msg = `\u2705 Import completato!\n${result.imported} gol importati, ${result.skipped} saltati`;
-        if (result.skipReasons) {
-          const r = result.skipReasons;
-          const parts = [];
-          if (r.already_imported) parts.push(`${r.already_imported} già importati`);
-          if (r.no_player) parts.push(`${r.no_player} giocatore non in rosa`);
-          if (r.no_db_match) parts.push(`${r.no_db_match} partita non trovata`);
-          if (r.no_gr_match) parts.push(`${r.no_gr_match} match GR non trovato`);
-          if (parts.length) msg += '\n(' + parts.join(', ') + ')';
-        }
-        if (result.unmatchedPlayers?.length) msg += '\n\nNon trovati in rosa: ' + result.unmatchedPlayers.join(', ');
-        alert(msg);
+        let msg = `✅ ${result.imported} gol importati in ${durata}s`;
+        if (result.skipped) msg += `, ${result.skipped} saltati`;
+        if (result.unmatchedPlayers?.length) msg += ` — non trovati: ${result.unmatchedPlayers.join(', ')}`;
+        showToast(msg);
       } catch (e) {
-        alert('Errore: ' + e.message);
+        showToast('Errore: ' + e.message, 'error');
         document.getElementById('grEventiConfirm').disabled = false;
         document.getElementById('grEventiConfirm').textContent = 'Importa Marcatori';
       }
@@ -983,13 +993,15 @@ async function openGrLoghi() {
     document.getElementById('grLoghiConfirm').addEventListener('click', async () => {
       showLoading('Download loghi...');
       try {
+        const t0logo = Date.now();
         const resp = await apiFetch('/gr/import-loghi/' + window.YFM.squadraId, { method: 'POST' });
+        const durata = ((Date.now() - t0logo) / 1000).toFixed(1);
         hideLoading();
         modal.close();
-        alert(`✅ Loghi importati!\n• Nuovi: ${resp.imported}\n• Già presenti: ${resp.skipped}\n• Errori: ${resp.errors}`);
+        showToast(`✅ Loghi importati in ${durata}s — ${resp.imported} nuovi, ${resp.skipped} già presenti${resp.errors ? ', ' + resp.errors + ' errori' : ''}`);
       } catch (err) {
         hideLoading();
-        alert('❌ ' + err.message);
+        showToast('❌ ' + err.message, 'error');
       }
     });
   } catch (err) {
@@ -1138,7 +1150,7 @@ function openGrLoghiWizard() {
   document.getElementById('wizStart').addEventListener('click', async () => {
     if (!selectedLevel) return;
     const champIds = [...document.querySelectorAll('.wizChampCb:checked')].map(cb => cb.value);
-    if (champIds.length === 0) { alert('Seleziona almeno un campionato'); return; }
+    if (champIds.length === 0) { showToast('Seleziona almeno un campionato', 'error'); return; }
 
     const resultDiv = document.getElementById('wizResult');
     const selectedNames = champIds.map(id => champsData.find(c => c.id === id)?.text || id).join(', ');
@@ -1211,10 +1223,11 @@ function openGrLoghiWizard() {
           });
           hideLoading();
           modal.close();
-          alert(`✅ Completato!\n• Aggiornati: ${confirmResp.accepted}\n• Mantenuti: ${confirmResp.rejected}`);
+          showToast(`✅ Completato — ${confirmResp.accepted} aggiornati, ${confirmResp.rejected} mantenuti`);
         } catch (err) {
           hideLoading();
-          alert('❌ ' + err.message);
+          showToast('❌ ' + err.message, 'error');
+          showToast('❌ ' + err.message, 'error');
         }
       });
     } catch (err) {

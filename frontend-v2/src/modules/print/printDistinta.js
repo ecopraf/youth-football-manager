@@ -238,13 +238,17 @@ function getStyles() {
   .layout { display: block !important; }
   .print-page { padding: 0; max-width: none; }
   .print-doc { border: none; padding: 0; }
-  @page { size: A4 portrait; margin: 8mm; }
+  @page { size: A4 portrait; margin: 6mm; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body, .print-doc { font-size: 9px !important; }
-  .dist-table th, .dist-table td { font-size: 8px !important; padding: 2px 4px !important; }
-  .dist-firme { font-size: 8px !important; margin-top: 8px !important; page-break-inside: avoid; }
-  .dist-info { font-size: 9px !important; padding: 5px 8px !important; }
-  .dist-staff td { font-size: 8px !important; }
+  body, .print-doc { font-size: 8px !important; line-height: 1.3 !important; }
+  .print-doc { padding: 0 !important; }
+  .dist-table th, .dist-table td { font-size: 7px !important; padding: 1px 3px !important; }
+  .dist-firme { font-size: 7px !important; margin-top: 6px !important; page-break-inside: avoid; }
+  .dist-info { font-size: 8px !important; padding: 4px 6px !important; line-height: 1.5 !important; }
+  .dist-staff td { font-size: 7px !important; padding: 1px 3px !important; }
+  .dist-header { margin-bottom: 4px !important; }
+  .dist-center { font-size: 9px !important; }
+  .nc { width: 12px !important; height: 12px !important; line-height: 12px !important; font-size: 8px !important; }
 }
 `;
 }

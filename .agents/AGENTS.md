@@ -10,7 +10,8 @@
 .agents/                    # Configurazione agenti AI
 ├── AGENTS.md              # ← Questo file (entry point)
 ├── plans/                 # ⭐ DEVELOPMENT PLAN (fonte di verità)
-│   └── DEVELOPMENT_PLAN.md # Stato, Epic, micro-task, dipendenze
+│   ├── DEVELOPMENT_PLAN.md  # Epic attivi, micro-task, dipendenze
+│   └── DEVELOPMENT_PLAN_ARCHIVE.md # Epic completati ✅ (solo consultazione)
 ├── knowledge/             # Conoscenza del prodotto
 │   ├── VISION.md          # Missione, valori, target
 │   ├── ARCHITECTURE.md    # Stack, API, struttura file
@@ -30,7 +31,8 @@
 
 ### 1. Leggi i documenti di contesto
 ```
-.agents/plans/DEVELOPMENT_PLAN.md  → ⭐ Stato, task, priorità (LEGGERE SEMPRE)
+.agents/plans/DEVELOPMENT_PLAN.md  → ⭐ Epic attivi, task, priorità (LEGGERE SEMPRE)
+.agents/plans/DEVELOPMENT_PLAN_ARCHIVE.md → Epic completati ✅ (solo se serve storia pregressa)
 .agents/knowledge/VISION.md        → Cosa stiamo costruendo
 .agents/knowledge/ARCHITECTURE.md  → Come è fatto il sistema
 .agents/knowledge/DATABASE_SCHEMA.md → Schema DB completo

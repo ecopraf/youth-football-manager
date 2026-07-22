@@ -136,16 +136,19 @@ function getPrintStyles() {
   .layout { display: block !important; }
   .print-page { padding: 0; max-width: none; }
   .print-doc { border: none; padding: 0; box-shadow: none; }
-  @page { size: A4 portrait; margin: 15mm; }
+  @page { size: A4 portrait; margin: 10mm; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body, .print-doc { font-size: 12px !important; }
-  .print-title .t1 { font-size: 18px !important; }
-  .print-title .t2 { font-size: 12px !important; }
-  .print-info { font-size: 11px !important; line-height: 1.6 !important; }
-  .print-table th, .print-table td { font-size: 11px !important; padding: 3px 6px !important; }
-  .print-note { font-size: 10px !important; }
-  .print-firma { font-size: 12px !important; margin-top: 6mm !important; }
-  .print-staff { font-size: 10px !important; }
+  body, .print-doc { font-size: 11px !important; line-height: 1.4 !important; }
+  .print-doc { padding: 0 !important; }
+  .print-header { margin-bottom: 4mm !important; }
+  .print-logo img { height: 45px !important; }
+  .print-title .t1 { font-size: 16px !important; }
+  .print-title .t2 { font-size: 11px !important; }
+  .print-info { font-size: 10px !important; line-height: 1.5 !important; margin-bottom: 3mm !important; }
+  .print-table th, .print-table td { font-size: 10px !important; padding: 2px 5px !important; }
+  .print-note { font-size: 9px !important; margin-top: 2mm !important; }
+  .print-firma { font-size: 11px !important; margin-top: 4mm !important; }
+  .print-staff { font-size: 9px !important; margin-top: 2mm !important; padding: 4px 8px !important; }
 }
 @media (max-width: 500px) {
   .print-doc { padding: 10px; }
