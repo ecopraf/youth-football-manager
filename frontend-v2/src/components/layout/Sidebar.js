@@ -112,7 +112,12 @@ export function setupLayout() {
   const sidebar = document.getElementById('sidebar');
   const menuBtn = document.getElementById('menuBtn');
   const notifBadge = document.getElementById('notifBadge');
-  if (notifBadge) notifBadge.addEventListener('click', () => window.YFM.navigateTo('notifications'));
+  if (notifBadge) notifBadge.addEventListener('click', () => {
+    const user = window.YFM.getUser();
+    const profilo = user?.permessi?.profilo || user?.ruolo || '';
+    const isSegreteria = profilo === 'segreteria' || user?.ruolo === 'admin' || user?.is_superadmin;
+    window.YFM.navigateTo(isSegreteria ? 'inbox' : 'notifications');
+  });
   const sidebarUser = document.getElementById('sidebarUser');
   const headerUserAvatar = document.getElementById('headerUserAvatar');
   const userDropdown = document.getElementById('userDropdown');

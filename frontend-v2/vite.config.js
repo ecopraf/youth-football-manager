@@ -4,7 +4,7 @@ import path from 'path';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // Versione software (allineata con backend)
-const SW_VERSION = 'v3.16';
+const SW_VERSION = 'v3.17';
 
 const BUILD_COUNTER_FILE = path.resolve(__dirname, '.build-counter.json');
 

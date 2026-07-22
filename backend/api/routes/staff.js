@@ -34,6 +34,22 @@ function createStaffRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // GET /api/workspaces/:workspaceId/organigramma
+  const RUOLI_ISTITUZIONALI = ['Presidente', 'Vice Presidente', 'Direttore Generale', 'Direttore Sportivo', 'Direttore Tecnico', 'Osservatore'];
+  router.get('/api/workspaces/:workspaceId/organigramma', authMiddleware, async (req, res) => {
+    try {
+      const { data, error } = await supabase.from('staff')
+        .select('id, nome, cognome, ruolo, telefono, email')
+        .eq('workspace_id', req.params.workspaceId)
+        .in('ruolo', RUOLI_ISTITUZIONALI)
+        .order('cognome');
+      if (error) return res.status(400).json({ error: error.message });
+      res.json(data || []);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 }
 

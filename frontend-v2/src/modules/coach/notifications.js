@@ -6,7 +6,7 @@ export default async function loadNotifications() {
   c.innerHTML = '<div class="loading"><div class="spinner"></div>Caricamento...</div>';
 
   try {
-    const days = window._notifDays || 7;
+    const days = window._notifDays || 30;
     const [absences, comms] = await Promise.all([
       apiFetch('/absence/team/' + teamId).catch(() => []),
       apiFetch('/notifications?days=' + days).catch(() => [])
@@ -51,8 +51,8 @@ function renderPage(c, absences, comms, teamId) {
     <h1 class="page-title">🔔 Centro Notifiche</h1>
     <div style="display:flex;gap:8px;align-items:center;">
       <select id="notifDaysFilter" style="padding:6px 10px;border:1px solid #ddd;border-radius:8px;font-size:12px;">
-        <option value="7"${(window._notifDays||7)===7?' selected':''}>Ultima settimana</option>
-        <option value="30"${window._notifDays===30?' selected':''}>Ultimo mese</option>
+        <option value="7"${(window._notifDays||30)===7?' selected':''}>Ultima settimana</option>
+        <option value="30"${(window._notifDays||30)===30?' selected':''}>Ultimo mese</option>
         <option value="9999"${window._notifDays===9999?' selected':''}>Tutte</option>
       </select>
       <button class="btn btn-primary" id="newCommBtn" style="font-size:13px;padding:8px 14px;">➕ Nuova</button>
@@ -382,20 +382,42 @@ function timeAgo(dateStr) {
   return `${Math.floor(hours / 24)}g fa`;
 }
 
-// Exported: aggiorna badge notifiche nella header (combina assenze + comunicazioni)
+// Exported: aggiorna badge notifiche nella header (role-aware)
 export async function updateNotifBadge(teamId) {
   try {
     const guestSession = sessionStorage.getItem('yfm_guest');
     if (guestSession && !localStorage.getItem('yfm_token')) {
       try { const g = JSON.parse(guestSession); if (g.tipo !== 'famiglia') return; } catch(e) {}
     }
-    const tid = teamId || window.YFM.squadraId;
-    const isUuid = tid && /^[0-9a-f]{8}-/.test(tid);
-    const [absRes, commRes] = await Promise.all([
-      isUuid ? apiFetch('/absence/unread/' + tid).catch(() => ({ unread: 0, weekTotal: 0 })) : { unread: 0, weekTotal: 0 },
-      apiFetch('/notifications/unread').catch(() => ({ unread: 0 }))
-    ]);
-    const totalUnread = (absRes.unread || 0) + (commRes.unread || 0);
+    const user = window.YFM.getUser();
+    const profilo = user?.permessi?.profilo || user?.ruolo || '';
+    const isSegreteria = profilo === 'segreteria' || user?.ruolo === 'admin' || user?.is_superadmin;
+
+    let totalUnread = 0;
+    let weekTotal = 0;
+
+    if (isSegreteria) {
+      // Segreteria/admin: conta solo inbox non letti (bonifici + avvisi)
+      const wid = window.YFM.activeWorkspaceId;
+      const tid = teamId || window.YFM.squadraId;
+      if (wid) {
+        const params = new URLSearchParams({ workspace_id: wid, letto: 'false', limit: 1, offset: 0, days: 30 });
+        if (tid) params.set('team_id', tid);
+        const res = await apiFetch('/inbox?' + params).catch(() => null);
+        totalUnread = res?.contatori?.non_letti || 0;
+      }
+    } else {
+      // Mister/staff: conta assenze + comunicazioni
+      const tid = teamId || window.YFM.squadraId;
+      const isUuid = tid && /^[0-9a-f]{8}-/.test(tid);
+      const [absRes, commRes] = await Promise.all([
+        isUuid ? apiFetch('/absence/unread/' + tid).catch(() => ({ unread: 0, weekTotal: 0 })) : { unread: 0, weekTotal: 0 },
+        apiFetch('/notifications/unread').catch(() => ({ unread: 0 }))
+      ]);
+      totalUnread = (absRes.unread || 0) + (commRes.unread || 0);
+      weekTotal = absRes.weekTotal || 0;
+    }
+
     const badge = document.getElementById('notifBadge');
     const count = document.getElementById('notifCount');
     if (badge && count) {
@@ -404,9 +426,9 @@ export async function updateNotifBadge(teamId) {
         count.style.display = 'flex';
         count.textContent = totalUnread;
         count.style.background = '#E74C3C';
-      } else if (absRes.weekTotal > 0) {
+      } else if (!isSegreteria && weekTotal > 0) {
         count.style.display = 'flex';
-        count.textContent = '0/' + absRes.weekTotal;
+        count.textContent = '0/' + weekTotal;
         count.style.background = '#888';
       } else {
         count.style.display = 'none';
@@ -445,10 +467,7 @@ function showNewCommModal(teamId) {
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Destinatari *</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #ddd;border-radius:8px;">
-          <input type="checkbox" value="atleta" class="nc-dest" checked /> 🏃 Atleti
-        </label>
-        <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #ddd;border-radius:8px;">
-          <input type="checkbox" value="genitore" class="nc-dest" checked /> 👨👩👦 Genitori
+          <input type="checkbox" value="famiglia" class="nc-dest" checked /> 👨👩👦 Famiglie
         </label>
         <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:6px 10px;border:1px solid #ddd;border-radius:8px;">
           <input type="checkbox" value="staff" class="nc-dest" /> 👔 Staff

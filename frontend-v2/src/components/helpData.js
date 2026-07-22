@@ -197,6 +197,18 @@ export const PAGE_HELP = {
       'Pulisci ticket chiusi: elimina tutti i ticket con stato chiuso in un click'
     ]
   },
+  inbox: {
+    title: '📬 Inbox',
+    desc: 'Tutte le comunicazioni in entrata in un unico posto.',
+    items: [
+      'Tab Tutti: aggrega assenze, convocazioni, bonifici e avvisi',
+      'Messaggi non letti evidenziati con bordo blu e badge Nuovo',
+      'Clicca su un messaggio per espandere i dettagli e segnarlo come letto',
+      'Azioni rapide: vai all\'allenamento (assenze), vai al calendario (convocazioni), conferma bonifico',
+      'Segna tutti letti: azzera tutti i badge in un click',
+      'Archivio: messaggi letti oltre 30 giorni fa collassati in fondo'
+    ]
+  },
   notifications: {
     title: '🔔 Centro Notifiche',
     desc: 'Comunicazioni in-app e segnalazioni assenze in un unico punto.',

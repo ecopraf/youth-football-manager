@@ -312,6 +312,7 @@ Quando si scrive logica basata sul nome categoria, usare regex che copra entramb
 - `staff.workspace_id` UUID — associa lo staff al workspace
 - `staff.qualifiche` JSONB contiene `{matricola, tessera_figc, tessera_lnd, tipo_tessera}`
 - `team_staff` collega staff a team (e quindi a categorie) con `ruolo_squadra`
+- **Distinzione ruoli staff**: ruoli tecnici di campo (Allenatore, Vice Allenatore, Preparatore Atletico, Preparatore Portieri, Dirigente, Team Manager) → visibili in pagina Staff; ruoli istituzionali (Presidente, Vice Presidente, Direttore Generale, Direttore Sportivo, Direttore Tecnico, Osservatore) → visibili in pagina Società (sezione Organigramma). I ruoli istituzionali hanno `team_staff.team_id = null` e vengono fetchati via `GET /api/workspaces/:id/organigramma`.
 - `guest_token` ha colonne: `token, utente_id, tipo, squadre_accesso, scadenza`
 **Colonne notevoli `users`**: `permessi JSONB` (capabilities/profilo: `{rosa: "write", partite: "read", ...}`), `preferenze_ui JSONB` (`{dashboard_layout: {order: [...], hidden: [...]}}`), `squadre_accesso` array di category_id
 - `users.squadre_accesso` array di category_id (NON team_id) per limitare visibilità per categoria
@@ -344,7 +345,7 @@ Quando si scrive logica basata sul nome categoria, usare regex che copra entramb
 | dirigente | read | read | read | — | read | write | — | read | — |
 | preparatore | read | — | — | write | read | — | — | — | — |
 | osservatore | read | read | — | — | read | — | — | read | — |
-| segreteria | write | read | write | read | read | write | write | read | write |
+| segreteria | write | read | read | read | read | write | write | read | write |
 | custom | (personalizzato dall'admin) |
 
 ### File di riferimento

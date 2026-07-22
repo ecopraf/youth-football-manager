@@ -14,41 +14,36 @@ export default async function loadClub() {
     const teamId = window.YFM.squadraId;
     const isGuest = !!sessionStorage.getItem('yfm_guest');
 
-    let wsData, staffData, anagrafica;
+    let wsData, staffData, anagrafica, organigramma;
     if (isGuest) {
       wsData = window.YFM.workspaceInfo || {};
-      [staffData, anagrafica] = await Promise.all([
+      [staffData, anagrafica, organigramma] = await Promise.all([
         apiFetch('/squadre/' + teamId + '/staff-completo').catch(() => []),
-        apiFetch('/workspaces/' + wid + '/anagrafica').catch(() => ({}))
+        apiFetch('/workspaces/' + wid + '/anagrafica').catch(() => ({})),
+        apiFetch('/workspaces/' + wid + '/organigramma').catch(() => [])
       ]);
     } else {
-      [wsData, staffData, anagrafica] = await Promise.all([
+      [wsData, staffData, anagrafica, organigramma] = await Promise.all([
         apiFetch('/auth/workspaces').then(ws => ws.find(w => w.id === wid) || ws[0]),
         apiFetch('/squadre/' + teamId + '/staff-completo').catch(() => []),
-        apiFetch('/workspaces/' + wid + '/anagrafica').catch(() => ({}))
+        apiFetch('/workspaces/' + wid + '/anagrafica').catch(() => ({})),
+        apiFetch('/workspaces/' + wid + '/organigramma').catch(() => [])
       ]);
     }
 
-    renderClub(c, wsData, staffData, anagrafica, wid);
+    renderClub(c, wsData, staffData, anagrafica, wid, organigramma);
   } catch (e) {
     c.innerHTML = '<div class="error-box">Errore: ' + e.message + '</div>';
   }
 }
 
-function renderClub(c, ws, staff, anagrafica, wid) {
+function renderClub(c, ws, staff, anagrafica, wid, organigramma = []) {
   anagrafica = anagrafica || {};
   const canEditAnagrafica = window.YFM.canWrite("rosa") || window.YFM.getUser()?.ruolo === "admin" || window.YFM.getUser()?.is_superadmin;
   const teamName = window.YFM.getSquadraName();
   const logo = ws?.logo_url || '';
 
-  // Raggruppa staff per ruolo (case-insensitive)
-  const normalize = r => (r || '').toLowerCase().replace(/[_ ]+/g, ' ').trim();
-  const isTecnico = r => { const n = normalize(r); return n.includes('allenatore') || n.includes('preparatore') || n.includes('collaboratore'); };
-  const isDirigente = r => { const n = normalize(r); return n.includes('dirigente') || n.includes('direttore') || n.includes('osservatore'); };
-  const staffTecnico = staff.filter(s => isTecnico(s.ruolo_squadra));
-  const staffDirigenziale = staff.filter(s => isDirigente(s.ruolo_squadra));
-  const staffAltro = staff.filter(s => !isTecnico(s.ruolo_squadra) && !isDirigente(s.ruolo_squadra));
-
+  // Raggruppa staff per ruolo non più necessario in club.js — gestito da staff.js
 
   let html = `<style>
     .club-header { display:flex; align-items:center; gap:16px; margin-bottom:24px; }
@@ -79,47 +74,6 @@ function renderClub(c, ws, staff, anagrafica, wid) {
 
   html += '<div class="club-cards">';
 
-  // Staff Tecnico
-  html += `<div class="club-card">
-    <div class="club-card-title">⚽ Staff Tecnico</div>`;
-  if (staffTecnico.length > 0) {
-    staffTecnico.forEach(s => {
-      const initials = (s.nome?.[0] || '') + (s.cognome?.[0] || '');
-      html += `<div class="club-staff-item">
-        <div class="club-staff-avatar">${initials.toUpperCase()}</div>
-        <div><div class="club-staff-name">${s.cognome} ${s.nome}</div><div class="club-staff-role">${s.ruolo_squadra || s.ruolo || ''}</div></div>
-      </div>`;
-    });
-  } else {
-    html += '<div class="club-empty">Nessuno staff tecnico assegnato</div>';
-  }
-  html += '</div>';
-
-  // Staff Dirigenziale
-  html += `<div class="club-card">
-    <div class="club-card-title">👔 Dirigenza</div>`;
-  if (staffDirigenziale.length > 0) {
-    staffDirigenziale.forEach(s => {
-      const initials = (s.nome?.[0] || '') + (s.cognome?.[0] || '');
-      html += `<div class="club-staff-item">
-        <div class="club-staff-avatar" style="background:linear-gradient(135deg, #F39C12, #E74C3C);">${initials.toUpperCase()}</div>
-        <div><div class="club-staff-name">${s.cognome} ${s.nome}</div><div class="club-staff-role">${s.ruolo_squadra || s.ruolo || ''}</div></div>
-      </div>`;
-    });
-  } else {
-    html += '<div class="club-empty">Nessun dirigente assegnato</div>';
-  }
-  if (staffAltro.length > 0) {
-    staffAltro.forEach(s => {
-      const initials = (s.nome?.[0] || '') + (s.cognome?.[0] || '');
-      html += `<div class="club-staff-item">
-        <div class="club-staff-avatar" style="background:linear-gradient(135deg, #6b7280, #374151);">${initials.toUpperCase()}</div>
-        <div><div class="club-staff-name">${s.cognome} ${s.nome}</div><div class="club-staff-role">${s.ruolo_squadra || s.ruolo || ''}</div></div>
-      </div>`;
-    });
-  }
-  html += '</div>';
-
   // Riferimenti Societari
   const ag = anagrafica;
   const hasData = ag.indirizzo || ag.telefono || ag.email || ag.matricola_figc || ag.p_iva || ag.colori_sociali || ag.nome_campo;
@@ -145,13 +99,33 @@ function renderClub(c, ws, staff, anagrafica, wid) {
   if (!hasData) html += '<div class="club-empty">Nessun riferimento configurato</div>';
   html += '</div>';
 
+  // Organigramma Societario
+  if (organigramma.length > 0 || canEditAnagrafica) {
+    html += '<div class="club-card">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
+    html += '<div class="club-card-title" style="margin:0;">🏢 Organigramma Societario</div>';
+    html += '</div>';
+    if (organigramma.length === 0) {
+      html += '<div class="club-empty">Nessun membro societario</div>';
+    } else {
+      organigramma.forEach(s => {
+        const initials = ((s.cognome || '')[0] || '') + ((s.nome || '')[0] || '');
+        html += `<div class="club-staff-item">
+          <div class="club-staff-avatar" style="background:linear-gradient(135deg,#0ea5e9,#0369a1);">${initials.toUpperCase()}</div>
+          <div><div class="club-staff-name">${s.cognome} ${s.nome}</div><div class="club-staff-role">${s.ruolo || ''}</div></div>
+        </div>`;
+      });
+    }
+    html += '</div>';
+  }
+
   html += '</div>';
   c.innerHTML = html;
 
   // Bottone modifica anagrafica
   document.getElementById('btnEditAnagrafica')?.addEventListener('click', () => openAnagraficaModal(anagrafica, wid, (saved) => {
     anagrafica = saved;
-    renderClub(c, ws, staff, anagrafica, wid);
+    renderClub(c, ws, staff, anagrafica, wid, organigramma);
   }));
 }
 

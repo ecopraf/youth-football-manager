@@ -15,7 +15,8 @@ export const CAPABILITIES = [
   { id: 'report', label: 'Report', icon: '📄', desc: 'Report PDF' },
   { id: 'quote', label: 'Quote', icon: '💰', desc: 'Gestione quote economiche' },
   { id: 'kit', label: 'Kit', icon: '👕', desc: 'Gestione kit sportivo' },
-  { id: 'tesseramento', label: 'Tesseramento', icon: '📋', desc: 'Iscrizioni e documenti atleti' }
+  { id: 'tesseramento', label: 'Tesseramento', icon: '📋', desc: 'Iscrizioni e documenti atleti' },
+  { id: 'inbox', label: 'Inbox', icon: '📬', desc: 'Comunicazioni in entrata' }
 ];
 
 // categoria: 'gestione' | 'campo' | 'societario' | 'guest'
@@ -23,11 +24,11 @@ export const PROFILI = {
   // ── GESTIONE ──────────────────────────────────────────────────────────────
   admin: {
     label: 'Admin', icon: '🔑', categoria: 'gestione',
-    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write' }
+    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write', inbox: 'write' }
   },
   segreteria: {
     label: 'Segreteria', icon: '📎', categoria: 'gestione',
-    capabilities: { rosa: 'write', partite: 'read', convocazioni: 'write', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write' }
+    capabilities: { rosa: 'write', partite: 'read', convocazioni: 'read', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write', inbox: 'write' }
   },
   custom: {
     label: 'Personalizzato', icon: '⚙️', categoria: 'gestione',

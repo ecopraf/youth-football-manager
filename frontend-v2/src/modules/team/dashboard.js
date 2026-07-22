@@ -883,9 +883,14 @@ export default async function loadDashboard() {
           '<div style="display:flex;align-items:center;gap:8px;">' + (prossimaPartita.logo ? '<img src="' + prossimaPartita.logo + '" style="width:28px;height:28px;border-radius:50%;object-fit:contain;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '') + '<div><strong>' + (prossimaPartita.avversario || 'TBD') + '</strong><br><span style="font-size:12px;color:#666;">' + dataStr + ' · ' + oraStr + ' · ' + luogo + '</span></div></div>' +
           '<div data-conv-stato>' + stato + '</div></div>' +
           '<div data-conv-alert>' + alertHtml + '</div>' +
-          '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">' +
-          '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')" style="background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📋 ' + (tutti.length > 0 ? 'Vedi / Modifica' : 'Convoca') + '</button>' +
-          (tutti.length > 0 ? '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\',true)" style="background:#27AE60;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📄 PDF</button>' : '') +
+          '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+          (window.YFM.canWrite('convocazioni')
+            ? '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\')" style="background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📋 ' + (tutti.length > 0 ? 'Vedi / Modifica' : 'Convoca') + '</button>' +
+              (tutti.length > 0 ? '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\',true)" style="background:#27AE60;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">📄 PDF</button>' : '')
+            : (tutti.length > 0
+              ? '<button onclick="window.YFM.openConvocation(\'' + prossimaPartita.id + '\',true)" style="background:#667eea;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">👁 Vedi convocazione</button>' +
+                '<span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:3px 10px;border-radius:12px;font-weight:600;">✅ Pubblicata</span>'
+              : '<span style="font-size:11px;color:#9CA3AF;">⏳ Non ancora pubblicata</span>')) +
           '</div></div>';
       }).catch(() => {});
     }

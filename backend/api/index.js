@@ -237,6 +237,8 @@ app.use('/api', registrationRouter);
 
 const supportRouter = require('./routes/support');
 app.use('/api', supportRouter);
+const inboxRouter = require('./routes/inbox');
+app.use('/api', inboxRouter);
 
 module.exports = app;
 

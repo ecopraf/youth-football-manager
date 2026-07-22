@@ -399,31 +399,31 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 24.1 | Endpoint `GET /api/inbox?workspace_id=X&team_id=Y&tipo=all\|assenze\|avvisi\|convocazioni&letto=all\|true\|false&limit=50&offset=0` — aggrega `notification` + `absence_notification` in lista unificata ordinata per data desc, con contatori per tipo | ⬜ | — | backend/api/routes/inbox.js (nuovo) | ~15min |
-| 24.2 | Endpoint `PUT /api/inbox/mark-read` — body `{ids: [...], tipo: 'notification'\|'absence'}` — segna letti in batch | ⬜ | 24.1 | backend/api/routes/inbox.js | ~8min |
-| 24.3 | Endpoint `PUT /api/inbox/mark-all-read` — segna tutti letti per workspace+team (filtro tipo opzionale) | ⬜ | 24.1 | backend/api/routes/inbox.js | ~5min |
-| 24.4 | Registrare router inbox in `index.js` | ⬜ | 24.1 | backend/api/index.js | ~2min |
+| 24.1 | Endpoint `GET /api/inbox?workspace_id=X&team_id=Y&tipo=all\|assenze\|avvisi\|convocazioni&letto=all\|true\|false&limit=50&offset=0` — aggrega `notification` + `absence_notification` in lista unificata ordinata per data desc, con contatori per tipo | ✅ | — | backend/api/routes/inbox.js (nuovo) | ~15min |
+| 24.2 | Endpoint `PUT /api/inbox/mark-read` — body `{ids: [...], tipo: 'notification'\|'absence'}` — segna letti in batch | ✅ | 24.1 | backend/api/routes/inbox.js | ~8min |
+| 24.3 | Endpoint `PUT /api/inbox/mark-all-read` — segna tutti letti per workspace+team (filtro tipo opzionale) | ✅ | 24.1 | backend/api/routes/inbox.js | ~5min |
+| 24.4 | Registrare router inbox in `index.js` | ✅ | 24.1 | backend/api/index.js | ~2min |
 
 #### Fase 2: Pagina Inbox Frontend
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 24.5 | Creare `modules/club/inbox.js` — struttura pagina con header (titolo + "Segna tutti letti"), tab bar pill: Tutti / Assenze / Convocazioni / Avvisi / Bonifici, summary contatori non letti per tab | ⬜ | 24.1 | modules/club/inbox.js | ~10min |
-| 24.6 | Lista messaggi — card per ogni item con: icona tipo (🏃 assenza, 📋 convocazione, 💰 bonifico, 📢 avviso), titolo, testo preview, data relativa (es. "2 ore fa"), badge "Nuovo" se non letto, sfondo leggermente diverso per non letti | ⬜ | 24.5 | modules/club/inbox.js | ~12min |
-| 24.7 | Azioni rapide inline per tipo: assenza → "Vai all'allenamento"; convocazione indisponibile → "Vai alla partita"; bonifico → "Conferma / Rifiuta" (riusa modal esistente da fees.js); avviso generico → "Segna letto" | ⬜ | 24.6 | modules/club/inbox.js | ~15min |
-| 24.8 | Paginazione — carica 20 item alla volta, bottone "Carica altri" in fondo | ⬜ | 24.6 | modules/club/inbox.js | ~8min |
-| 24.9 | Sezione "Archivio" — messaggi letti con data > 30gg collassati in accordion, espandibile con click | ⬜ | 24.6 | modules/club/inbox.js | ~8min |
-| 24.10 | Filtro squadra — se admin con più squadre, dropdown per filtrare per categoria | ⬜ | 24.5 | modules/club/inbox.js | ~5min |
+| 24.5 | Creare `modules/club/inbox.js` — struttura pagina con header (titolo + "Segna tutti letti"), tab bar pill: Tutti / Assenze / Convocazioni / Avvisi / Bonifici, summary contatori non letti per tab | ✅ | 24.1 | modules/club/inbox.js | ~10min |
+| 24.6 | Lista messaggi — card per ogni item con: icona tipo (🏃 assenza, 📋 convocazione, 💰 bonifico, 📢 avviso), titolo, testo preview, data relativa (es. "2 ore fa"), badge "Nuovo" se non letto, sfondo leggermente diverso per non letti | ✅ | 24.5 | modules/club/inbox.js | ~12min |
+| 24.7 | Azioni rapide inline per tipo: assenza → "Vai all'allenamento"; convocazione indisponibile → "Vai alla partita"; bonifico → "Conferma / Rifiuta" (riusa modal esistente da fees.js); avviso generico → "Segna letto" | ✅ | 24.6 | modules/club/inbox.js | ~15min |
+| 24.8 | Paginazione — carica 20 item alla volta, bottone "Carica altri" in fondo | ✅ | 24.6 | modules/club/inbox.js | ~8min |
+| 24.9 | Sezione "Archivio" — messaggi letti con data > 30gg collassati in accordion, espandibile con click | ✅ | 24.6 | modules/club/inbox.js | ~8min |
+| 24.10 | Filtro squadra — se admin con più squadre, dropdown per filtrare per categoria | ✅ | 24.5 | modules/club/inbox.js | ~5min |
 
 #### Fase 3: Integrazione
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 24.11 | Sidebar: voce "📬 Inbox" con badge contatore non letti, visibile a admin/segreteria/dirigente | ⬜ | 24.5 | components/layout/sidebarNav.js | ~5min |
-| 24.12 | Router: registrare route `inbox` | ⬜ | 24.5 | router.js | ~2min |
-| 24.13 | Campanellina: click naviga a `/inbox` invece di aprire dropdown (il dropdown rimane solo per preview rapida top 3) | ⬜ | 24.5 | components/layout/header.js | ~8min |
-| 24.14 | helpData.js: aggiungere entry per pagina inbox | ⬜ | 24.5 | components/helpData.js | ~3min |
-| 24.15 | Test build + aggiornare AGENTS.md | ⬜ | 24.14 | .agents/AGENTS.md | ~3min |
+| 24.11 | Sidebar: voce "📬 Inbox" con badge contatore non letti, visibile a admin/segreteria/dirigente | ✅ | 24.5 | components/layout/sidebarNav.js | ~5min |
+| 24.12 | Router: registrare route `inbox` | ✅ | 24.5 | router.js | ~2min |
+| 24.13 | Campanellina: click naviga a `/inbox` invece di aprire dropdown (il dropdown rimane solo per preview rapida top 3) | ❌ | 24.5 | components/layout/header.js | ~8min |
+| 24.14 | helpData.js: aggiungere entry per pagina inbox | ✅ | 24.5 | components/helpData.js | ~3min |
+| 24.15 | Test build + aggiornare AGENTS.md | ✅ | 24.14 | .agents/AGENTS.md | ~3min |
 
 **Effort totale stimato**: ~1h 49min (15 task)
 
@@ -647,6 +647,9 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.99 | fix: dashboard widget convocazione role-aware — segreteria/read vede `👁 Vedi convocazione` + badge `✅ Pubblicata`, mister/write vede `Vedi/Modifica` + PDF. fix: inbox notifica convocazione apre direttamente `openConvocation(riferimento_id, true)` invece di navigare al calendario. fix: capability `convocazioni` segreteria da `write` a `read` (DB + profilo default `capabilities.js`) |
+| v3.16.99 | feat: sidebar modulare per ruolo — `sidebarNav.js` refactoring con builder functions; ordine default Team→Coach→Performance→Segreteria→Club→Amministrazione; sezione Club: Staff→Società→Stagioni; profilo `segreteria` vede Segreteria in cima. feat: organigramma societario spostato in `staff.js` (CRUD admin: Staff Tecnico + Dirigenti + Organigramma); `club.js` diventa vetrina read-only (Riferimenti Societari + Organigramma read-only). Nuovo endpoint `GET /api/workspaces/:id/organigramma`. fix: inbox `filtroSquadra` inizializzato con `window.YFM.squadraId` (evita cross-categoria), dropdown pre-selezionato sulla squadra attiva |
+| v3.16.99 | feat: EPIC 24 Inbox Comunicazioni — backend `inbox.js` (GET /inbox aggrega notification+absence_notification, PUT mark-read batch, PUT mark-all-read), capability `inbox` (default write per segreteria+admin), pagina `modules/club/inbox.js` (tab Tutti/Assenze/Convocazioni/Bonifici/Avvisi, badge non letti, espansione inline, azioni rapide, paginazione, archivio 30gg, filtro squadra), sidebar voce 📬 Inbox, router inbox, helpData inbox |
 | v3.16.99 | feat: parser PDF calendario SGS — supporto multi-regione. Fix regex bordi `I/!` (Lombardia, Sicilia, Piemonte): header HEADER_REGEX esteso a GIOVANISSIMI/ALLIEVI, date/orari/partite/campi accettano `I` e `!` oltre a `|`, fix regex ospite con `\s{2,}[|I]` come terminatore (nomi completi invece di troncati), suggestions filtrate da caratteri bordo. Nuovo parser Campania (formato lineare senza tabelle): `isCampaniaFormat()` rileva automaticamente (date concatenate `A. DD/MM/YYYYR.` + assenza `G I O R N A T A` spaziato), `findTeamInCampaniaPdf()` + `extractCampaniaCalendar()` con risoluzione nome completo via prefisso comune su righe-casa, split avversario per prefix/suffix match, `stripLegalSuffix()` per nomi puliti. Fix header Campania U17 (`\s*` invece di `\s+` tra categoria e GIRONE). Router `importCalendario.js`: auto-detect formato in `parse-pdf` e `extract` (zero modifiche frontend). Testato su: Lazio SGS (30p), Lazio Elite (16p), Lombardia U14 (30p), Sicilia U17 (26p), Campania U15 (24p), Campania U17 (22p), Piemonte multi-girone (26p) |
 | v3.16.98 | feat: EPIC 27 Support Ticket Management — tabella `support_ticket` nel DB (RLS deny anon), `POST /support/ticket` salva nel DB + rate limit 5/giorno per user_id (superadmin escluso), `GET /support/tickets` lista con filtri stato/workspace (solo superadmin), `PUT /support/tickets/:id/rispondi` risposta via email con ID ticket (#XXXXXXXX) + chiude, `PUT /support/tickets/:id/stato`, `DELETE /support/tickets/:id`, `DELETE /support/tickets/chiusi`. Frontend: pagina `supportTickets.js` con lista espandibile, form risposta inline, confirm modal elimina/pulisci (modale sempre visibile indipendente dal filtro). fix: superadmin user_id=null su INSERT. fix: check `is_superadmin` invece di `ruolo=superadmin` su tutti gli endpoint. fix: `showToast` importata in main.js (era window.showToast). fix: toast aggiornamenti in alto (top:24px). fix: `showToast` parametro `position` top/bottom. fix: `checkForUpdates` ascolta evento `updatefound` per feedback preciso. fix: rate limit ticket rimosso da sessionStorage, gestito lato DB per utente. Sidebar voce 🎫 Ticket solo superadmin. helpData entry supportTickets |
 | v3.16.97 | feat: EPIC 25 fix completo — FAB ⚡ unificato (Guida+Segnala), PageHelp bottone fisso rimosso se FAB presente, openPageHelp/activateInteractiveHelp export, fix help interattivo (getActiveBtn fallback yfm-fab-main), fix injectStyles sempre. fix: supportWidget — import showToast, endpoint /support/ticket (no /api duplicato), build da BUILD_INFO.id, pagina da YFM.currentPage, workspace nome da workspaceInfo. fix: email ticket — Mittente nome cognome, Account email·ruolo, Reply-To con display name. fix: toast posizionato sopra FAB (bottom:80px). fix: apiFetch guard /api duplicato con warning console. feat: showToast centralizzata in ui.js con param duration |

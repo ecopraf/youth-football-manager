@@ -1,3 +1,5 @@
+import { PROFILI } from '../../utils/capabilities.js';
+
 /**
  * sidebarNav.js - Genera il menu di navigazione sidebar
  * Filtra le voci in base a capabilities, ruolo e profilo utente
@@ -16,73 +18,110 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
     if (!user) return false;
     if (isSuperadmin) return true;
     if (user.ruolo === 'admin') return true;
-    if (user.ruolo === 'allenatore') {
-      const permessi = user.permessi || {};
-      const caps = permessi.capabilities || permessi;
-      if (!caps || Object.keys(caps).length === 0) return true;
-      return !!caps[capId];
-    }
     const permessi = user.permessi || {};
     const caps = permessi.capabilities || permessi;
-    return !!caps[capId];
+    // Se la capability è esplicitamente salvata, usarla
+    if (caps && capId in caps) {
+      if (user.ruolo === 'allenatore' && Object.keys(caps).length === 0) return true;
+      return !!caps[capId];
+    }
+    // Fallback: se l'utente ha un profilo riconosciuto, usare il default del profilo
+    const profilo = permessi.profilo;
+    if (profilo && PROFILI[profilo]) {
+      return !!(PROFILI[profilo].capabilities || {})[capId];
+    }
+    // Legacy: allenatore senza permessi → tutto visibile
+    if (user.ruolo === 'allenatore') return true;
+    return false;
+  };
+
+  // Determina profilo dominante per ordinamento sezioni
+  const profilo = user?.permessi?.profilo || user?.ruolo || '';
+  const isSegreteria = profilo === 'segreteria' && !showForRole(['admin']);
+
+  const buildTeam = () => {
+    let s = '';
+    s += sectionTitle('⚽ Team');
+    if (hasCap('rosa')) s += navItem('roster', '👕', 'Rosa', 'Lista giocatori, statistiche individuali, storico');
+    if (hasCap('partite')) s += navItem('calendar', '📅', 'Calendario', 'Calendario partite, risultati, archiviazione');
+    return s;
+  };
+
+  const buildCoach = () => {
+    if (!hasCap('allenamenti')) return '';
+    let s = sectionTitle('🎯 Coach');
+    s += '<a href="#" class="sidebar-expandable" id="trainingToggle" title="🏋️ Allenamenti">🏋️ Allenamenti <span style="float:right;font-size:10px;">▶</span></a>';
+    s += '<div id="trainingSubmenu" style="display:none;padding-left:12px;">';
+    s += navItem('trainingSessions', '📋', 'Sedute', 'Programma sedute');
+    s += navItem('trainingPresenze', '🙋', 'Presenze', 'Presenze allenamenti');
+    s += navItem('trainingSettings', '⚙️', 'Impostazioni', 'Configurazione allenamenti');
+    s += '</div>';
+    return s;
+  };
+
+  const buildPerformance = () => {
+    if (!hasCap('statistiche') && !hasCap('report')) return '';
+    let s = sectionTitle('📈 Performance');
+    if (hasCap('statistiche')) s += navItem('stats', '📊', 'Statistiche', 'Marcatori, assist, discipline, statistiche');
+    if (hasCap('report')) s += navItem('reports', '📄', 'Report', 'Report partita e stagionale PDF');
+    if (hasCap('report')) s += navItem('printCenter', '🖨', 'Print Center', 'Hub documenti: stampa, anteprima, condividi');
+    return s;
+  };
+
+  const buildSegreteria = () => {
+    if (!showForRole(['admin']) && !hasCap('inbox') && !hasCap('quote') && !hasCap('kit') && !hasCap('tesseramento')) return '';
+    let s = sectionTitle('💼 Segreteria');
+    if (showForRole(['admin']) || hasCap('inbox')) s += navItem('inbox', '📬', 'Inbox', 'Comunicazioni in entrata');
+    if (showForRole(['admin']) || hasCap('quote')) s += navItem('fees', '💰', 'Quote', 'Gestione quote economiche');
+    if (showForRole(['admin']) || hasCap('kit')) s += navItem('kit', '👕', 'Kit', 'Gestione kit sportivo');
+    if (showForRole(['admin']) || hasCap('tesseramento')) s += navItem('registration', '📋', 'Tesseramento', 'Iscrizioni e documenti');
+    if (showForRole(['admin']) || hasCap('tesseramento')) s += navItem('checklist', '✅', 'Checklist', 'Checklist inizio stagione');
+    return s;
+  };
+
+  const buildClub = () => {
+    let s = sectionTitle('🏛️ Club');
+    if (showForRole(['admin', 'allenatore'])) s += navItem('staff', '👔', 'Staff', 'Staff tecnico e societario');
+    s += navItem('club', '🏢', 'Società', 'Organigramma, staff e riferimenti società');
+    if (showForRole(['admin'])) s += navItem('seasonsCategories', '🗓️', 'Stagioni', 'Gestione stagioni e categorie');
+    return s;
+  };
+
+  const buildAmministrazione = () => {
+    if (!showForRole(['admin'])) return '';
+    let s = sectionTitle('🔐 Amministrazione');
+    if (hasCap('import')) s += navItem('importCenter', '📥', 'Import Center', 'Import dati da fonti esterne');
+    s += navItem('users', '👥', 'Utenti', 'Gestione utenti e permessi');
+    if (hasCap('guest_links')) s += navItem('guestLinks', '🔗', 'Link Guest', 'Genera e gestisci link guest temporanei');
+    if (isSuperadmin) s += navItem('supportTickets', '🎫', 'Ticket', 'Gestione ticket di supporto');
+    if (isSuperadmin) s += navItem('workspaces', '🌐', 'Workspace', 'Gestione workspace/società');
+    return s;
   };
 
   let html = '';
-
-  // Dashboard — sempre visibile
   html += navItem('dashboard', '🏠', 'Dashboard', 'Panoramica: statistiche, prossima partita, top players', true);
 
-  // Team
-  html += sectionTitle('⚽ Team');
-  if (hasCap('rosa')) html += navItem('roster', '👕', 'Rosa', 'Lista giocatori, statistiche individuali, storico');
-  if (hasCap('partite')) html += navItem('calendar', '📅', 'Calendario', 'Calendario partite, risultati, archiviazione');
-
-  // Coach
-  if (hasCap('allenamenti')) {
-    html += sectionTitle('🎯 Coach');
-    html += '<a href="#" class="sidebar-expandable" id="trainingToggle" title="🏋️ Allenamenti">🏋️ Allenamenti <span style="float:right;font-size:10px;">▶</span></a>';
-    html += '<div id="trainingSubmenu" style="display:none;padding-left:12px;">';
-    html += navItem('trainingSessions', '📋', 'Sedute', 'Programma sedute');
-    html += navItem('trainingPresenze', '🙋', 'Presenze', 'Presenze allenamenti');
-    html += navItem('trainingSettings', '⚙️', 'Impostazioni', 'Configurazione allenamenti');
-    html += '</div>';
+  if (isSegreteria) {
+    html += buildSegreteria();
+    html += buildTeam();
+    html += buildPerformance();
+    html += buildClub();
+  } else {
+    html += buildTeam();
+    html += buildCoach();
+    html += buildPerformance();
+    html += buildSegreteria();
+    html += buildClub();
+    html += buildAmministrazione();
   }
 
-  // Performance
-  if (hasCap('statistiche') || hasCap('report')) {
-    html += sectionTitle('📈 Performance');
-    if (hasCap('statistiche')) html += navItem('stats', '📊', 'Statistiche', 'Marcatori, assist, discipline, statistiche');
-    if (hasCap('report')) html += navItem('reports', '📄', 'Report', 'Report partita e stagionale PDF');
-    if (hasCap('report')) html += navItem('printCenter', '🖨', 'Print Center', 'Hub documenti: stampa, anteprima, condividi');
-  }
-
-  // Club
-  html += sectionTitle('🏛️ Club');
-  if (showForRole(['admin', 'allenatore'])) html += navItem('staff', '👔', 'Staff', 'Staff tecnico e societario');
-  if (showForRole(['admin']) || hasCap('quote')) html += navItem('fees', '💰', 'Quote', 'Gestione quote economiche');
-  if (showForRole(['admin']) || hasCap('kit')) html += navItem('kit', '👕', 'Kit', 'Gestione kit sportivo');
-  if (showForRole(['admin']) || hasCap('tesseramento')) html += navItem('registration', '📋', 'Tesseramento', 'Iscrizioni e documenti');
-  if (showForRole(['admin']) || hasCap('tesseramento')) html += navItem('checklist', '✅', 'Checklist', 'Checklist inizio stagione');
-  html += navItem('club', '🏢', 'Società', 'Organigramma, staff e riferimenti società');
-
-  // Import Center — visibile a chi ha capability import
+  // Import per non-admin con capability import
   if (hasCap('import') && !showForRole(['admin'])) {
     html += sectionTitle('🔧 Strumenti');
     html += navItem('importCenter', '📥', 'Import Center', 'Import dati da fonti esterne');
   }
-
-  // Amministrazione
-  if (showForRole(['admin'])) {
-    html += sectionTitle('🔐 Amministrazione');
-    html += navItem('seasonsCategories', '🗓️', 'Stagioni', 'Gestione stagioni e categorie');
-    if (hasCap('import')) html += navItem('importCenter', '📥', 'Import Center', 'Import dati da fonti esterne');
-    if (isSuperadmin) html += navItem('workspaces', '🌐', 'Workspace', 'Gestione workspace/società');
-    if (isSuperadmin) html += navItem('supportTickets', '🎫', 'Ticket', 'Gestione ticket di supporto');
-    html += navItem('users', '👥', 'Utenti', 'Gestione utenti e permessi');
-  }
-
-  // Guest Links
-  if (hasCap('guest_links')) html += navItem('guestLinks', '🔗', 'Link Guest', 'Genera e gestisci link guest temporanei');
+  // Guest Links per non-admin
+  if (hasCap('guest_links') && !showForRole(['admin'])) html += navItem('guestLinks', '🔗', 'Link Guest', 'Genera e gestisci link guest temporanei');
 
   return html;
 }

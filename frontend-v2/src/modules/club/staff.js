@@ -124,10 +124,12 @@ function renderSections() {
     });
   }
   const societari = filteredBySeasonList.filter(s => isSocietario(s.ruolo));
+  const dirigenti = tecnici.filter(s => s.ruolo === 'Dirigente' || s.ruolo === 'Team Manager');
+  const staffTecnico = tecnici.filter(s => s.ruolo !== 'Dirigente' && s.ruolo !== 'Team Manager');
 
   let html = '';
 
-  // Staff Tecnico (visibile a tutti)
+  // Staff Tecnico
   html += `<div class="card" style="margin-bottom:24px;">
     <h3 style="margin:0 0 16px;font-size:16px;color:#334155;">⚽ Staff Tecnico</h3>
     <table style="width:100%;border-collapse:collapse;">
@@ -138,7 +140,22 @@ function renderSections() {
         <th style="text-align:left;padding:12px;">Categorie</th>
         ${isAdmin ? '<th style="text-align:right;padding:12px;">Azioni</th>' : ''}
       </tr></thead>
-      <tbody>${renderRows(tecnici, isAdmin)}</tbody>
+      <tbody>${renderRows(staffTecnico, isAdmin)}</tbody>
+    </table>
+  </div>`;
+
+  // Dirigenti
+  html += `<div class="card" style="margin-bottom:24px;">
+    <h3 style="margin:0 0 16px;font-size:16px;color:#334155;">👔 Dirigenti</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="border-bottom:2px solid #eee;">
+        <th style="text-align:left;padding:12px;">Nome</th>
+        <th style="text-align:left;padding:12px;">Ruolo</th>
+        <th style="text-align:left;padding:12px;">Matricola</th>
+        <th style="text-align:left;padding:12px;">Categorie</th>
+        ${isAdmin ? '<th style="text-align:right;padding:12px;">Azioni</th>' : ''}
+      </tr></thead>
+      <tbody>${renderRows(dirigenti, isAdmin, 'Nessun dirigente assegnato')}</tbody>
     </table>
   </div>`;
 
@@ -146,7 +163,6 @@ function renderSections() {
   if (isAdmin) {
     html += `<div class="card">
       <h3 style="margin:0 0 16px;font-size:16px;color:#334155;">🏢 Organigramma Societario</h3>
-      ${societari.length === 0 ? '<p style="color:#999;text-align:center;padding:20px;">Nessun membro societario</p>' : `
       <table style="width:100%;border-collapse:collapse;">
         <thead><tr style="border-bottom:2px solid #eee;">
           <th style="text-align:left;padding:12px;">Nome</th>
@@ -156,7 +172,7 @@ function renderSections() {
           <th style="text-align:right;padding:12px;">Azioni</th>
         </tr></thead>
         <tbody>${renderRowsSocietario(societari)}</tbody>
-      </table>`}
+      </table>
     </div>`;
   }
 
@@ -171,8 +187,8 @@ function renderSections() {
   });
 }
 
-function renderRows(list, showActions = true) {
-  if (list.length === 0) return '<tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">Nessun membro staff tecnico</td></tr>';
+function renderRows(list, showActions = true, emptyMsg = 'Nessun membro staff tecnico') {
+  if (list.length === 0) return `<tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">${emptyMsg}</td></tr>`;
   return list.map(s => {
     const q = s.qualifiche || {};
     const cats = (s.categorie || []).map(c => c.nome).join(', ') || '-';

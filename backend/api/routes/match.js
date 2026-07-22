@@ -319,7 +319,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       const avv = match.avversario || 'partita';
 
       await supabase.from('notification').insert([
-        { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '📋 Convocazione pronta', messaggio: `${convocatiCount} convocati per ${avv} (${dataStr})${autoIndisponibili > 0 ? ' — ⚠️ ' + autoIndisponibili + ' già indisponibil' + (autoIndisponibili === 1 ? 'e' : 'i') : ''}`, riferimento_id: req.params.matchId, destinatario_profilo: ['segreteria', 'dirigente', 'osservatore'], destinatario_tipo: ['staff'], created_by: req.user.id },
+        { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '📋 Convocazione pronta', messaggio: `${convocatiCount} convocati per ${avv} (${dataStr})${autoIndisponibili > 0 ? ' — ⚠️ ' + autoIndisponibili + ' già indisponibil' + (autoIndisponibili === 1 ? 'e' : 'i') : ''}`, riferimento_id: req.params.matchId, destinatario_profilo: ['segreteria', 'dirigente'], destinatario_tipo: ['staff'], created_by: req.user.id },
         { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '⚽ Convocazione pubblicata', messaggio: `Controlla se sei convocato per ${avv} (${dataStr})`, riferimento_id: req.params.matchId, destinatario_tipo: ['atleta'], created_by: req.user.id },
         { workspace_id: wsId, team_id: match.team_id, tipo: 'convocazione', titolo: '📋 Convocazione vs ' + avv, messaggio: `${convocatiCount} convocati per ${dataStr}. Verifica la convocazione di tuo figlio.`, riferimento_id: req.params.matchId, destinatario_tipo: ['genitore'], created_by: req.user.id }
       ]);

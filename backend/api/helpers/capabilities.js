@@ -15,13 +15,14 @@ const CAPABILITIES = [
   { id: 'report', label: 'Report' },
   { id: 'quote', label: 'Quote' },
   { id: 'kit', label: 'Kit' },
-  { id: 'tesseramento', label: 'Tesseramento' }
+  { id: 'tesseramento', label: 'Tesseramento' },
+  { id: 'inbox', label: 'Inbox' }
 ];
 
 const PROFILI = {
   segreteria: {
     label: 'Segreteria',
-    capabilities: { rosa: 'write', partite: 'read', convocazioni: 'write', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write' }
+    capabilities: { rosa: 'write', partite: 'read', convocazioni: 'write', formazione: '', allenamenti: 'read', statistiche: 'read', guest_links: 'write', import: 'write', report: 'read', quote: 'write', kit: 'write', tesseramento: 'write', inbox: 'write' }
   },
   atleta: {
     label: 'Atleta',

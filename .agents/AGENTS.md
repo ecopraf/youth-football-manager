@@ -130,8 +130,9 @@ api/
                                   `GET|POST /api/squadre/:squadraId/partite/:matchId/formazione` `GET|PUT /api/partite/:matchId/formazione`
                                   `GET|POST /api/squadre/:squadraId/partite/:matchId/eventi` `POST /api/partite/:matchId/eventi-batch` `POST /api/partite/:matchId/evento-item`
                                   `GET|POST /api/partite/:matchId/valutazioni` `GET /api/squadre/:teamId/ultima-formazione`
-    ├── staff.js                — Staff completo per distinta
+    ├── staff.js                — Staff completo per distinta + organigramma workspace
                                   `GET /api/squadre/:squadraId/staff-completo`
+                                  `GET /api/workspaces/:workspaceId/organigramma`
     ├── admin.js                — Migrazioni schema DB
     ├── statistics.js           — Statistiche complete, top players, report partita/stagionale/giocatore
                                   `GET /api/squadre/:id/statistiche-complete` `GET /api/squadre/:id/stats-charts` `GET /api/squadre/:id/top-players` `GET /api/squadre/:id/valutazioni-top`
@@ -200,6 +201,10 @@ api/
                                   `POST /api/registrations/:id/sollecito`
     ├── tournament.js           — Tornei CRUD (disabilitato in sidebar)
                                   `GET|POST /api/tornei` `GET|PUT|DELETE /api/tornei/:id`
+    ├── inbox.js                — Inbox comunicazioni (aggrega notification + absence_notification)
+                                  `GET /api/inbox` (filtri: workspace_id, team_id, tipo, letto, limit, offset — contatori per tipo)
+                                  `PUT /api/inbox/mark-read` (batch: {ids, source: 'notification'|'absence'})
+                                  `PUT /api/inbox/mark-all-read` (workspace+team+tipo)
     └── support.js              — Segnalazioni bug/supporto via email + gestione ticket superadmin
                                   `POST /api/support/ticket` (auth required — invia email + salva in DB; rate limit 5/giorno per user_id; superadmin: user_id=null)
                                   `GET /api/support/tickets` (solo superadmin — lista con filtri stato/workspace_id)
@@ -259,7 +264,7 @@ frontend-v2/src/
 │   ├── helpData.js            — Dati help per pagina
 │   └── layout/
 │       ├── Sidebar.js         — Sidebar responsive
-│       └── sidebarNav.js      — Nav filtrato per capabilities
+- **sidebarNav.js** (`components/layout/sidebarNav.js`) — Nav filtrato per capabilities. Builder functions per sezione (buildTeam/buildCoach/buildPerformance/buildSegreteria/buildClub/buildAmministrazione). Ordine default: Dashboard → Team → Coach → Performance → Segreteria → Club → Amministrazione. Sezione Club: Staff → Società → Stagioni. Profilo `segreteria` (non admin): Segreteria sale in cima → Segreteria → Team → Performance → Club. Rilevamento profilo da `user.permessi.profilo`.
 └── modules/
     ├── auth/
     │   ├── login.js           — Login page
@@ -297,8 +302,8 @@ frontend-v2/src/
     │   ├── stats.js           — Statistiche squadra/giocatori
     │   └── reports.js         — Report PDF
     ├── club/
-    │   ├── club.js            — Pagina società
-    │   ├── staff.js           — Gestione staff
+    │   ├── club.js            — Vetrina societaria read-only (Riferimenti Societari + Organigramma read-only)
+    │   ├── staff.js           — Gestione staff CRUD: ⚽ Staff Tecnico + 👔 Dirigenti + 🏢 Organigramma Societario (admin)
     │   ├── seasonsCategories.js — Stagioni e categorie (wizard)
     │   ├── settings.js        — Impostazioni
     │   ├── workspace.js       — Dettaglio workspace

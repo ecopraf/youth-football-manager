@@ -30,6 +30,7 @@ export function initRouter() {
     importCenter: () => import('./modules/import/importCenter.js'),
     workspaces: () => import('./modules/admin/workspaces.js'),
     supportTickets: () => import('./modules/admin/supportTickets.js'),
+    inbox: () => import('./modules/club/inbox.js'),
     tournaments: () => import('./modules/coach/tournaments.js'),
     matchCenter: () => import('./modules/team/matchCenter.js'),
     printCenter: () => import('./modules/team/printCenter.js'),

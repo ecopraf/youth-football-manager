@@ -10,12 +10,12 @@
 | `fees.js` | Quote associative: config, rate, pagamenti, ricevute |
 | `registration.js` | Tesseramento giocatori (documenti, scadenze mediche) |
 | `checklist.js` | Checklist pre-partita per categoria |
-| `staff.js` | Gestione staff tecnico |
+| `staff.js` | Gestione staff: Staff Tecnico + Dirigenti + Organigramma Societario (CRUD, solo admin) |
+| `club.js` | Vetrina societaria read-only: Riferimenti Societari + Organigramma (read-only) |
 | `seasonsCategories.js` | Stagioni e categorie |
 | `settings.js` | Impostazioni workspace |
 | `workspace.js` | Anagrafica societaria |
 | `workspaceSwitcher.js` | Cambio workspace (superadmin/multi-workspace) |
-| `club.js` | Hub modulo club |
 
 ## Endpoint backend usati
 
@@ -56,7 +56,8 @@ POST   /api/fees/:id/ricevuta               ← upload ricevuta PDF
 
 ### Staff / Workspace
 ```
-GET    /api/squadre/:id/staff-completo
+GET    /api/squadre/:id/staff-completo        ← staff tecnico+dirigenti per team (team_staff)
+GET    /api/workspaces/:id/organigramma       ← ruoli istituzionali (Presidente, VP, DG, DS, DT, Osservatore)
 POST   /api/staff
 PUT    /api/staff/:id
 DELETE /api/staff/:id
@@ -122,6 +123,16 @@ fees.js
 
 ## Note critiche
 
+### Staff
+- **Separazione ruoli**: `staff.js` mostra 3 sezioni — ⚽ Staff Tecnico, 👔 Dirigenti, 🏢 Organigramma Societario
+  - Staff Tecnico: tutti i ruoli tranne Dirigente e Team Manager
+  - Dirigenti: Dirigente + Team Manager
+  - Organigramma: Presidente, Vice Presidente, DG, DS, DT, Osservatore (solo admin, CRUD)
+- **Organigramma in club.js**: read-only, alimentato da `GET /api/workspaces/:id/organigramma` (ruoli con `team_staff.team_id = null`)
+- **Organigramma in staff.js**: CRUD completo, usa `staffList` già caricato (filtrato per `isSocietario(ruolo)`)
+- **Sidebar ordine Club**: Staff → Società → Stagioni
+
+### Kit
 - Kit staff: visibile **cross-categoria** (query su `staff_id` senza filtro `team_id`)
 - Stato bundle `parziale` = temporaneo (pezzi in attesa fornitore) → si risolve con `segna-arrivati`
 - Stato bundle `incompleto` = permanente (sostituzione non trovata)
