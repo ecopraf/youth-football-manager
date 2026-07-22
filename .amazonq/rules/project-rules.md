@@ -684,6 +684,7 @@ Questi principi si applicano AUTOMATICAMENTE a ogni nuova UI senza bisogno di ri
 | Filtri con stato visibile | Bottoni filtro devono avere stile `active` evidente (sfondo primary, testo bianco) per indicare la selezione corrente |
 | Coerenza dashboard ↔ pagina | Widget dashboard e pagina dedicata devono usare la stessa struttura dati e lo stesso raggruppamento (es. per tipologia) |
 | Ordinamento liste giocatori | Ogni lista di giocatori DEVE essere ordinata per **cognome + nome** (`localeCompare`) salvo casi specifici (es. per ruolo nelle formazioni, per numero maglia nel roster, per minuto nelle sostituzioni). Se non specificato diversamente, il default è sempre alfabetico |
+| Feedback visivo bottoni azione | Ogni bottone che scatena un'azione asincrona o irreversibile (logout, salvataggio, invio, aggiornamento SW) DEVE: 1) disabilitarsi immediatamente (`btn.disabled=true`), 2) cambiare testo con ⏳ + label in corso (es. "⏳ Uscita in corso..."), 3) ripristinarsi dopo timeout o al completamento. Pattern: `onclick="(function(btn){btn.disabled=true;btn.innerHTML='⏳ ...';/* azione */})(this)"`. Mai lasciare un bottone cliccabile senza feedback durante l'attesa. |
 
 ### Standard Tabelle Responsive (DataGrid)
 

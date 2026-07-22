@@ -81,11 +81,11 @@ export function setupLayout() {
                   <div style="font-weight:600;font-size:13px;">${userName}</div>
                   <div style="font-size:11px;color:#666;">${userRoleLabel}</div>
                 </div>
-                <button onclick="window.YFM.checkForUpdates&&window.YFM.checkForUpdates()"
+                <button id="yfm-check-update-btn" onclick="(function(btn){btn.disabled=true;btn.innerHTML='⏳ Controllo in corso...';if(window.YFM&&window.YFM.checkForUpdates){window.YFM.checkForUpdates();}else{if(window.showToast)window.showToast('Service worker non disponibile','warning');}setTimeout(()=>{btn.disabled=false;btn.innerHTML='🔄 Controlla aggiornamenti';},2500);})(this)"
                         style="width:100%;padding:12px 16px;text-align:left;background:none;border:none;cursor:pointer;font-size:13px;color:#667eea;display:flex;align-items:center;gap:8px;border-bottom:1px solid #eee;">
                   🔄 Controlla aggiornamenti
                 </button>
-                <button onclick="window.YFM.handleLogout()"
+                <button onclick="(function(btn){btn.disabled=true;btn.innerHTML='⏳ Uscita in corso...';window.YFM.handleLogout();})(this)"
                         style="width:100%;padding:12px 16px;text-align:left;background:none;border:none;cursor:pointer;font-size:13px;color:#E74C3C;display:flex;align-items:center;gap:8px;">
                   🚪 Logout
                 </button>
