@@ -1,45 +1,130 @@
 import { apiFetch } from '../services/api.js';
+import { showToast } from '../utils/ui.js';
+import { openPageHelp, activateInteractiveHelp } from './PageHelp.js';
 
 const MAX_TICKETS = 3;
 const TICKET_KEY = 'yfm_ticket_count';
 
+let fabExpanded = false;
+
 export function initSupportWidget() {
-  // Non mostrare su pagine print
   if (window.location.hash.includes('print')) return;
 
-  const btn = document.createElement('button');
-  btn.id = 'support-widget-btn';
-  btn.title = 'Segnala un problema o invia un suggerimento';
-  btn.innerHTML = '❓';
-  btn.style.cssText = `
-    position:fixed;bottom:24px;right:24px;z-index:1500;
-    width:44px;height:44px;border-radius:50%;border:none;
-    background:#667eea;color:white;font-size:18px;cursor:pointer;
-    box-shadow:0 4px 12px rgba(102,126,234,0.4);
-    display:flex;align-items:center;justify-content:center;
-    transition:transform 0.2s,box-shadow 0.2s;
-  `;
-  btn.onmouseenter = () => { btn.style.transform = 'scale(1.1)'; btn.style.boxShadow = '0 6px 20px rgba(102,126,234,0.5)'; };
-  btn.onmouseleave = () => { btn.style.transform = ''; btn.style.boxShadow = '0 4px 12px rgba(102,126,234,0.4)'; };
-  btn.onclick = openModal;
-  document.body.appendChild(btn);
+  injectStyles();
 
-  // Nascondi su navigazione verso pagine print
+  const fab = document.createElement('div');
+  fab.id = 'yfm-fab';
+  fab.innerHTML = `
+    <div id="yfm-fab-menu">
+      <button class="yfm-fab-option" id="yfm-fab-help" title="Guida pagina (doppio-click: help interattivo)">
+        <span>❓</span><span class="yfm-fab-label">Guida</span>
+      </button>
+      <button class="yfm-fab-option" id="yfm-fab-ticket" title="Segnala un problema o invia un suggerimento">
+        <span>🐛</span><span class="yfm-fab-label">Segnala</span>
+      </button>
+    </div>
+    <button id="yfm-fab-main" title="Aiuto e supporto">⚡</button>
+  `;
+  document.body.appendChild(fab);
+
+  const mainBtn = fab.querySelector('#yfm-fab-main');
+  const menu = fab.querySelector('#yfm-fab-menu');
+
+  mainBtn.addEventListener('click', () => {
+    fabExpanded = !fabExpanded;
+    menu.classList.toggle('open', fabExpanded);
+    mainBtn.classList.toggle('active', fabExpanded);
+    mainBtn.textContent = fabExpanded ? '✕' : '⚡';
+  });
+
+  // Chiudi al click fuori
+  document.addEventListener('click', (e) => {
+    if (fabExpanded && !fab.contains(e.target)) {
+      fabExpanded = false;
+      menu.classList.remove('open');
+      mainBtn.classList.remove('active');
+      mainBtn.textContent = '⚡';
+    }
+  });
+
+  // Guida — click singolo popover, doppio-click interattivo
+  const helpBtn = fab.querySelector('#yfm-fab-help');
+  let helpClickTimer = null;
+  helpBtn.addEventListener('click', () => {
+    closeMenu(mainBtn, menu);
+    helpClickTimer = setTimeout(() => { openPageHelp(); }, 220);
+  });
+  helpBtn.addEventListener('dblclick', () => {
+    clearTimeout(helpClickTimer);
+    closeMenu(mainBtn, menu);
+    activateInteractiveHelp();
+  });
+
+  // Segnala
+  fab.querySelector('#yfm-fab-ticket').addEventListener('click', () => {
+    closeMenu(mainBtn, menu);
+    openTicketModal();
+  });
+
+  // Nascondi su pagine print
   window.addEventListener('hashchange', () => {
-    btn.style.display = window.location.hash.includes('print') ? 'none' : 'flex';
+    fab.style.display = window.location.hash.includes('print') ? 'none' : '';
   });
 }
 
-function openModal() {
+function closeMenu(mainBtn, menu) {
+  fabExpanded = false;
+  menu.classList.remove('open');
+  mainBtn.classList.remove('active');
+  mainBtn.textContent = '⚡';
+}
+
+function injectStyles() {
+  if (document.getElementById('yfm-fab-styles')) return;
+  const s = document.createElement('style');
+  s.id = 'yfm-fab-styles';
+  s.textContent = `
+    #yfm-fab { position:fixed; bottom:20px; right:20px; z-index:9100; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+    #yfm-fab-main {
+      width:44px; height:44px; border-radius:50%; border:none;
+      background:linear-gradient(135deg,#667eea,#764ba2); color:white;
+      font-size:20px; cursor:pointer; box-shadow:0 4px 14px rgba(102,126,234,0.5);
+      display:flex; align-items:center; justify-content:center;
+      transition:transform 0.2s, box-shadow 0.2s;
+      z-index:9101;
+    }
+    #yfm-fab-main:hover { transform:scale(1.1); box-shadow:0 6px 20px rgba(102,126,234,0.6); }
+    #yfm-fab-main.active { background:linear-gradient(135deg,#e74c3c,#c0392b); }
+    #yfm-fab-menu {
+      display:flex; flex-direction:column; align-items:flex-end; gap:8px;
+      overflow:hidden; max-height:0; opacity:0;
+      transition:max-height 0.25s ease, opacity 0.2s ease;
+      pointer-events:none;
+    }
+    #yfm-fab-menu.open { max-height:120px; opacity:1; pointer-events:all; }
+    .yfm-fab-option {
+      display:flex; align-items:center; gap:8px;
+      padding:8px 14px 8px 12px; border-radius:22px; border:none;
+      background:white; color:#333; font-size:13px; font-weight:600;
+      cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.15);
+      white-space:nowrap; transition:transform 0.15s, box-shadow 0.15s;
+    }
+    .yfm-fab-option:hover { transform:translateX(-3px); box-shadow:0 4px 14px rgba(0,0,0,0.2); }
+    .yfm-fab-label { font-size:13px; }
+  `;
+  document.head.appendChild(s);
+}
+
+function openTicketModal() {
   const count = parseInt(sessionStorage.getItem(TICKET_KEY) || '0');
   if (count >= MAX_TICKETS) {
-    showToast(`Hai già inviato ${MAX_TICKETS} segnalazioni in questa sessione. Per urgenze scrivi a youthfootballmanager@gmail.com`, 'warning', 6000);
+    showToast(`Limite segnalazioni raggiunto. Scrivi a youthfootballmanager@gmail.com`, 'warning', 6000);
     return;
   }
 
   const overlay = document.createElement('div');
   overlay.id = 'support-modal-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9200;display:flex;align-items:center;justify-content:center;padding:16px;';
 
   overlay.innerHTML = `
     <style>
@@ -64,7 +149,7 @@ function openModal() {
       .sw-counter{font-size:11px;color:#aaa;text-align:right;margin-top:4px;}
     </style>
     <div class="sw-card">
-      <div class="sw-title">📬 Invia segnalazione</div>
+      <div class="sw-title">🐛 Invia segnalazione</div>
       <div class="sw-tipo-bar">
         <button class="sw-tipo active" data-tipo="bug">🐛 Bug</button>
         <button class="sw-tipo" data-tipo="suggerimento">💡 Idea</button>
@@ -72,9 +157,9 @@ function openModal() {
       </div>
       <div class="sw-label">Descrizione</div>
       <textarea class="sw-textarea" id="sw-desc" placeholder="Descrivi il problema o il suggerimento..."></textarea>
-      <div class="sw-counter" id="sw-counter">${MAX_TICKETS - count} segnalazioni rimanenti in questa sessione</div>
+      <div class="sw-counter">${MAX_TICKETS - count} segnalazioni rimanenti in questa sessione</div>
       <div class="sw-upload">
-        <div class="sw-label">Screenshot (opzionale)</div>
+        <div class="sw-label">Screenshot (opzionale — o incolla con Cmd+V)</div>
         <input type="file" id="sw-file" accept="image/*" style="font-size:13px;">
         <div class="sw-preview" id="sw-preview" style="display:none;">
           <img id="sw-preview-img" src="" alt="screenshot">
@@ -92,22 +177,19 @@ function openModal() {
 
   let tipoAttivo = 'bug';
   let screenshotBase64 = null;
-
   const desc = overlay.querySelector('#sw-desc');
   desc.focus();
 
-  // Tipo selector
   overlay.querySelectorAll('.sw-tipo').forEach(btn => {
     btn.onclick = () => {
       overlay.querySelectorAll('.sw-tipo').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       tipoAttivo = btn.dataset.tipo;
-      const placeholders = { bug: 'Descrivi il problema: cosa stavi facendo, cosa è successo...', suggerimento: 'Descrivi la tua idea o miglioramento...', domanda: 'Scrivi la tua domanda...' };
-      desc.placeholder = placeholders[tipoAttivo];
+      const ph = { bug: 'Descrivi il problema: cosa stavi facendo, cosa è successo...', suggerimento: 'Descrivi la tua idea o miglioramento...', domanda: 'Scrivi la tua domanda...' };
+      desc.placeholder = ph[tipoAttivo];
     };
   });
 
-  // Upload file
   overlay.querySelector('#sw-file').onchange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -117,7 +199,6 @@ function openModal() {
     reader.readAsDataURL(file);
   };
 
-  // Paste da clipboard
   overlay.addEventListener('paste', (e) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -145,13 +226,11 @@ function openModal() {
     overlay.querySelector('#sw-file').value = '';
   };
 
-  // Chiudi
   const close = () => overlay.remove();
   overlay.querySelector('#sw-cancel').onclick = close;
   overlay.onclick = (e) => { if (e.target === overlay) close(); };
   document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
 
-  // Invia
   overlay.querySelector('#sw-send').onclick = async () => {
     const descrizione = desc.value.trim();
     if (descrizione.length < 5) { showToast('Descrizione troppo breve', 'error'); desc.focus(); return; }
@@ -160,29 +239,21 @@ function openModal() {
     sendBtn.disabled = true;
     sendBtn.textContent = '⏳ Invio...';
 
-    // Raccoglie contesto automatico
-    const user = window.YFM?.getUser?.() || {};
-    const buildVersion = window.YFM?.buildVersion || document.querySelector('meta[name="build-version"]')?.content || '—';
+    const buildVersion = window.YFM?.buildVersion || '—';
 
     try {
       await apiFetch('/api/support/ticket', {
         method: 'POST',
         headers: { 'x-build-version': buildVersion },
-        body: JSON.stringify({
-          tipo: tipoAttivo,
-          descrizione,
-          url_pagina: window.location.href,
-          screenshot_base64: screenshotBase64
-        })
+        body: JSON.stringify({ tipo: tipoAttivo, descrizione, url_pagina: window.location.href, screenshot_base64: screenshotBase64 })
       });
-
       sessionStorage.setItem(TICKET_KEY, String(parseInt(sessionStorage.getItem(TICKET_KEY) || '0') + 1));
-      showToast('✅ Segnalazione inviata! Ti risponderemo via email.', 'success', 4000);
+      showToast('✅ Segnalazione inviata!', 'success', 4000);
       setTimeout(close, 500);
     } catch {
       sendBtn.disabled = false;
       sendBtn.textContent = 'Invia';
-      showToast('Errore invio. Riprova o scrivi a youthfootballmanager@gmail.com', 'error', 5000);
+      showToast('Errore invio. Scrivi a youthfootballmanager@gmail.com', 'error', 5000);
     }
   };
 }

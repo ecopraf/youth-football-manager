@@ -20,18 +20,34 @@ let overlayEl = null;
 let modalObserver = null;
 let activeModal = null;
 
+// Chiamata dal FAB unificato per aprire il popover senza bottone fisso
+export function openPageHelp() {
+  if (!currentPage || !PAGE_HELP[currentPage]) return;
+  if (interactiveMode) deactivateInteractive();
+  else togglePagePopover();
+}
+
+export function activateInteractiveHelp() {
+  if (!currentPage || !PAGE_HELP[currentPage]) return;
+  if (helpPopover) { helpPopover.remove(); helpPopover = null; }
+  activateInteractive();
+}
+
 export function injectPageHelp(page) {
   currentPage = page;
   const config = PAGE_HELP[page];
 
   cleanup();
 
+  // Se il FAB unificato è presente, non creare il bottone fisso
+  const fabPresent = !!document.getElementById('yfm-fab');
+
   if (!config) {
     if (helpBtn) helpBtn.style.display = 'none';
     return;
   }
 
-  if (!helpBtn) {
+  if (!helpBtn && !fabPresent) {
     createHelpButton();
     injectStyles();
   }

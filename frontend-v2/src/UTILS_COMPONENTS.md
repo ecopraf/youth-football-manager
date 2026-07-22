@@ -11,11 +11,12 @@ File riutilizzabili in 2+ moduli. Non appartengono a un singolo modulo.
 ### `ui.js`
 Spinner di caricamento globale e toast notification.
 ```javascript
-showLoading(msg?)   // mostra overlay spinner
-hideLoading()       // nasconde overlay
-showToast(msg, type?)  // toast temporaneo (success/error/info)
+showLoading(msg?)              // mostra overlay spinner
+hideLoading()                  // nasconde overlay
+showToast(msg, type?, duration?) // toast temporaneo (type: success/error/warning/info, duration ms default 3000)
 ```
-**Usato in**: tutti i moduli. **Regola**: MAI usare `alert()` — usare `showToast()`.
+**Usato in**: tutti i moduli. **Regola**: MAI usare `alert()` — usare `showToast()` o il `window.alert` custom.
+**Nota**: molti moduli esistenti hanno una `showToast` locale — sono equivalenti. I nuovi moduli devono importare da `ui.js`.
 
 ---
 
@@ -162,7 +163,7 @@ Widget flottante ❓ per segnalazioni bug/suggerimenti/domande. Visibile su tutt
 initSupportWidget()   // chiamato una volta in main.js dopo setupLayout()
 ```
 
-- Bottone fisso `bottom:24px; right:24px; z-index:1500`
+- Bottone fisso `bottom:24px; left:24px; z-index:1500` (sinistra, per non sovrapporsi al PageHelp ❓ che è a destra)
 - Modal con 3 tipi: 🐛 Bug / 💡 Suggerimento / ❓ Domanda
 - Screenshot via `<input type=file>` o paste da clipboard (max 2MB)
 - Contesto automatico: URL, build version, ruolo utente, user agent
