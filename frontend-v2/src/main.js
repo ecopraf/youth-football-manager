@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupLayout();
   initOfflineBanner();
   initLandscapeHint();
-  initSupportWidget();
+  if (!isGuestPath) initSupportWidget();
   initRouter();
 
   if (isGuestPath) {

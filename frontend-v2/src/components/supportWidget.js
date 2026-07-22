@@ -1,8 +1,9 @@
 import { apiFetch } from '../services/api.js';
 import { showToast } from '../utils/ui.js';
 import { openPageHelp, activateInteractiveHelp } from './PageHelp.js';
+import { BUILD_INFO } from '../build-info.js';
 
-const MAX_TICKETS = 3;
+const MAX_TICKETS = 5;
 const TICKET_KEY = 'yfm_ticket_count';
 
 let fabExpanded = false;
@@ -30,7 +31,8 @@ export function initSupportWidget() {
   const mainBtn = fab.querySelector('#yfm-fab-main');
   const menu = fab.querySelector('#yfm-fab-menu');
 
-  mainBtn.addEventListener('click', () => {
+  mainBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     fabExpanded = !fabExpanded;
     menu.classList.toggle('open', fabExpanded);
     mainBtn.classList.toggle('active', fabExpanded);
@@ -50,11 +52,13 @@ export function initSupportWidget() {
   // Guida — click singolo popover, doppio-click interattivo
   const helpBtn = fab.querySelector('#yfm-fab-help');
   let helpClickTimer = null;
-  helpBtn.addEventListener('click', () => {
+  helpBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     closeMenu(mainBtn, menu);
-    helpClickTimer = setTimeout(() => { openPageHelp(); }, 220);
+    helpClickTimer = setTimeout(() => { openPageHelp(); }, 50);
   });
-  helpBtn.addEventListener('dblclick', () => {
+  helpBtn.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
     clearTimeout(helpClickTimer);
     closeMenu(mainBtn, menu);
     activateInteractiveHelp();
@@ -239,18 +243,20 @@ function openTicketModal() {
     sendBtn.disabled = true;
     sendBtn.textContent = '⏳ Invio...';
 
-    const buildVersion = window.YFM?.buildVersion || '—';
+    const buildVersion = BUILD_INFO?.id || '-';
+    const workspaceName = window.YFM?.workspaceInfo?.nome || window.YFM?.activeWorkspaceId || '-';
+    const userAgent = navigator.userAgent;
 
     try {
-      await apiFetch('/api/support/ticket', {
+      await apiFetch('/support/ticket', {
         method: 'POST',
-        headers: { 'x-build-version': buildVersion },
-        body: JSON.stringify({ tipo: tipoAttivo, descrizione, url_pagina: window.location.href, screenshot_base64: screenshotBase64 })
+        body: JSON.stringify({ tipo: tipoAttivo, descrizione, url_pagina: window.YFM?.currentPage || window.location.href, screenshot_base64: screenshotBase64, build_version: buildVersion, workspace_name: workspaceName, user_agent: userAgent })
       });
       sessionStorage.setItem(TICKET_KEY, String(parseInt(sessionStorage.getItem(TICKET_KEY) || '0') + 1));
       showToast('✅ Segnalazione inviata!', 'success', 4000);
       setTimeout(close, 500);
-    } catch {
+    } catch(err) {
+      console.error('Support ticket error:', err);
       sendBtn.disabled = false;
       sendBtn.textContent = 'Invia';
       showToast('Errore invio. Scrivi a youthfootballmanager@gmail.com', 'error', 5000);

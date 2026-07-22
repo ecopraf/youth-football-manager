@@ -438,6 +438,7 @@ try { token = guestRaw ? JSON.parse(guestRaw).jwt : null; } catch { token = null
   }
   ```
 - **Porta locale backend**: 3002 (non 3001)
+- **Endpoint `apiFetch`**: NON includere mai il prefisso `/api/` — `apiFetch` lo aggiunge automaticamente. Esempio: `apiFetch('/support/ticket')` ✅ — `apiFetch('/api/support/ticket')` ❌. Un guard in `api.js` corregge e logga in console se il prefisso è presente.
 - **Backend locale**: il backend locale viene sempre avviato/riavviato dall'utente — l'agente NON deve mai eseguire `node api/index.js` o comandi equivalenti. Se serve un riavvio, chiedere all'utente di farlo.
 - **Invio email commerciali**: per inviare email alle società usare SEMPRE `send_emails.js` — MAI eseguire invii diretti via nodemailer o altri metodi.
   ```bash

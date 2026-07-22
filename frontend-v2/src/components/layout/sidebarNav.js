@@ -95,7 +95,6 @@ function buildGuestNav(tipoParam) {
     html += navItem('guestFees', '💰', 'Quote', 'Le mie quote');
   }
   html += sectionTitle('⚽ Team');
-  html += navItem('roster', '👕', 'Rosa', 'Lista giocatori');
   html += navItem('calendar', '📅', 'Calendario', 'Calendario partite');
   html += sectionTitle('🏛️ Club');
   html += navItem('club', '🏢', 'Società', 'Riferimenti società');

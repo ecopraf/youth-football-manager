@@ -4,9 +4,11 @@
  */
 import { apiFetch, API_BASE } from '../../services/api.js';
 import { showLoading, hideLoading } from '../../utils/ui.js';
+import { injectPageHelp } from '../../components/PageHelp.js';
 
 export default async function loadGuestFees() {
   const c = document.getElementById('pageContent');
+  injectPageHelp('guestFees');
 
   // Ripristina variabili guest da sessionStorage se perse
   if (!window.YFM.guestPlayerId) {

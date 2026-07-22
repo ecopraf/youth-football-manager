@@ -6,6 +6,15 @@ File riutilizzabili in 2+ moduli. Non appartengono a un singolo modulo.
 
 ---
 
+### `api.js`
+Wrapper fetch autenticato. Aggiunge automaticamente il base URL `/api` e il token JWT.
+```javascript
+apiFetch(endpoint, options?)  // endpoint SENZA prefisso /api (es. '/support/ticket', non '/api/support/ticket')
+```
+**Regola critica**: MAI passare endpoint con `/api/` — viene aggiunto automaticamente. Un guard in `apiFetch` rileva e corregge il doppio prefisso loggando un warning in console.
+
+---
+
 ## `utils/`
 
 ### `ui.js`
@@ -157,18 +166,18 @@ ELEMENT_HELP  // { [selector]: { title, content } }
 ---
 
 ### `supportWidget.js`
-Widget flottante ❓ per segnalazioni bug/suggerimenti/domande. Visibile su tutte le pagine autenticate, nascosto su pagine print.
+FAB ⚡ unificato in basso a destra. Click espande due opzioni animate verso lalto.
 
 ```javascript
 initSupportWidget()   // chiamato una volta in main.js dopo setupLayout()
 ```
 
-- Bottone fisso `bottom:24px; left:24px; z-index:1500` (sinistra, per non sovrapporsi al PageHelp ❓ che è a destra)
-- Modal con 3 tipi: 🐛 Bug / 💡 Suggerimento / ❓ Domanda
-- Screenshot via `<input type=file>` o paste da clipboard (max 2MB)
-- Contesto automatico: URL, build version, ruolo utente, user agent
-- Throttle: max 3 ticket per sessione (`sessionStorage: yfm_ticket_count`)
-- Invia a `POST /api/support/ticket` → email a `youthfootballmanager@gmail.com`
+- **❓ Guida**: apre PageHelp popover (doppio-click = modalita interattiva)
+- **🐛 Segnala**: modal ticket con tipo (Bug/Idea/Domanda), textarea, screenshot upload/paste (max 2MB)
+- Pagina da `window.YFM.currentPage`, build da `BUILD_INFO.id`, workspace da `workspaceInfo.nome`
+- Throttle: max 5 ticket per sessione (`sessionStorage: yfm_ticket_count`) — incrementato solo su invio riuscito
+- Non visibile su pagine print. Toast a `bottom:80px` per non sovrapporsi al FAB
+- Invia a `POST /support/ticket` (senza prefisso /api)
 
 **Usato in**: `main.js` (init globale, non per guest).
 

@@ -83,6 +83,12 @@ export async function apiFetch(endpoint, options = {}) {
     token = localStorage.getItem('yfm_token');
   }
   const authHeaders = token ? { 'Authorization': 'Bearer ' + token } : {};
+
+  // Guard: rimuove /api duplicato se l'endpoint lo include già
+  if (endpoint.startsWith('/api/')) {
+    console.warn(`[apiFetch] endpoint inizia con /api/ — rimosso automaticamente: ${endpoint}`);
+    endpoint = endpoint.slice(4);
+  }
   
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {

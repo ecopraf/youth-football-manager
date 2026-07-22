@@ -316,6 +316,17 @@ export const PAGE_HELP = {
     ]
   },
 
+
+  guestFees: {
+    title: '💰 Le mie Quote',
+    desc: 'Situazione pagamenti quote della stagione corrente.',
+    items: [
+      '💳 Ogni quota mostra le rate con importo, scadenza e stato (da pagare / parziale / pagata)',
+      '🏦 IBAN per il bonifico: visibile sotto ogni quota se configurato dalla società',
+      '📎 Carica ricevuta: dopo il bonifico puoi allegare la ricevuta PDF/immagine per la segreteria',
+      '✅ La segreteria confermerà il pagamento dopo verifica della ricevuta'
+    ]
+  },
   kitMagazzino: {
     title: '📦 Magazzino Kit',
     desc: 'Bundle fisici per taglia. Tocca + Ordina stock, 🛒 Da ordinare, 📦 In attesa per la guida dettagliata.',

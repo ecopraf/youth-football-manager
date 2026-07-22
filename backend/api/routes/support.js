@@ -16,7 +16,7 @@ const TIPO_COLOR = { bug: '#E74C3C', suggerimento: '#667eea', domanda: '#F39C12'
 
 router.post('/support/ticket', authMiddleware, async (req, res) => {
   try {
-    const { tipo = 'bug', descrizione, url_pagina, screenshot_base64 } = req.body;
+    const { tipo = 'bug', descrizione, url_pagina, screenshot_base64, build_version, workspace_name, user_agent } = req.body;
     if (!descrizione || descrizione.trim().length < 5)
       return res.status(400).json({ success: false, error: 'Descrizione troppo breve' });
 
@@ -55,12 +55,13 @@ router.post('/support/ticket', authMiddleware, async (req, res) => {
         <tr><td style="padding:10px 0;border-bottom:1px solid #eee;">
           <strong style="color:#555;font-size:12px;text-transform:uppercase;">Contesto Tecnico</strong><br>
           <table style="margin-top:8px;font-size:13px;color:#444;width:100%;">
-            <tr><td style="padding:2px 0;width:130px;color:#888;">Utente</td><td>${user.email || '—'} (${user.ruolo || '—'})</td></tr>
-            <tr><td style="padding:2px 0;color:#888;">Workspace</td><td>${user.workspace_id || '—'}</td></tr>
+            <tr><td style="padding:2px 0;color:#888;">Mittente</td><td><strong>${[user.nome, user.cognome].filter(Boolean).join(' ') || user.email || '—'}</strong></td></tr>
+            <tr><td style="padding:2px 0;color:#888;">Account</td><td><a href="mailto:${user.email || ''}" style="color:#667eea;">${user.email || '—'}</a> &middot; ${user.ruolo || '—'}</td></tr>
+            <tr><td style="padding:2px 0;color:#888;">Società</td><td>${workspace_name || user.workspace_id || '—'}</td></tr>
             <tr><td style="padding:2px 0;color:#888;">Pagina</td><td style="word-break:break-all;">${(url_pagina || '—').replace(/</g,'&lt;')}</td></tr>
-            <tr><td style="padding:2px 0;color:#888;">Build</td><td>${req.headers['x-build-version'] || '—'}</td></tr>
-            <tr><td style="padding:2px 0;color:#888;">User Agent</td><td style="word-break:break-all;font-size:11px;">${(req.headers['user-agent'] || '—').substring(0,120)}</td></tr>
+            <tr><td style="padding:2px 0;color:#888;">Build</td><td>${build_version || '—'}</td></tr>
             <tr><td style="padding:2px 0;color:#888;">Timestamp</td><td>${timestamp}</td></tr>
+            <tr><td style="padding:2px 0;color:#888;font-size:10px;">User Agent</td><td style="word-break:break-all;font-size:10px;">${(user_agent || req.headers['user-agent'] || '—').substring(0,150)}</td></tr>
           </table>
         </td></tr>
         ${screenshotHtml}
@@ -76,7 +77,7 @@ router.post('/support/ticket', authMiddleware, async (req, res) => {
     await transporter.sendMail({
       from: `"YFM Support" <${process.env.SUPPORT_EMAIL_USER}>`,
       to: process.env.SUPPORT_EMAIL_USER,
-      replyTo: user.email || process.env.SUPPORT_EMAIL_USER,
+      replyTo: user.email ? `${[user.nome, user.cognome].filter(Boolean).join(' ') || user.email} <${user.email}>` : process.env.SUPPORT_EMAIL_USER,
       subject: `[YFM] ${tipoLabel}: ${descrizione.substring(0, 60)}${descrizione.length > 60 ? '…' : ''}`,
       html
     });

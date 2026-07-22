@@ -305,7 +305,7 @@ frontend-v2/src/
     └── import/
         └── importCenter.js    — Hub import (XLS, PDF, TC)
 
-- **supportWidget.js** (`components/supportWidget.js`) — Widget flottante ❓ per segnalazioni bug/suggerimenti/domande. `initSupportWidget()` chiamata in `main.js` dopo `setupLayout()`. Non visibile su pagine print. Max 3 ticket per sessione (sessionStorage). Screenshot via upload o paste clipboard (max 2MB). Invia a `POST /api/support/ticket`.
+- **supportWidget.js** (`components/supportWidget.js`) — FAB ⚡ unificato in basso a destra. Click espande due opzioni: ❓ Guida (apre PageHelp popover, doppio-click = interattivo) e 🐛 Segnala (apre modal ticket). `initSupportWidget()` chiamata in `main.js` dopo `setupLayout()`. Non visibile su pagine print. Max 5 ticket per sessione (sessionStorage `yfm_ticket_count`). Screenshot via upload o paste clipboard (max 2MB). Pagina da `window.YFM.currentPage`. Build da `BUILD_INFO.id`. Invia a `POST /support/ticket`.
 
 - **App**: https://youth-football-manager.vercel.app
 - **Backend API**: https://youth-football-manager-backend.vercel.app/api

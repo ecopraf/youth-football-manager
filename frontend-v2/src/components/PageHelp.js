@@ -49,11 +49,15 @@ export function injectPageHelp(page) {
 
   if (!helpBtn && !fabPresent) {
     createHelpButton();
-    injectStyles();
   }
 
-  helpBtn.style.display = 'flex';
-  helpBtn.classList.remove('help-active');
+  // Inietta sempre gli stili (servono anche per il popover aperto dal FAB)
+  injectStyles();
+
+  if (helpBtn) {
+    helpBtn.style.display = 'flex';
+    helpBtn.classList.remove('help-active');
+  }
   enableHelpBtn();
   startModalObserver();
 }
@@ -162,7 +166,14 @@ function togglePagePopover() {
 }
 
 function closePopoverOnOutside(e) {
-  if (helpPopover && !helpPopover.contains(e.target) && e.target !== helpBtn) {
+  const fab = document.getElementById('yfm-fab');
+  const fabHelpBtn = document.getElementById('yfm-fab-help');
+  if (helpPopover
+    && !helpPopover.contains(e.target)
+    && e.target !== helpBtn
+    && e.target !== fabHelpBtn
+    && !(fabHelpBtn && fabHelpBtn.contains(e.target))
+    && !(fab && fab.contains(e.target))) {
     helpPopover.remove();
     helpPopover = null;
     document.removeEventListener('click', closePopoverOnOutside);
@@ -223,12 +234,17 @@ function getHelpScope() {
   return document;
 }
 
+// Ritorna il bottone attivo (fisso o FAB main)
+function getActiveBtn() {
+  return helpBtn || document.getElementById('yfm-fab-main');
+}
+
 function activateInteractive() {
   if (interactiveMode) return;
   interactiveMode = true;
 
-  helpBtn.classList.add('help-active');
-  helpBtn.innerHTML = '✕';
+  const btn = getActiveBtn();
+  if (btn) { btn.classList.add('help-active'); btn.innerHTML = '✕'; }
 
   const scope = getHelpScope();
 
@@ -275,8 +291,8 @@ function deactivateInteractive() {
   if (!interactiveMode) return;
   interactiveMode = false;
 
-  helpBtn.classList.remove('help-active');
-  helpBtn.innerHTML = '?';
+  const btn = getActiveBtn();
+  if (btn) { btn.classList.remove('help-active'); btn.innerHTML = helpBtn ? '?' : '⚡'; }
 
   if (overlayEl) { overlayEl.remove(); overlayEl = null; }
   if (helpTooltip) { helpTooltip.remove(); helpTooltip = null; }
