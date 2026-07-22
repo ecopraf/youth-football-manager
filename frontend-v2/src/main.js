@@ -13,6 +13,7 @@ import { setupLayout } from './components/layout/Sidebar'
 import { initRouter } from './router'
 import { loadWorkspaceInfo } from './modules/club/workspace'
 import { loadSquadre } from './modules/team/squadre'
+import { initSupportWidget } from './components/supportWidget'
 import { loadPlayerDetail } from './modules/team/playerDetail.js'
 import { getSavedWorkspaceId, resetWorkspaceCache, loadAvailableWorkspaces, isSuperAdmin, saveCurrentWorkspace, populateWorkspaceSelect } from './modules/club/workspaceSwitcher'
 import { BUILD_INFO } from './build-info'
@@ -30,8 +31,17 @@ const updateSW = registerSW({
   },
   onRegisteredSW(swUrl, registration) {
     if (!registration) return;
-    // Espone checkForUpdates per uso manuale (bottone superadmin)
-    window.YFM.checkForUpdates = () => registration.update();
+    // Espone checkForUpdates per uso manuale
+    window.YFM.checkForUpdates = () => {
+      registration.update().then(() => {
+        // Se dopo 2s non appare il toast di aggiornamento, significa che è già aggiornato
+        setTimeout(() => {
+          if (!document.getElementById('yfm-update-toast')) {
+            if (window.showToast) window.showToast('✓ App già aggiornata', 'success');
+          }
+        }, 2000);
+      });
+    };
     // Polling: 30s per superadmin, 30min per tutti gli altri
     // Il ruolo è noto solo dopo il login, quindi si controlla dinamicamente
     setInterval(() => {
@@ -175,6 +185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupLayout();
   initOfflineBanner();
   initLandscapeHint();
+  initSupportWidget();
   initRouter();
 
   if (isGuestPath) {

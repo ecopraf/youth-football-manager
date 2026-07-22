@@ -235,6 +235,9 @@ app.use(createClubOpsRouter({ supabase, authMiddleware }));
 const registrationRouter = require('./routes/registration');
 app.use('/api', registrationRouter);
 
+const supportRouter = require('./routes/support');
+app.use('/api', supportRouter);
+
 module.exports = app;
 
 // Avvio server locale

@@ -415,6 +415,7 @@ try { token = guestRaw ? JSON.parse(guestRaw).jwt : null; } catch { token = null
 - **Tutti gli endpoint di scrittura** (POST/PUT/DELETE) devono avere `authMiddleware`
 - **Nessun `console.log` di debug** nel codice pushato in produzione
 - **Build test obbligatorio** prima di ogni commit (`npm run build` nel frontend, `node -c api/index.js` nel backend)
+- **`Sidebar.js` — file critico a riga singola**: `frontend-v2/src/components/layout/Sidebar.js` contiene `app.innerHTML` come una singola riga lunga con stringhe concatenate e quote annidate. Ogni modifica con `fsReplace` rischia di spezzare la concatenazione JS (es. `'<button` invece di `' + '<button`). **Regola**: usare SEMPRE uno script Node.js temporaneo (`tmp_*.js`) per modificare questo file, con verifica sintattica immediata dopo: `node --check Sidebar.js`. Mai usare `fsReplace` direttamente su questo file.
 - **Guard post-await obbligatorio** in ogni funzione `load*()` frontend: dopo chiamate async, verificare sempre che `#pageContent` sia ancora quello catturato prima degli await. Pattern obbligatorio:
   ```javascript
   export default async function loadXxx() {
