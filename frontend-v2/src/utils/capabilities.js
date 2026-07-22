@@ -38,7 +38,7 @@ export const PROFILI = {
   // ── STAFF DI CAMPO ────────────────────────────────────────────────────────
   allenatore: {
     label: 'Allenatore', icon: '⚽', categoria: 'campo',
-    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: 'write', report: 'read', quote: '', kit: '', tesseramento: 'read' }
+    capabilities: { rosa: 'write', partite: 'write', convocazioni: 'write', formazione: 'write', allenamenti: 'write', statistiche: 'read', guest_links: '', import: 'write', report: 'read', quote: '', kit: '', tesseramento: '' }
   },
   vice_allenatore: {
     label: 'Vice Allenatore', icon: '🤝', categoria: 'campo',
