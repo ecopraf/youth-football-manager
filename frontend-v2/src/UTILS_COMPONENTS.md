@@ -155,6 +155,24 @@ ELEMENT_HELP  // { [selector]: { title, content } }
 
 ---
 
+### `supportWidget.js`
+Widget flottante ❓ per segnalazioni bug/suggerimenti/domande. Visibile su tutte le pagine autenticate, nascosto su pagine print.
+
+```javascript
+initSupportWidget()   // chiamato una volta in main.js dopo setupLayout()
+```
+
+- Bottone fisso `bottom:24px; right:24px; z-index:1500`
+- Modal con 3 tipi: 🐛 Bug / 💡 Suggerimento / ❓ Domanda
+- Screenshot via `<input type=file>` o paste da clipboard (max 2MB)
+- Contesto automatico: URL, build version, ruolo utente, user agent
+- Throttle: max 3 ticket per sessione (`sessionStorage: yfm_ticket_count`)
+- Invia a `POST /api/support/ticket` → email a `youthfootballmanager@gmail.com`
+
+**Usato in**: `main.js` (init globale, non per guest).
+
+---
+
 ### `layout/`
 Sidebar e header dell'app.
 

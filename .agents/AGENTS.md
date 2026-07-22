@@ -198,8 +198,10 @@ api/
                                   `POST /api/squadre/:teamId/registrations-batch` `DELETE /api/squadre/:teamId/registrations-batch`
                                   `GET /api/registrations/player/:playerId` `PUT /api/registrations/player/:playerId/anagrafica`
                                   `POST /api/registrations/:id/sollecito`
-    └── tournament.js           — Tornei CRUD (disabilitato in sidebar)
+    ├── tournament.js           — Tornei CRUD (disabilitato in sidebar)
                                   `GET|POST /api/tornei` `GET|PUT|DELETE /api/tornei/:id`
+    └── support.js              — Segnalazioni bug/supporto via email
+                                  `POST /api/support/ticket` (auth required — invia email a youthfootballmanager@gmail.com con contesto tecnico + screenshot opzionale)
 ```
 
 ### Script Utility
@@ -302,6 +304,8 @@ frontend-v2/src/
     │   └── registration.js    — Tesseramento atleti
     └── import/
         └── importCenter.js    — Hub import (XLS, PDF, TC)
+
+- **supportWidget.js** (`components/supportWidget.js`) — Widget flottante ❓ per segnalazioni bug/suggerimenti/domande. `initSupportWidget()` chiamata in `main.js` dopo `setupLayout()`. Non visibile su pagine print. Max 3 ticket per sessione (sessionStorage). Screenshot via upload o paste clipboard (max 2MB). Invia a `POST /api/support/ticket`.
 
 - **App**: https://youth-football-manager.vercel.app
 - **Backend API**: https://youth-football-manager-backend.vercel.app/api

@@ -455,29 +455,29 @@
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 25.1 | Installare `nodemailer` (`npm install nodemailer`) + configurare transporter Gmail SMTP con `SUPPORT_EMAIL_USER` e `SUPPORT_EMAIL_PASS` in `.env` | ⬜ | — | backend/package.json, backend/.env | ~5min |
-| 25.2 | Endpoint `POST /api/support/ticket` (auth opzionale) — body: `{tipo, descrizione, url_pagina, screenshot_base64?}` — raccoglie contesto server-side e invia email a `youthfootballmanager@gmail.com` | ⬜ | 25.1 | backend/api/routes/support.js (nuovo) | ~15min |
-| 25.3 | Email template HTML — sezioni: Tipo ticket (🐛 Bug / 💡 Suggerimento / ❓ Domanda), Descrizione utente, Contesto tecnico (URL, build version, workspace, ruolo, user agent, timestamp), Screenshot inline se allegato | ⬜ | 25.2 | backend/api/routes/support.js | ~10min |
-| 25.4 | Registrare router support in `index.js` | ⬜ | 25.2 | backend/api/index.js | ~2min |
+| 25.1 | Installare `nodemailer` (`npm install nodemailer`) + configurare transporter Gmail SMTP con `SUPPORT_EMAIL_USER` e `SUPPORT_EMAIL_PASS` in `.env` | ✅ | — | backend/package.json, backend/.env | ~5min |
+| 25.2 | Endpoint `POST /api/support/ticket` (auth opzionale) — body: `{tipo, descrizione, url_pagina, screenshot_base64?}` — raccoglie contesto server-side e invia email a `youthfootballmanager@gmail.com` | ✅ | 25.1 | backend/api/routes/support.js (nuovo) | ~15min |
+| 25.3 | Email template HTML — sezioni: Tipo ticket (🐛 Bug / 💡 Suggerimento / ❓ Domanda), Descrizione utente, Contesto tecnico (URL, build version, workspace, ruolo, user agent, timestamp), Screenshot inline se allegato | ✅ | 25.2 | backend/api/routes/support.js | ~10min |
+| 25.4 | Registrare router support in `index.js` | ✅ | 25.2 | backend/api/index.js | ~2min |
 
 #### Fase 2: Widget Frontend
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 25.5 | Creare `components/supportWidget.js` — bottone flottante `❓` in basso a destra (`position:fixed; bottom:24px; right:24px; z-index:1500`), visibile su tutte le pagine autenticate (escluso pagine print) | ⬜ | — | components/supportWidget.js (nuovo) | ~8min |
-| 25.6 | Modal ticket — campi: tipo (pill: 🐛 Bug / 💡 Suggerimento / ❓ Domanda), textarea descrizione (placeholder contestuale per tipo), upload screenshot opzionale (accept: image/*, max 2MB) | ⬜ | 25.5 | components/supportWidget.js | ~12min |
-| 25.7 | Paste screenshot da clipboard — listener `paste` sulla modal che intercetta immagini dagli appunti e le mostra come preview con bottone rimuovi | ⬜ | 25.6 | components/supportWidget.js | ~10min |
-| 25.8 | Raccolta contesto automatico: `window.location.href`, `window.YFM.buildVersion`, `window.YFM.workspaceName`, ruolo utente da sessionStorage, `navigator.userAgent` — inclusi nel payload senza input utente | ⬜ | 25.6 | components/supportWidget.js | ~5min |
-| 25.9 | Submit + feedback — spinner durante invio, toast "✅ Segnalazione inviata!" su successo, chiusura automatica modal dopo 2s | ⬜ | 25.6 | components/supportWidget.js | ~8min |
-| 25.10 | Throttle anti-spam — max 3 ticket per sessione (contatore in sessionStorage), oltre il limite mostra messaggio con email diretta | ⬜ | 25.9 | components/supportWidget.js | ~5min |
+| 25.5 | Creare `components/supportWidget.js` — bottone flottante `❓` in basso a destra (`position:fixed; bottom:24px; right:24px; z-index:1500`), visibile su tutte le pagine autenticate (escluso pagine print) | ✅ | — | components/supportWidget.js (nuovo) | ~8min |
+| 25.6 | Modal ticket — campi: tipo (pill: 🐛 Bug / 💡 Suggerimento / ❓ Domanda), textarea descrizione (placeholder contestuale per tipo), upload screenshot opzionale (accept: image/*, max 2MB) | ✅ | 25.5 | components/supportWidget.js | ~12min |
+| 25.7 | Paste screenshot da clipboard — listener `paste` sulla modal che intercetta immagini dagli appunti e le mostra come preview con bottone rimuovi | ✅ | 25.6 | components/supportWidget.js | ~10min |
+| 25.8 | Raccolta contesto automatico: `window.location.href`, `window.YFM.buildVersion`, `window.YFM.workspaceName`, ruolo utente da sessionStorage, `navigator.userAgent` — inclusi nel payload senza input utente | ✅ | 25.6 | components/supportWidget.js | ~5min |
+| 25.9 | Submit + feedback — spinner durante invio, toast "✅ Segnalazione inviata!" su successo, chiusura automatica modal dopo 2s | ✅ | 25.6 | components/supportWidget.js | ~8min |
+| 25.10 | Throttle anti-spam — max 3 ticket per sessione (contatore in sessionStorage), oltre il limite mostra messaggio con email diretta | ✅ | 25.9 | components/supportWidget.js | ~5min |
 
 #### Fase 3: Integrazione
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 25.11 | Inizializzare `supportWidget` in `main.js` dopo il login (non per guest) — `initSupportWidget()` chiamata dopo `setupLayout()` | ⬜ | 25.5 | main.js | ~3min |
-| 25.12 | Nascondere widget su pagine print — check `window.location.hash.includes('print')` prima di mostrare il bottone | ⬜ | 25.5 | components/supportWidget.js | ~2min |
-| 25.13 | Test build + aggiornare AGENTS.md con nuovo router e componente | ⬜ | 25.11 | .agents/AGENTS.md | ~3min |
+| 25.11 | Inizializzare `supportWidget` in `main.js` dopo il login (non per guest) — `initSupportWidget()` chiamata dopo `setupLayout()` | ✅ | 25.5 | main.js | ~3min |
+| 25.12 | Nascondere widget su pagine print — check `window.location.hash.includes('print')` prima di mostrare il bottone | ✅ | 25.5 | components/supportWidget.js | ~2min |
+| 25.13 | Test build + aggiornare AGENTS.md con nuovo router e componente | ✅ | 25.11 | .agents/AGENTS.md | ~3min |
 
 **Effort totale stimato**: ~1h 28min (13 task)
 
@@ -605,6 +605,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.92 | feat: EPIC 25 Raise Ticket — widget flottante ❓ segnalazioni bug/suggerimenti/domande. Backend: nodemailer SMTP Gmail, POST /api/support/ticket con template HTML + contesto tecnico + screenshot inline. Frontend: supportWidget.js (modal pill tipo, textarea, upload/paste screenshot max 2MB, throttle 3/sessione, paste clipboard). Integrato in main.js dopo setupLayout() |
 | v3.16.91 | feat: SW update toast con polling differenziato (30s superadmin / 30min utenti) + bottone 🔄 check aggiornamenti sidebar superadmin. fix: print center convocazione/distinta ora usano moduli calendario (rimossi printConvocazione.js+printDistinta.js ridondanti), allMatches sincronizzato prima di aprire moduli. fix: distinta rimuove highlight capitano/vice dalla stampa. fix: print-center-status distinta disponibile se ci sono convocazioni (rimossa dipendenza da notifica pubblicazione). fix: stampa mobile html+body font-size override su convocazione/distinta/report |
 | v3.16.90 | fix: stampa mobile convocazione (@page 10mm, padding 0, font 11px) e distinta (@page 6mm, font 7-8px) per evitare seconda pagina. feat: import center alert→showToast con durata import (t0/Date.now()) su tutti i flussi (PDF, testo, GR calendario, GR marcatori, formazioni, loghi). docs: DEVELOPMENT_PLAN archiviazione epic 6/16/20/21, nuovi EPIC 24/25/26, DEVELOPMENT_PLAN_ARCHIVE.md creato, AGENTS.md e project-rules.md aggiornati con regole archiviazione |
 | v3.16.82 | feat: tab Valutazioni nel Match Center — gruppi Titolari/Subentrati/Non entrati, minutaggio da getHalfDuration() (U16=80'), assist da e.assist_id (GOAL mergiato), SV per <5min e corner case sub all'ultimo minuto (Math.max(1,...)), formazioneIniziale per gruppi corretti, showToast locale, voto nullable in DB. fix: tab MC mobile emoji+label abbreviata (flex:1, no scroll), header MC mobile (flex:1, word-break), overflow-x:clip su .content (permette scroll figli) |
