@@ -58,7 +58,7 @@ async function findTeamInPdf(pdfBuffer, searchName) {
     
     // Cerca la squadra nelle partite di questa sezione
     let found = false;
-    const matchRegex = /([A-Z][A-Z0-9\s.''()\-\/]{3,}?)\s{2,}-\s{1,2}([A-Z][A-Z0-9\s.''()\-\/]{3,}?)\s*[|I]/g;
+    const matchRegex = /([A-Z][A-Z0-9\s.''()\-\/]{3,}?)\s{2,}-\s{1,2}([A-Z][A-Z0-9\s.''()\-\/]{3,}?)\s{2,}[|I]/g;
     let mm;
     while ((mm = matchRegex.exec(section)) !== null) {
       const t1 = mm[1].trim();
@@ -79,7 +79,7 @@ async function findTeamInPdf(pdfBuffer, searchName) {
   }
   
   const cleanSuggestions = [...allTeamNames]
-    .filter(t => t.length > 3 && !/[|I!\n]/.test(t) && /^[A-Z]/.test(t))
+    .filter(t => t.length > 3 && /^[A-Z]/.test(t) && !/[\n|]/.test(t) && !t.startsWith('I ') && !t.startsWith('I  '))
     .slice(0, 10);
   return { 
     categorie: results, 
@@ -186,7 +186,8 @@ function parseMatches(sectionText, teamName) {
     }
     
     // Cerca partite (possono essere 1-3 per riga, separate da |   | oppure I   I)
-    const matchMatches = [...line.matchAll(/[|I]\s*([A-Z][A-Z0-9\s.''()\-\/]{3,}?)\s{2,}-\s{1,2}([A-Z][A-Z0-9\s.''()\-\/]{3,}?)\s*[|I]/g)];
+    const matchMatches = [...line.matchAll(/[|I]\s*([A-Z][A-Z0-9\s.''()\-\/]{3,}?)\s{2,}-\s{1,2}([A-Z][A-Z0-9\s.''()\-\/]{3,}?)\s{2,}[|I]/g)];
+    // Il secondo gruppo usa {3,}? lazy con stop su \s{2,}[|I] per catturare il nome completo
     if (matchMatches.length > 0) {
       for (let c = 0; c < matchMatches.length; c++) {
         const block = currentBlocks[c];

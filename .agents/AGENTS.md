@@ -149,7 +149,7 @@ api/
     ├── roster.js               — Import rosa XLS/Tuttocampo
                                   `POST /api/roster/parse-xls` `POST /api/roster/import-xls`
                                   `POST /api/roster/scrape-tuttocampo` `POST /api/roster/parse-html-tuttocampo` `POST /api/roster/parse-text-tuttocampo` `POST /api/roster/import-tuttocampo`
-    ├── importCalendario.js     — PDF, testo SGS, import-log
+    ├── importCalendario.js     — PDF, testo SGS, import-log. Parser: formato standard `|` (Lazio, Lazio Elite) + variante `I/!` (Lombardia, Sicilia, Piemonte) + formato lineare Campania (auto-detect). Esporta: `findTeamInPdf`, `extractCalendar`, `isCampaniaFormat`, `findTeamInCampaniaPdf`, `extractCampaniaCalendar`
                                   `POST /api/calendario/parse-pdf` `POST /api/calendario/parse-text` `POST /api/calendario/extract` `POST /api/calendario/import` `GET /api/import-log`
     ├── importTuttocampo.js     — Scraping calendario TC, eventi, loghi automatici
                                   `POST /api/calendario/import-tuttocampo` `GET /api/partite/:matchId/eventi-tuttocampo` `POST /api/partite/:matchId/import-eventi-tuttocampo`
