@@ -44,6 +44,10 @@ export function setupLayout() {
           </div>
         </div>
         <div style="padding:8px 16px;">
+          <button id="sidebarCheckUpdateBtn"
+                  style="display:none;width:100%;padding:10px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:8px;align-items:center;justify-content:center;gap:6px;">
+            🔄 Controlla aggiornamenti
+          </button>
           <button id="sidebarLogoutBtn"
                   style="width:100%;padding:10px;background:#E74C3C;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;">
             🚪 Logout
@@ -81,11 +85,11 @@ export function setupLayout() {
                   <div style="font-weight:600;font-size:13px;">${userName}</div>
                   <div style="font-size:11px;color:#666;">${userRoleLabel}</div>
                 </div>
-                <button id="yfm-check-update-btn" onclick="(function(btn){btn.disabled=true;btn.innerHTML='⏳ Controllo in corso...';if(window.YFM&&window.YFM.checkForUpdates){window.YFM.checkForUpdates();}else{if(window.showToast)window.showToast('Service worker non disponibile','warning');}setTimeout(()=>{btn.disabled=false;btn.innerHTML='🔄 Controlla aggiornamenti';},2500);})(this)"
+                <button id="yfm-check-update-btn" onclick="event.stopPropagation();(function(btn){btn.disabled=true;btn.innerHTML='⏳ Controllo in corso...';if(window.YFM&&window.YFM.checkForUpdates){window.YFM.checkForUpdates();}else{if(window.showToast)window.showToast('Service worker non disponibile','warning');}setTimeout(()=>{btn.disabled=false;btn.innerHTML='🔄 Controlla aggiornamenti';},2500);})(this)"
                         style="width:100%;padding:12px 16px;text-align:left;background:none;border:none;cursor:pointer;font-size:13px;color:#667eea;display:flex;align-items:center;gap:8px;border-bottom:1px solid #eee;">
                   🔄 Controlla aggiornamenti
                 </button>
-                <button onclick="(function(btn){btn.disabled=true;btn.innerHTML='⏳ Uscita in corso...';window.YFM.handleLogout();})(this)"
+                <button onclick="event.stopPropagation();(function(btn){btn.disabled=true;btn.innerHTML='⏳ Uscita in corso...';window.YFM.handleLogout();})(this)"
                         style="width:100%;padding:12px 16px;text-align:left;background:none;border:none;cursor:pointer;font-size:13px;color:#E74C3C;display:flex;align-items:center;gap:8px;">
                   🚪 Logout
                 </button>
@@ -100,7 +104,7 @@ export function setupLayout() {
     </div>
     <style>
       .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
-      .user-dropdown button:hover { background: #f8f8f8; }
+      .user-dropdown button:hover { background: #667eea !important; color: white !important; }
       @media(max-width:768px) { .user-menu-container .user-dropdown { right:0; min-width:140px; } }
     </style>
   `;
@@ -186,7 +190,25 @@ export function setupLayout() {
   // Logout dalla sidebar
   const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
   if (sidebarLogoutBtn) {
-    sidebarLogoutBtn.addEventListener('click', () => window.YFM.handleLogout());
+    sidebarLogoutBtn.addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Uscita in corso...';
+      window.YFM.handleLogout();
+    });
+  }
+
+  const sidebarCheckUpdateBtn = document.getElementById('sidebarCheckUpdateBtn');
+  if (sidebarCheckUpdateBtn) {
+    // Mostra solo su mobile
+    if (window.innerWidth <= 768) sidebarCheckUpdateBtn.style.display = 'flex';
+    sidebarCheckUpdateBtn.addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Controllo in corso...';
+      if (window.YFM?.checkForUpdates) window.YFM.checkForUpdates();
+      setTimeout(() => { btn.disabled = false; btn.innerHTML = '🔄 Controlla aggiornamenti'; }, 2500);
+    });
   }
 }
 
