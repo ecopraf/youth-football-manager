@@ -129,7 +129,9 @@ export async function openDistinta(mid, staffOverrides) {
     }
     
     const pdfTitle = matchInfo ? 'Distinta' + (matchInfo.giornata ? ' G' + matchInfo.giornata : '') + ' - ' + (matchInfo.avversario || '') : 'Distinta';
-    const printStyles = '<style>@page{margin:8mm;size:A4 portrait}body{font-family:Arial,Helvetica,sans-serif;font-size:10px}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.distinta-table{width:100%;border-collapse:collapse;margin:4px 0}.distinta-table th,.distinta-table td{border:1px solid #000;padding:4px 5px;text-align:center;font-size:9px}th{background:#f0f0f0;font-size:8px}.staff-table{width:100%;border-collapse:collapse;margin:0}.staff-table td{border:1px solid #000;padding:3px 6px;font-size:9px}.num-circle{font-weight:700;font-size:9px;border:1.5px solid #000;border-radius:50%;width:14px;height:14px;line-height:14px;display:inline-block;text-align:center;vertical-align:middle;box-sizing:border-box}</style>';
+    const isMobile = window.innerWidth <= 768;
+    const pageMargin = isMobile ? '3mm' : '8mm';
+    const printStyles = `<style>@page{margin:${pageMargin};size:A4 portrait}body{font-family:Arial,Helvetica,sans-serif;font-size:10px}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.distinta-table{width:100%;border-collapse:collapse;margin:4px 0}.distinta-table th,.distinta-table td{border:1px solid #000;padding:4px 5px;text-align:center;font-size:9px}th{background:#f0f0f0;font-size:8px}.staff-table{width:100%;border-collapse:collapse;margin:0}.staff-table td{border:1px solid #000;padding:3px 6px;font-size:9px}.num-circle{font-weight:700;font-size:9px;border:1.5px solid #000;border-radius:50%;width:14px;height:14px;line-height:14px;display:inline-block;text-align:center;vertical-align:middle;box-sizing:border-box}</style>`;
     printHTML(printStyles + content, pdfTitle);
   });
   
@@ -153,7 +155,8 @@ function renderDistinta(d, staff, meta, mid) {
   const s = staff || {};
   const righe = [];
   
-  for (let i = 0; i < 24; i++) {
+  const maxRighe = 24;
+  for (let i = 0; i < maxRighe; i++) {
     if (i < t.length) {
       const f = t[i];
       const ruoloTag = f.ruolo_principale === 'Portiere' ? ' (P)' : '';

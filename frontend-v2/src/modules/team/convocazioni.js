@@ -379,7 +379,10 @@ function showConvocationPreview(match, list, isArchiviata = false) {
   document.getElementById('printFromPreview').addEventListener('click', () => {
     const el = document.getElementById('convPreviewInner');
     if (el) {
-      const printStyles = '<style>@page{margin:15mm;size:A4 portrait}body{font-family:Arial,sans-serif;background:white!important;}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.t1{text-align:center;font-size:22px;font-weight:bold;margin-bottom:2mm;}.t2{text-align:center;font-size:16px;font-weight:bold;margin-bottom:1mm;}.t3{text-align:center;font-size:14px;font-weight:bold;margin-bottom:3mm;}.info{font-size:13px;margin-bottom:4mm;line-height:1.7;}.list-table{width:100%;border-collapse:collapse;margin-bottom:1mm;page-break-inside:avoid;}.list-table td,.list-table th{padding:3px 6px;font-size:12px;border:1px solid #000;}.note{font-weight:bold;font-style:italic;font-size:11px;margin-top:1mm;text-align:center;color:#E74C3C;}.firma{margin-top:6mm;text-align:right;font-size:14px;font-weight:bold;}</style>';
+      const isMobile = window.innerWidth <= 768;
+      const pageMargin = isMobile ? '3mm' : '15mm';
+      const mobileExtra = isMobile ? 'html{zoom:1.35;}' : '';
+      const printStyles = `<style>@page{margin:${pageMargin};size:A4 portrait}body{font-family:Arial,sans-serif;background:white!important;}img{print-color-adjust:exact;-webkit-print-color-adjust:exact}.t1{text-align:center;font-size:22px;font-weight:bold;margin-bottom:2mm;}.t2{text-align:center;font-size:16px;font-weight:bold;margin-bottom:1mm;}.t3{text-align:center;font-size:14px;font-weight:bold;margin-bottom:3mm;}.info{font-size:13px;margin-bottom:4mm;line-height:1.7;}.list-table{width:100%;border-collapse:collapse;margin-bottom:1mm;page-break-inside:avoid;}.list-table td,.list-table th{padding:3px 6px;font-size:12px;border:1px solid #000;}.note{font-weight:bold;font-style:italic;font-size:11px;margin-top:1mm;text-align:center;color:#E74C3C;}.firma{margin-top:6mm;text-align:right;font-size:14px;font-weight:bold;}${mobileExtra}</style>`;
       printHTML(printStyles + el.innerHTML, 'Convocazione');
     }
   });

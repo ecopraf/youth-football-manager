@@ -160,6 +160,7 @@ press-kit/
 |---|---|---|---|---|
 | luglio 2026 | Lazio | Tuttocampo (gironi) | ~128 | ✅ |
 | luglio 2026 | Lazio | Golee.it (RM) | 45 | ✅ |
+| luglio 2026 | Campania | Golee.it | 111 | ✅ 111/0 errori |
 
 ---
 

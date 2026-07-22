@@ -99,7 +99,18 @@ export default async function printReport() {
     `;
 
     document.getElementById('printBackBtn').addEventListener('click', () => window.YFM.navigateTo('printCenter'));
-    document.getElementById('printPrintBtn').addEventListener('click', () => window.print());
+    document.getElementById('printPrintBtn').addEventListener('click', () => {
+      const isMobile = window.innerWidth <= 768;
+      let mobileStyle;
+      if (isMobile) {
+        mobileStyle = document.createElement('style');
+        mobileStyle.id = 'mobile-print-override';
+        mobileStyle.textContent = '@page { margin: 3mm !important; }';
+        document.head.appendChild(mobileStyle);
+      }
+      window.print();
+      if (mobileStyle) setTimeout(() => mobileStyle.remove(), 1000);
+    });
     document.getElementById('printShareBtn').addEventListener('click', () => { if (navigator.share) { navigator.share({ title: 'Documento', url: window.location.href }).catch(() => {}); } else { navigator.clipboard.writeText(window.location.href).then(() => { if (window.showToast) window.showToast('Link copiato!', 'success'); }).catch(() => {}); } });
   } catch (e) {
     container.innerHTML = `<div class="print-page"><div class="error-box">Errore: ${e.message}</div><button class="btn btn-secondary" onclick="history.back()">← Torna</button></div>`;
@@ -155,8 +166,8 @@ function getStyles() {
   .pr-table th, .pr-table td { font-size: 9px !important; padding: 2px 3px !important; }
   .pr-evento { font-size: 9px !important; }
   .pr-footer { font-size: 9px !important; margin-top: 2mm !important; }
-  .pr-score { margin: 2mm 0 !important; }
-  .pr-players-grid { grid-template-columns: 1fr 1fr !important; }
+  .pr-score { margin: 1mm 0 !important; }
+  .pr-players-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; }
   .pr-eventi-wrap { grid-template-columns: 1fr 1fr !important; }
   .pr-section, .pr-footer { page-break-inside: avoid; }
 }

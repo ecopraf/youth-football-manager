@@ -22,6 +22,10 @@ All'inizio di ogni nuova conversazione, l'agente DEVE leggere i seguenti file pe
 
 Solo dopo aver letto questi file l'agente può procedere con il task richiesto dall'utente.
 
+**Documentazione modulare** (consultare solo quando si lavora sul modulo specifico):
+- `frontend-v2/src/modules/NOME/NOME_MODULE.md` — endpoint, tabelle DB, variabili YFM, dipendenze, note critiche per quel modulo
+- `frontend-v2/src/UTILS_COMPONENTS.md` — utils e components trasversali (DataGrid, offlineBuffer, charts, ecc.)
+
 ### Checklist pre-implementazione (OBBLIGATORIA)
 
 Prima di scrivere QUALSIASI codice frontend, verificare:
@@ -30,6 +34,7 @@ Prima di scrivere QUALSIASI codice frontend, verificare:
 - [ ] Le tabelle DB esistono? (consultare DATABASE_SCHEMA.md)
 - [ ] Il modulo è registrato nel router? (consultare `router.js`)
 - [ ] La sidebar ha la voce? (consultare `sidebarNav.js`)
+- [ ] Serve un util/component trasversale già esistente? (consultare `src/UTILS_COMPONENTS.md`)
 
 ## Workflow Micro-Task
 
@@ -130,6 +135,12 @@ Eseguire con: `cd backend && /Users/Raffaele/.nvm/versions/node/v24.18.0/bin/nod
 
 **IMPORTANTE**: Eliminare sempre `tmp_migrate.js` dopo l'uso.
 
+**IMPORTANTE — RLS su nuove tabelle**: ogni volta che si crea una nuova tabella su Supabase, abilitare subito RLS e aggiungere una policy `deny anon`. Il backend usa `service_role` e non è impattato. Senza questa operazione la tabella è leggibile pubblicamente via REST API con l'anon key.
+```javascript
+await client.query(`ALTER TABLE public.NOME_TABELLA ENABLE ROW LEVEL SECURITY`);
+await client.query(`CREATE POLICY "deny_anon_NOME_TABELLA" ON public.NOME_TABELLA FOR ALL TO anon USING (false)`);
+```
+
 ### Supabase REST API
 
 Per query rapide di lettura/scrittura senza migrazioni:
@@ -161,6 +172,14 @@ Dopo ogni task completato, l'agente DEVE aggiornare:
    - **Rinomina/rimozione variabili globali** → aggiornare tabella "Errori comuni da evitare"
    - **Nuove tabelle nella gerarchia dati** → aggiornare albero "Gerarchia dati (DB → Frontend)"
 4. **`frontend-v2/src/components/helpData.js`** — **OBBLIGATORIO** se la modifica aggiunge una nuova pagina o funzionalità visibile all'utente. Aggiungere entry con chiave = nome pagina nel router.
+5. **`frontend-v2/src/modules/NOME/NOME_MODULE.md`** — **OBBLIGATORIO** se la modifica tocca un modulo esistente e cambia:
+   - Endpoint usati (aggiunti, rimossi, rinominati)
+   - Tabelle DB toccate dal modulo
+   - Variabili `window.YFM.*` usate
+   - Dipendenze tra file frontend del modulo
+   - Note critiche o comportamenti non ovvi
+   - Capabilities richieste
+6. **`frontend-v2/src/UTILS_COMPONENTS.md`** — **OBBLIGATORIO** se la modifica tocca un util o component trasversale (`utils/`, `components/`) e cambia la sua API, il suo comportamento o i moduli che lo usano.
 
 > ⚠️ I file `PROJECT_STATUS.md` e `.agents/knowledge/ROADMAP.md` sono deprecati.
 > La fonte di verità unica è `DEVELOPMENT_PLAN.md`.
@@ -385,7 +404,13 @@ try { token = guestRaw ? JSON.parse(guestRaw).jwt : null; } catch { token = null
 ## Regole di Sviluppo
 
 - **Nessun riferimento alla demo** nel progetto principale (la demo è nel repo separato `youth-football-manager-demo`)
-- **Landing page**: la versione aggiornata si trova in `youth-football-manager-demo/landing/` (repo separato, deploy Vercel indipendente). La cartella `youth-football-manager/landing/` è obsoleta e non va modificata. Per aggiornare la landing, lavorare sul repo `youth-football-manager-demo`.
+- **Landing page**: la versione aggiornata si trova in `youth-football-manager-demo/landing/` (repo separato). La cartella `youth-football-manager/landing/` è obsoleta e non va modificata. Per aggiornare la landing, lavorare sul repo `youth-football-manager-demo`. Il deploy **NON è automatico**: dopo il push, eseguire manualmente:
+  ```bash
+  cd youth-football-manager-demo/landing
+  vercel --prod
+  ```
+  Il progetto Vercel si chiama `yfm-landing` → https://yfm-landing.vercel.app
+- **Landing page — `index.html`**: contiene un logo base64 molto lungo. Usare SEMPRE `grep -n 'testo' index.html | grep -v base64` per localizzare le righe e `sed -n 'X,Yp'` per leggere solo la sezione necessaria. MAI `fsRead` sull'intero file.
 - **La registrazione è solo per admin/superadmin** — non esporre endpoint pubblici di registrazione
 - **Tutti gli endpoint di scrittura** (POST/PUT/DELETE) devono avere `authMiddleware`
 - **Nessun `console.log` di debug** nel codice pushato in produzione
@@ -413,6 +438,11 @@ try { token = guestRaw ? JSON.parse(guestRaw).jwt : null; } catch { token = null
   ```
 - **Porta locale backend**: 3002 (non 3001)
 - **Backend locale**: il backend locale viene sempre avviato/riavviato dall'utente — l'agente NON deve mai eseguire `node api/index.js` o comandi equivalenti. Se serve un riavvio, chiedere all'utente di farlo.
+- **Invio email commerciali**: per inviare email alle società usare SEMPRE `send_emails.js` — MAI eseguire invii diretti via nodemailer o altri metodi.
+  ```bash
+  node send_emails.js                        # Lazio (default)
+  node send_emails.js societa_campania.csv   # altra regione
+  ```
 - **Versione attuale**: v3.16 (frontend e backend allineati)
 - **Mai riutilizzare campi esistenti per scopi diversi** — se serve un nuovo dato, creare una colonna/tabella dedicata
 - **Preferire campi JSONB** per dati strutturati che non richiedono query dirette (metadati, configurazioni, layout)
@@ -723,6 +753,35 @@ Il browser mobile usa font-size base più grande e margini di stampa più genero
 - [ ] `page-break-inside: avoid` su firme e sezioni che non devono spezzarsi
 - [ ] Testato su dispositivo mobile reale dopo deploy
 - [ ] Se `@media (max-width:500px)` collassa grid a 1 colonna → aggiungere override `grid-template-columns: 1fr 1fr !important` nel `@media print` per ripristinare 2 colonne in stampa
+
+**`@page` margin su mobile (CRITICO)**:
+- `@page` non supporta media query — un valore unico vale sia desktop che mobile
+- Su mobile il browser aggiunge header/footer (URL + data) che occupano ~10-12mm sottraendo spazio al contenuto
+- **Soluzione obbligatoria**: rilevare mobile in JS al click stampa e iniettare il margine corretto dinamicamente
+
+```javascript
+// Pattern per documenti che usano printHTML() (convocazioni, distinta)
+const isMobile = window.innerWidth <= 768;
+const pageMargin = isMobile ? '3mm' : '15mm'; // 3mm elimina footer browser su mobile
+const printStyles = `<style>@page{margin:${pageMargin};size:A4 portrait}...</style>`;
+printHTML(printStyles + content, titolo);
+
+// Pattern per documenti che usano window.print() direttamente (report)
+document.getElementById('printBtn').addEventListener('click', () => {
+  let mobileStyle;
+  if (window.innerWidth <= 768) {
+    mobileStyle = document.createElement('style');
+    mobileStyle.textContent = '@page { margin: 3mm !important; }';
+    document.head.appendChild(mobileStyle);
+  }
+  window.print();
+  if (mobileStyle) setTimeout(() => mobileStyle.remove(), 1000);
+});
+```
+
+**Scaling contenuto su mobile**: se il documento risulta troppo piccolo rispetto al foglio (spazio bianco in basso), aggiungere `html { zoom: 1.35 }` nel printStyles mobile. Il valore 1.35 è calibrato per documenti A4 con 20 righe (convocazioni). Aggiustare in base al contenuto.
+
+**Grid 2 colonne in stampa**: se `@media (max-width:500px)` collassa `.pr-players-grid` o simili a 1 colonna, il `@media print` deve forzare `display: grid !important; grid-template-columns: 1fr 1fr !important` — `display: grid` è necessario perché altrimenti la regola mobile sovrascrive quella print.
 
 **Liste con molti elementi su mobile**: se una lista (es. motivi assenza, statistiche) usa card affiancate su desktop, su mobile (`max-width:500px`) usare layout a righe compatte:
 ```

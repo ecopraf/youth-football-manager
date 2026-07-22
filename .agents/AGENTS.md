@@ -226,6 +226,9 @@ npx puppeteer ...
 - `GET /api/gr/logos-pending` — lista loghi in `.pending/` per confronto
 
 ### Frontend Files
+
+> Documentazione modulare dettagliata: ogni cartella `modules/NOME/` contiene `NOME_MODULE.md` con endpoint, tabelle DB, variabili YFM, dipendenze e note critiche. Utils e components trasversali documentati in `src/UTILS_COMPONENTS.md`.
+
 ```
 frontend-v2/src/
 ├── main.js                    — Entry point, init app
