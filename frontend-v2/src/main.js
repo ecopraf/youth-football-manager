@@ -23,14 +23,44 @@ import { initSessionGuard, destroySessionGuard } from './utils/sessionGuard'
 window.YFM_BUILD_ID = BUILD_INFO.id
 
 const updateSW = registerSW({
-  onOfflineReady() {
-    console.log('[PWA] App pronta per uso offline')
-  },
+  onOfflineReady() {},
   onNeedRefresh() {
-    console.log('[PWA] Nuova versione disponibile, aggiornamento...')
-    updateSW(true)
+    if (window.YFM?.currentPage === 'matchCenter') return;
+    showUpdateToast(() => updateSW(true));
+  },
+  onRegisteredSW(swUrl, registration) {
+    if (!registration) return;
+    // Espone checkForUpdates per uso manuale (bottone superadmin)
+    window.YFM.checkForUpdates = () => registration.update();
+    // Polling: 30s per superadmin, 30min per tutti gli altri
+    // Il ruolo è noto solo dopo il login, quindi si controlla dinamicamente
+    setInterval(() => {
+      if (document.hidden) return;
+      const isSA = window.YFM.getUser()?.is_superadmin === true;
+      const interval = isSA ? 30 * 1000 : 30 * 60 * 1000;
+      const now = Date.now();
+      if (!window._lastSWCheck || now - window._lastSWCheck >= interval) {
+        window._lastSWCheck = now;
+        registration.update();
+      }
+    }, 30 * 1000); // tick ogni 30s, decide se aggiornare in base al ruolo
   }
 })
+
+function showUpdateToast(onConfirm) {
+  if (document.getElementById('yfm-update-toast')) return; // già visibile
+  const toast = document.createElement('div');
+  toast.id = 'yfm-update-toast';
+  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:white;padding:12px 16px;border-radius:12px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:14px;white-space:nowrap;';
+  toast.innerHTML = `
+    <span>🚀 Nuova versione disponibile</span>
+    <button id="yfm-update-btn" style="background:#667eea;color:white;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;">Aggiorna ora</button>
+    <button id="yfm-update-dismiss" style="background:transparent;color:#aaa;border:none;cursor:pointer;font-size:18px;line-height:1;padding:0 2px;">×</button>
+  `;
+  document.body.appendChild(toast);
+  document.getElementById('yfm-update-btn').onclick = () => onConfirm();
+  document.getElementById('yfm-update-dismiss').onclick = () => toast.remove();
+}
 
 window.YFM = {
   squadraId: null,

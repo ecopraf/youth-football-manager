@@ -113,7 +113,15 @@ function handleCardClick(tipo, id) {
 
 
 function navigateToDoc(tipo, id) {
-  const pageMap = { convocazione: 'printConvocazione', distinta: 'printDistinta', formazione: 'printFormazione', report: 'printReport', presenze: 'printPresenze', rosa: 'printRosa', scadenze: 'printScadenze', 'report-squadra': 'reports' };
+  // Assicura che allMatches contenga le partite caricate dal print center
+  if (matchList.length > 0) {
+    const existing = new Set((window.YFM.allMatches || []).map(m => m.id));
+    const toAdd = matchList.filter(m => !existing.has(m.id));
+    if (toAdd.length > 0) window.YFM.allMatches = [...(window.YFM.allMatches || []), ...toAdd];
+  }
+  if (tipo === 'convocazione') { window.YFM.openConvocation(id, true); return; }
+  if (tipo === 'distinta') { window.YFM.openDistinta(id); return; }
+  const pageMap = { formazione: 'printFormazione', report: 'printReport', presenze: 'printPresenze', rosa: 'printRosa', scadenze: 'printScadenze', 'report-squadra': 'reports' };
   const page = pageMap[tipo];
   if (page) {
     const params = { id };

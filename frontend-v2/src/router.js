@@ -32,8 +32,6 @@ export function initRouter() {
     tournaments: () => import('./modules/coach/tournaments.js'),
     matchCenter: () => import('./modules/team/matchCenter.js'),
     printCenter: () => import('./modules/team/printCenter.js'),
-    printConvocazione: () => import('./modules/print/printConvocazione.js'),
-    printDistinta: () => import('./modules/print/printDistinta.js'),
     printFormazione: () => import('./modules/print/printFormazione.js'),
     printReport: () => import('./modules/print/printReport.js'),
     printPresenze: () => import('./modules/print/printPresenze.js'),

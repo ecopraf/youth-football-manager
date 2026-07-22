@@ -583,21 +583,19 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const matchId = req.query.match_id;
       if (!matchId) return res.json({});
 
-      const [{ data: match }, { data: convs }, { data: formation }, { data: notif }] = await Promise.all([
+      const [{ data: match }, { data: convs }, { data: formation }] = await Promise.all([
         supabase.from('match').select('id, stato, gol_casa, gol_ospite, archiviata').eq('id', matchId).single(),
         supabase.from('convocation').select('id').eq('match_id', matchId).limit(1),
-        supabase.from('match_formation').select('id').eq('match_id', matchId).limit(1),
-        supabase.from('notification').select('id').eq('riferimento_id', matchId).eq('tipo', 'convocazione').limit(1)
+        supabase.from('match_formation').select('id').eq('match_id', matchId).limit(1)
       ]);
 
       const isTerminata = match?.stato === 'Terminata' || match?.archiviata;
       const hasConvocazioni = convs && convs.length > 0;
-      const hasPubblicato = notif && notif.length > 0;
       const hasFormazione = formation && formation.length > 0;
 
       res.json({
         convocazione: hasConvocazioni ? 'available' : 'not_ready',
-        distinta: hasPubblicato ? 'available' : 'not_ready',
+        distinta: hasConvocazioni ? 'available' : 'not_ready',
         formazione: hasFormazione ? 'available' : 'not_ready',
         report: isTerminata ? 'available' : 'post_match'
       });
