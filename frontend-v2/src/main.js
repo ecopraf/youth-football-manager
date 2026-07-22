@@ -1,5 +1,5 @@
 import './style.css'
-import './utils/ui.js'
+import { showToast } from './utils/ui.js'
 
 // Handle stale chunk errors after deploy (dynamic import fails → auto-reload)
 window.addEventListener('vite:preloadError', () => { window.location.reload(); });
@@ -33,13 +33,20 @@ const updateSW = registerSW({
     if (!registration) return;
     // Espone checkForUpdates per uso manuale
     window.YFM.checkForUpdates = () => {
+      if (registration.waiting) {
+        showUpdateToast(() => updateSW(true));
+        return;
+      }
+      let updateFound = false;
+      const onUpdateFound = () => { updateFound = true; };
+      registration.addEventListener('updatefound', onUpdateFound, { once: true });
       registration.update().then(() => {
-        // Se dopo 2s non appare il toast di aggiornamento, significa che è già aggiornato
         setTimeout(() => {
-          if (!document.getElementById('yfm-update-toast')) {
-            if (window.showToast) window.showToast('✓ App già aggiornata', 'success');
+          registration.removeEventListener('updatefound', onUpdateFound);
+          if (!updateFound && !document.getElementById('yfm-update-toast')) {
+            showToast('✓ App già aggiornata', 'success', 3000, 'top');
           }
-        }, 2000);
+        }, 3000);
       });
     };
     // Polling: 30s per superadmin, 30min per tutti gli altri
@@ -61,7 +68,7 @@ function showUpdateToast(onConfirm) {
   if (document.getElementById('yfm-update-toast')) return; // già visibile
   const toast = document.createElement('div');
   toast.id = 'yfm-update-toast';
-  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:white;padding:12px 16px;border-radius:12px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:14px;white-space:nowrap;';
+  toast.style.cssText = 'position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:white;padding:12px 16px;border-radius:12px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-size:14px;white-space:nowrap;';
   toast.innerHTML = `
     <span>🚀 Nuova versione disponibile</span>
     <button id="yfm-update-btn" style="background:#667eea;color:white;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;">Aggiorna ora</button>

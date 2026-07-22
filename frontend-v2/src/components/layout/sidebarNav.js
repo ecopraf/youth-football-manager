@@ -77,6 +77,7 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
     html += navItem('seasonsCategories', '🗓️', 'Stagioni', 'Gestione stagioni e categorie');
     if (hasCap('import')) html += navItem('importCenter', '📥', 'Import Center', 'Import dati da fonti esterne');
     if (isSuperadmin) html += navItem('workspaces', '🌐', 'Workspace', 'Gestione workspace/società');
+    if (isSuperadmin) html += navItem('supportTickets', '🎫', 'Ticket', 'Gestione ticket di supporto');
     html += navItem('users', '👥', 'Utenti', 'Gestione utenti e permessi');
   }
 

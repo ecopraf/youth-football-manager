@@ -497,6 +497,47 @@
 
 ---
 
+### EPIC 27: Support Ticket Management
+
+> Persistenza ticket nel DB + pagina superadmin per gestione ticket con risposta via email e pulizia.
+
+**Prerequisito**: EPIC 25 ✅ (widget ticket già funzionante, endpoint `/support/ticket` già esistente).
+
+#### Fase 1: Persistenza ticket nel DB
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 27.1 | Migrazione DB: CREATE TABLE `support_ticket` (id UUID PK, workspace_id UUID nullable, user_id UUID nullable, email TEXT, nome TEXT, ruolo TEXT, pagina TEXT, tipo TEXT, descrizione TEXT, build TEXT, user_agent TEXT, stato TEXT DEFAULT 'aperto', risposta TEXT, risposta_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now()) + RLS deny anon | ✅ | — | migrazione SQL | ~5min |
+| 27.2 | Aggiornare `POST /api/support/ticket` — salva nel DB oltre a inviare email | ✅ | 27.1 | backend/api/routes/support.js | ~5min |
+
+#### Fase 2: Pagina superadmin
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 27.3 | Backend: `GET /api/support/tickets` (solo superadmin) — lista con filtri `stato` (aperto/chiuso/tutti) e `workspace_id` | ✅ | 27.1 | backend/api/routes/support.js | ~8min |
+| 27.4 | Backend: `PUT /api/support/tickets/:id/rispondi` — salva risposta + cambia stato a 'chiuso' + invia email all'utente | ✅ | 27.3 | backend/api/routes/support.js | ~10min |
+| 27.5 | Backend: `PUT /api/support/tickets/:id/stato` — cambia stato (aperto/chiuso) senza risposta | ✅ | 27.3 | backend/api/routes/support.js | ~3min |
+| 27.6 | Backend: `DELETE /api/support/tickets/:id` — elimina singolo ticket | ✅ | 27.3 | backend/api/routes/support.js | ~3min |
+| 27.7 | Backend: `DELETE /api/support/tickets/chiusi` — elimina tutti i ticket con stato='chiuso' | ✅ | 27.3 | backend/api/routes/support.js | ~3min |
+| 27.8 | Frontend: creare `modules/admin/supportTickets.js` — lista ticket con filtri stato/workspace, card per ticket con tipo/pagina/build/data/stato badge | ✅ | 27.3 | modules/admin/supportTickets.js (nuovo) | ~12min |
+| 27.9 | Frontend: dettaglio ticket — espansione inline con descrizione completa + form risposta textarea + bottone Invia Risposta | ✅ | 27.8 | modules/admin/supportTickets.js | ~10min |
+| 27.10 | Frontend: azioni ticket — bottone Chiudi (senza risposta), 🗑️ Elimina singolo (confirm modal), 🧹 "Pulisci ticket chiusi" (confirm con conteggio) | ✅ | 27.8 | modules/admin/supportTickets.js | ~8min |
+| 27.11 | Sidebar + router: voce "🎫 Ticket" visibile solo superadmin, route `supportTickets` | ✅ | 27.8 | sidebarNav.js, router.js | ~3min |
+| 27.12 | helpData.js + test build + aggiornare docs | ✅ | 27.11 | helpData.js, AGENTS.md, DEVELOPMENT_PLAN.md | ~5min |
+
+**Effort totale stimato**: ~75min (12 task)
+
+**Note architetturali**:
+- `workspace_id` e `user_id` nullable per ticket inviati da utenti non autenticati (futuro)
+- La risposta viene inviata all'email del mittente (già nel body del ticket)
+- Stato: `aperto` (default) → `chiuso` (dopo risposta o chiusura manuale)
+- Eliminazione: hard delete diretto, nessuna soft-delete
+- `DELETE /api/support/tickets/chiusi` è un endpoint dedicato (non batch generico) per semplicità
+- Visibilità: solo superadmin (ruolo `superadmin` nel JWT)
+- Screenshot non salvato nel DB (solo inviato via email) — troppo pesante per storage DB
+
+---
+
 ### EPIC 26: Pagamenti Online (Stripe Connect)
 
 > Permettere ai genitori di pagare le quote direttamente in app tramite carta di credito. Ogni workspace collega il proprio account Stripe. Fase naturale successiva a EPIC 21 (bonifico + upload ricevuta, già completato).
@@ -558,6 +599,7 @@ EPIC 23 (Player Performance Center) ──→ nessuna dipendenza
 EPIC 24 (Inbox Comunicazioni) ──→ nessuna dipendenza
 EPIC 25 (Raise Ticket) ──→ nessuna dipendenza
 EPIC 26 (Stripe) ──→ dipende da EPIC 21 ✅ (archiviato)
+EPIC 27 (Support Ticket Management) ──→ dipende da EPIC 25 ✅
 ```
 
 Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
@@ -605,6 +647,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.16.98 | feat: EPIC 27 Support Ticket Management — tabella `support_ticket` nel DB (RLS deny anon), `POST /support/ticket` salva nel DB + rate limit 5/giorno per user_id (superadmin escluso), `GET /support/tickets` lista con filtri stato/workspace (solo superadmin), `PUT /support/tickets/:id/rispondi` risposta via email con ID ticket (#XXXXXXXX) + chiude, `PUT /support/tickets/:id/stato`, `DELETE /support/tickets/:id`, `DELETE /support/tickets/chiusi`. Frontend: pagina `supportTickets.js` con lista espandibile, form risposta inline, confirm modal elimina/pulisci (modale sempre visibile indipendente dal filtro). fix: superadmin user_id=null su INSERT. fix: check `is_superadmin` invece di `ruolo=superadmin` su tutti gli endpoint. fix: `showToast` importata in main.js (era window.showToast). fix: toast aggiornamenti in alto (top:24px). fix: `showToast` parametro `position` top/bottom. fix: `checkForUpdates` ascolta evento `updatefound` per feedback preciso. fix: rate limit ticket rimosso da sessionStorage, gestito lato DB per utente. Sidebar voce 🎫 Ticket solo superadmin. helpData entry supportTickets |
 | v3.16.97 | feat: EPIC 25 fix completo — FAB ⚡ unificato (Guida+Segnala), PageHelp bottone fisso rimosso se FAB presente, openPageHelp/activateInteractiveHelp export, fix help interattivo (getActiveBtn fallback yfm-fab-main), fix injectStyles sempre. fix: supportWidget — import showToast, endpoint /support/ticket (no /api duplicato), build da BUILD_INFO.id, pagina da YFM.currentPage, workspace nome da workspaceInfo. fix: email ticket — Mittente nome cognome, Account email·ruolo, Reply-To con display name. fix: toast posizionato sopra FAB (bottom:80px). fix: apiFetch guard /api duplicato con warning console. feat: showToast centralizzata in ui.js con param duration |
 | v3.16.91 | feat: SW update toast con polling differenziato (30s superadmin / 30min utenti) + bottone 🔄 check aggiornamenti sidebar superadmin. fix: print center convocazione/distinta ora usano moduli calendario (rimossi printConvocazione.js+printDistinta.js ridondanti), allMatches sincronizzato prima di aprire moduli. fix: distinta rimuove highlight capitano/vice dalla stampa. fix: print-center-status distinta disponibile se ci sono convocazioni (rimossa dipendenza da notifica pubblicazione). fix: stampa mobile html+body font-size override su convocazione/distinta/report |
 | v3.16.90 | fix: stampa mobile convocazione (@page 10mm, padding 0, font 11px) e distinta (@page 6mm, font 7-8px) per evitare seconda pagina. feat: import center alert→showToast con durata import (t0/Date.now()) su tutti i flussi (PDF, testo, GR calendario, GR marcatori, formazioni, loghi). docs: DEVELOPMENT_PLAN archiviazione epic 6/16/20/21, nuovi EPIC 24/25/26, DEVELOPMENT_PLAN_ARCHIVE.md creato, AGENTS.md e project-rules.md aggiornati con regole archiviazione |
@@ -714,7 +757,7 @@ Tutte le Epic sono indipendenti. L'ordine consigliato per impatto/effort:
 - Se un task supera 15min → spezzarlo in sotto-task
 
 ### Aggiungere nuovi EPIC
-- Il numero EPIC è **progressivo** (prossimo: EPIC 27)
+- Il numero EPIC è **progressivo** (prossimo: EPIC 28)
 - Inserire SEMPRE in ordine numerico nella sezione "3. Epics & Micro-Task"
 - Mai inserire un EPIC tra due esistenti con numero inferiore/superiore
 - Aggiornare la sezione "4. Dipendenze tra Epic" se il nuovo EPIC ha dipendenze

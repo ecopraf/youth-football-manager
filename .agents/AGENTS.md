@@ -200,8 +200,13 @@ api/
                                   `POST /api/registrations/:id/sollecito`
     ├── tournament.js           — Tornei CRUD (disabilitato in sidebar)
                                   `GET|POST /api/tornei` `GET|PUT|DELETE /api/tornei/:id`
-    └── support.js              — Segnalazioni bug/supporto via email
-                                  `POST /api/support/ticket` (auth required — invia email a youthfootballmanager@gmail.com con contesto tecnico + screenshot opzionale)
+    └── support.js              — Segnalazioni bug/supporto via email + gestione ticket superadmin
+                                  `POST /api/support/ticket` (auth required — invia email + salva in DB; rate limit 5/giorno per user_id; superadmin: user_id=null)
+                                  `GET /api/support/tickets` (solo superadmin — lista con filtri stato/workspace_id)
+                                  `PUT /api/support/tickets/:id/rispondi` (risposta via email + chiude ticket; oggetto: [YFM] Risposta al Ticket #XXXXXXXX)
+                                  `PUT /api/support/tickets/:id/stato` (cambia stato aperto/chiuso)
+                                  `DELETE /api/support/tickets/:id` (elimina singolo)
+                                  `DELETE /api/support/tickets/chiusi` (elimina tutti i chiusi)
 ```
 
 ### Script Utility
@@ -305,7 +310,9 @@ frontend-v2/src/
     └── import/
         └── importCenter.js    — Hub import (XLS, PDF, TC)
 
-- **supportWidget.js** (`components/supportWidget.js`) — FAB ⚡ unificato in basso a destra. Click espande due opzioni: ❓ Guida (apre PageHelp popover, doppio-click = interattivo) e 🐛 Segnala (apre modal ticket). `initSupportWidget()` chiamata in `main.js` dopo `setupLayout()`. Non visibile su pagine print. Max 5 ticket per sessione (sessionStorage `yfm_ticket_count`). Screenshot via upload o paste clipboard (max 2MB). Pagina da `window.YFM.currentPage`. Build da `BUILD_INFO.id`. Invia a `POST /support/ticket`.
+- **supportWidget.js** (`components/supportWidget.js`) — FAB ⚡ unificato in basso a destra. Click espande due opzioni: ❓ Guida (apre PageHelp popover, doppio-click = interattivo) e 🐛 Segnala (apre modal ticket). `initSupportWidget()` chiamata in `main.js` dopo `setupLayout()`. Non visibile su pagine print. Rate limit 5/giorno gestito lato backend (rimossa logica sessionStorage). Screenshot via upload o paste clipboard (max 2MB). Pagina da `window.YFM.currentPage`. Build da `BUILD_INFO.id`. Invia a `POST /support/ticket`.
+
+- **supportTickets.js** (`modules/admin/supportTickets.js`) — Pagina gestione ticket solo superadmin. Lista espandibile con filtri stato (Aperti/Chiusi/Tutti). Dettaglio inline con form risposta, bottone Chiudi senza risposta, elimina singolo (confirm modal), pulizia massiva ticket chiusi (confirm con conteggio). Route: `supportTickets`. Sidebar: voce 🎫 Ticket visibile solo superadmin.
 
 - **App**: https://youth-football-manager.vercel.app
 - **Backend API**: https://youth-football-manager-backend.vercel.app/api

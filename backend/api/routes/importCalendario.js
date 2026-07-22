@@ -4,7 +4,7 @@
 const express = require('express');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-const { findTeamInPdf, extractCalendar } = require('../pdfCalendarioParser');
+const { findTeamInPdf, extractCalendar, isCampaniaFormat, findTeamInCampaniaPdf, extractCampaniaCalendar } = require('../pdfCalendarioParser');
 const { parseMatchesFromText, logImport } = require('../helpers/importUtils');
 
 function createImportCalendarioRouter({ supabase, authMiddleware, requirePermission }) {
@@ -27,7 +27,13 @@ function createImportCalendarioRouter({ supabase, authMiddleware, requirePermiss
 
       const searchName = req.body.searchName;
       if (!searchName) return res.status(400).json({ error: 'Nome squadra richiesto' });
-      const result = await findTeamInPdf(req.file.buffer, searchName);
+      const pdfText = (await require('pdf-parse')(req.file.buffer)).text;
+      let result;
+      if (isCampaniaFormat(pdfText)) {
+        result = await findTeamInCampaniaPdf(req.file.buffer, searchName);
+      } else {
+        result = await findTeamInPdf(req.file.buffer, searchName);
+      }
 
       // Validazione contenuto: verifica che il PDF contenga dati di calendario
       if (!result.categorie || result.categorie.length === 0) {
@@ -52,7 +58,13 @@ function createImportCalendarioRouter({ supabase, authMiddleware, requirePermiss
       if (!req.file) return res.status(400).json({ error: 'File PDF richiesto' });
       const { searchName, categoria, girone } = req.body;
       if (!searchName || !categoria || !girone) return res.status(400).json({ error: 'Parametri mancanti' });
-      const result = await extractCalendar(req.file.buffer, searchName, categoria, girone);
+      const pdfText = (await require('pdf-parse')(req.file.buffer)).text;
+      let result;
+      if (isCampaniaFormat(pdfText)) {
+        result = await extractCampaniaCalendar(req.file.buffer, searchName);
+      } else {
+        result = await extractCalendar(req.file.buffer, searchName, categoria, girone);
+      }
       res.json(result);
     } catch (err) {
       res.status(500).json({ error: 'Errore estrazione: ' + err.message });

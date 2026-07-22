@@ -186,6 +186,17 @@ export const PAGE_HELP = {
       'Revoca in qualsiasi momento'
     ]
   },
+  supportTickets: {
+    title: '🎫 Ticket di Supporto',
+    desc: 'Gestisci le segnalazioni inviate dagli utenti.',
+    items: [
+      'Filtri: Aperti / Chiusi / Tutti',
+      'Clicca su un ticket per espandere i dettagli e scrivere una risposta',
+      'Invia risposta: l\'utente riceve un\'email con il tuo messaggio',
+      'Chiudi senza risposta: segna il ticket come risolto senza inviare email',
+      'Pulisci ticket chiusi: elimina tutti i ticket con stato chiuso in un click'
+    ]
+  },
   notifications: {
     title: '🔔 Centro Notifiche',
     desc: 'Comunicazioni in-app e segnalazioni assenze in un unico punto.',

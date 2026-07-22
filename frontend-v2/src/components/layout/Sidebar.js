@@ -85,7 +85,7 @@ export function setupLayout() {
                   <div style="font-weight:600;font-size:13px;">${userName}</div>
                   <div style="font-size:11px;color:#666;">${userRoleLabel}</div>
                 </div>
-                <button id="yfm-check-update-btn" onclick="event.stopPropagation();(function(btn){btn.disabled=true;btn.innerHTML='⏳ Controllo in corso...';if(window.YFM&&window.YFM.checkForUpdates){window.YFM.checkForUpdates();}else{if(window.showToast)window.showToast('Service worker non disponibile','warning');}setTimeout(()=>{btn.disabled=false;btn.innerHTML='🔄 Controlla aggiornamenti';},2500);})(this)"
+                <button id="yfm-check-update-btn" onclick="event.stopPropagation();(function(btn){btn.disabled=true;btn.innerHTML='⏳ Controllo in corso...';if(window.YFM&&window.YFM.checkForUpdates){window.YFM.checkForUpdates();}else{if(window.showToast)window.showToast('Service worker non disponibile','warning');}setTimeout(()=>{btn.disabled=false;btn.innerHTML='🔄 Controlla aggiornamenti';},3500);})(this)"
                         style="width:100%;padding:12px 16px;text-align:left;background:none;border:none;cursor:pointer;font-size:13px;color:#667eea;display:flex;align-items:center;gap:8px;border-bottom:1px solid #eee;">
                   🔄 Controlla aggiornamenti
                 </button>
@@ -207,7 +207,7 @@ export function setupLayout() {
       btn.disabled = true;
       btn.innerHTML = '⏳ Controllo in corso...';
       if (window.YFM?.checkForUpdates) window.YFM.checkForUpdates();
-      setTimeout(() => { btn.disabled = false; btn.innerHTML = '🔄 Controlla aggiornamenti'; }, 2500);
+      setTimeout(() => { btn.disabled = false; btn.innerHTML = '🔄 Controlla aggiornamenti'; }, 3500);
     });
   }
 }

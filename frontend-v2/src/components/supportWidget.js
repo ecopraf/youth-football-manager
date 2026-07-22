@@ -3,8 +3,7 @@ import { showToast } from '../utils/ui.js';
 import { openPageHelp, activateInteractiveHelp } from './PageHelp.js';
 import { BUILD_INFO } from '../build-info.js';
 
-const MAX_TICKETS = 5;
-const TICKET_KEY = 'yfm_ticket_count';
+
 
 let fabExpanded = false;
 
@@ -120,12 +119,6 @@ function injectStyles() {
 }
 
 function openTicketModal() {
-  const count = parseInt(sessionStorage.getItem(TICKET_KEY) || '0');
-  if (count >= MAX_TICKETS) {
-    showToast(`Limite segnalazioni raggiunto. Scrivi a youthfootballmanager@gmail.com`, 'warning', 6000);
-    return;
-  }
-
   const overlay = document.createElement('div');
   overlay.id = 'support-modal-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9200;display:flex;align-items:center;justify-content:center;padding:16px;';
@@ -161,7 +154,7 @@ function openTicketModal() {
       </div>
       <div class="sw-label">Descrizione</div>
       <textarea class="sw-textarea" id="sw-desc" placeholder="Descrivi il problema o il suggerimento..."></textarea>
-      <div class="sw-counter">${MAX_TICKETS - count} segnalazioni rimanenti in questa sessione</div>
+
       <div class="sw-upload">
         <div class="sw-label">Screenshot (opzionale — o incolla con Cmd+V)</div>
         <input type="file" id="sw-file" accept="image/*" style="font-size:13px;">
@@ -252,14 +245,16 @@ function openTicketModal() {
         method: 'POST',
         body: JSON.stringify({ tipo: tipoAttivo, descrizione, url_pagina: window.YFM?.currentPage || window.location.href, screenshot_base64: screenshotBase64, build_version: buildVersion, workspace_name: workspaceName, user_agent: userAgent })
       });
-      sessionStorage.setItem(TICKET_KEY, String(parseInt(sessionStorage.getItem(TICKET_KEY) || '0') + 1));
       showToast('✅ Segnalazione inviata!', 'success', 4000);
       setTimeout(close, 500);
     } catch(err) {
-      console.error('Support ticket error:', err);
       sendBtn.disabled = false;
       sendBtn.textContent = 'Invia';
-      showToast('Errore invio. Scrivi a youthfootballmanager@gmail.com', 'error', 5000);
+      const msg = err?.message || '';
+      if (msg.includes('429') || msg.includes('Limite'))
+        showToast('Limite giornaliero raggiunto (5/giorno). Riprova domani.', 'warning', 6000);
+      else
+        showToast('Errore invio. Scrivi a youthfootballmanager@gmail.com', 'error', 5000);
     }
   };
 }

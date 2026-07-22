@@ -19,13 +19,15 @@ export function hideLoading() {
   if (d) d.remove();
 }
 
-export function showToast(msg, type = 'info', duration = 3000) {
+export function showToast(msg, type = 'info', duration = 3000, position = 'bottom') {
   const colors = { success: '#27AE60', error: '#E74C3C', warning: '#F39C12', info: '#667eea' };
   const t = document.createElement('div');
   t.textContent = msg;
   const fabPresent = !!document.getElementById('yfm-fab');
-  const bottomOffset = fabPresent ? '80px' : '24px';
-  t.style.cssText = `position:fixed;bottom:${bottomOffset};left:50%;transform:translateX(-50%);background:${colors[type] || colors.info};color:white;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2);max-width:90vw;text-align:center;`;
+  const pos = position === 'top'
+    ? 'top:24px;bottom:auto;'
+    : `bottom:${fabPresent ? '80px' : '24px'};`;
+  t.style.cssText = `position:fixed;${pos}left:50%;transform:translateX(-50%);background:${colors[type] || colors.info};color:white;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2);max-width:90vw;text-align:center;`;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), duration);
 }
