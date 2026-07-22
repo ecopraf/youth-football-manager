@@ -20,7 +20,7 @@ const transporter = nodemailer.createTransport({
 const TIPO_LABEL = { bug: '🐛 Bug', suggerimento: '💡 Suggerimento', domanda: '❓ Domanda' };
 const TIPO_COLOR = { bug: '#E74C3C', suggerimento: '#667eea', domanda: '#F39C12' };
 
-function buildTicketHtml({ tipo, descrizione, user, workspace_name, url_pagina, build_version, user_agent, timestamp }) {
+function buildTicketHtml({ tipo, descrizione, user, workspace_name, url_pagina, build_version, user_agent, timestamp, screenshotHtml = '' }) {
   const tipoLabel = TIPO_LABEL[tipo] || tipo;
   const tipoColor = TIPO_COLOR[tipo] || '#667eea';
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
@@ -48,6 +48,7 @@ function buildTicketHtml({ tipo, descrizione, user, workspace_name, url_pagina, 
             <tr><td style="padding:2px 0;color:#888;font-size:10px;">User Agent</td><td style="word-break:break-all;font-size:10px;">${(user_agent||'—').substring(0,150)}</td></tr>
           </table>
         </td></tr>
+        ${screenshotHtml}
       </table>
     </div>
     <div style="background:#f9f9f9;padding:12px 24px;border-top:1px solid #eee;">
@@ -82,20 +83,34 @@ router.post('/support/ticket', authMiddleware, async (req, res) => {
     const tipoLabel = TIPO_LABEL[tipo] || tipo;
     const timestamp = new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' });
 
+    const attachments = [];
+    if (screenshot_base64) {
+      const matches = screenshot_base64.match(/^data:([a-zA-Z0-9+/]+\/[a-zA-Z0-9+/]+);base64,(.+)$/);
+      if (matches) {
+        const mimeType = matches[1];
+        const ext = mimeType.split('/')[1].replace('jpeg','jpg');
+        attachments.push({
+          filename: `screenshot.${ext}`,
+          content: matches[2],
+          encoding: 'base64',
+          contentType: mimeType
+        });
+      }
+    }
+
     const screenshotHtml = screenshot_base64
-      ? `<tr><td style="padding:12px 0;border-top:1px solid #eee;"><strong style="color:#555;">📸 Screenshot</strong><br>
-           <img src="${screenshot_base64}" style="max-width:100%;border-radius:8px;margin-top:8px;border:1px solid #ddd;"></td></tr>`
+      ? `<tr><td style="padding:12px 0;border-top:1px solid #eee;"><strong style="color:#555;">📸 Screenshot</strong> <span style="font-size:12px;color:#888;">(vedi allegato)</span></td></tr>`
       : '';
 
-    const baseHtml = buildTicketHtml({ tipo, descrizione, user, workspace_name, url_pagina, build_version, user_agent, timestamp });
-    const htmlWithScreenshot = baseHtml.replace('</table>\n    </div>', `${screenshotHtml}</table>\n    </div>`);
+    const html = buildTicketHtml({ tipo, descrizione, user, workspace_name, url_pagina, build_version, user_agent, timestamp, screenshotHtml });
 
     await transporter.sendMail({
       from: `"YFM Support" <${process.env.SUPPORT_EMAIL_USER}>`,
       to: process.env.SUPPORT_EMAIL_USER,
       replyTo: user.email ? `${[user.nome, user.cognome].filter(Boolean).join(' ') || user.email} <${user.email}>` : process.env.SUPPORT_EMAIL_USER,
       subject: `[YFM] ${tipoLabel}: ${descrizione.substring(0, 60)}${descrizione.length > 60 ? '…' : ''}`,
-      html: htmlWithScreenshot
+      html,
+      attachments
     });
 
     // Salva nel DB (senza screenshot — troppo pesante)
