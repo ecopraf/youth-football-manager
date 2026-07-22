@@ -143,6 +143,20 @@ function getStyles() {
   .print-doc { border: none; padding: 0; }
   .pr-header { margin-bottom: 2mm; padding-bottom: 1mm; }
   @page { size: A4 portrait; margin: 10mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body, .print-doc { font-size: 11px !important; }
+  .pr-t1 { font-size: 16px !important; }
+  .pr-t2 { font-size: 12px !important; }
+  .pr-t3 { font-size: 10px !important; }
+  .pr-score-num { font-size: 24px !important; }
+  .pr-score-label { font-size: 11px !important; }
+  .pr-section-title { font-size: 11px !important; }
+  .pr-table th, .pr-table td { font-size: 10px !important; padding: 2px 4px !important; }
+  .pr-evento { font-size: 10px !important; }
+  .pr-footer { font-size: 10px !important; }
+  /* Forza 2 colonne anche su mobile durante stampa */
+  .pr-players-grid { grid-template-columns: 1fr 1fr !important; }
+  .pr-eventi-wrap { grid-template-columns: 1fr 1fr !important; }
 }
 @media (max-width: 500px) {
   .pr-players-grid { grid-template-columns: 1fr; }

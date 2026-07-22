@@ -72,13 +72,13 @@ export function renderCalendar(config, presenze, matches, annullati, futuri) {
     .cal-nav{background:none;border:1px solid #dee2e6;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:16px}
     .cal-nav:hover{background:#f0f4ff;border-color:#667eea}
     .cal-day-label{text-align:center;font-size:11px;font-weight:600;color:#6c757d;padding:6px 0}
-    .cal-day{text-align:center;padding:8px 4px;border-radius:8px;cursor:default;font-size:13px;font-weight:500;position:relative;min-height:38px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .cal-day{text-align:center;padding:8px 4px;border-radius:8px;cursor:default;font-size:13px;font-weight:500;position:relative;min-height:38px;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
     .cal-day.has-training{cursor:pointer;background:#f0fdf4}
     .cal-day.has-training:hover{background:#dcfce7}
     .cal-day.has-presenze{cursor:pointer;background:#d1fae5}
     .cal-day.has-presenze:hover{background:#a7f3d0}
-    .cal-day.has-match{background:#fff7ed;cursor:default;border:1px solid #fed7aa;min-height:52px;padding:4px 3px}
-    .cal-match-info{font-size:9px;color:#c2410c;line-height:1.2;margin-top:1px;max-width:100%;overflow:hidden;display:block;text-overflow:ellipsis;white-space:nowrap}
+    .cal-day.has-match{background:#fff7ed;cursor:default;border:1px solid #fed7aa;padding:4px 3px}
+    .cal-match-info{font-size:9px;color:#c2410c;line-height:1.2;margin-top:1px;max-width:100%;overflow:hidden;display:block;text-overflow:ellipsis;white-space:nowrap;width:100%}
     .cal-day.is-holiday{background:#f3f4f6;color:#9ca3af;cursor:default}
     .cal-day.is-holiday .cal-holiday-icon{font-size:9px;line-height:1;margin-top:1px}
     .cal-day.is-cancelled{background:#fee2e2;color:#991b1b;cursor:pointer}
@@ -88,7 +88,7 @@ export function renderCalendar(config, presenze, matches, annullati, futuri) {
     .cal-dot{width:6px;height:6px;border-radius:50%;margin-top:2px}
     .cal-dot.programmed{background:#86efac;border:1px solid #22c55e}
     .cal-dot.registered{background:#22c55e}
-    @media(max-width:640px){.cal-day{padding:6px 2px;font-size:12px;min-height:34px}.cal-dot{width:5px;height:5px}}
+    @media(max-width:640px){.cal-day{padding:4px 2px;font-size:12px;height:52px}.cal-dot{width:5px;height:5px}}
   </style>`;
 
   html += `<div class="cal-header"><button class="cal-nav" id="calPrev">◀</button><h3>${mesi[currentMonth]} ${currentYear}</h3><button class="cal-nav" id="calNext">▶</button></div>`;

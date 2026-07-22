@@ -1,13 +1,13 @@
 // Auto-generated build info
 // SW Version: v3.16
-// Build Number: 88
-// Build ID: v3.16.88
-// Date: 21/07/2026, 17:27:17
+// Build Number: 89
+// Build ID: v3.16.89
+// Date: 22/07/2026, 09:54:20
 export const BUILD_INFO = {
-  id: 'v3.16.88',
+  id: 'v3.16.89',
   version: 'v3.16',
-  buildNumber: 88,
-  date: '2026-07-21T15:27:17.161Z',
-  buildDate: '21/07/2026, 17:27:17'
+  buildNumber: 89,
+  date: '2026-07-22T07:54:20.602Z',
+  buildDate: '22/07/2026, 09:54:20'
 };
 export const SW_VERSION = 'v3.16';

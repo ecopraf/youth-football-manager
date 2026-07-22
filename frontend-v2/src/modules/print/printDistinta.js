@@ -239,6 +239,12 @@ function getStyles() {
   .print-page { padding: 0; max-width: none; }
   .print-doc { border: none; padding: 0; }
   @page { size: A4 portrait; margin: 8mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body, .print-doc { font-size: 9px !important; }
+  .dist-table th, .dist-table td { font-size: 8px !important; padding: 2px 4px !important; }
+  .dist-firme { font-size: 8px !important; margin-top: 8px !important; page-break-inside: avoid; }
+  .dist-info { font-size: 9px !important; padding: 5px 8px !important; }
+  .dist-staff td { font-size: 8px !important; }
 }
 `;
 }

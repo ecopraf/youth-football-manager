@@ -137,6 +137,15 @@ function getPrintStyles() {
   .print-page { padding: 0; max-width: none; }
   .print-doc { border: none; padding: 0; box-shadow: none; }
   @page { size: A4 portrait; margin: 15mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body, .print-doc { font-size: 12px !important; }
+  .print-title .t1 { font-size: 18px !important; }
+  .print-title .t2 { font-size: 12px !important; }
+  .print-info { font-size: 11px !important; line-height: 1.6 !important; }
+  .print-table th, .print-table td { font-size: 11px !important; padding: 3px 6px !important; }
+  .print-note { font-size: 10px !important; }
+  .print-firma { font-size: 12px !important; margin-top: 6mm !important; }
+  .print-staff { font-size: 10px !important; }
 }
 @media (max-width: 500px) {
   .print-doc { padding: 10px; }

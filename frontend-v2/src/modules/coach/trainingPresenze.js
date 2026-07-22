@@ -175,31 +175,82 @@ function renderMotiviBreakdown(motiviTotali, summary) {
   const totale = Object.values(motiviTotali).reduce((s, v) => s + v, 0);
   if (totale === 0) return '';
 
-  const MOTIVI_ICONS = { 'Malattia': '🤒', 'Impegno scolastico': '📚', 'Motivi familiari': '👪', 'Infortunio': '🏥', 'Non comunicato': '❓' };
-  const MOTIVI_COLORS = { 'Malattia': '#fef2f2;color:#dc2626', 'Impegno scolastico': '#eff6ff;color:#2563eb', 'Motivi familiari': '#f0fdf4;color:#16a34a', 'Infortunio': '#fefce8;color:#ca8a04', 'Non comunicato': '#f5f5f5;color:#6b7280' };
+  const MOTIVI_ICONS = {
+    '': '⚫', 'Assente': '⚫', 'Non comunicato': '⚫',
+    'Malattia': '🤒',
+    'Impegno scolastico': '📚', 'Impegni Scolastici': '📚',
+    'Motivi familiari': '👪', 'Motivi Familiari': '👪',
+    'Infortunio': '🏥'
+  };
+  const MOTIVI_COLORS = {
+    '': '#f3f4f6;color:#374151', 'Assente': '#f3f4f6;color:#374151', 'Non comunicato': '#f3f4f6;color:#374151',
+    'Malattia': '#fef2f2;color:#dc2626',
+    'Impegno scolastico': '#eff6ff;color:#2563eb', 'Impegni Scolastici': '#eff6ff;color:#2563eb',
+    'Motivi familiari': '#f0fdf4;color:#16a34a', 'Motivi Familiari': '#f0fdf4;color:#16a34a',
+    'Infortunio': '#fefce8;color:#ca8a04'
+  };
+  const MOTIVI_LABELS = {
+    '': 'Assenza ingiustificata', 'Assente': 'Assenza ingiustificata', 'Non comunicato': 'Assenza ingiustificata',
+    'Impegno scolastico': 'Impegni Scolastici', 'Impegni Scolastici': 'Impegni Scolastici',
+    'Motivi familiari': 'Motivi Familiari', 'Motivi Familiari': 'Motivi Familiari'
+  };
 
   const sorted = Object.entries(motiviTotali).sort((a, b) => b[1] - a[1]);
 
   let html = `<div class="card" style="margin-bottom:20px;">
+    <style>
+      @media(max-width:500px){
+        .motivi-cards{display:none!important;}
+        .motivi-rows{display:block!important;}
+      }
+      .motivi-rows{display:none;}
+    </style>
     <h3 class="section-title">📋 Motivi Assenza <span style="font-size:12px;color:var(--gray);font-weight:normal;">(${totale} assenze totali)</span></h3>
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">`;
+    <div class="motivi-cards" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">`;
 
   sorted.forEach(([motivo, cnt]) => {
     const pct = Math.round(cnt / totale * 100);
     const icon = MOTIVI_ICONS[motivo] || '📌';
     const bg = MOTIVI_COLORS[motivo] || '#f5f5f5;color:#374151';
+    const label = MOTIVI_LABELS[motivo] || motivo;
     html += `<div style="background:${bg};padding:10px 14px;border-radius:10px;min-width:140px;flex:1;">
-      <div style="font-size:13px;font-weight:600;">${icon} ${motivo}</div>
+      <div style="font-size:13px;font-weight:600;">${icon} ${label}</div>
       <div style="font-size:20px;font-weight:700;margin-top:4px;">${cnt} <span style="font-size:12px;font-weight:normal;">(${pct}%)</span></div>
     </div>`;
   });
 
   html += `</div>
+    <div class="motivi-rows" style="margin-bottom:16px;">`;
+  sorted.forEach(([motivo, cnt]) => {
+    const pct = Math.round(cnt / totale * 100);
+    const icon = MOTIVI_ICONS[motivo] || '📌';
+    const label = MOTIVI_LABELS[motivo] || motivo;
+    const barColors = { '': '#9ca3af', 'Assente': '#9ca3af', 'Non comunicato': '#9ca3af', 'Malattia': '#fca5a5', 'Impegno scolastico': '#93c5fd', 'Impegni Scolastici': '#93c5fd', 'Motivi familiari': '#86efac', 'Motivi Familiari': '#86efac', 'Infortunio': '#fde047' };
+    const barColor = barColors[motivo] || '#a5b4fc';
+    const textColor = (MOTIVI_COLORS[motivo] || ';color:#374151').split('color:')[1];
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0f0f0;">
+      <span style="font-size:15px;width:20px;text-align:center;">${icon}</span>
+      <span style="font-size:13px;font-weight:600;color:${textColor};flex:1;">${label}</span>
+      <div style="width:80px;background:#f0f0f0;border-radius:4px;height:8px;overflow:hidden;">
+        <div style="width:${pct}%;background:${barColor};height:100%;"></div>
+      </div>
+      <span style="font-size:13px;font-weight:700;min-width:28px;text-align:right;">${cnt}</span>
+      <span style="font-size:11px;color:#888;min-width:36px;">(${pct}%)</span>
+    </div>`;
+  });
+  html += `</div>
     <div style="background:#f8fafc;border-radius:8px;height:24px;overflow:hidden;display:flex;">`;
   sorted.forEach(([motivo, cnt]) => {
     const pct = (cnt / totale * 100);
-    const colors = { 'Malattia': '#fca5a5', 'Impegno scolastico': '#93c5fd', 'Motivi familiari': '#86efac', 'Infortunio': '#fde047', 'Non comunicato': '#d1d5db' };
-    html += `<div style="width:${pct}%;background:${colors[motivo] || '#a5b4fc'};" title="${motivo}: ${cnt}"></div>`;
+    const colors = {
+      '': '#9ca3af', 'Assente': '#9ca3af', 'Non comunicato': '#9ca3af',
+      'Malattia': '#fca5a5',
+      'Impegno scolastico': '#93c5fd', 'Impegni Scolastici': '#93c5fd',
+      'Motivi familiari': '#86efac', 'Motivi Familiari': '#86efac',
+      'Infortunio': '#fde047'
+    };
+    const barLabel = MOTIVI_LABELS[motivo] || motivo;
+    html += `<div style="width:${pct}%;background:${colors[motivo] || '#a5b4fc'};" title="${barLabel}: ${cnt}"></div>`;
   });
   html += `</div></div>`;
   return html;

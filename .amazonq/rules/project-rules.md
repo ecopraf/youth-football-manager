@@ -689,6 +689,45 @@ Per tabelle con **5+ colonne** o dati misti (testo + numeri), usare il component
 - **Font size minimo**: 12px su mobile per leggibilità
 - **Padding/gap ridotti**: su mobile usare gap/padding più compatti (8-12px vs 16-20px desktop)
 
+### Stampa da Mobile — Regole Standard (OBBLIGATORIO)
+
+Il browser mobile usa font-size base più grande e margini di stampa più generosi rispetto al desktop. Senza override espliciti, il contenuto straborda nella seconda pagina.
+
+**Regola**: ogni pagina stampabile (`/print/*`) DEVE includere nel `@media print` i seguenti override:
+
+```css
+@media print {
+  /* ... regole esistenti ... */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body, .print-doc { font-size: 12px !important; }  /* o 9px per documenti densi */
+  /* Override esplicito di TUTTI i font-size usati nel documento */
+  .print-title .t1 { font-size: 18px !important; }
+  .print-table th, .print-table td { font-size: 11px !important; padding: 3px 6px !important; }
+  .print-note { font-size: 10px !important; }
+  .print-firma { font-size: 12px !important; margin-top: 6mm !important; }
+  /* Evita page-break dentro sezioni critiche */
+  .print-firme, .print-firma, .dist-firme { page-break-inside: avoid; }
+}
+```
+
+**Perché**: il browser mobile ignora i font-size definiti fuori da `@media print` e applica il proprio scaling. Solo gli `!important` dentro `@media print` vengono rispettati.
+
+**Testing stampa mobile**: non testabile da DevTools desktop — deploy su Vercel e testare da dispositivo reale.
+
+**Checklist nuova pagina stampabile**:
+- [ ] `@page { size: A4 portrait; margin: Xmm; }` definito
+- [ ] `font-size` espliciti con `!important` per tutti gli elementi nel `@media print`
+- [ ] `-webkit-print-color-adjust: exact` per colori/sfondi
+- [ ] `page-break-inside: avoid` su firme e sezioni che non devono spezzarsi
+- [ ] Testato su dispositivo mobile reale dopo deploy
+- [ ] Se `@media (max-width:500px)` collassa grid a 1 colonna → aggiungere override `grid-template-columns: 1fr 1fr !important` nel `@media print` per ripristinare 2 colonne in stampa
+
+**Liste con molti elementi su mobile**: se una lista (es. motivi assenza, statistiche) usa card affiancate su desktop, su mobile (`max-width:500px`) usare layout a righe compatte:
+```
+icona + label (flex:1) + barra percentuale (80px) + numero + %
+```
+Implementare con due blocchi HTML distinti (`.desktop-cards` / `.mobile-rows`) e CSS `display:none` / `display:block` via media query — mai JS resize.
+
 ### Logo squadra (workspace) — Regole d'uso
 
 Il logo della squadra corrente è disponibile globalmente tramite:
