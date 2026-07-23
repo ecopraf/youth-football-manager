@@ -34,7 +34,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const { data: user } = decoded.userId === 'superadmin'
-      ? { data: { id: 'superadmin', email: decoded.email, ruolo: 'admin', is_superadmin: true, workspace_id: decoded.workspace_id } }
+      ? { data: { id: 'superadmin', email: decoded.email, nome: decoded.nome, cognome: decoded.cognome, ruolo: 'admin', is_superadmin: true, workspace_id: decoded.workspace_id } }
       : await supabase.from('users').select('*').eq('id', decoded.userId).single();
     if (!user) return res.status(401).json({ error: 'Utente non trovato' });
     if (user.is_active === false) return res.status(401).json({ error: 'Account disattivato' });

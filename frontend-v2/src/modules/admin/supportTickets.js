@@ -4,7 +4,15 @@ import { showToast } from '../../utils/ui.js';
 let tickets = [];
 let filtroStato = 'aperto';
 let filtroWorkspace = '';
+let filtroPriorita = 'tutti';
 let expandedId = null;
+
+const PRIORITA_BADGE = {
+  low:      { label: '🟢 Low',      bg: '#E8F8F0', color: '#27AE60' },
+  medium:   { label: '🟡 Medium',   bg: '#FFF8E1', color: '#F39C12' },
+  high:     { label: '🔴 High',     bg: '#FDEDEE', color: '#E74C3C' },
+  critical: { label: '⚫ Critical', bg: '#F0F0F0', color: '#1a1a2e' },
+};
 
 export default async function loadSupportTickets() {
   const c = document.getElementById('pageContent');
@@ -17,6 +25,7 @@ export default async function loadSupportTickets() {
       .st-badge { font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600; }
       .st-badge.aperto { background:#FEF3C7; color:#92400E; }
       .st-badge.chiuso { background:#D1FAE5; color:#065F46; }
+      .st-badge-p { font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600; }
       .st-tipo { font-size:12px; color:#888; }
       .st-meta { font-size:12px; color:#aaa; margin-left:auto; white-space:nowrap; }
       .st-body { padding:0 16px 16px; border-top:1px solid #f0f0f0; }
@@ -40,6 +49,13 @@ export default async function loadSupportTickets() {
         <button class="tab-btn" data-stato="chiuso">Chiusi</button>
         <button class="tab-btn" data-stato="tutti">Tutti</button>
       </div>
+      <div class="tab-bar" id="filtroPrioritaBar">
+        <button class="tab-btn active" data-p="tutti">Tutte</button>
+        <button class="tab-btn" data-p="critical">⚫ Critical</button>
+        <button class="tab-btn" data-p="high">🔴 High</button>
+        <button class="tab-btn" data-p="medium">🟡 Medium</button>
+        <button class="tab-btn" data-p="low">🟢 Low</button>
+      </div>
     </div>
     <div id="stList"></div>
   `;
@@ -51,6 +67,15 @@ export default async function loadSupportTickets() {
       btn.classList.add('active');
       filtroStato = btn.dataset.stato;
       loadData();
+    });
+  });
+
+  document.querySelectorAll('#filtroPrioritaBar .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#filtroPrioritaBar .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filtroPriorita = btn.dataset.p;
+      renderList();
     });
   });
 
@@ -77,12 +102,16 @@ function renderList() {
   if (!list) return;
   if (!tickets.length) { list.innerHTML = '<div class="st-empty">Nessun ticket trovato</div>'; return; }
 
+  const filtered = filtroPriorita === 'tutti' ? tickets : tickets.filter(t => (t.priorita || 'medium') === filtroPriorita);
+  if (!filtered.length) { list.innerHTML = '<div class="st-empty">Nessun ticket trovato</div>'; return; }
+
   const TIPO_EMOJI = { bug: '🐛', suggerimento: '💡', domanda: '❓' };
-  list.innerHTML = tickets.map(t => {
+  list.innerHTML = filtered.map(t => {
     const emoji = TIPO_EMOJI[t.tipo] || '📋';
     const data = new Date(t.created_at).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
     const isOpen = expandedId === t.id;
     const desc60 = (t.descrizione || '').substring(0, 80) + ((t.descrizione||'').length > 80 ? '…' : '');
+    const pb = PRIORITA_BADGE[t.priorita || 'medium'] || PRIORITA_BADGE.medium;
 
     const bodyHtml = isOpen ? `
       <div class="st-body">
@@ -116,6 +145,7 @@ function renderList() {
           <div class="st-tipo">${t.nome||t.email||'—'} · ${t.pagina||'—'}</div>
         </div>
         <span class="st-badge ${t.stato}">${t.stato}</span>
+        ${t.tipo === 'bug' ? `<span class="st-badge-p" style="background:${pb.bg};color:${pb.color};">${pb.label}</span>` : ''}
         <span class="st-meta">${data}</span>
         <span style="color:#aaa;font-size:12px;margin-left:4px;">${isOpen ? '▲' : '▼'}</span>
       </div>

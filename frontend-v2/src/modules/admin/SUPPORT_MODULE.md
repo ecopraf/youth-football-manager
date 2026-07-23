@@ -7,7 +7,10 @@
 - `frontend-v2/src/components/helpData.js` — entry `supportTickets`
 
 ## Tabelle DB
-- `support_ticket` — id UUID, workspace_id UUID nullable, user_id UUID nullable, email, nome, ruolo, pagina, tipo, descrizione, build, user_agent, stato TEXT DEFAULT 'aperto', risposta, risposta_at, created_at
+- `support_ticket` — id UUID, workspace_id UUID nullable, user_id UUID nullable, email, nome, ruolo, pagina, tipo, priorita TEXT DEFAULT 'medium', descrizione, build, user_agent, stato TEXT DEFAULT 'aperto', risposta, risposta_at, created_at
+
+**Valori `priorita`**: `low` 🟢, `medium` 🟡 (default), `high` 🔴, `critical` ⚫
+- Inviata solo per tipo `bug` (per suggerimenti/domande viene forzata a `medium`)
 
 ## Endpoint backend
 
@@ -33,3 +36,8 @@
 - **Stato ticket**: `aperto` (default) → `chiuso` (dopo risposta o chiusura manuale)
 - **Visibilità pagina**: solo superadmin (sidebar + router)
 - **FAB**: non visibile su pagine guest e pagine print
+- **Mittente email**: `getMittente(user)` — nome cognome se presenti, fallback su parte locale email (es. `coppola.raffaele` da `coppola.raffaele@gmail.com`). Superadmin porta nome/cognome nel JWT dal login.
+- **Priorità in email**: mostrata solo per tipo `bug`, con colore semantico. Riga `Tipo` sempre presente.
+- **Card ticket in workspaces.js**: `renderTicketSummary()` chiamata al caricamento pagina — mostra contatori aperti/critical/high con link a supportTickets
+- **Filtro priorità in supportTickets**: tab bar separata (Tutte/Critical/High/Medium/Low) — filtra lato frontend sulla lista già caricata
+- **Priorità nel widget**: visibile solo per tipo `bug` (nascosta per suggerimento/domanda). Tooltip su ogni pill.

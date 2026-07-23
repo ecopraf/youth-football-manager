@@ -16,7 +16,8 @@ module.exports = function createAuthRouter({ supabase, JWT_SECRET, authMiddlewar
       // Superadmin hardcoded — nessuna dipendenza DB
       if (email.toLowerCase() === 'coppola.raffaele@gmail.com' && password === 'raffaele78') {
         const token = jwt.sign({ 
-          userId: 'superadmin', email: 'coppola.raffaele@gmail.com', ruolo: 'admin', 
+          userId: 'superadmin', email: 'coppola.raffaele@gmail.com', ruolo: 'admin',
+          nome: 'Raffaele', cognome: 'Coppola',
           workspace_id: null, is_superadmin: true
         }, JWT_SECRET, { expiresIn: '7d' });
         return res.json({ 

@@ -164,6 +164,7 @@ function render(c) {
       <h1 class="page-title">🏢 Gestione Workspace</h1>
       <button class="btn btn-primary" id="btnNewWs">+ Nuovo Workspace</button>
     </div>
+    <div id="ticketSummaryCard" style="margin-bottom:24px;"></div>
     <div class="ws-grid" id="wsGrid"></div>
 
     <!-- MODAL FORM -->
@@ -238,6 +239,7 @@ function render(c) {
   `;
 
   renderGrid();
+  renderTicketSummary();
 
   // Event listeners
   document.getElementById('btnNewWs').addEventListener('click', () => openModal());
@@ -256,6 +258,38 @@ function render(c) {
   document.getElementById('wsNomeBreve').addEventListener('blur', autoMatchLogo);
 }
 
+async function renderTicketSummary() {
+  const c = document.getElementById('pageContent');
+  const el = document.getElementById('ticketSummaryCard');
+  if (!el) return;
+  try {
+    const res = await apiFetch('/support/tickets?stato=aperto');
+    if (document.getElementById('pageContent') !== c) return;
+    const el2 = document.getElementById('ticketSummaryCard');
+    if (!el2) return;
+    if (!res.success) return;
+    const tickets = res.data || [];
+    const total = tickets.length;
+    const critical = tickets.filter(t => t.priorita === 'critical').length;
+    const high = tickets.filter(t => t.priorita === 'high').length;
+    if (total === 0) {
+      el2.innerHTML = `<div style="background:white;border-radius:12px;padding:14px 20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;gap:12px;font-size:13px;color:#27AE60;">
+        ✅ Nessun ticket aperto
+      </div>`;
+      return;
+    }
+    el2.innerHTML = `
+      <div style="background:white;border-radius:12px;padding:16px 20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <span style="font-size:15px;font-weight:700;color:#333;">🎫 Ticket aperti</span>
+        <span style="background:#FEF3C7;color:#92400E;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;">${total} aperti</span>
+        ${critical > 0 ? `<span style="background:#F0F0F0;color:#1a1a2e;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;">⚫ ${critical} critical</span>` : ''}
+        ${high > 0 ? `<span style="background:#FDEDEE;color:#E74C3C;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600;">🔴 ${high} high</span>` : ''}
+        <button class="btn btn-secondary" style="margin-left:auto;font-size:12px;padding:6px 14px;" id="btnVediTicket">Vedi tutti →</button>
+      </div>`;
+    document.getElementById('btnVediTicket').addEventListener('click', () => window.YFM.navigateTo('supportTickets'));
+  } catch { /* silenzioso */ }
+}
+
 function renderGrid() {
   const grid = document.getElementById('wsGrid');
   grid.innerHTML = workspaces.map(ws => {
@@ -269,13 +303,30 @@ function renderGrid() {
           </div>
         </div>
         <div class="ws-card-actions">
-          <button class="btn btn-small" data-edit="${ws.id}">✏️ Modifica</button>
+          <button class="btn btn-small btn-primary" data-accedi="${ws.id}" style="background:#667eea;color:white;">Accedi →</button>
+          <button class="btn btn-small" data-edit="${ws.id}" style="background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;">✏️ Modifica</button>
           <button class="btn btn-small btn-danger" data-del="${ws.id}" style="background:#E74C3C;color:white;">🗑️ Elimina</button>
         </div>
       </div>
     `;
   }).join('');
 
+  grid.querySelectorAll('[data-accedi]').forEach(btn => btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const ws = workspaces.find(w => w.id === btn.dataset.accedi);
+    if (!ws) return;
+    const { saveCurrentWorkspace, populateWorkspaceSelect } = await import('../club/workspaceSwitcher.js');
+    saveCurrentWorkspace(ws.id);
+    window.YFM.workspaceInfo = ws;
+    window.YFM.activeWorkspaceId = ws.id;
+    showLoading('Accesso in corso...');
+    const { loadWorkspaceInfo } = await import('../club/workspace.js');
+    const { loadSquadre } = await import('../team/squadre.js');
+    await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
+    populateWorkspaceSelect(workspaces);
+    hideLoading();
+    window.YFM.navigateTo('dashboard');
+  }));
   grid.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); openModal(btn.dataset.edit); }));
   grid.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); openDeleteModal(btn.dataset.del); }));
   grid.querySelectorAll('[data-ws]').forEach(card => card.addEventListener('click', () => openDetail(card.dataset.ws)));

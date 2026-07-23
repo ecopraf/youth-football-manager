@@ -18,9 +18,19 @@ const transporter = nodemailer.createTransport({
 });
 
 const TIPO_LABEL = { bug: '🐛 Bug', suggerimento: '💡 Suggerimento', domanda: '❓ Domanda' };
+const PRIORITA_VALID = ['low', 'medium', 'high', 'critical'];
+const PRIORITA_LABEL = { low: '🟢 Low', medium: '🟡 Medium', high: '🔴 High', critical: '⚫ Critical' };
+const PRIORITA_COLOR = { low: '#27AE60', medium: '#F39C12', high: '#E74C3C', critical: '#1a1a2e' };
 const TIPO_COLOR = { bug: '#E74C3C', suggerimento: '#667eea', domanda: '#F39C12' };
 
-function buildTicketHtml({ tipo, descrizione, user, workspace_name, url_pagina, build_version, user_agent, timestamp, screenshotHtml = '' }) {
+function getMittente(user) {
+  const nome = [user.nome, user.cognome].filter(Boolean).join(' ');
+  if (nome) return nome;
+  if (user.email) return user.email.split('@')[0];
+  return '—';
+}
+
+function buildTicketHtml({ tipo, priorita = 'medium', descrizione, user, workspace_name, url_pagina, build_version, user_agent, timestamp, screenshotHtml = '' }) {
   const tipoLabel = TIPO_LABEL[tipo] || tipo;
   const tipoColor = TIPO_COLOR[tipo] || '#667eea';
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
@@ -39,7 +49,9 @@ function buildTicketHtml({ tipo, descrizione, user, workspace_name, url_pagina, 
         <tr><td style="padding:10px 0;">
           <strong style="color:#555;font-size:12px;text-transform:uppercase;">Contesto Tecnico</strong><br>
           <table style="margin-top:8px;font-size:13px;color:#444;width:100%;">
-            <tr><td style="padding:2px 0;color:#888;">Mittente</td><td><strong>${[user.nome, user.cognome].filter(Boolean).join(' ') || user.email || '—'}</strong></td></tr>
+            <tr><td style="padding:2px 0;color:#888;">Tipo</td><td><strong>${tipoLabel}</strong></td></tr>
+            ${tipo === 'bug' ? `<tr><td style="padding:2px 0;color:#888;">Priorità</td><td><strong style="color:${PRIORITA_COLOR[priorita] || '#F39C12'};white-space:nowrap;">${PRIORITA_LABEL[priorita] || priorita}</strong></td></tr>` : ''}
+            <tr><td style="padding:2px 0;color:#888;">Mittente</td><td><strong>${getMittente(user)}</strong></td></tr>
             <tr><td style="padding:2px 0;color:#888;">Account</td><td><a href="mailto:${user.email||''}" style="color:#667eea;">${user.email||'—'}</a> · ${user.ruolo||'—'}</td></tr>
             <tr><td style="padding:2px 0;color:#888;">Società</td><td>${workspace_name||'—'}</td></tr>
             <tr><td style="padding:2px 0;color:#888;">Pagina</td><td style="word-break:break-all;">${(url_pagina||'—').replace(/</g,'&lt;')}</td></tr>
@@ -61,7 +73,8 @@ function buildTicketHtml({ tipo, descrizione, user, workspace_name, url_pagina, 
 // POST /support/ticket — invia email + salva nel DB
 router.post('/support/ticket', authMiddleware, async (req, res) => {
   try {
-    const { tipo = 'bug', descrizione, url_pagina, screenshot_base64, build_version, workspace_name, user_agent } = req.body;
+    const { tipo = 'bug', priorita = 'medium', descrizione, url_pagina, screenshot_base64, build_version, workspace_name, user_agent } = req.body;
+    const prioritaVal = PRIORITA_VALID.includes(priorita) ? priorita : 'medium';
     if (!descrizione || descrizione.trim().length < 5)
       return res.status(400).json({ success: false, error: 'Descrizione troppo breve' });
 
@@ -102,12 +115,12 @@ router.post('/support/ticket', authMiddleware, async (req, res) => {
       ? `<tr><td style="padding:12px 0;border-top:1px solid #eee;"><strong style="color:#555;">📸 Screenshot</strong> <span style="font-size:12px;color:#888;">(vedi allegato)</span></td></tr>`
       : '';
 
-    const html = buildTicketHtml({ tipo, descrizione, user, workspace_name, url_pagina, build_version, user_agent, timestamp, screenshotHtml });
+    const html = buildTicketHtml({ tipo, priorita: prioritaVal, descrizione, user, workspace_name, url_pagina, build_version, user_agent, timestamp, screenshotHtml });
 
     await transporter.sendMail({
       from: `"YFM Support" <${process.env.SUPPORT_EMAIL_USER}>`,
       to: process.env.SUPPORT_EMAIL_USER,
-      replyTo: user.email ? `${[user.nome, user.cognome].filter(Boolean).join(' ') || user.email} <${user.email}>` : process.env.SUPPORT_EMAIL_USER,
+      replyTo: user.email ? `${getMittente(user)} <${user.email}>` : process.env.SUPPORT_EMAIL_USER,
       subject: `[YFM] ${tipoLabel}: ${descrizione.substring(0, 60)}${descrizione.length > 60 ? '…' : ''}`,
       html,
       attachments
@@ -115,8 +128,8 @@ router.post('/support/ticket', authMiddleware, async (req, res) => {
 
     // Salva nel DB (senza screenshot — troppo pesante)
     await pool.query(
-      `INSERT INTO support_ticket (workspace_id, user_id, email, nome, ruolo, pagina, tipo, descrizione, build, user_agent)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      `INSERT INTO support_ticket (workspace_id, user_id, email, nome, ruolo, pagina, tipo, priorita, descrizione, build, user_agent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         user.workspace_id || null,
         userId,
@@ -125,6 +138,7 @@ router.post('/support/ticket', authMiddleware, async (req, res) => {
         user.ruolo || null,
         url_pagina || null,
         tipo,
+        prioritaVal,
         descrizione,
         build_version || null,
         (user_agent || req.headers['user-agent'] || '').substring(0, 300) || null

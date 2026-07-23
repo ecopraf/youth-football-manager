@@ -264,7 +264,7 @@ frontend-v2/src/
 │   ├── helpData.js            — Dati help per pagina
 │   └── layout/
 │       ├── Sidebar.js         — Sidebar responsive
-- **sidebarNav.js** (`components/layout/sidebarNav.js`) — Nav filtrato per capabilities. Builder functions per sezione (buildTeam/buildCoach/buildPerformance/buildSegreteria/buildClub/buildAmministrazione). Ordine default: Dashboard → Team → Coach → Performance → Segreteria → Club → Amministrazione. Sezione Club: Staff → Società → Stagioni. Profilo `segreteria` (non admin): Segreteria sale in cima → Segreteria → Team → Performance → Club. Rilevamento profilo da `user.permessi.profilo`.
+- **sidebarNav.js** (`components/layout/sidebarNav.js`) — Nav filtrato per capabilities. Builder functions per sezione. `buildSuperadminNav()` esportata: sidebar minimale con solo 🏢 Workspace + 🎫 Ticket (usata in modalità superadmin-only). Ordine default: Dashboard → Team → Coach → Performance → Segreteria → Club → Amministrazione.
 └── modules/
     ├── auth/
     │   ├── login.js           — Login page
@@ -317,7 +317,7 @@ frontend-v2/src/
 
 - **supportWidget.js** (`components/supportWidget.js`) — FAB ⚡ unificato in basso a destra. Click espande due opzioni: ❓ Guida (apre PageHelp popover, doppio-click = interattivo) e 🐛 Segnala (apre modal ticket). `initSupportWidget()` chiamata in `main.js` dopo `setupLayout()`. Non visibile su pagine print. Rate limit 5/giorno gestito lato backend (rimossa logica sessionStorage). Screenshot via upload o paste clipboard (max 2MB). Pagina da `window.YFM.currentPage`. Build da `BUILD_INFO.id`. Invia a `POST /support/ticket`.
 
-- **supportTickets.js** (`modules/admin/supportTickets.js`) — Pagina gestione ticket solo superadmin. Lista espandibile con filtri stato (Aperti/Chiusi/Tutti). Dettaglio inline con form risposta, bottone Chiudi senza risposta, elimina singolo (confirm modal), pulizia massiva ticket chiusi (confirm con conteggio). Route: `supportTickets`. Sidebar: voce 🎫 Ticket visibile solo superadmin.
+- **supportTickets.js** (`modules/admin/supportTickets.js`) — Pagina gestione ticket solo superadmin. Lista espandibile con filtri stato (Aperti/Chiusi/Tutti) + filtro priorità (Tutte/Critical/High/Medium/Low). Badge colorato priorità su ogni card. Dettaglio inline con form risposta, bottone Chiudi senza risposta, elimina singolo (confirm modal), pulizia massiva ticket chiusi (confirm con conteggio). Route: `supportTickets`. Sidebar: voce 🎫 Ticket visibile solo superadmin.
 
 - **App**: https://youth-football-manager.vercel.app
 - **Backend API**: https://youth-football-manager-backend.vercel.app/api

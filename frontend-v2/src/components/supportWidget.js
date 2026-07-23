@@ -143,7 +143,12 @@ function openTicketModal() {
       .sw-btn:disabled{opacity:0.5;cursor:not-allowed;}
       .sw-btn-cancel{background:#f3f4f6;color:#555;}
       .sw-btn-send{background:#667eea;color:white;}
-      .sw-counter{font-size:11px;color:#aaa;text-align:right;margin-top:4px;}
+      .sw-priorita-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+      .sw-priorita{padding:5px 12px;border:2px solid #e5e7eb;border-radius:20px;background:white;cursor:pointer;font-size:12px;font-weight:600;transition:all 0.15s;}
+      .sw-priorita[data-p="low"].active{border-color:#27AE60;background:#E8F8F0;color:#27AE60;}
+      .sw-priorita[data-p="medium"].active{border-color:#F39C12;background:#FFF8E1;color:#F39C12;}
+      .sw-priorita[data-p="high"].active{border-color:#E74C3C;background:#FDEDEE;color:#E74C3C;}
+      .sw-priorita[data-p="critical"].active{border-color:#1a1a2e;background:#f0f0f0;color:#1a1a2e;}
     </style>
     <div class="sw-card">
       <div class="sw-title">🐛 Invia segnalazione</div>
@@ -151,6 +156,15 @@ function openTicketModal() {
         <button class="sw-tipo active" data-tipo="bug">🐛 Bug</button>
         <button class="sw-tipo" data-tipo="suggerimento">💡 Idea</button>
         <button class="sw-tipo" data-tipo="domanda">❓ Domanda</button>
+      </div>
+      <div id="sw-priorita-wrap">
+        <div class="sw-label">Priorità</div>
+        <div class="sw-priorita-bar">
+          <button class="sw-priorita" data-p="low" title="Problema cosmetico o UI: testo disallineato, colore sbagliato, typo. Nessun impatto funzionale.">🟢 Low</button>
+          <button class="sw-priorita active" data-p="medium" title="Bug non bloccante ma che degrada l'esperienza: filtro che non funziona, dato non aggiornato, comportamento inatteso.">🟡 Medium</button>
+          <button class="sw-priorita" data-p="high" title="Bug bloccante su una funzione principale: impossibile salvare, convocazioni non si pubblicano, pagina non carica.">🔴 High</button>
+          <button class="sw-priorita" data-p="critical" title="App non funzionante o perdita dati: login impossibile, dati cancellati, API sempre in errore.">⚫ Critical</button>
+        </div>
       </div>
       <div class="sw-label">Descrizione</div>
       <textarea class="sw-textarea" id="sw-desc" placeholder="Descrivi il problema o il suggerimento..."></textarea>
@@ -173,15 +187,31 @@ function openTicketModal() {
   document.body.appendChild(overlay);
 
   let tipoAttivo = 'bug';
+  let prioritaAttiva = 'medium';
   let screenshotBase64 = null;
   const desc = overlay.querySelector('#sw-desc');
   desc.focus();
+
+  overlay.querySelectorAll('.sw-priorita').forEach(btn => {
+    btn.onclick = () => {
+      overlay.querySelectorAll('.sw-priorita').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      prioritaAttiva = btn.dataset.p;
+    };
+  });
+
+  // Mostra/nascondi priorità in base al tipo (solo bug)
+  function updatePrioritaVisibility() {
+    overlay.querySelector('#sw-priorita-wrap').style.display = tipoAttivo === 'bug' ? '' : 'none';
+  }
+  updatePrioritaVisibility();
 
   overlay.querySelectorAll('.sw-tipo').forEach(btn => {
     btn.onclick = () => {
       overlay.querySelectorAll('.sw-tipo').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       tipoAttivo = btn.dataset.tipo;
+      updatePrioritaVisibility();
       const ph = { bug: 'Descrivi il problema: cosa stavi facendo, cosa è successo...', suggerimento: 'Descrivi la tua idea o miglioramento...', domanda: 'Scrivi la tua domanda...' };
       desc.placeholder = ph[tipoAttivo];
     };
@@ -243,7 +273,7 @@ function openTicketModal() {
     try {
       await apiFetch('/support/ticket', {
         method: 'POST',
-        body: JSON.stringify({ tipo: tipoAttivo, descrizione, url_pagina: window.YFM?.currentPage || window.location.href, screenshot_base64: screenshotBase64, build_version: buildVersion, workspace_name: workspaceName, user_agent: userAgent })
+        body: JSON.stringify({ tipo: tipoAttivo, priorita: tipoAttivo === 'bug' ? prioritaAttiva : 'medium', descrizione, url_pagina: window.YFM?.currentPage || window.location.href, screenshot_base64: screenshotBase64, build_version: buildVersion, workspace_name: workspaceName, user_agent: userAgent })
       });
       showToast('✅ Segnalazione inviata!', 'success', 4000);
       setTimeout(close, 500);

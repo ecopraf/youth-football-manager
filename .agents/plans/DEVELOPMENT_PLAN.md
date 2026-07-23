@@ -554,6 +554,70 @@
 
 ---
 
+### EPIC 30: Support Ticket — Priorità Bug
+
+> Aggiungere un campo priorità alla segnalazione ticket, con 4 livelli codificati. Permette al superadmin di triaggiare rapidamente i bug in produzione, soprattutto con più workspace attivi.
+
+#### Task
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 30.1 | Migrazione: aggiungi `priorita TEXT DEFAULT 'medium'` a tabella `support_ticket` | ✅ | — | migrazione SQL | ~2min |
+| 30.2 | Backend: aggiungere `priorita` in `POST /support/ticket` (input utente) e `GET /support/tickets` (restituito nella lista) | ✅ | 30.1 | backend/api/routes/support.js | ~5min |
+| 30.3 | Frontend form segnalazione (`supportWidget.js`): aggiungere dropdown priorità con 4 opzioni prima del campo descrizione | ✅ | 30.2 | frontend-v2/src/components/supportWidget.js | ~8min |
+| 30.4 | Frontend lista ticket superadmin (`supportTickets.js`): badge colorato priorità + filtro per priorità nella toolbar | ✅ | 30.2 | frontend-v2/src/modules/admin/supportTickets.js | ~10min |
+| 30.5 | Card ticket nella dashboard superadmin: contatori aperti/critical/high + bottone "Vedi tutti" → pagina ticket esistente. Accessibile senza workspace selezionato. | ✅ | 30.4 | frontend-v2/src/modules/admin/workspaces.js | ~12min |
+| 30.6 | Area Superadmin: sostituire `showWorkspaceSelector` con home dedicata — sidebar minimale (Workspace+Ticket), griglia card workspace con bottone "Accedi →", card ticket in cima. `loadSquadre` chiamato solo al click "Accedi". | ✅ | 30.5 | frontend-v2/src/modules/auth/login.js, frontend-v2/src/components/layout/sidebarNav.js | ~20min |
+
+**Effort totale stimato**: ~57min (6 task)
+
+**Valori `priorita`**:
+- `low` 🟢 — Cosmetico, nessun impatto funzionale (testo disallineato, typo, colore sbagliato)
+- `medium` 🟡 — Non bloccante ma degrada l'UX (filtro rotto, dato non aggiornato) — **default**
+- `high` 🔴 — Bug bloccante su funzione principale (impossibile salvare, convocazioni non si pubblicano)
+- `critical` ⚫ — Down totale o perdita dati (login non funziona, API sempre in errore)
+
+---
+
+### EPIC 29: Demo Mode — Workspace a Tempo
+
+> Permettere al superadmin di configurare un workspace come "demo" con scadenza automatica. Alla scadenza l'accesso viene bloccato con una pagina dedicata e CTA per l'attivazione. Gestione commerciale delle prove gratuite per nuove società.
+
+**Valore commerciale**: Permette di offrire demo personalizzate e configurate con i dati reali della società, con scadenza automatica senza intervento manuale. Strumento di vendita diretto.
+
+#### Fase 1: DB + Backend
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 29.1 | Migrazione: aggiungi `demo_scadenza TIMESTAMPTZ DEFAULT NULL` a tabella `workspace` (null = workspace normale, data futura = demo attiva, data passata = demo scaduta) | ⬜ | — | migrazione SQL | ~3min |
+| 29.2 | Guard in `authMiddleware`: dopo verifica JWT, se `workspace.demo_scadenza` è nel passato → 403 `{error: 'DEMO_EXPIRED', scadenza}`. Superadmin escluso dal blocco. | ⬜ | 29.1 | backend/api/middleware/auth.js | ~8min |
+| 29.3 | Endpoint `PUT /api/workspaces/:id/demo` (solo superadmin): body `{giorni: 7|15|30|null}` — imposta `demo_scadenza = now() + giorni` oppure null per revocare/attivare definitivamente | ⬜ | 29.1 | backend/api/routes/workspace.js | ~8min |
+
+#### Fase 2: Frontend
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 29.4 | Intercettazione 403 `DEMO_EXPIRED` in `api.js`: redirect a `/demo-scaduta` con la data di scadenza in sessionStorage | ⬜ | 29.2 | frontend-v2/src/services/api.js | ~5min |
+| 29.5 | Pagina `demo-scaduta`: schermata branded con messaggio "Il periodo di prova è terminato", data scadenza, CTA "Contattaci per attivare" (mailto o link WhatsApp configurabile) | ⬜ | 29.4 | frontend-v2/src/modules/auth/demoExpired.js | ~8min |
+| 29.6 | Pannello superadmin (workspaces.js): per ogni workspace badge "🕐 Demo" con giorni rimanenti + dropdown durata (7/15/30gg) + bottone "Attiva demo" / "Estendi" / "Revoca (attiva definitivamente)" | ⬜ | 29.3 | frontend-v2/src/modules/admin/workspaces.js | ~12min |
+
+#### Fase 3: Finalizzazione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 29.7 | Aggiornare DATABASE_SCHEMA.md + AGENTS.md | ⬜ | 29.6 | .agents/knowledge/DATABASE_SCHEMA.md, .agents/AGENTS.md | ~3min |
+
+**Effort totale stimato**: ~47min (7 task)
+
+**Note architetturali**:
+- `demo_scadenza NULL` = workspace normale (nessun impatto su utenti esistenti)
+- Il superadmin non viene mai bloccato — può sempre accedere per gestire/estendere
+- La scadenza è sul workspace, non sull'utente — tutti gli utenti del workspace vengono bloccati insieme
+- "Revoca demo" = `demo_scadenza = NULL` → workspace diventa permanente
+- **Non implementare ora**: email automatica di avviso a N giorni dalla scadenza, trial self-service dalla landing page
+
+---
+
 ## 4. Dipendenze tra Epic
 
 > Epic 1, 2, 3, 6, 8, 9, 10, 11, 12, 16, 18, 20, 21, 24, 25, 27 archiviati in `DEVELOPMENT_PLAN_ARCHIVE.md`.
@@ -569,6 +633,7 @@ EPIC 23 (Player Performance Center) ──→ nessuna dipendenza
 EPIC 26 (Stripe) ──→ dipende da EPIC 21 ✅ (archiviato)
 EPIC 28 (Scouting CRM) ──→ nessuna dipendenza
 EPIC 29 (Demo Mode) ──→ nessuna dipendenza
+EPIC 30 (Ticket Priorità) ──→ dipende da EPIC 27 ✅ (archiviato)
 ```
 
 Ordine consigliato per impatto/effort:
@@ -577,7 +642,8 @@ Ordine consigliato per impatto/effort:
 3. **EPIC 22** (Capabilities, ~1h20) → gestione permessi avanzata
 4. **EPIC 26** (Stripe, ~1h08) → pagamenti online
 5. **EPIC 28** (Scouting CRM, ~2h38) → differenziatore unico nel mercato dilettantistico
-9. **EPIC 29** (Demo Mode, ~47min) → strumento vendita immediato
+9. **EPIC 30** (Ticket Priorità, ~25min) → triage rapido bug in produzione
+10. **EPIC 29** (Demo Mode, ~47min) → strumento vendita immediato
 10. **EPIC 19** (PWA Guest Push) → engagement famiglie
 7. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro
 8. **EPIC 7** (tornei, 37min) → nice-to-have
@@ -613,6 +679,7 @@ Ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.17.8 | feat: EPIC 30 Support Ticket Priorità — colonna `priorita` in `support_ticket` (low/medium/high/critical), pill selettore nel widget (solo bug, con tooltip), badge colorato + filtro priorità in lista superadmin, priorità in email con colore semantico. fix: riga Mittente spuria rimossa dall'email, `getMittente()` con fallback parte locale email, nome/cognome superadmin nel JWT. Card ticket in pagina Workspace con contatori aperti/critical/high. Bottone "Accedi →" nelle card workspace (giallo Modifica, rosso Elimina). `buildSuperadminNav()` in sidebarNav.js. Login superadmin naviga direttamente a pagina Workspace. |
 | v3.17.8 | fix: grafico trend voti playerPerformance — drawSimpleLineChart aggiunta in charts.js (drawLineChart usa formato dual-line incompatibile). fix: label asse X verticali con clip canvas (no sforamento). fix: ordinamento valutazioni per data_ora prima del calcolo trend. fix: label medie dinamiche ("Ultimi N / Primi N voti"). fix: performance-summary e performance-detail filtrano valutazioni per partite del team_id richiesto (fix cross-team/stagione). feat: filtro tipo competizione in Performance Center (Campionato/Amichevoli/Tutte) con fallback automatico su Tutte se <3 giocatori con voti in campionato. fix: filtro amichevole include tornei (tutto tranne Campionato e Coppa). |
 | v3.17.7 | fix: convocazioni-pubblica falliva silenziosamente per superadmin (created_by='superadmin' violava FK notification_created_by_fkey) — ora usa null per ID non-UUID. fix: convocazioni-stato restituisce {saved, published} separati. fix: DB migrazione FK notification.created_by da NO ACTION a SET NULL. fix: notifiche mancanti inserite per 62 partite con convocazioni salvate ma non pubblicate. fix: distinta ordina alfabeticamente se titolari senza numero maglia; numeri vuoti per tutti se titolari incompleti; senza formazione usa null (non numero_maglia dal roster). fix: form creazione giocatore mancava campo editTaglia. feat: formazione — bottone Auto panchina assegna numeri liberi alle riserve (Portiere→Difensore→Centrocampista→Attaccante→senza ruolo, alfabetico per parità). feat: recall ultima formazione filtra per convocati presenti (slot vuoto se assente) e ripristina numeri maglia. fix: sort riserve in auto-panchina e salvataggio — senza ruolo per ultimi (99 invece di -1). |
 | v3.17.6 | feat: parser PDF calendario multi-regione — supporto Veneto (formato Comitato Regionale inline `GIRONE:   A`, `HEADER_REGEX_CR`) e Emilia Romagna (two-line `UNDER 17 REGIONALE\nGIRONE A` + same-line `UNDER 15 REGIONALE GIRONE C`, `HEADER_REGEX_ER` + `HEADER_REGEX_ER_INLINE`). Refactoring `extractHeaders()` helper con cascade detection usato da `findTeamInPdf` e `extractCalendar`. Fix deduplicazione con Set `cat|girone` e `headers.sort()` per boundaries corretti. Test suite permanente `backend/test_pdf_parser.js` (12 casi: Lazio, Lombardia, Sicilia, Piemonte, Campania, Veneto, ER). Testato: Veneto 30p ✅, ER U14/U17/U15 ✅, Sicilia CT 38p ✅ |
@@ -732,7 +799,7 @@ Ordine consigliato per impatto/effort:
 - Se un task supera 15min → spezzarlo in sotto-task
 
 ### Aggiungere nuovi EPIC
-- Il numero EPIC è **progressivo** (prossimo: EPIC 30)
+- Il numero EPIC è **progressivo** (prossimo: EPIC 31)
 - Inserire SEMPRE in ordine numerico nella sezione "3. Epics & Micro-Task"
 - Mai inserire un EPIC tra due esistenti con numero inferiore/superiore
 - Aggiornare la sezione "4. Dipendenze tra Epic" se il nuovo EPIC ha dipendenze

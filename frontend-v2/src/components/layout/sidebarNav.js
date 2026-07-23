@@ -5,6 +5,13 @@ import { PROFILI } from '../../utils/capabilities.js';
  * Filtra le voci in base a capabilities, ruolo e profilo utente
  */
 
+export function buildSuperadminNav() {
+  let html = '';
+  html += navItem('workspaces', '🏢', 'Workspace', 'Gestione workspace/società', true);
+  html += navItem('supportTickets', '🎫', 'Ticket', 'Gestione ticket di supporto');
+  return html;
+}
+
 export function buildNavHtml({ user, isGuest, isSuperadmin }) {
   if (isGuest) return buildGuestNav(user?.guestTipo);
 
