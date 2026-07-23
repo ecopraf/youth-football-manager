@@ -25,13 +25,13 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       const { data, error } = await query;
       if (error) return res.status(400).json({ error: error.message });
 
-      // Admin e allenatore vedono tutte le notifiche del workspace
+      // Admin/superadmin vedono tutte le notifiche del workspace
       const ruolo = user.ruolo;
-      if (ruolo === 'admin' || ruolo === 'allenatore' || user.is_superadmin) {
+      if (ruolo === 'admin' || user.is_superadmin) {
         return res.json(data || []);
       }
 
-      // Staff: filtra per destinatario_user_id o destinatario_profilo o created_by
+      // Allenatore e staff: filtra per destinatario_user_id o destinatario_profilo o created_by
       const profilo = user.permessi?.profilo || ruolo;
       const filtered = (data || []).filter(n => {
         // ricevuta_caricata: sempre visibile se nel destinatario_profilo
@@ -59,8 +59,8 @@ module.exports = function createNotificationRouter({ supabase, authMiddleware })
       if (error) return res.status(400).json({ error: error.message });
 
       const ruolo = user.ruolo;
-      // Admin/allenatore: conta tutte le non lette
-      if (ruolo === 'admin' || ruolo === 'allenatore' || user.is_superadmin) {
+      // Admin/superadmin: conta tutte le non lette
+      if (ruolo === 'admin' || user.is_superadmin) {
         return res.json({ unread: (data || []).length });
       }
 
