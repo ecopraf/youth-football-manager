@@ -5,6 +5,13 @@
 const pdfParse = require('pdf-parse');
 
 const HEADER_REGEX = /\*\s+((?:UNDER|GIOVANISSIMI|ALLIEVI)[^*]+?)\s+GIRONE:\s*([A-Z]{1,2})(?:\s+\w+)?\s*\*/g;
+// Formato Veneto/Comitato Regionale: riga senza * (es. "JUNIORES UNDER 19 ELITE GIRONE:   A")
+const HEADER_REGEX_CR = /^\s*((?:JUNIORES\s+)?(?:UNDER|GIOVANISSIMI|ALLIEVI)[^\n]+?)\s+GIRONE:\s*([A-Z]{1,2})\s*$/gm;
+// Formato Emilia Romagna: categoria e girone su due righe consecutive
+// es. "UNDER  14 PRO \nGIRONE UNICO " oppure "UNDER  17 REGIONALE \nGIRONE B (modificato...)  "
+const HEADER_REGEX_ER = /((?:JUNIORES\s+)?(?:UNDER|GIOVANISSIMI|ALLIEVI)\s+[^\n]+?)\s*\n\s*GIRONE\s+(UNICO|[A-Z])(?:\s|\n|$)/g;
+// Formato ER inline: categoria e girone sulla stessa riga (es. "UNDER  15 REGIONALE GIRONE C")
+const HEADER_REGEX_ER_INLINE = /^\s*((?:JUNIORES\s+)?(?:UNDER|GIOVANISSIMI|ALLIEVI)\s+\S+(?:\s+\S+)*)\s+GIRONE\s+(UNICO|[A-Z])\s*$/;
 
 // Mappa parole senza accento → con accento (dal PDF SGS arrivano senza)
 const ACCENT_MAP = { 'Citta': 'Città', 'Virtus': 'Virtus', 'Universita': 'Università' };
@@ -33,6 +40,51 @@ function normalizeTeamName(name) {
 }
 
 /**
+ * Estrae tutti gli header (categoria + girone) dal testo, supportando entrambi i formati.
+ */
+function extractHeaders(text) {
+  const headers = [];
+  let m;
+  // Formato standard SGS (con *)
+  while ((m = HEADER_REGEX.exec(text)) !== null) {
+    headers.push({ idx: m.index, cat: m[1].trim().replace(/\s+/g, ' '), girone: m[2].trim() });
+  }
+  HEADER_REGEX.lastIndex = 0;
+  if (headers.length > 0) return headers;
+  // Formato Comitato Regionale inline (es. Veneto: "JUNIORES UNDER 19 ELITE GIRONE:   A")
+  while ((m = HEADER_REGEX_CR.exec(text)) !== null) {
+    headers.push({ idx: m.index, cat: m[1].trim().replace(/\s+/g, ' '), girone: m[2].trim() });
+  }
+  HEADER_REGEX_CR.lastIndex = 0;
+  if (headers.length > 0) return headers;
+  // Formato Emilia Romagna — inline (es. "UNDER 15 REGIONALE GIRONE C") processato riga per riga
+  const inlineCatGironi = new Set();
+  let lineStart = 0;
+  for (const line of text.split('\n')) {
+    const t = line.trim();
+    const mi = HEADER_REGEX_ER_INLINE.exec(t);
+    if (mi) {
+      const cat = mi[1].trim().replace(/\s+/g, ' ');
+      const girone = mi[2].trim();
+      headers.push({ idx: lineStart, cat, girone });
+      inlineCatGironi.add(`${cat}|${girone}`);
+    }
+    HEADER_REGEX_ER_INLINE.lastIndex = 0;
+    lineStart += line.length + 1;
+  }
+  // Formato ER due righe — salta coppie cat+girone già coperte dall'inline
+  while ((m = HEADER_REGEX_ER.exec(text)) !== null) {
+    const cat = m[1].trim().replace(/\s+/g, ' ');
+    const girone = m[2].trim() === 'UNICO' ? 'UNICO' : m[2].trim();
+    if (inlineCatGironi.has(`${cat}|${girone}`)) continue;
+    headers.push({ idx: m.index, cat, girone });
+  }
+  HEADER_REGEX_ER.lastIndex = 0;
+  headers.sort((a, b) => a.idx - b.idx);
+  return headers;
+}
+
+/**
  * Step 1: Trova tutte le categorie/gironi in cui appare la squadra cercata
  */
 async function findTeamInPdf(pdfBuffer, searchName) {
@@ -40,14 +92,7 @@ async function findTeamInPdf(pdfBuffer, searchName) {
   const text = data.text;
   const searchUpper = searchName.toUpperCase().trim();
   
-  // Trova tutti gli header e le loro posizioni
-  const headers = [];
-  let m;
-  while ((m = HEADER_REGEX.exec(text)) !== null) {
-    headers.push({ idx: m.index, cat: m[1].trim().replace(/\s+/g, ' '), girone: m[2].trim().replace(/\s+/g, ' ') });
-  }
-  HEADER_REGEX.lastIndex = 0;
-  
+  const headers = extractHeaders(text);
   const results = [];
   const allTeamNames = new Set();
   
@@ -96,13 +141,7 @@ async function extractCalendar(pdfBuffer, searchName, categoriaTarget, gironeTar
   const text = data.text;
   const searchUpper = searchName.toUpperCase().trim();
   
-  // Trova header e sezioni
-  const headers = [];
-  let m;
-  while ((m = HEADER_REGEX.exec(text)) !== null) {
-    headers.push({ idx: m.index, cat: m[1].trim().replace(/\s+/g, ' '), girone: m[2].trim().replace(/\s+/g, ' ') });
-  }
-  HEADER_REGEX.lastIndex = 0;
+  const headers = extractHeaders(text);
   
   let calendarText = null;
   let campiText = null;
