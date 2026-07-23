@@ -942,24 +942,40 @@ export default async function loadDashboard() {
   }
 
   // --- Dashboard Organize ---
-  const WIDGET_LABELS = { next_training: '🏋️ Prossimo Allenamento', next_match: '⏱ Prossima Partita', stats_widgets: '📊 Statistiche', top_players: '🏆 Top Giocatori', results: '📋 Ultimi Risultati', injuries: '🏥 Infortuni', staff: '👥 Staff', classifica: '🏆 Classifica & GR', certificati: '🏥 Certificati Medici', convocazione: '📋 Prossima Convocazione' };
+  const WIDGET_LABELS = { next_training: '🏋️ Prossimo Allenamento', next_match: '⏱ Prossima Partita', stats_widgets: '📊 Statistiche', top_players: '🏆 Top Giocatori', results: '📋 Ultimi Risultati', injuries: '🏥 Infortuni', staff: '👥 Staff', classifica: '🏆 Classifica & GR', certificati: '🏥 Certificati Medici', convocazione: '📋 Prossima Convocazione', fees: '💰 Quote', kit: '👕 Kit Sportivo', checklist: '✅ Checklist Stagione', tesseramento: '📋 Tesseramento', performance_voti: '⭐ Voti Performance' };
   const userProfilo = window.YFM.getUser()?.permessi?.profilo || '';
   const _user = window.YFM.getUser();
   const _isAdmin = _user?.is_superadmin || _user?.ruolo === 'admin';
+
+  // Calcola quali widget l'utente può vedere in base alle capabilities
+  const _canSeeWidget = (id) => {
+    if (_isAdmin) return true;
+    const capMap = { fees: 'quote', kit: 'kit', tesseramento: 'tesseramento', checklist: 'tesseramento' };
+    const cap = capMap[id];
+    if (!cap) return true;
+    return window.YFM.canRead(cap);
+  };
+
+  const ALL_ORDER = ['next_training', 'next_match', 'stats_widgets', 'top_players', 'performance_voti', 'results', 'injuries', 'certificati', 'classifica', 'staff', 'convocazione', 'fees', 'kit', 'checklist', 'tesseramento'];
+  const ALLENATORE_ORDER = ['next_training', 'next_match', 'stats_widgets', 'top_players', 'performance_voti', 'results', 'injuries', 'certificati', 'classifica', 'staff', 'convocazione'];
   const DEFAULT_ORDER = _isAdmin
-    ? ['next_training', 'next_match', 'stats_widgets', 'top_players', 'results', 'injuries', 'fees', 'kit', 'checklist', 'tesseramento', 'classifica', 'staff', 'certificati', 'convocazione']
+    ? ALL_ORDER
     : userProfilo === 'segreteria'
       ? ['checklist', 'tesseramento', 'fees', 'kit', 'certificati', 'injuries', 'next_training', 'next_match', 'convocazione', 'stats_widgets', 'top_players', 'results', 'classifica', 'staff']
-      : ['next_training', 'next_match', 'stats_widgets', 'top_players', 'results', 'injuries', 'fees', 'kit', 'checklist', 'tesseramento', 'classifica', 'staff', 'certificati', 'convocazione'];
+      : userProfilo === 'allenatore'
+        ? ALLENATORE_ORDER
+        : ALL_ORDER;
 
   const _societari = new Set(['direttore_sportivo', 'direttore_tecnico', 'direttore_generale', 'presidente']);
   const DEFAULT_HIDDEN = _isAdmin
     ? []
     : userProfilo === 'segreteria'
       ? ['stats_widgets', 'top_players']
-      : _societari.has(userProfilo) || userProfilo === 'dirigente'
-        ? ['allenamenti', 'stats_widgets', 'top_players']
-        : ['fees', 'kit', 'checklist', 'tesseramento'];
+      : userProfilo === 'allenatore'
+        ? ['convocazione']
+        : _societari.has(userProfilo) || userProfilo === 'dirigente'
+          ? ['allenamenti', 'stats_widgets', 'top_players']
+          : ALL_ORDER.filter(id => !_canSeeWidget(id));
 
   function applyLayout(layout) {
     const container = document.getElementById('dashWidgetsContainer');
@@ -1100,7 +1116,7 @@ export default async function loadDashboard() {
     const isMobile = window.innerWidth <= 768;
 
     function renderList() {
-      return order.map((id) => {
+      return order.filter(id => _canSeeWidget(id)).map((id) => {
         const isHidden = hidden.includes(id);
         const isSelected = selectedOrgId === id;
         const label = WIDGET_LABELS[id] || id;

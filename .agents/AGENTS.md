@@ -104,8 +104,10 @@ api/
                                   `POST /api/auth/register` `GET /api/auth/users` `GET|PUT|DELETE /api/auth/users/:id` `PUT /api/auth/users/:id/toggle-active`
                                   `GET /api/auth/guest-links` `POST /api/auth/guest-link` `DELETE /api/auth/guest-link/:token` `DELETE /api/auth/guest-links-batch` `POST /api/auth/guest-links-renew`
                                   `GET /api/guest/:token` `GET|PUT /api/users/preferences`
-    ├── workspace.js            — Workspace (nome/logo/nome_breve), workspace_anagrafica (dati societari), facility, stagioni, categorie, migrazione
+    ├── workspace.js            — Workspace (nome/logo/nome_breve), workspace_anagrafica (dati societari), facility, stagioni, categorie, migrazione, **demo mode**, **sospensione**
                                   `GET /api/auth/workspaces` `GET /api/workspaces` `GET|PUT /api/workspaces/:id` `PUT /api/workspaces/:id/logo` `PUT /api/workspaces/:id/anagrafica` `GET /api/workspaces/:id/recap`
+                                  `PUT /api/workspaces/:id/demo` (solo superadmin — body `{giorni: 7|15|30|null}`, imposta/revoca demo_scadenza)
+                                  `PUT /api/workspaces/:id/sospendi` (solo superadmin — body `{sospeso: true|false}`, sospende/riattiva workspace)
                                   `GET|POST /api/workspaces/:id/stagioni` `GET /api/workspaces/:id/stagioni/:seasonId/teams` `POST /api/stagioni/:id/migra`
                                   `GET|POST /api/workspaces/:id/categorie` `DELETE /api/categorie/:id`
                                   `GET|POST /api/workspaces/:id/facility` `GET|PUT /api/workspaces/:id/staff` `POST /api/workspaces/:id/staff/migrate`
@@ -271,7 +273,9 @@ frontend-v2/src/
     │   ├── guest.js           — Guest view (routing differenziato per tipo)
     │   ├── guestAtleta.js     — Home Famiglia (tipo=famiglia: stats, allenamenti, partite, assenze, quote, tesseramento)
     │   ├── guestGenitore.js   — Home Ospite (tipo=ospite: solo partite/risultati pubblici, niente quote)
-    │   └── absence.js         — Segnalazione assenza (guest)
+    │   ├── absence.js         — Segnalazione assenza (guest)
+    │   ├── demoExpired.js     — Pagina demo scaduta (CTA email+WhatsApp, data scadenza da sessionStorage)
+    │   └── workspaceSospeso.js — Pagina workspace sospeso (CTA email+WhatsApp, intercettata da hash #sospeso)
     ├── admin/
     │   ├── users.js           — Gestione utenti
     │   ├── guestLinks.js      — Link guest CRUD

@@ -8,10 +8,16 @@
 |------|---------------|
 | `users.js` | Gestione utenti workspace (CRUD, profili, capabilities, categorie accesso) |
 | `guestLinks.js` | Gestione link guest (crea, rinnova, revoca) |
-| `workspaces.js` | Gestione workspace (superadmin): CRUD, stagioni, categorie, migrazione stagione |
+| `workspaces.js` | Gestione workspace (superadmin): CRUD, stagioni, categorie, migrazione stagione, **demo mode** (badge giorni rimanenti, modal gestione durata/revoca), **sospensione workspace** (toggle switch in card, modal custom conferma) |
+
+**File auth correlati:**
+| File | Responsabilità |
+|------|---------------|
+| `modules/auth/demoExpired.js` | Pagina demo scaduta — mostrata quando 403 DEMO_EXPIRED intercettato in `api.js`. CTA email+WhatsApp, data scadenza da `sessionStorage('demo_scadenza')` |
+| `modules/auth/workspaceSospeso.js` | Pagina workspace sospeso — mostrata quando 403 WORKSPACE_SUSPENDED intercettato in `api.js`. CTA email+WhatsApp. |
 
 ## Entry point router
-`src/router.js` — rotte: `users`, `guestLinks`, `workspaces`
+`src/router.js` — rotte: `users`, `guestLinks`, `workspaces`, `demoExpired`, `workspaceSospeso`
 
 ## Endpoint backend usati
 
@@ -45,6 +51,8 @@ DELETE /api/workspaces/:id
 GET    /api/workspaces/:id/recap
 GET    /api/workspaces/:id/anagrafica
 PUT    /api/workspaces/:id/anagrafica
+PUT    /api/workspaces/:id/demo        ← body {giorni: 7|15|30|null} — imposta/revoca demo_scadenza
+PUT    /api/workspaces/:id/sospendi    ← body {sospeso: true|false} — sospende/riattiva workspace (solo superadmin)
 POST   /api/workspaces/:id/stagioni
 PUT    /api/stagioni/:id
 DELETE /api/stagioni/:id
@@ -77,7 +85,7 @@ GET    /api/logos
 
 - `users` — utenti (`permessi` JSONB con `profilo` + `capabilities`)
 - `guest_token` — link guest (`tipo`: `famiglia`/`ospite`, `squadre_accesso`)
-- `workspace` — workspace
+- `workspace` — workspace (**`demo_scadenza TIMESTAMPTZ`**: null=normale, futuro=demo attiva, passato=scaduta; **`sospeso BOOLEAN DEFAULT false`**: true=accesso bloccato con pagina dedicata)
 - `workspace_anagrafica` — dati societari
 - `season` — stagioni
 - `category` — categorie
@@ -115,6 +123,9 @@ workspaces.js
 - Migrazione stagione (`/stagioni/:id/migra`): migra rosa, staff, config allenamenti da stagione precedente con mapping categorie
 - `users.squadre_accesso` contiene array di `category_id` (NON `team_id`)
 - Profili disponibili: `admin`, `allenatore`, `vice_allenatore`, `dirigente`, `preparatore`, `osservatore`, `segreteria`, `custom`
+- **Guard demo**: `authMiddleware` in `index.js` controlla `sospeso` PRIMA di `demo_scadenza`. `WORKSPACE_SUSPENDED` → 403, intercettato in `api.js` → hash `#sospeso` → reload → `workspaceSospeso.js`
+- **Toggle sospensione**: label con `data-sospendi` in alto a destra di ogni card workspace. Modal custom con nome workspace, bottoni Annulla/Sospendi(rosso) o Annulla/Riattiva(verde)
+- **Banner pre-scadenza demo**: pill floating in `main.js`, chiamato via `window._checkDemoBanner()` ad ogni `navigateTo`. Desktop: centrato in alto. Mobile: in basso a sinistra con `right:72px` per non coprire FAB ⚡
 
 ## TODO / Bug aperti
 

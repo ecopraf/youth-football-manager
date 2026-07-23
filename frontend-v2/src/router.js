@@ -5,6 +5,8 @@ export function initRouter() {
     guestAtleta: () => import('./modules/auth/guestAtleta.js'),
     guestGenitore: () => import('./modules/auth/guestGenitore.js'),
     guestFees: () => import('./modules/auth/guestFees.js'),
+    demoExpired: () => import('./modules/auth/demoExpired.js'),
+    workspaceSospeso: () => import('./modules/auth/workspaceSospeso.js'),
     users: () => import('./modules/admin/users.js'),
     guestLinks: () => import('./modules/admin/guestLinks.js'),
     dashboard: () => import('./modules/team/dashboard.js'),
@@ -230,6 +232,10 @@ export function initRouter() {
       }
       // Help contestuale
       import('./components/PageHelp.js').then(m => m.injectPageHelp(page)).catch(() => {});
+      // Banner demo pre-scadenza
+      if (!window.YFM.isGuest() && window.YFM.isAuthenticated() && typeof window._checkDemoBanner === 'function') {
+        window._checkDemoBanner();
+      }
     } catch (error) {
       container.innerHTML = `<div class="error-box">Errore nel caricamento di ${page}: ${error.message}</div>`;
     }

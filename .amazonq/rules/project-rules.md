@@ -293,7 +293,8 @@ I workspace attivi nel DB sono:
 - `ACP Annex` (ID: `752eab50-73c1-495b-9e0e-8b851e9c9a99`) → **rinominato in "Albalonga"**
 - `DF Academy` (ID: `ab1186e5-a884-4355-b684-28e32b8157c2`) — Categorie: Under 15
 
-**Struttura `workspace`**: solo `nome`, `nome_breve`, `logo_url`, `checklist_template`, `data_creazione` — gestito dal superadmin.
+**Struttura `workspace`**: `nome`, `nome_breve`, `logo_url`, `checklist_template`, `data_creazione`, `demo_scadenza TIMESTAMPTZ` (null=normale, data futura=demo attiva, data passata=demo scaduta), `sospeso BOOLEAN DEFAULT false` (true=accesso bloccato) — gestito dal superadmin.
+**Demo guard**: `authMiddleware` controlla `demo_scadenza` dopo verifica JWT. Se scaduta → 403 `{error: 'DEMO_EXPIRED', scadenza}`. Superadmin (`is_superadmin=true`) escluso. `api.js` intercetta il 403 e fa redirect a `#demo-scaduta` (pagina `demoExpired.js`). Revoca demo = `demo_scadenza = NULL`.
 **Struttura `workspace_anagrafica`**: tutti i dati societari (`forma_giuridica`, `matricola_figc`, `p_iva`, `codice_fiscale`, `sdi`, `iban`, `indirizzo`, `telefono`, `email`, `sito_web`, `facebook`, `instagram`, `colori_sociali`, `sponsor_tecnico`, `nome_campo`, `indirizzo_campo`) — modificabile da admin/segreteria via `GET/PUT /api/workspaces/:id/anagrafica`. Parser unificato TC+testo libero: `parseSocietaText()` in `club.js` e `workspaces.js`.
 
 **NON ESISTONO PIÙ**:

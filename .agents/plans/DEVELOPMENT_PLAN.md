@@ -327,74 +327,6 @@
 **Dipendenze**: Nessuna (standalone, refactoring puro)
 
 ---
-
-### EPIC 23: Player Performance Center
-
-> Pagina dedicata sotto la sezione Performance per trasformare i voti partita in conoscenza strategica. Vista rosa aggregata (classifica interna, analisi per reparto, top performer) + vista giocatore (trend voti, media, eventi correlati). Obiettivo: da sistema di data entry a sistema di decision support per allenatori e DS.
-
-**Valore commerciale**: Nessun gestionale dilettantistico offre analytics sui voti. L'allenatore vede in un colpo d'occhio chi sta crescendo, chi è in calo, quali reparti sono deboli. Il DS ha elementi oggettivi per le decisioni di mercato.
-
-**Prerequisito**: Dati sufficienti = almeno 5 partite con valutazioni inserite. Sotto questa soglia mostrare stato "Dati insufficienti".
-
-#### Fase 1: Backend — Endpoint aggregati
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 23.1 | Endpoint `GET /api/squadre/:teamId/performance-summary` — per ogni giocatore: media voti, n° valutazioni, trend (media ultimi 5 vs precedenti), minuti totali, gol/assist/cartellini da match_event | ⬜ | — | routes/statistics.js | ~15min |
-| 23.2 | Endpoint `GET /api/calciatori/:playerId/performance-detail?team_id=X` — lista valutazioni con dati partita (avversario, data, competizione, minuti, eventi), media mensile, trend | ⬜ | — | routes/statistics.js | ~10min |
-
-#### Fase 2: Pagina base — Vista Rosa
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 23.3 | Creare `modules/performance/playerPerformance.js` — struttura pagina con due view: Rosa (default) e Giocatore | ⬜ | 23.1 | modules/performance/playerPerformance.js | ~10min |
-| 23.4 | Sezione "🏆 Top Performer" — top 5 per media voti con badge trend (⬆⬇➡) e mini-sparkline | ⬜ | 23.3 | modules/performance/playerPerformance.js | ~12min |
-| 23.5 | Sezione "📊 Analisi per Reparto" — media voti per ruolo (Portieri/Difensori/Centrocampisti/Attaccanti) con heatmap colorata (🟢🟡🔴) | ⬜ | 23.3 | modules/performance/playerPerformance.js | ~10min |
-| 23.6 | Sezione "📋 Classifica Rosa" — tabella tutti i giocatori ordinata per media voti, con colonne: nome, media, trend, presenze valutate, gol, assist | ⬜ | 23.3 | modules/performance/playerPerformance.js | ~12min |
-| 23.7 | Sezione "⚠️ Senza valutazioni" — giocatori con 0 voti nelle ultime 3 partite (reminder per l'allenatore) | ⬜ | 23.3 | modules/performance/playerPerformance.js | ~8min |
-
-#### Fase 3: Vista Giocatore
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 23.8 | Click su giocatore → vista dettaglio con header (nome, media, trend, minuti totali) | ⬜ | 23.4 | modules/performance/playerPerformance.js | ~8min |
-| 23.9 | Grafico trend voti — canvas line chart (ultime 10 partite) con punti cliccabili, asse X = data partita | ⬜ | 23.8 | modules/performance/playerPerformance.js | ~15min |
-| 23.10 | Statistiche aggregate — media stagionale, media ultimi 5 vs precedenti (con delta colorato), miglior voto, peggior voto | ⬜ | 23.8 | modules/performance/playerPerformance.js | ~8min |
-| 23.11 | Lista partite valutate — card per partita con voto, minuti, avversario, data, eventi (⚽🅰️🟨🟥), nota allenatore | ⬜ | 23.8 | modules/performance/playerPerformance.js | ~12min |
-| 23.12 | Analisi mensile — media voti per mese (barre orizzontali colorate) | ⬜ | 23.8 | modules/performance/playerPerformance.js | ~10min |
-
-#### Fase 4: Integrazione
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 23.13 | Sidebar: voce "⭐ Performance" sotto sezione Performance (capability: `statistiche`) | ⬜ | 23.3 | components/layout/sidebarNav.js | ~3min |
-| 23.14 | Router: registrare route `playerPerformance` | ⬜ | 23.3 | router.js | ~2min |
-| 23.15 | PlayerDetail: link "→ Vedi performance" nella sezione valutazioni che naviga alla pagina con giocatore pre-selezionato | ⬜ | 23.8 | modules/team/playerDetail.js | ~5min |
-| 23.16 | Dashboard: widget "⭐ Top Performer" — top 3 giocatori per media voti (ultimi 30gg), visibile per allenatore/admin | ⬜ | 23.1 | modules/team/dashboard.js | ~10min |
-| 23.17 | helpData.js: aggiungere entry per pagina playerPerformance | ⬜ | 23.3 | components/helpData.js | ~3min |
-| 23.18 | Test build completo + aggiornare docs (AGENTS.md, DATABASE_SCHEMA) | ⬜ | 23.17 | .agents/ | ~3min |
-
-**Effort totale stimato**: ~2h 38min (18 task)
-
-**Priorità implementazione**:
-1. Fase 1 (Backend) — dati aggregati, 25min
-2. Fase 2 (Vista Rosa) — valore immediato per l'allenatore, 52min
-3. Fase 3 (Vista Giocatore) — approfondimento per singolo atleta, 53min
-4. Fase 4 (Integrazione) — connessioni con resto app, 26min
-
-**Note architetturali**:
-- Nessuna tabella DB nuova — tutto basato su `valutazione_partita` + `match_event` + `match` esistenti
-- Il trend è calcolato: media ultimi 5 voti vs media voti precedenti (se <5 voti totali → solo media, no trend)
-- La heatmap reparto usa soglie: media ≥7 = 🟢, 6-6.9 = 🟡, <6 = 🔴
-- Il grafico trend usa `utils/charts.js` già esistente
-- La vista giocatore è una sub-view nella stessa pagina (no navigazione separata) — URL con `?playerId=X` per deep-link da playerDetail
-- Capability richiesta: `statistiche: read` (stessa delle statistiche esistenti)
-- Soglia dati minimi: <3 valutazioni per giocatore → mostrare "Dati insufficienti" invece di media
-- I minuti giocati vengono da `valutazione_partita` (già salvati nella tab MC) — NON da match_formation
-- **Non implementare ora**: micro-valutazioni (Tecnica/Tattica/ecc.), radar chart, confronto giocatori, valutazione AI conferma/svincolo — richiedono più stagioni di dati per essere significativi
-
-**Dipendenze**: Nessuna (usa dati già esistenti)
-
 ---
 
 ### EPIC 26: Pagamenti Online (Stripe Connect)
@@ -507,7 +439,7 @@
 **Note architetturali**:
 - `prospect` è separato da `player` — non si tocca la rosa finché non si converte esplicitamente
 - La conversione (28.10) crea il player ma mantiene il link `prospect.player_id` per preservare lo storico scouting nel dossier anche dopo l'ingresso in rosa
-- Il radar chart riusa Chart.js già presente nel progetto (vedi EPIC 23)
+- Il radar chart riusa Chart.js già presente nel progetto (vedi playerPerformance.js — EPIC 23 archiviato)
 - Allegati: link esterni (YouTube, Hudl, Veo) salvati in JSONB; upload file su Supabase Storage bucket `scouting-attachments`
 - **v2 (future)**: mappa geografica società (Leaflet), calendario osservazioni pianificate, notifica DS su nuove segnalazioni da osservatori
 - **v3 (future)**: AI riassunto osservazioni, matching prospetto ↔ ruolo mancante in rosa, ricerca semantica
@@ -515,112 +447,9 @@
 
 ---
 
-### EPIC 29: Demo Mode — Workspace a Tempo
-
-> Permettere al superadmin di configurare un workspace come "demo" con scadenza automatica. Alla scadenza l'accesso viene bloccato con una pagina dedicata e CTA per l'attivazione. Gestione commerciale delle prove gratuite per nuove società.
-
-**Valore commerciale**: Permette di offrire demo personalizzate e configurate con i dati reali della società, con scadenza automatica senza intervento manuale. Strumento di vendita diretto.
-
-#### Fase 1: DB + Backend
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 29.1 | Migrazione: aggiungi `demo_scadenza TIMESTAMPTZ DEFAULT NULL` a tabella `workspace` (null = workspace normale, data futura = demo attiva, data passata = demo scaduta) | ⬜ | — | migrazione SQL | ~3min |
-| 29.2 | Guard in `authMiddleware`: dopo verifica JWT, se `workspace.demo_scadenza` è nel passato → 403 `{error: 'DEMO_EXPIRED', scadenza}`. Superadmin escluso dal blocco. | ⬜ | 29.1 | backend/api/middleware/auth.js | ~8min |
-| 29.3 | Endpoint `PUT /api/workspaces/:id/demo` (solo superadmin): body `{giorni: 7|15|30|null}` — imposta `demo_scadenza = now() + giorni` oppure null per revocare/attivare definitivamente | ⬜ | 29.1 | backend/api/routes/workspace.js | ~8min |
-
-#### Fase 2: Frontend
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 29.4 | Intercettazione 403 `DEMO_EXPIRED` in `api.js`: redirect a `/demo-scaduta` con la data di scadenza in sessionStorage | ⬜ | 29.2 | frontend-v2/src/services/api.js | ~5min |
-| 29.5 | Pagina `demo-scaduta`: schermata branded con messaggio "Il periodo di prova è terminato", data scadenza, CTA "Contattaci per attivare" (mailto o link WhatsApp configurabile) | ⬜ | 29.4 | frontend-v2/src/modules/auth/demoExpired.js | ~8min |
-| 29.6 | Pannello superadmin (workspaces.js): per ogni workspace badge "🕐 Demo" con giorni rimanenti + dropdown durata (7/15/30gg) + bottone "Attiva demo" / "Estendi" / "Revoca (attiva definitivamente)" | ⬜ | 29.3 | frontend-v2/src/modules/admin/workspaces.js | ~12min |
-
-#### Fase 3: Finalizzazione
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 29.7 | Aggiornare DATABASE_SCHEMA.md + AGENTS.md | ⬜ | 29.6 | .agents/knowledge/DATABASE_SCHEMA.md, .agents/AGENTS.md | ~3min |
-
-**Effort totale stimato**: ~47min (7 task)
-
-**Note architetturali**:
-- `demo_scadenza NULL` = workspace normale (nessun impatto su utenti esistenti)
-- Il superadmin non viene mai bloccato — può sempre accedere per gestire/estendere
-- La scadenza è sul workspace, non sull'utente — tutti gli utenti del workspace vengono bloccati insieme
-- "Revoca demo" = `demo_scadenza = NULL` → workspace diventa permanente
-- **Non implementare ora**: email automatica di avviso a N giorni dalla scadenza, trial self-service dalla landing page
-
----
-
-### EPIC 30: Support Ticket — Priorità Bug
-
-> Aggiungere un campo priorità alla segnalazione ticket, con 4 livelli codificati. Permette al superadmin di triaggiare rapidamente i bug in produzione, soprattutto con più workspace attivi.
-
-#### Task
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 30.1 | Migrazione: aggiungi `priorita TEXT DEFAULT 'medium'` a tabella `support_ticket` | ✅ | — | migrazione SQL | ~2min |
-| 30.2 | Backend: aggiungere `priorita` in `POST /support/ticket` (input utente) e `GET /support/tickets` (restituito nella lista) | ✅ | 30.1 | backend/api/routes/support.js | ~5min |
-| 30.3 | Frontend form segnalazione (`supportWidget.js`): aggiungere dropdown priorità con 4 opzioni prima del campo descrizione | ✅ | 30.2 | frontend-v2/src/components/supportWidget.js | ~8min |
-| 30.4 | Frontend lista ticket superadmin (`supportTickets.js`): badge colorato priorità + filtro per priorità nella toolbar | ✅ | 30.2 | frontend-v2/src/modules/admin/supportTickets.js | ~10min |
-| 30.5 | Card ticket nella dashboard superadmin: contatori aperti/critical/high + bottone "Vedi tutti" → pagina ticket esistente. Accessibile senza workspace selezionato. | ✅ | 30.4 | frontend-v2/src/modules/admin/workspaces.js | ~12min |
-| 30.6 | Area Superadmin: sostituire `showWorkspaceSelector` con home dedicata — sidebar minimale (Workspace+Ticket), griglia card workspace con bottone "Accedi →", card ticket in cima. `loadSquadre` chiamato solo al click "Accedi". | ✅ | 30.5 | frontend-v2/src/modules/auth/login.js, frontend-v2/src/components/layout/sidebarNav.js | ~20min |
-
-**Effort totale stimato**: ~57min (6 task)
-
-**Valori `priorita`**:
-- `low` 🟢 — Cosmetico, nessun impatto funzionale (testo disallineato, typo, colore sbagliato)
-- `medium` 🟡 — Non bloccante ma degrada l'UX (filtro rotto, dato non aggiornato) — **default**
-- `high` 🔴 — Bug bloccante su funzione principale (impossibile salvare, convocazioni non si pubblicano)
-- `critical` ⚫ — Down totale o perdita dati (login non funziona, API sempre in errore)
-
----
-
-### EPIC 29: Demo Mode — Workspace a Tempo
-
-> Permettere al superadmin di configurare un workspace come "demo" con scadenza automatica. Alla scadenza l'accesso viene bloccato con una pagina dedicata e CTA per l'attivazione. Gestione commerciale delle prove gratuite per nuove società.
-
-**Valore commerciale**: Permette di offrire demo personalizzate e configurate con i dati reali della società, con scadenza automatica senza intervento manuale. Strumento di vendita diretto.
-
-#### Fase 1: DB + Backend
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 29.1 | Migrazione: aggiungi `demo_scadenza TIMESTAMPTZ DEFAULT NULL` a tabella `workspace` (null = workspace normale, data futura = demo attiva, data passata = demo scaduta) | ⬜ | — | migrazione SQL | ~3min |
-| 29.2 | Guard in `authMiddleware`: dopo verifica JWT, se `workspace.demo_scadenza` è nel passato → 403 `{error: 'DEMO_EXPIRED', scadenza}`. Superadmin escluso dal blocco. | ⬜ | 29.1 | backend/api/middleware/auth.js | ~8min |
-| 29.3 | Endpoint `PUT /api/workspaces/:id/demo` (solo superadmin): body `{giorni: 7|15|30|null}` — imposta `demo_scadenza = now() + giorni` oppure null per revocare/attivare definitivamente | ⬜ | 29.1 | backend/api/routes/workspace.js | ~8min |
-
-#### Fase 2: Frontend
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 29.4 | Intercettazione 403 `DEMO_EXPIRED` in `api.js`: redirect a `/demo-scaduta` con la data di scadenza in sessionStorage | ⬜ | 29.2 | frontend-v2/src/services/api.js | ~5min |
-| 29.5 | Pagina `demo-scaduta`: schermata branded con messaggio "Il periodo di prova è terminato", data scadenza, CTA "Contattaci per attivare" (mailto o link WhatsApp configurabile) | ⬜ | 29.4 | frontend-v2/src/modules/auth/demoExpired.js | ~8min |
-| 29.6 | Pannello superadmin (workspaces.js): per ogni workspace badge "🕐 Demo" con giorni rimanenti + dropdown durata (7/15/30gg) + bottone "Attiva demo" / "Estendi" / "Revoca (attiva definitivamente)" | ⬜ | 29.3 | frontend-v2/src/modules/admin/workspaces.js | ~12min |
-
-#### Fase 3: Finalizzazione
-
-| ID | Task | Stato | Dipende da | File | Effort |
-|----|------|-------|------------|------|--------|
-| 29.7 | Aggiornare DATABASE_SCHEMA.md + AGENTS.md | ⬜ | 29.6 | .agents/knowledge/DATABASE_SCHEMA.md, .agents/AGENTS.md | ~3min |
-
-**Effort totale stimato**: ~47min (7 task)
-
-**Note architetturali**:
-- `demo_scadenza NULL` = workspace normale (nessun impatto su utenti esistenti)
-- Il superadmin non viene mai bloccato — può sempre accedere per gestire/estendere
-- La scadenza è sul workspace, non sull'utente — tutti gli utenti del workspace vengono bloccati insieme
-- "Revoca demo" = `demo_scadenza = NULL` → workspace diventa permanente
-- **Non implementare ora**: email automatica di avviso a N giorni dalla scadenza, trial self-service dalla landing page
-
----
-
 ## 4. Dipendenze tra Epic
 
-> Epic 1, 2, 3, 6, 8, 9, 10, 11, 12, 16, 18, 20, 21, 24, 25, 27 archiviati in `DEVELOPMENT_PLAN_ARCHIVE.md`.
+> Epic 1, 2, 3, 6, 8, 9, 10, 11, 12, 14, 16, 18, 20, 21, 23, 24, 25, 27, 29, 30 archiviati in `DEVELOPMENT_PLAN_ARCHIVE.md`.
 
 ```
 EPIC 4 (Opponent) ──→ nessuna dipendenza
@@ -629,25 +458,19 @@ EPIC 13 (Preseason) ──→ nessuna dipendenza
 EPIC 15 (PWA Offline-First) ──→ nessuna dipendenza
 EPIC 19 (PWA Guest Push) ──→ dipende da EPIC 11 ✅ + EPIC 12 ✅ (archiviati) — task definiti
 EPIC 22 (Capabilities) ──→ nessuna dipendenza
-EPIC 23 (Player Performance Center) ──→ nessuna dipendenza
 EPIC 26 (Stripe) ──→ dipende da EPIC 21 ✅ (archiviato)
 EPIC 28 (Scouting CRM) ──→ nessuna dipendenza
-EPIC 29 (Demo Mode) ──→ nessuna dipendenza
-EPIC 30 (Ticket Priorità) ──→ dipende da EPIC 27 ✅ (archiviato)
 ```
 
 Ordine consigliato per impatto/effort:
-1. **EPIC 23** (Player Performance Center, ~2h38) → decision support allenatori, differenziatore forte
-2. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
-3. **EPIC 22** (Capabilities, ~1h20) → gestione permessi avanzata
-4. **EPIC 26** (Stripe, ~1h08) → pagamenti online
-5. **EPIC 28** (Scouting CRM, ~2h38) → differenziatore unico nel mercato dilettantistico
-9. **EPIC 30** (Ticket Priorità, ~25min) → triage rapido bug in produzione
-10. **EPIC 29** (Demo Mode, ~47min) → strumento vendita immediato
-10. **EPIC 19** (PWA Guest Push) → engagement famiglie
-7. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro
-8. **EPIC 7** (tornei, 37min) → nice-to-have
-9. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno
+1. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
+2. **EPIC 22** (Capabilities, ~1h20) → gestione permessi avanzata
+3. **EPIC 26** (Stripe, ~1h08) → pagamenti online
+4. **EPIC 28** (Scouting CRM, ~2h38) → differenziatore unico nel mercato dilettantistico
+5. **EPIC 19** (PWA Guest Push) → engagement famiglie
+6. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro
+7. **EPIC 7** (tornei, 37min) → nice-to-have
+8. **EPIC 13** (preseason, ~76min) → utile solo 2-3 settimane/anno
 
 ---
 
@@ -679,6 +502,8 @@ Ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.17.10 | feat: banner pre-scadenza demo (pill floating desktop/mobile, icone ✉️ 💬, pulsante ✕, gradiente 3D, `window._checkDemoBanner` chiamato ad ogni navigazione). feat: sospensione workspace (colonna `sospeso`, guard `WORKSPACE_SUSPENDED`, endpoint `PUT /workspaces/:id/sospendi`, pagina `workspaceSospeso.js`, toggle switch in card superadmin con modal custom). fix: modal demo — rilevamento bottone selezionato via `data-selected` (non `style*`). fix: dashboard — icone mancanti in WIDGET_LABELS (fees/kit/checklist/tesseramento/performance_voti), filtro capabilities per widget, DEFAULT layout per profilo allenatore da screenshot Matteo. |
+| v3.17.9 | feat: EPIC 29 Demo Mode — colonna `demo_scadenza` su `workspace`, guard in `authMiddleware` (403 DEMO_EXPIRED per workspace scaduti, superadmin escluso), endpoint `PUT /workspaces/:id/demo` (7/15/30gg o null per attivazione definitiva), intercettazione 403 in `api.js` con redirect a `#demo-scaduta`, pagina `demoExpired.js` con CTA email+WhatsApp, pannello superadmin con badge giorni rimanenti + modal gestione demo (Applica/Revoca). |
 | v3.17.8 | feat: EPIC 30 Support Ticket Priorità — colonna `priorita` in `support_ticket` (low/medium/high/critical), pill selettore nel widget (solo bug, con tooltip), badge colorato + filtro priorità in lista superadmin, priorità in email con colore semantico. fix: riga Mittente spuria rimossa dall'email, `getMittente()` con fallback parte locale email, nome/cognome superadmin nel JWT. Card ticket in pagina Workspace con contatori aperti/critical/high. Bottone "Accedi →" nelle card workspace (giallo Modifica, rosso Elimina). `buildSuperadminNav()` in sidebarNav.js. Login superadmin naviga direttamente a pagina Workspace. |
 | v3.17.8 | fix: grafico trend voti playerPerformance — drawSimpleLineChart aggiunta in charts.js (drawLineChart usa formato dual-line incompatibile). fix: label asse X verticali con clip canvas (no sforamento). fix: ordinamento valutazioni per data_ora prima del calcolo trend. fix: label medie dinamiche ("Ultimi N / Primi N voti"). fix: performance-summary e performance-detail filtrano valutazioni per partite del team_id richiesto (fix cross-team/stagione). feat: filtro tipo competizione in Performance Center (Campionato/Amichevoli/Tutte) con fallback automatico su Tutte se <3 giocatori con voti in campionato. fix: filtro amichevole include tornei (tutto tranne Campionato e Coppa). |
 | v3.17.7 | fix: convocazioni-pubblica falliva silenziosamente per superadmin (created_by='superadmin' violava FK notification_created_by_fkey) — ora usa null per ID non-UUID. fix: convocazioni-stato restituisce {saved, published} separati. fix: DB migrazione FK notification.created_by da NO ACTION a SET NULL. fix: notifiche mancanti inserite per 62 partite con convocazioni salvate ma non pubblicate. fix: distinta ordina alfabeticamente se titolari senza numero maglia; numeri vuoti per tutti se titolari incompleti; senza formazione usa null (non numero_maglia dal roster). fix: form creazione giocatore mancava campo editTaglia. feat: formazione — bottone Auto panchina assegna numeri liberi alle riserve (Portiere→Difensore→Centrocampista→Attaccante→senza ruolo, alfabetico per parità). feat: recall ultima formazione filtra per convocati presenti (slot vuoto se assente) e ripristina numeri maglia. fix: sort riserve in auto-panchina e salvataggio — senza ruolo per ultimi (99 invece di -1). |

@@ -195,6 +195,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!isGuestPath) initSupportWidget();
   initRouter();
 
+  // Demo scaduta: intercetta hash #demo-scaduta
+  if (window.location.hash === '#demo-scaduta') {
+    window.location.hash = '';
+    window.YFM.navigateTo('demoExpired');
+    return;
+  }
+  if (window.location.hash === '#sospeso') {
+    window.location.hash = '';
+    window.YFM.navigateTo('workspaceSospeso');
+    return;
+  }
+
   if (isGuestPath) {
     const token = path.split('/guest/')[1];
     if (token) {
@@ -242,7 +254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await Promise.all([loadWorkspaceInfo(), loadSquadre()]);
       }
       
-      window.YFM.navigateTo('dashboard');
+      await window.YFM.navigateTo('dashboard');
       initSessionGuard();
       // Badge notifiche assenze (subito + polling ogni 60s)
       import('./modules/coach/notifications.js').then(m => {
@@ -264,6 +276,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.YFM.navigateTo('login');
   }
 });
+
+function checkDemoBanner() {
+  const user = window.YFM.getUser();
+  if (!user || user.is_superadmin) return;
+  const ws = window.YFM.workspaceInfo;
+  // Rimuovi banner se non più necessario
+  if (!ws?.demo_scadenza) { document.getElementById('demoBanner')?.remove(); return; }
+  const diffMs = new Date(ws.demo_scadenza) - new Date();
+  if (diffMs <= 0) { document.getElementById('demoBanner')?.remove(); return; }
+  const diffGiorni = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (diffGiorni > 3) { document.getElementById('demoBanner')?.remove(); return; }
+  if (document.getElementById('demoBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'demoBanner';
+  // Inietta stile responsive una sola volta
+  if (!document.getElementById('demoBannerStyle')) {
+    const s = document.createElement('style');
+    s.id = 'demoBannerStyle';
+    s.textContent = `
+      #demoBanner{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9000;background:linear-gradient(145deg,#FBBF24,#F59E0B);color:#1F2937;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;box-shadow:0 4px 14px rgba(245,158,11,0.5),inset 0 1px 0 rgba(255,255,255,0.4);white-space:nowrap;pointer-events:auto;display:flex;align-items:center;gap:6px;}
+      #demoBanner a{color:#1F2937;text-decoration:none;font-size:15px;}
+      #demoBanner button{background:none;border:none;cursor:pointer;font-size:13px;color:#1F2937;opacity:0.6;padding:0;line-height:1;flex-shrink:0;}
+      @media(max-width:768px){#demoBanner{top:auto;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:20px;right:76px;transform:none;border-radius:14px;gap:4px;justify-content:center;padding:5px 10px;background:linear-gradient(145deg,#FBBF24,#F59E0B);box-shadow:0 4px 14px rgba(245,158,11,0.5),inset 0 1px 0 rgba(255,255,255,0.4);} #demoBanner a{font-size:16px;padding:4px 6px;display:inline-block;}}
+    `;
+    document.head.appendChild(s);
+  }
+  const isMobile = window.innerWidth <= 768;
+  const msg = isMobile
+    ? (diffGiorni === 1 ? 'Demo scade <strong>domani</strong>' : `Demo: <strong>${diffGiorni}gg</strong>`)
+    : (diffGiorni === 1 ? 'Il periodo di prova scade <strong>domani</strong>' : `Periodo di prova: <strong>${diffGiorni} giorni</strong> rimasti`);
+  banner.innerHTML = `<span>⏰ ${msg} — Attiva ora: <a href="mailto:youthfootballmanager@gmail.com?subject=Attivazione%20YFM" target="_blank" title="Email">✉️</a> <a href="https://wa.me/393351051147?text=Ciao%2C%20vorrei%20attivare%20YFM" target="_blank" title="WhatsApp">💬</a></span><button onclick="this.closest('#demoBanner').remove()" style="background:none;border:none;cursor:pointer;font-size:13px;color:#1F2937;opacity:0.6;padding:0 0 0 10px;line-height:1;flex-shrink:0;">✕</button>`;
+  document.body.appendChild(banner);
+}
+window._checkDemoBanner = checkDemoBanner;
 
 function initOfflineBanner() {
   const banner = document.createElement('div');

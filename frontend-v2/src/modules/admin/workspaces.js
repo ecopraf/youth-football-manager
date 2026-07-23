@@ -191,6 +191,20 @@ function render(c) {
           <div id="logoPreview" style="margin:12px 0;text-align:center;"></div>
           <input type="hidden" id="wsId">
           <input type="hidden" id="wsLogoUrl">
+          <div id="wsDemoSection" style="margin-bottom:16px;padding:12px;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:13px;">
+              <input type="checkbox" id="wsDemoCheck" style="width:16px;height:16px;cursor:pointer;">
+              🕐 Workspace demo (accesso a tempo)
+            </label>
+            <div id="wsDemoGiorni" style="display:none;margin-top:10px;display:none;">
+              <label style="font-size:12px;color:#6B7280;display:block;margin-bottom:6px;">Durata demo:</label>
+              <div style="display:flex;gap:8px;">
+                <label style="flex:1;text-align:center;"><input type="radio" name="demoGiorni" value="7"> 7 giorni</label>
+                <label style="flex:1;text-align:center;"><input type="radio" name="demoGiorni" value="15" checked> 15 giorni</label>
+                <label style="flex:1;text-align:center;"><input type="radio" name="demoGiorni" value="30"> 30 giorni</label>
+              </div>
+            </div>
+          </div>
           <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:20px;">
             <button type="button" class="btn btn-secondary" id="btnChooseLogo">🖼️ Scegli Logo</button>
             <button type="submit" class="btn btn-primary">💾 Salva</button>
@@ -290,21 +304,149 @@ async function renderTicketSummary() {
   } catch { /* silenzioso */ }
 }
 
+// ── DEMO MODE HELPERS ──
+function getDemoInfo(demo_scadenza) {
+  if (!demo_scadenza) return { badge: '', stato: 'normale' };
+  const scad = new Date(demo_scadenza);
+  const now = new Date();
+  const diffMs = scad - now;
+  const diffGiorni = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  if (diffMs < 0) {
+    return { badge: '<span style="display:inline-block;margin-top:4px;font-size:11px;background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:12px;font-weight:600;">⏰ Demo scaduta</span>', stato: 'scaduta' };
+  }
+  const color = diffGiorni <= 3 ? '#FEF3C7;color:#92400E' : '#EDE9FE;color:#5B21B6';
+  return { badge: `<span style="display:inline-block;margin-top:4px;font-size:11px;background:${color};padding:2px 8px;border-radius:12px;font-weight:600;">🕐 Demo · ${diffGiorni}g rimanenti</span>`, stato: 'attiva' };
+}
+
+function openDemoModal(wsId) {
+  const ws = workspaces.find(w => w.id === wsId);
+  if (!ws) return;
+  const demoInfo = getDemoInfo(ws.demo_scadenza);
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="font-size:32px;text-align:center;margin-bottom:8px;">🕐</div>
+      <div style="font-weight:700;font-size:16px;text-align:center;margin-bottom:4px;">Gestione Demo</div>
+      <div style="font-size:13px;color:#6B7280;text-align:center;margin-bottom:16px;">${ws.nome}</div>
+      ${ws.demo_scadenza ? `<div style="text-align:center;margin-bottom:16px;">${demoInfo.badge}</div>` : '<div style="text-align:center;color:#6B7280;font-size:13px;margin-bottom:16px;">Workspace normale (nessuna scadenza)</div>'}
+      <div style="margin-bottom:16px;">
+        <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:8px;">Imposta durata demo:</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${[7, 15, 30].map(g => {
+            const d = new Date(); d.setDate(d.getDate() + g);
+            const label = d.toLocaleDateString('it-IT', {day:'2-digit', month:'short'});
+            return `<button class="demo-giorni-btn" data-giorni="${g}" style="flex:1;padding:8px 4px;border:2px solid #E5E7EB;border-radius:8px;background:white;cursor:pointer;font-size:13px;font-weight:600;line-height:1.3;">${g}gg<br><span style="font-size:10px;font-weight:400;color:#9CA3AF;">fino al ${label}</span></button>`;
+          }).join('')}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${ws.demo_scadenza ? `<button id="demoRevokaBtn" style="padding:10px;background:#27AE60;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;">✅ Attiva definitivamente (rimuovi scadenza)</button>` : ''}
+        <button id="demoCancelBtn" style="padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Annulla</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelectorAll('.demo-giorni-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      overlay.querySelectorAll('.demo-giorni-btn').forEach(b => { b.style.borderColor = '#E5E7EB'; b.style.background = 'white'; delete b.dataset.selected; });
+      btn.style.borderColor = '#667eea'; btn.style.background = '#EEF2FF'; btn.dataset.selected = '1';
+    });
+    btn.addEventListener('dblclick', () => saveDemoModal(wsId, parseInt(btn.dataset.giorni), overlay));
+  });
+
+  // Single click su bottone giorni → conferma con click su Applica (aggiungiamo bottone Applica)
+  const actionsDiv = overlay.querySelector('#demoCancelBtn').parentElement;
+  const applyBtn = document.createElement('button');
+  applyBtn.textContent = '🕐 Applica durata selezionata';
+  applyBtn.style.cssText = 'padding:10px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;order:-1;';
+  applyBtn.addEventListener('click', () => {
+    const sel = overlay.querySelector('.demo-giorni-btn[data-selected="1"]');
+    if (!sel) { import('../../utils/ui.js').then(m => m.showToast('Seleziona una durata', 'warning')); return; }
+    saveDemoModal(wsId, parseInt(sel.dataset.giorni), overlay);
+  });
+  actionsDiv.insertBefore(applyBtn, actionsDiv.firstChild);
+
+  const revokaBtn = overlay.querySelector('#demoRevokaBtn');
+  if (revokaBtn) revokaBtn.addEventListener('click', () => saveDemoModal(wsId, null, overlay));
+  overlay.querySelector('#demoCancelBtn').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+async function saveDemoModal(wsId, giorni, overlay) {
+  const { showToast } = await import('../../utils/ui.js');
+  try {
+    const result = await apiFetch(`/workspaces/${wsId}/demo`, { method: 'PUT', body: JSON.stringify({ giorni }) });
+    const ws = workspaces.find(w => w.id === wsId);
+    if (ws) ws.demo_scadenza = result.demo_scadenza;
+    overlay.remove();
+    renderGrid();
+    showToast(giorni === null ? 'Workspace attivato definitivamente ✅' : `Demo impostata: ${giorni} giorni 🕐`, 'success');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function toggleSospeso(wsId, sospendi) {
+  const { showToast } = await import('../../utils/ui.js');
+  const ws = workspaces.find(w => w.id === wsId);
+  const nome = ws?.nome || 'questo workspace';
+
+  // Modal custom di conferma
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);animation:scale-in 0.2s;text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">${sospendi ? '🔒' : '🔓'}</div>
+      <div style="font-weight:700;font-size:16px;margin-bottom:8px;">${sospendi ? 'Sospendi workspace' : 'Riattiva workspace'}</div>
+      <div style="font-size:13px;color:#6B7280;margin-bottom:24px;">${sospendi ? `Tutti gli utenti di <strong>${nome}</strong> perderanno l'accesso immediatamente.` : `Gli utenti di <strong>${nome}</strong> potranno accedere nuovamente.`}</div>
+      <div style="display:flex;gap:8px;">
+        <button id="sospendiCancel" style="flex:1;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Annulla</button>
+        <button id="sospendiConfirm" style="flex:1;padding:10px;background:${sospendi ? '#E74C3C' : '#27AE60'};color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;">${sospendi ? 'Sospendi' : 'Riattiva'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#sospendiCancel').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#sospendiConfirm').addEventListener('click', async () => {
+    overlay.remove();
+    try {
+      const result = await apiFetch(`/workspaces/${wsId}/sospendi`, { method: 'PUT', body: JSON.stringify({ sospeso: sospendi }) });
+      if (ws) ws.sospeso = result.sospeso;
+      renderGrid();
+      showToast(sospendi ? '🔒 Workspace sospeso' : '🔓 Workspace riattivato', 'success');
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  });
+}
+
 function renderGrid() {
   const grid = document.getElementById('wsGrid');
   grid.innerHTML = workspaces.map(ws => {
+  const demoInfo = getDemoInfo(ws.demo_scadenza);
   return `
-      <div class="ws-card" data-ws="${ws.id}" style="cursor:pointer;">
+      <div class="ws-card" data-ws="${ws.id}" style="cursor:pointer;position:relative;">
+        <label data-sospendi="${ws.id}" data-sospeso="${ws.sospeso ? '1' : ''}" title="${ws.sospeso ? 'Riattiva workspace' : 'Sospendi workspace'}" style="position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:5px;cursor:pointer;z-index:1;" onclick="event.stopPropagation()">
+          <span style="font-size:10px;color:${ws.sospeso ? '#E74C3C' : '#9CA3AF'};font-weight:600;">${ws.sospeso ? 'SOSPESO' : ''}</span>
+          <div style="width:36px;height:20px;border-radius:10px;background:${ws.sospeso ? '#E74C3C' : '#D1D5DB'};position:relative;transition:background 0.2s;">
+            <div style="position:absolute;top:2px;${ws.sospeso ? 'right:2px' : 'left:2px'};width:16px;height:16px;border-radius:50%;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.3);transition:all 0.2s;"></div>
+          </div>
+        </label>
         <div class="ws-card-header">
           <img class="ws-card-logo" src="${ws.logo_url || '/assets/app-icon.png'}" onerror="this.src='/assets/app-icon.png'">
           <div>
             <div class="ws-card-name">${ws.nome}</div>
             <div class="ws-card-meta">${[ws.colori_sociali, ws.sponsor_tecnico].filter(Boolean).join(' · ') || ''}</div>
+            ${demoInfo.badge}
           </div>
         </div>
         <div class="ws-card-actions">
           <button class="btn btn-small btn-primary" data-accedi="${ws.id}" style="background:#667eea;color:white;">Accedi →</button>
           <button class="btn btn-small" data-edit="${ws.id}" style="background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;">✏️ Modifica</button>
+          <button class="btn btn-small" data-demo="${ws.id}" style="background:#F3F4F6;color:#374151;border:1px solid #D1D5DB;">🕐 Demo</button>
           <button class="btn btn-small btn-danger" data-del="${ws.id}" style="background:#E74C3C;color:white;">🗑️ Elimina</button>
         </div>
       </div>
@@ -328,6 +470,8 @@ function renderGrid() {
     window.YFM.navigateTo('dashboard');
   }));
   grid.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); openModal(btn.dataset.edit); }));
+  grid.querySelectorAll('[data-demo]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); openDemoModal(btn.dataset.demo); }));
+  grid.querySelectorAll('label[data-sospendi]').forEach(lbl => lbl.addEventListener('click', (e) => { e.stopPropagation(); toggleSospeso(lbl.dataset.sospendi, !lbl.dataset.sospeso); }));
   grid.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); openDeleteModal(btn.dataset.del); }));
   grid.querySelectorAll('[data-ws]').forEach(card => card.addEventListener('click', () => openDetail(card.dataset.ws)));
 }
@@ -1383,8 +1527,35 @@ async function openModal(wsId = null) {
     document.getElementById('wsNomeBreve').value = ws.nome_breve || '';
     document.getElementById('wsLogoUrl').value = ws.logo_url || '';
     if (ws.logo_url) renderLogoPreview(ws.logo_url, true);
+    // Sezione demo in modifica: mostra stato attuale + opzioni
+    document.getElementById('wsDemoSection').style.display = 'block';
+    const demoInfo = getDemoInfo(ws.demo_scadenza);
+    const statoLabel = ws.demo_scadenza
+      ? (demoInfo.stato === 'scaduta' ? '<span style="color:#991B1B;">⏰ Demo scaduta</span>' : demoInfo.badge)
+      : '<span style="color:#6B7280;font-size:12px;">Workspace normale (nessuna scadenza)</span>';
+    document.getElementById('wsDemoSection').innerHTML = `
+      <div style="font-weight:600;font-size:13px;margin-bottom:8px;">🕐 Demo</div>
+      <div style="margin-bottom:10px;">${statoLabel}</div>
+      <label style="font-size:12px;color:#6B7280;display:block;margin-bottom:6px;">Imposta/estendi durata:</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        ${[7,15,30].map(g => {
+          const d = new Date(Date.now() + g*86400000).toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
+          return `<label style="flex:1;text-align:center;font-size:12px;cursor:pointer;"><input type="radio" name="demoGiorni" value="${g}"> ${g}gg<br><span style="font-size:10px;color:#9CA3AF;">fino al ${d}</span></label>`;
+        }).join('')}
+        ${ws.demo_scadenza ? `<label style="flex:1;text-align:center;font-size:12px;cursor:pointer;"><input type="radio" name="demoGiorni" value="none"> Revoca<br><span style="font-size:10px;color:#9CA3AF;">permanente</span></label>` : ''}
+        <label style="flex:1;text-align:center;font-size:12px;cursor:pointer;"><input type="radio" name="demoGiorni" value="skip" checked> Non modif.<br><span style="font-size:10px;color:#9CA3AF;">&nbsp;</span></label>
+      </div>
+      ${ws.demo_scadenza ? `<div style="font-size:11px;color:#6B7280;">"Revoca" = workspace diventa permanente</div>` : ''}
+    `;
   } else {
     document.getElementById('wsModalTitle').textContent = 'Nuovo Workspace';
+    document.getElementById('wsDemoSection').style.display = 'block';
+    document.getElementById('wsDemoCheck').checked = false;
+    document.getElementById('wsDemoGiorni').style.display = 'none';
+    // Toggle checkbox
+    document.getElementById('wsDemoCheck').onchange = function() {
+      document.getElementById('wsDemoGiorni').style.display = this.checked ? 'block' : 'none';
+    };
   }
   modal.style.display = 'flex';
 }
@@ -1409,9 +1580,21 @@ async function handleSave(e) {
     let wsId = id;
     if (id) {
       await apiFetch(`/workspaces/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+      // Gestisci demo in modifica
+      const demoGiorni = document.querySelector('input[name="demoGiorni"]:checked')?.value;
+      if (demoGiorni && demoGiorni !== 'skip') {
+        const giorni = demoGiorni === 'none' ? null : parseInt(demoGiorni);
+        await apiFetch(`/workspaces/${id}/demo`, { method: 'PUT', body: JSON.stringify({ giorni }) });
+      }
     } else {
       const created = await apiFetch('/workspaces', { method: 'POST', body: JSON.stringify(body) });
       wsId = created.id;
+      // Se demo spuntato, imposta subito la scadenza
+      const demoCheck = document.getElementById('wsDemoCheck');
+      if (demoCheck?.checked) {
+        const giorni = parseInt(document.querySelector('input[name="demoGiorni"]:checked')?.value || '15');
+        await apiFetch(`/workspaces/${wsId}/demo`, { method: 'PUT', body: JSON.stringify({ giorni }) });
+      }
     }
 
     // Save anagrafica if parsed data available

@@ -753,3 +753,73 @@
 **Risultati**: timeline tracks (sopra=GOAL/SUB/SUBITO, sotto=YELLOW/RED), tooltip position:fixed, punteggio progressivo sui gol, badge RIG/AUT nel card evento, match_event.note per SUBITO = nome avversario, fmtName() uniformata, caricamento ottimizzato Promise.all.
 
 ---
+
+### EPIC 29: Demo Mode — Workspace a Tempo
+
+> Iniziato: 17 Luglio 2026 | Completato: 24 Luglio 2026
+
+| ID | Task | Stato |
+|----|------|-------|
+| 29.1 | Migrazione: `demo_scadenza TIMESTAMPTZ DEFAULT NULL` su `workspace` | ✅ |
+| 29.2 | Guard `DEMO_EXPIRED` in `authMiddleware` (superadmin escluso) | ✅ |
+| 29.3 | Endpoint `PUT /workspaces/:id/demo` (7/15/30gg o null) | ✅ |
+| 29.4 | Intercettazione 403 `DEMO_EXPIRED` in `api.js` → hash `#demo-scaduta` | ✅ |
+| 29.5 | Pagina `demoExpired.js` con CTA email+WhatsApp (+39 335 105 1147) | ✅ |
+| 29.6 | Pannello superadmin: badge giorni rimanenti + modal gestione demo | ✅ |
+| 29.7 | Docs: DATABASE_SCHEMA.md + AGENTS.md | ✅ |
+| 29.8 | Banner pre-scadenza: pill floating desktop / toast mobile, icone ✉️ 💬, gradiente 3D, `window._checkDemoBanner` ad ogni navigazione | ✅ |
+| 29.9 | Fix modal demo: rilevamento bottone via `data-selected`, date calcolate sotto ogni bottone | ✅ |
+| 29.10 | Numero WhatsApp reale in `demoExpired.js` e banner | ✅ |
+| 29.11 | Sospensione workspace: colonna `sospeso BOOLEAN`, guard `WORKSPACE_SUSPENDED`, endpoint `PUT /workspaces/:id/sospendi` | ✅ |
+| 29.12 | Pagina `workspaceSospeso.js` + intercettazione hash `#sospeso` + route | ✅ |
+| 29.13 | Toggle switch sospensione in card workspace (modal custom conferma) | ✅ |
+
+**Risultati**: sistema demo completo con scadenza automatica, banner pre-scadenza responsive, sospensione manuale workspace, pagine dedicate per demo scaduta e workspace sospeso.
+
+---
+
+### EPIC 30: Support Ticket — Priorità Bug
+
+> Iniziato: 23 Luglio 2026 | Completato: 23 Luglio 2026
+
+| ID | Task | Stato |
+|----|------|-------|
+| 30.1 | Migrazione: `priorita TEXT DEFAULT 'medium'` su `support_ticket` | ✅ |
+| 30.2 | Backend: `priorita` in POST/GET ticket | ✅ |
+| 30.3 | Frontend form: dropdown priorità in `supportWidget.js` | ✅ |
+| 30.4 | Frontend lista superadmin: badge colorato + filtro priorità | ✅ |
+| 30.5 | Card ticket in dashboard superadmin con contatori | ✅ |
+| 30.6 | Home superadmin dedicata: sidebar minimale, griglia workspace, card ticket | ✅ |
+
+**Risultati**: 4 livelli priorità (low/medium/high/critical), badge colorati, filtro in lista superadmin, card ticket in home superadmin, login superadmin naviga direttamente a pagina Workspace.
+
+---
+
+### EPIC 23: Player Performance Center
+
+> Completato: 2026
+
+| ID | Task | Stato |
+|----|------|-------|
+| 23.1 | Endpoint `GET /api/squadre/:teamId/performance-summary` | ✅ |
+| 23.2 | Endpoint `GET /api/calciatori/:playerId/performance-detail` | ✅ |
+| 23.3 | `playerPerformance.js` — struttura pagina Vista Rosa / Vista Giocatore | ✅ |
+| 23.4 | Sezione Top Performer con badge trend e sparkline | ✅ |
+| 23.5 | Analisi per Reparto con heatmap colorata | ✅ |
+| 23.6 | Classifica Rosa ordinata per media voti | ✅ |
+| 23.7 | Sezione giocatori senza valutazioni | ✅ |
+| 23.8 | Vista dettaglio giocatore con header | ✅ |
+| 23.9 | Grafico trend voti (canvas line chart) | ✅ |
+| 23.10 | Statistiche aggregate (media, delta, min/max) | ✅ |
+| 23.11 | Lista partite valutate con eventi | ✅ |
+| 23.12 | Analisi mensile a barre | ✅ |
+| 23.13 | Sidebar: voce ⭐ Performance | ✅ |
+| 23.14 | Router: route `playerPerformance` | ✅ |
+| 23.15 | PlayerDetail: link → Vedi performance | ✅ |
+| 23.16 | Dashboard: widget performance_voti | ✅ |
+| 23.17 | helpData.js: entry playerPerformance | ✅ |
+| 23.18 | Docs aggiornati | ✅ |
+
+**Risultati**: pagina Performance Center completa con vista rosa aggregata (top performer, analisi reparto, classifica, senza valutazioni) e vista giocatore (trend voti, statistiche, lista partite, analisi mensile). Widget `performance_voti` in dashboard.
+
+---

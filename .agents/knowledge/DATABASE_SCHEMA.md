@@ -44,6 +44,8 @@ WORKSPACE (società sportiva)
 | nome_breve | text | SI | | Nome compatto per UI (sidebar, dashboard) |
 | checklist_template | jsonb | SI | | Template items checklist |
 | data_creazione | timestamptz | SI | now() | |
+| demo_scadenza | timestamptz | SI | NULL | NULL=normale, futuro=demo attiva, passato=demo scaduta |
+| sospeso | boolean | NO | false | true=accesso bloccato (403 WORKSPACE_SUSPENDED), false=normale |
 
 > ⚠️ I campi `indirizzo`, `telefono`, `email`, `sito_web`, `colori_sociali`, `sponsor_tecnico` sono stati migrati in `workspace_anagrafica`.
 

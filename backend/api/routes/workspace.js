@@ -189,6 +189,33 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // ── DEMO MODE ──
+  router.put('/api/workspaces/:id/demo', authMiddleware, async (req, res) => {
+    try {
+      if (!req.user.is_superadmin) return res.status(403).json({ error: 'Solo superadmin' });
+      const { giorni } = req.body;
+      let demo_scadenza = null;
+      if (giorni !== null && giorni !== undefined) {
+        const d = new Date();
+        d.setDate(d.getDate() + parseInt(giorni));
+        demo_scadenza = d.toISOString();
+      }
+      const { data, error } = await supabase.from('workspace').update({ demo_scadenza }).eq('id', req.params.id).select('id, nome, demo_scadenza').single();
+      if (error) return res.status(400).json({ error: error.message });
+      res.json({ success: true, demo_scadenza: data.demo_scadenza });
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
+  router.put('/api/workspaces/:id/sospendi', authMiddleware, async (req, res) => {
+    try {
+      if (!req.user.is_superadmin) return res.status(403).json({ error: 'Forbidden' });
+      const { sospeso } = req.body; // true o false
+      const { data, error } = await supabase.from('workspace').update({ sospeso: !!sospeso }).eq('id', req.params.id).select('id, nome, sospeso').single();
+      if (error) throw error;
+      res.json({ success: true, sospeso: data.sospeso });
+    } catch (err) { res.status(500).json({ error: 'Errore server' }); }
+  });
+
   router.put('/api/workspaces/:id/logo', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;

@@ -103,6 +103,23 @@ export async function apiFetch(endpoint, options = {}) {
       if (window.YFM && window.YFM.logout) window.YFM.logout();
       throw new Error('Non autenticato');
     }
+
+    // Gestisci 403 DEMO_EXPIRED: redirect a pagina demo scaduta
+    if (response.status === 403) {
+      const errData = await response.json().catch(() => ({}));
+      if (errData.error === 'DEMO_EXPIRED') {
+        sessionStorage.setItem('demo_scadenza', errData.scadenza || '');
+        window.location.hash = '#demo-scaduta';
+        window.location.reload();
+        throw new Error('Demo scaduta');
+      }
+      if (errData.error === 'WORKSPACE_SUSPENDED') {
+        window.location.hash = '#sospeso';
+        window.location.reload();
+        throw new Error('Account sospeso');
+      }
+      throw new Error(errData.error || 'HTTP 403');
+    }
     
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));

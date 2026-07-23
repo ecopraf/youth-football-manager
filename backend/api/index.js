@@ -92,6 +92,16 @@ const authMiddleware = async (req, res, next) => {
     const { data: user } = await supabase.from('users').select('*').eq('id', decoded.userId).single();
     if (!user) return res.status(401).json({ error: 'Utente non trovato' });
     if (user.is_active === false) return res.status(401).json({ error: 'Account disattivato' });
+    // Demo/sospensione guard (superadmin escluso)
+    if (!user.is_superadmin && user.workspace_id) {
+      const { data: ws } = await supabase.from('workspace').select('demo_scadenza, sospeso').eq('id', user.workspace_id).single();
+      if (ws?.sospeso) {
+        return res.status(403).json({ error: 'WORKSPACE_SUSPENDED' });
+      }
+      if (ws?.demo_scadenza && new Date(ws.demo_scadenza) < new Date()) {
+        return res.status(403).json({ error: 'DEMO_EXPIRED', scadenza: ws.demo_scadenza });
+      }
+    }
     req.user = user;
     // Validazione team_id → workspace
     const teamId = req.params.teamId || req.query.team_id || req.body?.team_id;
