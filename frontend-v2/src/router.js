@@ -22,6 +22,7 @@ export function initRouter() {
     notifications: () => import('./modules/coach/notifications.js'),
     stats: () => import('./modules/performance/stats.js'),
     reports: () => import('./modules/performance/reports.js'),
+    playerPerformance: () => import('./modules/performance/playerPerformance.js'),
     settings: () => import('./modules/club/settings.js'),
     club: () => import('./modules/club/club.js'),
     absence: () => import('./modules/auth/absence.js'),

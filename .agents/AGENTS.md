@@ -150,7 +150,7 @@ api/
     ├── roster.js               — Import rosa XLS/Tuttocampo
                                   `POST /api/roster/parse-xls` `POST /api/roster/import-xls`
                                   `POST /api/roster/scrape-tuttocampo` `POST /api/roster/parse-html-tuttocampo` `POST /api/roster/parse-text-tuttocampo` `POST /api/roster/import-tuttocampo`
-    ├── importCalendario.js     — PDF, testo SGS, import-log. Parser: formato standard `|` (Lazio, Lazio Elite) + variante `I/!` (Lombardia, Sicilia, Piemonte) + formato lineare Campania (auto-detect). Esporta: `findTeamInPdf`, `extractCalendar`, `isCampaniaFormat`, `findTeamInCampaniaPdf`, `extractCampaniaCalendar`
+    ├── importCalendario.js     — PDF, testo SGS, import-log. Parser multi-regione con `extractHeaders()` helper (cascade: standard `*` → CR inline → ER inline → ER two-line). Formati supportati: (1) Standard SGS `*` (Lazio, Sicilia CT, Lombardia U14/U17), (2) variante `I/!` (Lombardia VA, Piemonte), (3) Campania lineare senza tabelle (auto-detect via `isCampaniaFormat()`), (4) Comitato Regionale inline `GIRONE:   A` (Veneto, `HEADER_REGEX_CR`), (5) Emilia Romagna two-line o same-line `GIRONE X` (`HEADER_REGEX_ER` + `HEADER_REGEX_ER_INLINE`). Esporta: `findTeamInPdf`, `extractCalendar`, `isCampaniaFormat`, `findTeamInCampaniaPdf`, `extractCampaniaCalendar`. Test suite: `backend/test_pdf_parser.js` (12 casi, `node test_pdf_parser.js`).
                                   `POST /api/calendario/parse-pdf` `POST /api/calendario/parse-text` `POST /api/calendario/extract` `POST /api/calendario/import` `GET /api/import-log`
     ├── importTuttocampo.js     — Scraping calendario TC, eventi, loghi automatici
                                   `POST /api/calendario/import-tuttocampo` `GET /api/partite/:matchId/eventi-tuttocampo` `POST /api/partite/:matchId/import-eventi-tuttocampo`
@@ -753,6 +753,8 @@ Tutte le variabili globali disponibili nel frontend dopo il login e la selezione
 | Variabile | Tipo | Descrizione |
 |-----------|------|-------------|
 | `window.YFM.competizioneFiltro` | String | Filtro competizione salvato (`'tutte'`, `'campionato'`, `'ufficiali'`, `'amichevoli'`). Usato da dashboard e stats come default. Salvato in `users.preferenze_ui.competizione_filtro` |
+
+| `window.YFM._convPubblicata` | Object | `{[matchId]: true}` — flag settato da `convocazioni.js` dopo pubblicazione, letto da `matchCenter.js` per aggiornare stato senza re-fetch. Non sopravvive a reload. |
 
 ### ⚠️ Errori comuni da evitare
 

@@ -9,7 +9,7 @@
 
 | Campo | Valore |
 |-------|--------|
-| Versione | v3.16 |
+| Versione | v3.17 |
 | Target MVP | 15 Settembre 2026 |
 | Frontend | Vite + JS ES Modules → Vercel |
 | Backend | Node.js/Express (20 router) → Vercel |
@@ -44,7 +44,7 @@
 | Tornei | ⏸️ | modules/coach/tournaments.js (disabilitato) |
 | Infortuni | ✅ | routes/player.js, modules/team/playerDetail.js, dashboard.js |
 | Visite Mediche | ✅ | utils/certificati.js, dashboard.js, convocazioni.js (badge+banner) |
-| Valutazioni | ⚠️ | Parziale (tabella esiste, UI incompleta) |
+| Valutazioni | ✅ | modules/team/matchCenter.js (tab Valutazioni: gruppi Titolari/Subentrati/Non entrati, minutaggio, SV, voto nullable) |
 | Tesseramento | ✅ | modules/club/registration.js, routes/registration.js, modules/print/printTesseramento.js, utils/capabilities.js (capability dedicata) |
 | Print Center | ✅ | modules/team/printCenter.js, modules/print/*.js (EPIC 16) |
 
@@ -228,6 +228,69 @@
 
 ---
 
+### EPIC 19: PWA Guest Push Notifications
+
+> Inviare notifiche push native (browser/PWA) ai genitori/famiglie quando accadono eventi rilevanti — convocazione pubblicata, scadenza quota, comunicazione dalla società.
+
+**Caso d'uso primario**: genitore ha installato YFM come PWA sul telefono → riceve notifica push senza aprire l'app.
+
+**Dipendenze**: EPIC 11 ✅ (tipi guest famiglia/ospite) + EPIC 12 ✅ (quote)
+
+#### Fase 1: Infrastruttura Push (backend)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 19.1 | `npm install web-push` + generare VAPID keys + aggiungere `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` in `.env` | ⬜ | — | backend/package.json, .env | ~5min |
+| 19.2 | CREATE TABLE `push_subscription` (id, guest_token_id UUID FK, player_id UUID nullable, endpoint TEXT, keys JSONB, created_at, workspace_id) + RLS deny anon | ⬜ | 19.1 | migrazione SQL | ~5min |
+| 19.3 | Endpoint POST `/api/push/subscribe` — salva subscription del browser (guest JWT required) | ⬜ | 19.2 | routes/push.js (nuovo) | ~8min |
+| 19.4 | Endpoint DELETE `/api/push/unsubscribe` — rimuove subscription (logout guest) | ⬜ | 19.3 | routes/push.js | ~3min |
+| 19.5 | Helper `sendPushNotification(subscriptions[], payload)` — wrapper web-push con gestione errori (410 Gone → elimina subscription scaduta) | ⬜ | 19.3 | helpers/push.js (nuovo) | ~8min |
+| 19.6 | Registrare router push in `index.js` | ⬜ | 19.3 | api/index.js | ~2min |
+
+#### Fase 2: Trigger notifiche (backend)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 19.7 | Push convocazione pubblicata — in `PUT /api/convocazioni/:matchId/pubblica`: fetch subscriptions dei player_id convocati → sendPush "Sei stato convocato per [avversario] - [data]" | ⬜ | 19.5 | routes/convocazioni.js | ~8min |
+| 19.8 | Push scadenza quota — endpoint POST `/api/push/notify-scadenze` (chiamato manualmente da UI segreteria): fetch rate in scadenza entro 3gg → sendPush per ogni famiglia | ⬜ | 19.5 | routes/push.js | ~10min |
+| 19.9 | Push comunicazione generica — in `POST /api/notifications` quando `destinatario_tipo` include `famiglia`: fetch subscriptions workspace → sendPush con titolo+messaggio | ⬜ | 19.5 | routes/notification.js | ~8min |
+
+#### Fase 3: Frontend — Richiesta permesso e subscription
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 19.10 | `src/services/pushManager.js` — `requestPermission()`, `subscribeToPush(vapidPublicKey)`, `unsubscribeFromPush()` | ⬜ | — | services/pushManager.js (nuovo) | ~10min |
+| 19.11 | Home Famiglia (`guestAtleta.js`): banner "🔔 Attiva notifiche" (dismissable, mostrato solo se permission = default) → chiama `requestPermission()` + POST subscribe | ⬜ | 19.10 | modules/auth/guestAtleta.js | ~8min |
+| 19.12 | Logout guest: chiama `unsubscribeFromPush()` + DELETE `/api/push/unsubscribe` | ⬜ | 19.10 | modules/auth/guest.js | ~5min |
+| 19.13 | Service Worker: aggiungere handler `push` event (mostra notifica con titolo/body/icon) e `notificationclick` (apre YFM alla pagina corretta) | ⬜ | 19.10 | public/sw.js o vite PWA config | ~12min |
+
+#### Fase 4: UI Gestione Notifiche (guest)
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 19.14 | Home Famiglia: toggle "🔔 Notifiche attive/disattive" nelle impostazioni (sezione in fondo alla pagina) | ⬜ | 19.11 | modules/auth/guestAtleta.js | ~5min |
+| 19.15 | Gestione stato permesso: se `denied` → mostrare messaggio "Notifiche bloccate — abilitale dalle impostazioni del browser" (no banner ripetuto) | ⬜ | 19.11 | modules/auth/guestAtleta.js | ~5min |
+
+#### Fase 5: Finalizzazione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 19.16 | Test build completo + syntax check backend | ⬜ | 19.15 | — | ~5min |
+| 19.17 | Aggiornare docs (DEVELOPMENT_PLAN, AGENTS.md, DATABASE_SCHEMA) | ⬜ | 19.16 | .agents/ | ~5min |
+
+**Effort totale stimato**: ~1h 52min (17 task)
+
+**Note architetturali**:
+- `web-push` usa VAPID — nessun account Firebase/APNs necessario, funziona su tutti i browser moderni (Chrome, Safari 16.4+, Firefox)
+- La subscription è legata al `guest_token_id` — se il link guest scade/viene revocato, le subscription orfane vengono eliminate automaticamente (FK cascade o cleanup periodico)
+- Il payload push è limitato a ~4KB — solo titolo, body, url di destinazione, icona
+- `notificationclick` nel SW apre l'app all'URL corretto (es. `/guest` per convocazione, `/guest#quote` per scadenza)
+- Safari su iOS richiede che l'utente abbia installato la PWA (Add to Home Screen) per ricevere push — da comunicare nel banner
+- Le subscription scadute (410 Gone da web-push) vengono eliminate automaticamente dall'helper (19.5)
+- Nessuna dipendenza da servizi terzi a pagamento
+
+---
+
 ### EPIC 22: Refactoring Capabilities — Gruppi Espandibili + Profili Custom
 
 > Ristrutturare il sistema capabilities con gruppi funzionali (es. "Segreteria", "Tecnico", "Dirigenza") che fungono da preset espandibili. Ogni gruppo contiene le singole capabilities. Per profili custom: espandi il gruppo e abilita/disabilita le singole voci. UX wizard migliorata con card espandibili.
@@ -378,6 +441,80 @@
 
 ---
 
+### EPIC 28: Scouting CRM — Dossier Giocatori
+
+> Un CRM operativo per il Direttore Sportivo e gli osservatori. Non un semplice archivio nomi, ma un workflow completo: dalla segnalazione alla firma, con storico osservazioni, valutazioni radar, allegati e — killer feature — conversione prospetto → giocatore in rosa con tutto lo storico preservato.
+
+**Valore commerciale**: La maggior parte dei DS dilettantistici usa ancora WhatsApp e fogli Excel. Nessun gestionale giovanile offre un CRM scouting integrato con la rosa. Differenziatore forte, soprattutto per club con più osservatori.
+
+**Profilo utente principale**: `osservatore` (già presente in capabilities) + `admin`/DS.
+
+#### Fase 1: Schema DB
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 28.1 | CREATE TABLE `prospect` (id UUID PK, workspace_id FK, nome TEXT, cognome TEXT, data_nascita DATE, piede TEXT, altezza INT, peso INT, ruolo_principale TEXT, ruolo_secondario TEXT, societa_provenienza TEXT, categoria_provenienza TEXT, stato TEXT DEFAULT 'segnalato', priorita TEXT DEFAULT 'normale', note_generali TEXT, foto_url TEXT, created_by UUID FK users, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ) | ⬜ | — | migrazione SQL | ~5min |
+| 28.2 | CREATE TABLE `scouting_observation` (id UUID PK, prospect_id UUID FK prospect, workspace_id FK, osservatore_id UUID FK users, data_osservazione DATE, partita_descrizione TEXT, voto_generale NUMERIC(3,1), note TEXT, punti_forza TEXT[], aree_miglioramento TEXT[], valutazioni JSONB DEFAULT '{}' — {tecnica, velocita, tattica, fisico, mentalita, personalita}, caratteristiche TEXT[] — checklist, allegati JSONB DEFAULT '[]' — [{tipo, url, label}], created_at TIMESTAMPTZ) | ⬜ | 28.1 | migrazione SQL | ~5min |
+| 28.3 | CREATE TABLE `scouting_contact` (id UUID PK, prospect_id UUID FK, tipo TEXT — allenatore/ds/genitore/procuratore, nome TEXT, telefono TEXT, email TEXT, note TEXT, created_at TIMESTAMPTZ) | ⬜ | 28.1 | migrazione SQL | ~3min |
+| 28.4 | Abilitare RLS + policy deny_anon su tutte e 3 le tabelle | ⬜ | 28.3 | migrazione SQL | ~2min |
+| 28.5 | Aggiornare DATABASE_SCHEMA.md | ⬜ | 28.4 | .agents/knowledge/DATABASE_SCHEMA.md | ~3min |
+
+**Valori `stato` prospect** (workflow): `segnalato` → `da_osservare` → `osservato` → `molto_interessante` → `da_contattare` → `in_trattativa` → `acquistato` | `scartato`
+
+**Valori `priorita`**: `normale`, `alta`, `urgente`
+
+#### Fase 2: Backend
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 28.6 | Creare `backend/api/routes/scouting.js` — GET/POST `/api/scouting/prospects` (lista con filtri stato/priorità + dashboard contatori, crea nuovo prospetto) | ⬜ | 28.1 | routes/scouting.js | ~10min |
+| 28.7 | GET/PUT/DELETE `/api/scouting/prospects/:id` — dettaglio, aggiorna (incluso cambio stato), elimina | ⬜ | 28.6 | routes/scouting.js | ~8min |
+| 28.8 | GET/POST `/api/scouting/prospects/:id/observations` — lista osservazioni + aggiungi nuova | ⬜ | 28.2 | routes/scouting.js | ~8min |
+| 28.9 | GET/POST/DELETE `/api/scouting/prospects/:id/contacts` — gestione contatti del prospetto | ⬜ | 28.3 | routes/scouting.js | ~5min |
+| 28.10 | POST `/api/scouting/prospects/:id/convert` — converte prospetto in player nella rosa (crea record in `player` + `team_player`, preserva link `prospect.player_id`, aggiorna stato → `acquistato`) | ⬜ | 28.7 | routes/scouting.js | ~12min |
+| 28.11 | Registrare router scouting in `api/index.js` + authMiddleware + capability `scouting: read/write` | ⬜ | 28.6 | api/index.js | ~3min |
+
+#### Fase 3: Frontend — Dashboard e Lista
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 28.12 | Creare `modules/scouting/scouting.js` — dashboard con 6 contatori (osservati, priorità alta, da contattare, in trattativa, acquistati, scartati) + lista prospetti con filtro per stato | ⬜ | 28.6 | modules/scouting/scouting.js | ~15min |
+| 28.13 | Lista prospetti: card per ogni prospetto con nome, ruolo, società, stato badge colorato, priorità, data ultima osservazione | ⬜ | 28.12 | modules/scouting/scouting.js | ~10min |
+| 28.14 | Form nuovo prospetto (modal): nome, cognome, data nascita, ruolo, società, piede, priorità | ⬜ | 28.12 | modules/scouting/scouting.js | ~8min |
+
+#### Fase 4: Frontend — Dossier Prospetto
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 28.15 | Creare `modules/scouting/scoutingDetail.js` — dossier completo: header con foto/dati anagrafici/stato, tab Osservazioni / Valutazioni / Contatti / Timeline | ⬜ | 28.7 | modules/scouting/scoutingDetail.js | ~15min |
+| 28.16 | Tab Osservazioni: lista cronologica con voto, note, punti forza/aree miglioramento, allegati (link video/YouTube/Hudl/Veo + upload file) | ⬜ | 28.15, 28.8 | modules/scouting/scoutingDetail.js | ~15min |
+| 28.17 | Tab Valutazioni: radar chart (tecnica/velocità/tattica/fisico/mentalità/personalità) calcolato come media delle osservazioni + checklist caratteristiche | ⬜ | 28.16 | modules/scouting/scoutingDetail.js | ~10min |
+| 28.18 | Tab Contatti: lista contatti (allenatore/DS/genitore/procuratore) con telefono/email | ⬜ | 28.15, 28.9 | modules/scouting/scoutingDetail.js | ~8min |
+| 28.19 | Tab Timeline: storico automatico dei cambi di stato (generato da `updated_at` + log eventi) | ⬜ | 28.15 | modules/scouting/scoutingDetail.js | ~8min |
+| 28.20 | Bottone cambio stato con workflow visuale (pill cliccabili in sequenza) + bottone "Converti in giocatore" (solo stato `acquistato`) | ⬜ | 28.15, 28.10 | modules/scouting/scoutingDetail.js | ~10min |
+
+#### Fase 5: Integrazione e Finalizzazione
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 28.21 | Aggiungere voce "Scouting" in sidebar (capability `scouting: read`) + registrare route in `router.js` | ⬜ | 28.12 | components/layout/sidebarNav.js, router.js | ~5min |
+| 28.22 | Aggiungere capability `scouting` in `capabilities.js` (frontend + backend mirror) — profili: osservatore=write, ds=write, allenatore=read, altri=nessuno | ⬜ | 28.11 | utils/capabilities.js, backend/api/helpers/capabilities.js | ~5min |
+| 28.23 | Help in-app: aggiungere helpData per pagina scouting e dossier | ⬜ | 28.12 | components/helpData.js | ~5min |
+| 28.24 | Creare `modules/scouting/SCOUTING_MODULE.md` + aggiornare AGENTS.md | ⬜ | 28.20 | .agents/AGENTS.md | ~5min |
+
+**Effort totale stimato**: ~2h 38min (24 task)
+
+**Note architetturali**:
+- `prospect` è separato da `player` — non si tocca la rosa finché non si converte esplicitamente
+- La conversione (28.10) crea il player ma mantiene il link `prospect.player_id` per preservare lo storico scouting nel dossier anche dopo l'ingresso in rosa
+- Il radar chart riusa Chart.js già presente nel progetto (vedi EPIC 23)
+- Allegati: link esterni (YouTube, Hudl, Veo) salvati in JSONB; upload file su Supabase Storage bucket `scouting-attachments`
+- **v2 (future)**: mappa geografica società (Leaflet), calendario osservazioni pianificate, notifica DS su nuove segnalazioni da osservatori
+- **v3 (future)**: AI riassunto osservazioni, matching prospetto ↔ ruolo mancante in rosa, ricerca semantica
+- **Non implementare ora**: mappa, AI, calendario osservazioni, notifiche push scout
+
+---
+
 ## 4. Dipendenze tra Epic
 
 > Epic 1, 2, 3, 6, 8, 9, 10, 11, 12, 16, 18, 20, 21, 24, 25, 27 archiviati in `DEVELOPMENT_PLAN_ARCHIVE.md`.
@@ -387,18 +524,19 @@ EPIC 4 (Opponent) ──→ nessuna dipendenza
 EPIC 7 (Tornei) ──→ nessuna dipendenza
 EPIC 13 (Preseason) ──→ nessuna dipendenza
 EPIC 15 (PWA Offline-First) ──→ nessuna dipendenza
-EPIC 19 (PWA Guest Push) ──→ dipende da EPIC 11 ✅ + EPIC 12 ✅ (archiviati)
+EPIC 19 (PWA Guest Push) ──→ dipende da EPIC 11 ✅ + EPIC 12 ✅ (archiviati) — task definiti
 EPIC 22 (Capabilities) ──→ nessuna dipendenza
 EPIC 23 (Player Performance Center) ──→ nessuna dipendenza
 EPIC 26 (Stripe) ──→ dipende da EPIC 21 ✅ (archiviato)
+EPIC 28 (Scouting CRM) ──→ nessuna dipendenza
 ```
 
 Ordine consigliato per impatto/effort:
 1. **EPIC 23** (Player Performance Center, ~2h38) → decision support allenatori, differenziatore forte
-2. **EPIC 14** (Match Center Evolution, ~53min) → UX bordo campo
-3. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
-4. **EPIC 22** (Capabilities, ~1h20) → gestione permessi avanzata
-5. **EPIC 26** (Stripe, ~1h08) → pagamenti online
+2. **EPIC 15** (PWA offline-first, ~2h) → differenziatore commerciale, campo sportivo
+3. **EPIC 22** (Capabilities, ~1h20) → gestione permessi avanzata
+4. **EPIC 26** (Stripe, ~1h08) → pagamenti online
+5. **EPIC 28** (Scouting CRM, ~2h38) → differenziatore unico nel mercato dilettantistico
 6. **EPIC 19** (PWA Guest Push) → engagement famiglie
 7. **EPIC 4** (anagrafica avversari, ~74min) → base per futuro
 8. **EPIC 7** (tornei, 37min) → nice-to-have
@@ -434,6 +572,8 @@ Ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| v3.17.7 | fix: convocazioni-pubblica falliva silenziosamente per superadmin (created_by='superadmin' violava FK notification_created_by_fkey) — ora usa null per ID non-UUID. fix: convocazioni-stato restituisce {saved, published} separati. fix: DB migrazione FK notification.created_by da NO ACTION a SET NULL. fix: notifiche mancanti inserite per 62 partite con convocazioni salvate ma non pubblicate. fix: distinta ordina alfabeticamente se titolari senza numero maglia; numeri vuoti per tutti se titolari incompleti; senza formazione usa null (non numero_maglia dal roster). fix: form creazione giocatore mancava campo editTaglia. feat: formazione — bottone Auto panchina assegna numeri liberi alle riserve (Portiere→Difensore→Centrocampista→Attaccante→senza ruolo, alfabetico per parità). feat: recall ultima formazione filtra per convocati presenti (slot vuoto se assente) e ripristina numeri maglia. fix: sort riserve in auto-panchina e salvataggio — senza ruolo per ultimi (99 invece di -1). |
+| v3.17.6 | feat: parser PDF calendario multi-regione — supporto Veneto (formato Comitato Regionale inline `GIRONE:   A`, `HEADER_REGEX_CR`) e Emilia Romagna (two-line `UNDER 17 REGIONALE\nGIRONE A` + same-line `UNDER 15 REGIONALE GIRONE C`, `HEADER_REGEX_ER` + `HEADER_REGEX_ER_INLINE`). Refactoring `extractHeaders()` helper con cascade detection usato da `findTeamInPdf` e `extractCalendar`. Fix deduplicazione con Set `cat|girone` e `headers.sort()` per boundaries corretti. Test suite permanente `backend/test_pdf_parser.js` (12 casi: Lazio, Lombardia, Sicilia, Piemonte, Campania, Veneto, ER). Testato: Veneto 30p ✅, ER U14/U17/U15 ✅, Sicilia CT 38p ✅ |
 | v3.17.5 | fix: allenatore non vede notifiche ricevuta_caricata — rimosso bypass totale notifiche per ruolo allenatore in `notification.js` (ora filtra per `destinatario_profilo` come gli altri staff). fix: profilo allenatore `tesseramento:''` in `capabilities.js` (non vede più Tesseramento/Checklist in sidebar). docs: regola "fai tutto" formalizzata in `project-rules.md`, versione aggiornata a v3.17 |
 | v3.17.3 | feat: EPIC 14 Match Center Evolution completato — timeline visuale con algoritmo tracks (sopra=GOAL/SUB/SUBITO, sotto=YELLOW/RED), tooltip fixed al hover/tap, punteggio progressivo sui gol. fix: badge RIG/AUT al posto dell'icona nel card evento. fix: salvataggio nome avversario in `match_event.note` per eventi SUBITO. fix: fmtName() usata in tutti i punti di salvataggio evento (nomi uniformi Cognome N.). |
 | v3.16.99 | fix: dashboard widget convocazione role-aware — segreteria/read vede `👁 Vedi convocazione` + badge `✅ Pubblicata`, mister/write vede `Vedi/Modifica` + PDF. fix: inbox notifica convocazione apre direttamente `openConvocation(riferimento_id, true)` invece di navigare al calendario. fix: capability `convocazioni` segreteria da `write` a `read` (DB + profilo default `capabilities.js`) |
@@ -550,7 +690,7 @@ Ordine consigliato per impatto/effort:
 - Se un task supera 15min → spezzarlo in sotto-task
 
 ### Aggiungere nuovi EPIC
-- Il numero EPIC è **progressivo** (prossimo: EPIC 28)
+- Il numero EPIC è **progressivo** (prossimo: EPIC 29)
 - Inserire SEMPRE in ordine numerico nella sezione "3. Epics & Micro-Task"
 - Mai inserire un EPIC tra due esistenti con numero inferiore/superiore
 - Aggiornare la sezione "4. Dipendenze tra Epic" se il nuovo EPIC ha dipendenze

@@ -63,6 +63,7 @@ export function buildNavHtml({ user, isGuest, isSuperadmin }) {
     if (!hasCap('statistiche') && !hasCap('report')) return '';
     let s = sectionTitle('📈 Performance');
     if (hasCap('statistiche')) s += navItem('stats', '📊', 'Statistiche', 'Marcatori, assist, discipline, statistiche');
+    if (hasCap('statistiche')) s += navItem('playerPerformance', '⭐', 'Voti & Trend', 'Voti, trend, top performer, analisi reparto');
     if (hasCap('report')) s += navItem('reports', '📄', 'Report', 'Report partita e stagionale PDF');
     if (hasCap('report')) s += navItem('printCenter', '🖨', 'Print Center', 'Hub documenti: stampa, anteprima, condividi');
     return s;

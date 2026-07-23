@@ -168,6 +168,26 @@ roster.js
 - Import rosa: flusso obbligatorio **parse → preview → conferma** (mai popolare direttamente)
 - `roster-old.js` è file legacy — non modificare
 
+### convocazioni-stato (CRITICO)
+- Endpoint `GET /api/partite/:id/convocazioni-stato` restituisce `{saved: bool, published: bool}`
+- `saved=true` = esistono righe `convocation.presente=true` nel DB
+- `published=true` = esiste almeno una `notification` con `tipo='convocazione'` e `riferimento_id=matchId`
+- **Match Center** usa `saved || published` per sbloccare il tab Formazione
+- **Distinta** usa solo `published` (notifica obbligatoria per staff e guest)
+- **Convocazioni.js** usa `published` per il pallino di stato (verde=pubblicato, giallo lampeggiante=salvato non pubblicato)
+- `convocazioni-pubblica` usa `created_by = null` se `req.user.id` non è un UUID valido (es. superadmin ha id='superadmin')
+
+### Distinta — ordinamento giocatori
+- Se **tutti i titolari hanno numero maglia**: ordine per numero (titolari prima, riserve alfabetiche)
+- Se **anche solo un titolare senza numero**: colonna numero vuota per tutti, ordine alfabetico per cognome
+- Senza formazione (da convocati): `numeroMaglia=null` per tutti (non usare numero_maglia dal roster)
+
+### Formazione — funzionalità avanzate
+- **Recall ultima formazione**: filtra per convocati presenti (slot vuoto se giocatore assente), ripristina numeri maglia dall'ultima formazione
+- **Auto panchina**: assegna numeri liberi alle riserve in ordine Portiere→Difensore→Centrocampista→Attaccante→senza ruolo (alfabetico per parità). Parte da max(titolari)+1, minimo 12
+- **Salvataggio riserve**: ordinate per ruolo+alfabetico (senza ruolo per ultimi)
+- `window.YFM._convPubblicata[mid]` = flag in memoria settato da `convocazioni.js` dopo pubblicazione, letto da `matchCenter.js` per aggiornare stato senza re-fetch
+
 ## TODO / Bug aperti
 
 - [ ] `calendar.js.backup` presente — verificare se il backup è ancora necessario

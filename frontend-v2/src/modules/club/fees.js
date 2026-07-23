@@ -145,8 +145,15 @@ function renderTable(filter, isAdmin) {
   const configNames = {};
   feeConfigs.forEach(cfg => { configNames[cfg.id] = cfg.nome; });
 
+  // Ordina i gruppi per prossima rata non pagata più ravvicinata
+  const groupNextDue = (fees) => {
+    const dates = fees.flatMap(f => (f.fee_installment || []).filter(i => i.stato !== 'pagata' && i.scadenza).map(i => i.scadenza));
+    return dates.length ? dates.sort()[0] : '9999-99-99';
+  };
+  const sortedGroups = Object.entries(groups).sort(([, a], [, b]) => groupNextDue(a).localeCompare(groupNextDue(b)));
+
   let html = '';
-  Object.entries(groups).forEach(([cfgId, fees]) => {
+  sortedGroups.forEach(([cfgId, fees]) => {
     const groupName = configNames[cfgId] || 'Altro';
     const groupTot = fees.reduce((s, f) => s + parseFloat(f.importo_totale), 0);
     const groupPagato = fees.reduce((s, f) => s + (f.fee_installment || []).filter(i => i.stato === 'pagata').reduce((ps, i) => ps + parseFloat(i.importo), 0), 0);
@@ -263,13 +270,30 @@ function renderTable(filter, isAdmin) {
 
   // Elimina
   container.querySelectorAll('.btn-fee-del').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (!confirm('Eliminare questa quota e tutte le rate?')) return;
-      try {
-        await apiFetch('/fees/' + btn.dataset.id, { method: 'DELETE' });
-        loadFees();
-      } catch (err) { alert(err.message); }
+      const feeId = btn.dataset.id;
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+      overlay.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:340px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
+        <div style="font-size:32px;margin-bottom:8px;">🗑️</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">Elimina quota</div>
+        <p style="font-size:13px;color:#555;margin-bottom:20px;">Eliminare questa quota e tutte le rate associate?</p>
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <button id="feeDelCancel" class="btn btn-secondary" style="flex:1;">Annulla</button>
+          <button id="feeDelConfirm" class="btn" style="flex:1;background:#E74C3C;color:white;border:none;">Elimina</button>
+        </div>
+      </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('#feeDelCancel').onclick = () => overlay.remove();
+      overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.remove(); });
+      overlay.querySelector('#feeDelConfirm').onclick = async () => {
+        overlay.remove();
+        try {
+          await apiFetch('/fees/' + feeId, { method: 'DELETE' });
+          loadFees();
+        } catch (err) { showToast(err.message, 'error'); }
+      };
     });
   });
 
@@ -307,12 +331,28 @@ function renderTable(filter, isAdmin) {
       const body = container.querySelector(`.fee-group-body[data-cfg="${cfg}"]`);
       const ids = [...body.querySelectorAll('.fee-sel-cb:checked')].map(cb => cb.dataset.id);
       if (!ids.length) { showToast('⚠️ Seleziona almeno un giocatore', 'warning'); return; }
-      if (!confirm(`Eliminare ${ids.length} quote selezionate?`)) return;
-      try {
-        await apiFetch('/fees-batch', { method: 'DELETE', body: JSON.stringify({ ids }) });
-        showToast(`✅ ${ids.length} quote eliminate`, 'success');
-        loadFees();
-      } catch (err) { showToast(err.message, 'error'); }
+      const ov2 = document.createElement('div');
+      ov2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;display:flex;align-items:center;justify-content:center;';
+      ov2.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:340px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
+        <div style="font-size:32px;margin-bottom:8px;">🗑️</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">Elimina quote selezionate</div>
+        <p style="font-size:13px;color:#555;margin-bottom:20px;">Eliminare ${ids.length} quote selezionate e tutte le rate associate?</p>
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <button id="batchDelCancel" class="btn btn-secondary" style="flex:1;">Annulla</button>
+          <button id="batchDelConfirm" class="btn" style="flex:1;background:#E74C3C;color:white;border:none;">Elimina</button>
+        </div>
+      </div>`;
+      document.body.appendChild(ov2);
+      ov2.querySelector('#batchDelCancel').onclick = () => ov2.remove();
+      ov2.addEventListener('click', ev => { if (ev.target === ov2) ov2.remove(); });
+      ov2.querySelector('#batchDelConfirm').onclick = async () => {
+        ov2.remove();
+        try {
+          await apiFetch('/fees-batch', { method: 'DELETE', body: JSON.stringify({ ids }) });
+          showToast(`✅ ${ids.length} quote eliminate`, 'success');
+          loadFees();
+        } catch (err) { showToast(err.message, 'error'); }
+      };
     });
   });
 
@@ -528,7 +568,7 @@ function showInstallmentsModal(fee, isAdmin) {
         overlay.remove();
         hideLoading();
         loadFees();
-      } catch (err) { hideLoading(); alert(err.message); }
+      } catch (err) { hideLoading(); showToast(err.message, 'error'); }
     });
   }
 
@@ -688,13 +728,30 @@ function showConfigModal() {
   // Elimina config esistente
   overlay.querySelectorAll('.btn-del-cfg').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Eliminare questa configurazione e TUTTE le quote già assegnate ai giocatori?')) return;
-      try {
-        await apiFetch('/fee-configs/' + btn.dataset.id, { method: 'DELETE' });
-        showToast('✅ Configurazione e quote eliminate', 'success');
-        close();
-        loadFees();
-      } catch (err) { showToast(err.message, 'error'); }
+      const cfgId = btn.dataset.id;
+      const ov3 = document.createElement('div');
+      ov3.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2100;display:flex;align-items:center;justify-content:center;';
+      ov3.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:340px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
+        <div style="font-size:32px;margin-bottom:8px;">⚠️</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">Elimina configurazione</div>
+        <p style="font-size:13px;color:#555;margin-bottom:20px;">Eliminare questa configurazione e <strong>tutte le quote già assegnate</strong> ai giocatori?</p>
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <button id="cfgDelCancel" class="btn btn-secondary" style="flex:1;">Annulla</button>
+          <button id="cfgDelConfirm" class="btn" style="flex:1;background:#E74C3C;color:white;border:none;">Elimina</button>
+        </div>
+      </div>`;
+      document.body.appendChild(ov3);
+      ov3.querySelector('#cfgDelCancel').onclick = () => ov3.remove();
+      ov3.addEventListener('click', ev => { if (ev.target === ov3) ov3.remove(); });
+      ov3.querySelector('#cfgDelConfirm').onclick = async () => {
+        ov3.remove();
+        try {
+          await apiFetch('/fee-configs/' + cfgId, { method: 'DELETE' });
+          showToast('✅ Configurazione e quote eliminate', 'success');
+          close();
+          loadFees();
+        } catch (err) { showToast(err.message, 'error'); }
+      };
     });
   });
 
@@ -730,7 +787,7 @@ function showConfigModal() {
       if (!cfg) return;
       try {
         showLoading('Rigenerazione quote...');
-        const res = await apiFetch('/fee-configs/' + btn.dataset.id + '/rigenera', { method: 'POST' });
+        const res = await apiFetch('/fee-configs/' + btn.dataset.id + '/rigenera', { method: 'POST', body: JSON.stringify({ season_id: window.YFM.currentSeasonId, team_id: window.YFM.squadraId }) });
         hideLoading();
         showToast(`✅ ${res.rigenerati} quote rigenerate`, 'success');
         close(); loadFees();
@@ -750,9 +807,9 @@ function showConfigModal() {
     const nome = overlay.querySelector('#cfgNome').value.trim();
     const importo_totale = importoInput.value;
     const cat = overlay.querySelector('#cfgCategory').value || null;
-    if (!nome || !importo_totale || !rate.length) { alert('Compila nome, importo e configura le rate'); return; }
+    if (!nome || !importo_totale || !rate.length) { showToast('Compila nome, importo e configura le rate', 'warning'); return; }
     const sum = rate.reduce((s, r) => s + (parseFloat(r.importo) || 0), 0);
-    if (Math.abs(sum - parseFloat(importo_totale)) > 0.01) { alert('Il totale delle rate non corrisponde all\'importo totale'); return; }
+    if (Math.abs(sum - parseFloat(importo_totale)) > 0.01) { showToast('Il totale delle rate non corrisponde all\'importo totale', 'warning'); return; }
     try {
       const created = await apiFetch('/fee-configs', { method: 'POST', body: JSON.stringify({
         workspace_id: workspaceId,
@@ -763,12 +820,23 @@ function showConfigModal() {
       })});
       close();
       // Chiedi se applicare subito
-      if (created?.id && confirm(`Quota "${nome}" salvata. Applicare subito a tutti i giocatori della rosa?`)) {
-        await applyConfigToTeam(created.id);
-      } else {
-        loadFees();
-      }
-    } catch (err) { alert(err.message); }
+      if (created?.id) {
+        const ov4 = document.createElement('div');
+        ov4.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2100;display:flex;align-items:center;justify-content:center;';
+        ov4.innerHTML = `<div style="background:white;border-radius:16px;padding:24px;max-width:340px;width:95%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
+          <div style="font-size:32px;margin-bottom:8px;">✅</div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:8px;">Quota "${nome}" salvata</div>
+          <p style="font-size:13px;color:#555;margin-bottom:20px;">Applicare subito a tutti i giocatori della rosa?</p>
+          <div style="display:flex;gap:8px;justify-content:center;">
+            <button id="applyNo" class="btn btn-secondary" style="flex:1;">No</button>
+            <button id="applyYes" class="btn btn-primary" style="flex:1;">Applica</button>
+          </div>
+        </div>`;
+        document.body.appendChild(ov4);
+        ov4.querySelector('#applyNo').onclick = () => { ov4.remove(); loadFees(); };
+        ov4.querySelector('#applyYes').onclick = async () => { ov4.remove(); await applyConfigToTeam(created.id); };
+      } else { loadFees(); }
+    } catch (err) { showToast(err.message, 'error'); }
   });
 }
 
@@ -952,20 +1020,25 @@ function showEditConfigModal(cfg, onDone) {
 // ═══════════════════════════════════════════
 async function applyConfigToTeam(cfgId) {
   const players = Object.values(rosterMap);
-  if (!players.length) { alert('Nessun giocatore nella rosa'); return; }
+  if (!players.length) { showToast('Nessun giocatore nella rosa', 'warning'); return; }
   try {
     showLoading('Generazione quote...');
-    await apiFetch('/fees-generate', { method: 'POST', body: JSON.stringify({
+    const res = await apiFetch('/fees-generate', { method: 'POST', body: JSON.stringify({
       fee_config_id: cfgId,
       team_id: window.YFM.squadraId,
       season_id: window.YFM.currentSeasonId,
       player_ids: players.map(p => p.player_id || p.id)
     })});
     hideLoading();
+    if (res.created > 0) {
+      showToast(`✅ ${res.created} quote generate${res.skipped > 0 ? ` · ${res.skipped} già presenti` : ''}`, 'success');
+    } else {
+      showToast(`ℹ️ Tutti i giocatori hanno già questa quota (${res.skipped || 0} saltati)`, 'info');
+    }
     loadFees();
   } catch (err) {
     hideLoading();
-    alert(err.message);
+    showToast(err.message, 'error');
   }
 }
 

@@ -564,6 +564,7 @@ export default async function loadDashboard() {
     '<div data-widget="kit" id="dashKitWidget" style="display:none;"></div>' +
     '<div data-widget="checklist" id="dashChecklistWidget" style="display:none;"></div>' +
     '<div data-widget="tesseramento" id="dashTessWidget" style="display:none;"></div>' +
+    '<div data-widget="performance_voti" id="dashPerfVotiWidget" style="display:none;"></div>' +
     '<div data-widget="convocazione" id="dashConvocazioneWidget" style="display:none;"></div>' +
     '<div data-widget="classifica" id="dashLazyCol"><div style="text-align:center;padding:40px;color:#999;"><div class="spinner"></div></div></div>' +
     '<div data-widget="staff"><div class="staff-card" data-help="dashboard.staff"><h2 style="margin:0 0 12px 0;font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);">👥 Staff</h2><div>' + renderStaff() + '</div></div></div>' +
@@ -832,6 +833,35 @@ export default async function loadDashboard() {
       tessWidget.querySelector('#dashTessCard')?.addEventListener('click', () => window.YFM.navigateTo('registration'));
     }).catch(() => {});
   }
+
+  // Widget ⭐ Top Performer (performance_voti) — solo allenatore/admin con cap statistiche
+  const perfWidget = document.getElementById('dashPerfVotiWidget');
+  if (perfWidget && window.YFM.canRead('statistiche')) {
+    apiFetch('/squadre/' + window.YFM.squadraId + '/performance-summary').then(players => {
+      const conVoti = (players || []).filter(p => p.media !== null && p.n_valutazioni >= 3);
+      if (conVoti.length < 3) return;
+      const top3 = [...conVoti].sort((a, b) => b.media - a.media).slice(0, 3);
+      const trendIcon = t => t === 'up' ? '⬆' : t === 'down' ? '⬇' : '➡';
+      const trendColor = t => t === 'up' ? '#27AE60' : t === 'down' ? '#E74C3C' : '#F39C12';
+      const mediaColor = m => m >= 7 ? '#27AE60' : m >= 6 ? '#F39C12' : '#E74C3C';
+      if (perfWidget.dataset.userHidden !== '1') perfWidget.style.display = '';
+      perfWidget.innerHTML = `<div style="background:white;border:1px solid #eee;border-radius:12px;padding:14px;cursor:pointer;" id="dashPerfCard">
+        <div style="font-size:14px;font-weight:600;margin-bottom:10px;">⭐ Top Performer</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${top3.map((p, i) => `
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:16px;">${['🥇','🥈','🥉'][i]}</span>
+              <span style="flex:1;font-size:13px;font-weight:600;color:#1f2937;">${p.cognome} ${p.nome?.charAt(0) || ''}.</span>
+              <span style="font-size:14px;font-weight:700;color:${mediaColor(p.media)};">${p.media.toFixed(2)}</span>
+              <span style="font-size:12px;color:${trendColor(p.trend)};">${trendIcon(p.trend)}</span>
+            </div>`).join('')}
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:#667eea;font-weight:600;">→ Vedi tutti</div>
+      </div>`;
+      perfWidget.querySelector('#dashPerfCard')?.addEventListener('click', () => window.YFM.navigateTo('playerPerformance'));
+    }).catch(() => {});
+  }
+
   if (prossimaPartita) {
     const convPromise = apiFetch('/partite/' + prossimaPartita.id + '/convocazioni').catch(() => []);
     const matchDateStr = prossimaPartita.data_ora ? prossimaPartita.data_ora.substring(0, 10) : '';
@@ -943,7 +973,7 @@ export default async function loadDashboard() {
       if (missing.length) order = [...order, ...missing];
     }
     const hidden = layout.hidden || [];
-    const lazyWidgets = new Set(['injuries', 'certificati', 'fees', 'kit', 'checklist', 'tesseramento', 'convocazione']);
+    const lazyWidgets = new Set(['injuries', 'certificati', 'fees', 'kit', 'checklist', 'tesseramento', 'convocazione', 'performance_voti']);
     // Append in order
     order.forEach(id => {
       const el = container.querySelector('[data-widget="' + id + '"]');
@@ -1050,7 +1080,7 @@ export default async function loadDashboard() {
     const container = document.getElementById('dashWidgetsContainer');
     if (!container) return;
     // Widget lazy gestiti dalle Promise — non toccare il loro display
-    const lazyWidgets = new Set(['injuries', 'certificati', 'fees', 'kit', 'checklist', 'tesseramento', 'convocazione']);
+    const lazyWidgets = new Set(['injuries', 'certificati', 'fees', 'kit', 'checklist', 'tesseramento', 'convocazione', 'performance_voti']);
     // Get current order from DOM
     const currentWidgets = [...container.querySelectorAll('[data-widget]')];
     let order = currentWidgets.map(el => el.dataset.widget);

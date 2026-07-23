@@ -145,6 +145,9 @@ function renderPlayerDetail(container, data) {
           ${valutazioni.storico.slice(0, 8).map(v => `<span style="padding:4px 10px;background:white;border-radius:12px;font-size:12px;border:1px solid #eee;"><strong>${v.voto}</strong> ${v.partita ? '(' + v.partita + ')' : ''}</span>`).join('')}
         </div>
       </div>` : ''}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;">
+        <button onclick="window.navigateTo && window.navigateTo('playerPerformance', {playerId: '${playerId}'})" style="background:none;border:none;color:#667eea;font-size:12px;font-weight:600;cursor:pointer;padding:0;">⭐ Vedi performance dettagliata →</button>
+      </div>
       </div>
     </div>` : '';
 
@@ -858,6 +861,7 @@ export function loadNewPlayerForm(container) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Ruolo</label><select id="editRuolo" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="">-- Seleziona --</option><option value="Portiere">Portiere</option><option value="Difensore">Difensore</option><option value="Centrocampista">Centrocampista</option><option value="Attaccante">Attaccante</option></select></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">N. Maglia</label><input id="editNumMaglia" type="number" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Taglia</label><select id="editTaglia" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;">${getTaglieOptsPD('')}</select></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Piede Preferito</label><select id="editPiede" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="">-- Seleziona --</option><option value="Destro">Destro</option><option value="Sinistro">Sinistro</option><option value="Ambidestro">Ambidestro</option></select></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Stato</label><select id="editStato" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"><option value="Attivo" selected>Attivo</option><option value="Infortunato">Infortunato</option><option value="Svincolato">Svincolato</option></select></div>
         <div class="form-group"><label style="font-size:12px;font-weight:600;color:#666;">Altezza (cm)</label><input id="editAltezza" type="number" value="" style="padding:8px;border:1px solid #ddd;border-radius:6px;width:100%;"></div>

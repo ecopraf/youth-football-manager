@@ -159,7 +159,7 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers,
   html += `<p style="margin-bottom:8px;font-size:13px;color:#666;">Trascina i giocatori dalla lista al campo.</p>`;
   html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;"><div class="modulo-select" id="moduloSelect" data-help="formazione.modulo" style="margin-bottom:0;">`;
   Object.keys(MODULI).forEach(k => { html += `<button class="modulo-btn${k===savedModulo?' active':''}" data-modulo="${k}">${k}</button>`; });
-  html += `</div>${!isLive ? '<button id="recallLastForm" style="padding:6px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#666;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.2s;">📋 Ultima</button>' : ''}</div>`;
+  html += `</div>${!isLive ? '<button id="recallLastForm" style="padding:6px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#666;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.2s;">📋 Ultima</button><button id="autoBenchBtn" style="padding:6px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#666;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.2s;">🔢 Auto panchina</button>' : ''}</div>`;
   // Build jersey map: saved formation numbers take priority over player profile
   const savedJerseyMap = {};
   if (apiFormazione && apiFormazione.length > 0) {
@@ -222,13 +222,53 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers,
       currentModulo = newModulo;
       document.querySelectorAll('#moduloSelect .modulo-btn').forEach(b => b.classList.toggle('active', b.dataset.modulo === newModulo));
       slotAssignments = {};
-      arr.forEach((f, i) => { slotAssignments[i] = f.calciatoreId; });
+      // Solo giocatori presenti nella convocazione corrente
+      const convocatiSet = new Set(giocatoriConvocati.map(g => g.id));
+      arr.forEach((f, i) => {
+        if (convocatiSet.has(f.calciatoreId)) slotAssignments[i] = f.calciatoreId;
+        // slot vuoto se assente (non assegnato)
+      });
+      // Ripristina numeri maglia dall'ultima formazione
+      arr.forEach(f => {
+        if (f.numeroMaglia && convocatiSet.has(f.calciatoreId)) {
+          const inp = document.querySelector('.jersey-input[data-pid="' + f.calciatoreId + '"]');
+          if (inp) inp.value = f.numeroMaglia;
+        }
+      });
       customPositions = meta.positions || {};
       refreshPitch();
       recallBtn.textContent = '✅ Ultima'; recallBtn.style.border = '1px solid #27AE60'; recallBtn.style.color = '#27AE60';
     } catch(e) { resetRecallBtn(); alert('Errore: ' + e.message); }
   });
 
+
+  // Auto panchina: assegna numeri liberi alle riserve in ordine ruolo+alfabetico
+  document.getElementById('autoBenchBtn')?.addEventListener('click', () => {
+    const jerseyMap = getJerseyMap();
+    const usedNums = new Set(Object.values(jerseyMap).filter(Boolean));
+    // Titolari assegnati
+    const titolariIds = new Set(Object.values(slotAssignments).filter(Boolean));
+    // Riserve = convocati non titolari
+    const ruoloOrder = ['Portiere', 'Difensore', 'Centrocampista', 'Attaccante'];
+    const riserve = giocatoriConvocati
+      .filter(g => !titolariIds.has(g.id))
+      .sort((a, b) => {
+        const ra = ruoloOrder.indexOf(a.ruolo) === -1 ? 99 : ruoloOrder.indexOf(a.ruolo);
+        const rb = ruoloOrder.indexOf(b.ruolo) === -1 ? 99 : ruoloOrder.indexOf(b.ruolo);
+        if (ra !== rb) return ra - rb;
+        return a.cognome.localeCompare(b.cognome);
+      });
+    // Numero di partenza: max dei titolari + 1, minimo 12
+    const titolariNums = [...titolariIds].map(id => jerseyMap[id]).filter(Boolean);
+    let next = titolariNums.length > 0 ? Math.max(...titolariNums) + 1 : 12;
+    riserve.forEach(g => {
+      if (jerseyMap[g.id]) return; // già ha numero
+      while (usedNums.has(next)) next++;
+      const inp = document.querySelector('.jersey-input[data-pid="' + g.id + '"]');
+      if (inp) { inp.value = next; usedNums.add(next); next++; }
+    });
+    refreshPitch();
+  });
   function getJerseyMap() {
     const m = {};
     document.querySelectorAll('.jersey-input').forEach(inp => { const v = parseInt(inp.value); if (v) m[inp.dataset.pid] = v; });
@@ -305,7 +345,16 @@ function renderPitchEdit(mid, match, giocatoriConvocati, formazione, allPlayers,
     }
 
     isSaving = true;
-    const riserve = giocatoriConvocati.filter(g => !placed.includes(g.id)).map(g => g.id);
+    const ruoloOrd = ['Portiere', 'Difensore', 'Centrocampista', 'Attaccante'];
+    const riserve = giocatoriConvocati
+      .filter(g => !placed.includes(g.id))
+      .sort((a, b) => {
+        const ra = ruoloOrd.indexOf(a.ruolo) === -1 ? 99 : ruoloOrd.indexOf(a.ruolo);
+        const rb = ruoloOrd.indexOf(b.ruolo) === -1 ? 99 : ruoloOrd.indexOf(b.ruolo);
+        if (ra !== rb) return ra - rb;
+        return a.cognome.localeCompare(b.cognome);
+      })
+      .map(g => g.id);
     const formazione = [];
     placed.forEach((pid, i) => {
       formazione.push({ calciatoreId: pid, numeroMaglia: jerseyMap[pid] || null, posizione: 'Titolare', capitano: false, viceCapitano: false });

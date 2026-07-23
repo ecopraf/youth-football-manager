@@ -483,12 +483,13 @@ try { token = guestRaw ? JSON.parse(guestRaw).jwt : null; } catch { token = null
 
 Quando l'utente scrive **"fai tutto"** (o varianti: "fai tutto il necessario", "completa tutto"), l'agente DEVE eseguire in sequenza, senza chiedere conferma intermedia:
 
-1. **Aggiorna documentazione moduli** — `frontend-v2/src/modules/NOME/NOME_MODULE.md` per ogni modulo toccato
-2. **Aggiorna AGENTS.md** — se la modifica tocca file, endpoint, dipendenze o architettura
-3. **Archivia epic completati** — se tutti i task di un epic sono ✅, spostarlo in `DEVELOPMENT_PLAN_ARCHIVE.md` e aggiornare `DEVELOPMENT_PLAN.md`
-4. **Release** — `cd frontend-v2 && npm run release` (incrementa counter + build)
-5. **Commit** — `git add . && git add -f frontend-v2/src/build-info.js .last-release && git commit -m "[vX.Y.Z] tipo: descrizione"`
-6. **Push** — `git push origin main`
+1. **Aggiorna documentazione moduli** — `frontend-v2/src/modules/NOME/NOME_MODULE.md` per ogni modulo toccato (endpoint aggiunti/rimossi, tabelle DB, variabili YFM, note critiche, dipendenze)
+2. **Aggiorna AGENTS.md** — se la modifica tocca file, endpoint, dipendenze o architettura (nuovi router, nuovi helper, nuovi moduli frontend, nuove tabelle DB, nuove variabili `window.YFM.*`)
+3. **Aggiorna project-rules.md** — se la modifica introduce nuove regole operative, pattern di codice, convenzioni o comportamenti critici da ricordare nelle sessioni future
+4. **Archivia epic completati** — se tutti i task di un epic sono ✅, spostarlo in `DEVELOPMENT_PLAN_ARCHIVE.md` e aggiornare `DEVELOPMENT_PLAN.md`
+5. **Release** — `cd frontend-v2 && npm run release` (incrementa counter + build)
+6. **Commit** — `git add . && git add -f frontend-v2/src/build-info.js .last-release && git commit -m "[vX.Y.Z] tipo: descrizione"`
+7. **Push** — `git push origin main`
 
 **Regole:**
 - Eseguire tutti gli step senza pause o richieste di conferma

@@ -66,7 +66,7 @@ export async function openDistinta(mid, staffOverrides) {
           nome: g.nome,
           cognome: g.cognome,
           ruolo_principale: g.ruolo,
-          numeroMaglia: g.numero_maglia,
+          numeroMaglia: null,
           dataNascita: g.data_nascita,
           matricolaFigc: g.matricola_figc,
           tipoDocumento: g.tipo_documento,
@@ -144,13 +144,17 @@ function renderDistinta(d, staff, meta, mid) {
   if (!c) return;
   const distintaMeta = meta || {};
   
-  // Ordina: titolari per numero maglia, poi riserve per numero maglia
-  const t = (d.formazione || []).sort((a, b) => {
-    const aIsTit = a.posizione === 'Titolare' ? 0 : 1;
-    const bIsTit = b.posizione === 'Titolare' ? 0 : 1;
-    if (aIsTit !== bIsTit) return aIsTit - bIsTit;
-    return (a.numeroMaglia || 99) - (b.numeroMaglia || 99);
-  });
+  // Ordina: se i titolari hanno tutti numero maglia → titolari per numero, riserve alfabetiche
+  // Altrimenti tutto alfabetico per cognome
+  const titolari = (d.formazione || []).filter(f => f.posizione === 'Titolare');
+  const riserve = (d.formazione || []).filter(f => f.posizione !== 'Titolare');
+  const titolariHaveNumbers = titolari.length > 0 && titolari.every(f => f.numeroMaglia);
+  const t = titolariHaveNumbers
+    ? [
+        ...titolari.sort((a, b) => a.numeroMaglia - b.numeroMaglia),
+        ...riserve.sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''))
+      ]
+    : [...titolari, ...riserve].sort((a, b) => (a.cognome || '').localeCompare(b.cognome || ''));
   const dt = new Date(d.partita.dataOra);
   const s = staff || {};
   const righe = [];
@@ -161,7 +165,7 @@ function renderDistinta(d, staff, meta, mid) {
       const f = t[i];
       const ruoloTag = f.ruolo_principale === 'Portiere' ? ' (P)' : '';
       const isTitolare = f.posizione === 'Titolare';
-      const numDisplay = f.numeroMaglia || '';
+      const numDisplay = titolariHaveNumbers ? (f.numeroMaglia || '') : '';
       const numCell = numDisplay ? (isTitolare ? '<span class="num-circle">' + numDisplay + '</span>' : numDisplay) : '';
       righe.push('<tr class="' + (f.capitano ? 'capitano' : f.viceCapitano ? 'vice' : '') + '">' +
         '<td style="border:none;font-size:9px;">' + (i + 1) + '</td>' +

@@ -78,6 +78,18 @@ export const PAGE_HELP = {
       'Minutaggio calcolato in base alla categoria'
     ]
   },
+  playerPerformance: {
+    title: '⭐ Performance Center',
+    desc: 'Analisi avanzata delle valutazioni partita. Trasforma i voti in conoscenza strategica per allenatori e DS.',
+    items: [
+      'Top Performer: top 5 giocatori per media voti con badge trend ⬆⬇➡',
+      'Analisi per Reparto: media voti per Portieri/Difensori/Centrocampisti/Attaccanti con heatmap 🟢🟡🔴',
+      'Classifica Rosa: tutti i giocatori ordinati per media con gol e assist',
+      'Senza valutazioni: reminder per i giocatori mai valutati',
+      'Click su un giocatore → vista dettaglio con grafico trend, media mensile e lista partite',
+      'Richiede almeno 3 giocatori con valutazioni inserite dal Match Center'
+    ]
+  },
   reports: {
     title: '📄 Report Squadra',
     desc: 'Genera report PDF per partita, stagione o singolo giocatore.',

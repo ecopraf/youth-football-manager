@@ -64,11 +64,11 @@ export default async function loadMatchCenter() {
     // Load players: formazione → convocati → rosa
     // Parallelizza: convocazioni-stato, calciatori e formazione in parallelo
     const [convStato, allPlayersRes, formRes] = await Promise.all([
-      apiFetch('/partite/' + mid + '/convocazioni-stato').catch(() => ({ published: false })),
+      apiFetch('/partite/' + mid + '/convocazioni-stato').catch(() => ({ saved: false, published: false })),
       apiFetch('/squadre/' + window.YFM.squadraId + '/calciatori').catch(() => []),
       apiFetch('/partite/' + mid + '/formazione').catch(() => ({ formazione: [], meta: {} }))
     ]);
-    convPubblicata = convStato.published === true;
+    convPubblicata = convStato.saved === true || convStato.published === true;
     allPlayers = allPlayersRes;
     const apiFormazione = formRes?.formazione || [];
     const apiMeta = formRes?.meta || {};
@@ -923,7 +923,14 @@ function bindEvents(mid) {
       document.querySelectorAll('.mc-tab-panel').forEach(p => p.classList.remove('mc-tab-active'));
       const panelMap = { events: 'mcBodyEvents', formation: 'mcBodyFormation', notes: 'mcBodyNotes', valutazioni: 'mcBodyValutazioni', import: 'mcBodyImport' };
       document.getElementById(panelMap[t])?.classList.add('mc-tab-active');
-      if (t === 'formation') { bindLiveFormation(mid); bindFormationSubtabs(); }
+      if (t === 'formation') {
+        // Legge flag globale settato da convocazioni.js dopo pubblicazione (no re-fetch)
+        if (!convPubblicata && !formazioneData && window.YFM._convPubblicata?.[mid]) {
+          convPubblicata = true;
+          document.getElementById('mcBodyFormation').innerHTML = getLiveFormation(mid);
+        }
+        bindLiveFormation(mid); bindFormationSubtabs();
+      }
       if (t === 'notes') bindNotesPanel(mid);
       if (t === 'valutazioni') bindValutazioniPanel(mid);
       if (t === 'import') bindImportPanel(mid);

@@ -133,7 +133,7 @@ export async function openConvocation(mid, readOnly) {
 
   // Determina stato: esistono convocazioni salvate? È stata pubblicata?
   const hasSavedConv = conv.length > 0;
-  const isPublished = hasSavedConv ? await apiFetch('/partite/' + mid + '/convocazioni-stato').catch(() => ({ published: false })) : { published: false };
+  const isPublished = hasSavedConv ? await apiFetch('/partite/' + mid + '/convocazioni-stato').catch(() => ({ saved: false, published: false })) : { saved: false, published: false };
   const published = isPublished.published === true;
   // Traccia se ci sono modifiche non pubblicate
   let hasUnsavedChanges = false;
@@ -282,6 +282,9 @@ export async function openConvocation(mid, readOnly) {
       await apiFetch('/partite/' + mid + '/convocazioni-batch', { method: 'POST', body: JSON.stringify({ convocazioni }) });
       await apiFetch('/partite/' + mid + '/convocazioni-pubblica', { method: 'POST' });
       hideLoading();
+      // Setta flag globale — Match Center lo legge senza ri-fetchare
+      if (!window.YFM._convPubblicata) window.YFM._convPubblicata = {};
+      window.YFM._convPubblicata[mid] = true;
       // Pallino verde fisso
       const dot = document.getElementById('pubDot');
       if (dot) { dot.style.background = '#27AE60'; dot.style.animation = 'none'; }

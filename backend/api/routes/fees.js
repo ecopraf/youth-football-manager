@@ -86,10 +86,15 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
   // POST /api/fee-configs/:id/rigenera — rigenera installments da config aggiornata
   router.post('/api/fee-configs/:id/rigenera', authMiddleware, async (req, res) => {
     try {
+      const { season_id, team_id } = req.body || {};
       const { data: config } = await supabase.from('fee_config').select('*').eq('id', req.params.id).single();
       if (!config) return res.status(404).json({ error: 'Configurazione non trovata' });
 
-      const { data: fees } = await supabase.from('fee').select('id, importo_pagato').eq('fee_config_id', req.params.id);
+      let feesQuery = supabase.from('fee').select('id, importo_pagato, player_id, team_id, season_id').eq('fee_config_id', req.params.id);
+      if (season_id) feesQuery = feesQuery.eq('season_id', season_id);
+      if (team_id) feesQuery = feesQuery.eq('team_id', team_id);
+      const { data: fees } = await feesQuery;
+
       if (!fees?.length) return res.json({ success: true, rigenerati: 0 });
 
       const newImporto = parseFloat(config.importo_totale);
@@ -154,7 +159,8 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
         await supabase.from('fee').update({ stato }).in('id', ids);
       }
 
-      res.json({ success: true, rigenerati: fees.length });
+      const giocatoriDistinti = new Set(fees.map(f => f.player_id)).size;
+      res.json({ success: true, rigenerati: giocatoriDistinti });
     } catch (err) {
       console.error('fee-config rigenera error:', err);
       res.status(500).json({ error: 'Errore server' });
@@ -210,8 +216,15 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
         .select('*').eq('id', fee_config_id).single();
       if (cfgErr || !config) return res.status(404).json({ error: 'Configurazione non trovata' });
 
-      // Crea fee + installments per ogni giocatore
-      const feeRows = player_ids.map(pid => ({
+      // Filtra giocatori che hanno già una fee per questa config+team+season
+      const { data: existing } = await supabase.from('fee')
+        .select('player_id').eq('fee_config_id', fee_config_id).eq('team_id', team_id).eq('season_id', season_id);
+      const existingIds = new Set((existing || []).map(f => f.player_id));
+      const newPlayerIds = player_ids.filter(pid => !existingIds.has(pid));
+      if (!newPlayerIds.length) return res.status(200).json({ success: true, created: 0, installments: 0, skipped: player_ids.length });
+
+      // Crea fee + installments solo per i giocatori senza fee
+      const feeRows = newPlayerIds.map(pid => ({
         fee_config_id,
         player_id: pid,
         team_id,
@@ -243,7 +256,7 @@ module.exports = function createFeesRouter({ supabase, authMiddleware }) {
         if (instErr) return handleDbError(instErr, res);
       }
 
-      res.status(201).json({ success: true, created: fees.length, installments: installments.length });
+      res.status(201).json({ success: true, created: fees.length, installments: installments.length, skipped: existingIds.size });
     } catch (err) {
       res.status(500).json({ error: 'Errore server' });
     }

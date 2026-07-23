@@ -604,6 +604,295 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
     }
   });
 
+  // GET /api/squadre/:teamId/performance-summary
+  // calciatore_id in valutazione_partita = player_id (non team_player_id)
+  router.get('/api/squadre/:teamId/performance-summary', authMiddleware, async (req, res) => {
+    try {
+      const teamId = req.params.teamId;
+
+      const { data: tps } = await supabase.from('team_player')
+        .select('id, player_id, ruolo_preferito, player:player_id(id, nome, cognome)')
+        .eq('team_id', teamId).neq('stato', 'Svincolato');
+      if (!tps || tps.length === 0) return res.json([]);
+
+      const playerIds = tps.map(tp => tp.player_id);
+      const tpIds = tps.map(tp => tp.id);
+
+      // valutazioni: calciatore_id = player_id (query separata, no join FK)
+      const { data: valutazioni } = await supabase.from('valutazione_partita')
+        .select('calciatore_id, voto, partita_id')
+        .in('calciatore_id', playerIds);
+
+      const matchIds = [...new Set((valutazioni || []).map(v => v.partita_id).filter(Boolean))];
+
+      // minuti_giocati da match_statistics (team_player_id)
+      let minutiMap = {};
+      if (matchIds.length > 0 && tpIds.length > 0) {
+        const { data: stats } = await supabase.from('match_statistics')
+          .select('team_player_id, minuti_giocati').in('team_player_id', tpIds).in('match_id', matchIds);
+        const tpToPlayer = {};
+        tps.forEach(tp => { tpToPlayer[tp.id] = tp.player_id; });
+        (stats || []).forEach(s => {
+          const pid = tpToPlayer[s.team_player_id];
+          if (pid) minutiMap[pid] = (minutiMap[pid] || 0) + (s.minuti_giocati || 0);
+        });
+      }
+
+      // eventi
+      let eventiMap = {};
+      if (matchIds.length > 0) {
+        const { data: eventi } = await supabase.from('match_event')
+          .select('tipo_evento, player_id').in('match_id', matchIds).in('player_id', playerIds);
+        (eventi || []).forEach(e => {
+          if (!eventiMap[e.player_id]) eventiMap[e.player_id] = { gol: 0, assist: 0, yellow: 0, red: 0 };
+          if (e.tipo_evento === 'GOAL') eventiMap[e.player_id].gol++;
+          else if (e.tipo_evento === 'ASSIST') eventiMap[e.player_id].assist++;
+          else if (e.tipo_evento === 'YELLOW') eventiMap[e.player_id].yellow++;
+          else if (e.tipo_evento === 'RED') eventiMap[e.player_id].red++;
+        });
+      }
+
+      const result = tps.map(tp => {
+        const vals = (valutazioni || []).filter(v => v.calciatore_id === tp.player_id);
+        const voti = vals.map(v => parseFloat(v.voto)).filter(v => !isNaN(v));
+        const media = voti.length > 0 ? Math.round((voti.reduce((a, b) => a + b, 0) / voti.length) * 100) / 100 : null;
+        let trend = null;
+        if (voti.length >= 5) {
+          const u5 = voti.slice(-5), prec = voti.slice(0, -5);
+          if (prec.length > 0) {
+            const delta = (u5.reduce((a, b) => a + b, 0) / u5.length) - (prec.reduce((a, b) => a + b, 0) / prec.length);
+            trend = delta > 0.3 ? 'up' : delta < -0.3 ? 'down' : 'stable';
+          }
+        }
+        const ev = eventiMap[tp.player_id] || { gol: 0, assist: 0, yellow: 0, red: 0 };
+        return {
+          team_player_id: tp.id,
+          player_id: tp.player_id,
+          nome: tp.player?.nome,
+          cognome: tp.player?.cognome,
+          ruolo: tp.ruolo_preferito,
+          media,
+          n_valutazioni: voti.length,
+          trend,
+          minuti_totali: minutiMap[tp.player_id] || 0,
+          gol: ev.gol,
+          assist: ev.assist,
+          yellow: ev.yellow,
+          red: ev.red
+        };
+      });
+
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/calciatori/:playerId/performance-detail?team_id=X
+  // calciatore_id = player_id, match usa data_ora, no join FK su partita_id
+  router.get('/api/calciatori/:playerId/performance-detail', authMiddleware, async (req, res) => {
+    try {
+      const { playerId } = req.params;
+      const { team_id } = req.query;
+      if (!team_id) return res.status(400).json({ error: 'team_id obbligatorio' });
+
+      const { data: tp } = await supabase.from('team_player')
+        .select('id, ruolo_preferito, player:player_id(id, nome, cognome)')
+        .eq('player_id', playerId).eq('team_id', team_id).single();
+      if (!tp) return res.status(404).json({ error: 'Giocatore non trovato in questa squadra' });
+
+      // valutazioni senza join FK
+      const { data: valutazioni } = await supabase.from('valutazione_partita')
+        .select('voto, nota_allenatore, partita_id')
+        .eq('calciatore_id', playerId)
+        .order('partita_id');
+
+      if (!valutazioni || valutazioni.length === 0)
+        return res.json({ tp_id: tp.id, player: tp.player, ruolo: tp.ruolo_preferito, n_valutazioni: 0, media: null, trend: null, media_mensile: [], partite: [] });
+
+      const matchIds = valutazioni.map(v => v.partita_id).filter(Boolean);
+
+      // fetch match separato
+      const { data: matches } = await supabase.from('match')
+        .select('id, data_ora, avversario, tipo_competizione, gol_casa, gol_ospite')
+        .in('id', matchIds);
+      const matchMap = {};
+      (matches || []).forEach(m => { matchMap[m.id] = m; });
+
+      // minuti_giocati da match_statistics
+      const { data: statsRows } = await supabase.from('match_statistics')
+        .select('match_id, minuti_giocati').eq('team_player_id', tp.id).in('match_id', matchIds);
+      const minutiPerMatch = {};
+      (statsRows || []).forEach(s => { minutiPerMatch[s.match_id] = s.minuti_giocati || 0; });
+
+      // eventi
+      const { data: eventi } = await supabase.from('match_event')
+        .select('tipo_evento, match_id').eq('player_id', playerId).in('match_id', matchIds);
+      const eventiPerMatch = {};
+      (eventi || []).forEach(e => {
+        if (!eventiPerMatch[e.match_id]) eventiPerMatch[e.match_id] = [];
+        eventiPerMatch[e.match_id].push(e.tipo_evento);
+      });
+
+      const voti = valutazioni.map(v => parseFloat(v.voto)).filter(v => !isNaN(v));
+      const media = voti.length > 0 ? Math.round((voti.reduce((a, b) => a + b, 0) / voti.length) * 100) / 100 : null;
+
+      let trend = null, mediaUltimi5 = null, mediaPrec = null;
+      if (voti.length >= 5) {
+        const u5 = voti.slice(-5), prec = voti.slice(0, -5);
+        mediaUltimi5 = Math.round((u5.reduce((a, b) => a + b, 0) / u5.length) * 100) / 100;
+        if (prec.length > 0) {
+          mediaPrec = Math.round((prec.reduce((a, b) => a + b, 0) / prec.length) * 100) / 100;
+          trend = (mediaUltimi5 - mediaPrec) > 0.3 ? 'up' : (mediaUltimi5 - mediaPrec) < -0.3 ? 'down' : 'stable';
+        }
+      }
+
+      // Media mensile — usa data_ora
+      const perMese = {};
+      valutazioni.forEach(v => {
+        const m = matchMap[v.partita_id];
+        if (!m?.data_ora || isNaN(parseFloat(v.voto))) return;
+        const mese = m.data_ora.substring(0, 7);
+        if (!perMese[mese]) perMese[mese] = [];
+        perMese[mese].push(parseFloat(v.voto));
+      });
+      const media_mensile = Object.entries(perMese).sort().map(([mese, mv]) => ({
+        mese,
+        media: Math.round((mv.reduce((a, b) => a + b, 0) / mv.length) * 100) / 100,
+        n: mv.length
+      }));
+
+      const partite = valutazioni.map(v => {
+        const m = matchMap[v.partita_id] || {};
+        return {
+          match_id: v.partita_id,
+          data: m.data_ora,
+          avversario: m.avversario,
+          tipo_competizione: m.tipo_competizione,
+          gol_casa: m.gol_casa,
+          gol_ospite: m.gol_ospite,
+          voto: v.voto !== null ? parseFloat(v.voto) : null,
+          minuti_giocati: minutiPerMatch[v.partita_id] || 0,
+          nota_allenatore: v.nota_allenatore,
+          eventi: eventiPerMatch[v.partita_id] || []
+        };
+      });
+
+      res.json({
+        tp_id: tp.id, player: tp.player, ruolo: tp.ruolo_preferito,
+        media, trend, media_ultimi5: mediaUltimi5, media_precedenti: mediaPrec,
+        n_valutazioni: voti.length,
+        miglior_voto: voti.length > 0 ? Math.max(...voti) : null,
+        peggior_voto: voti.length > 0 ? Math.min(...voti) : null,
+        media_mensile, partite
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/calciatori/:playerId/performance-detail?team_id=X
+  // calciatore_id in valutazione_partita = player_id, match usa data_ora (non data_partita)
+  router.get('/api/calciatori/:playerId/performance-detail', authMiddleware, async (req, res) => {
+    try {
+      const { playerId } = req.params;
+      const { team_id } = req.query;
+      if (!team_id) return res.status(400).json({ error: 'team_id obbligatorio' });
+
+      const { data: tp } = await supabase.from('team_player')
+        .select('id, ruolo_preferito, player:player_id(id, nome, cognome)')
+        .eq('player_id', playerId).eq('team_id', team_id).single();
+      if (!tp) return res.status(404).json({ error: 'Giocatore non trovato in questa squadra' });
+
+      // valutazioni senza join FK
+      const { data: valutazioni } = await supabase.from('valutazione_partita')
+        .select('voto, nota_allenatore, partita_id')
+        .eq('calciatore_id', playerId)
+        .order('partita_id');
+
+      if (!valutazioni || valutazioni.length === 0)
+        return res.json({ tp_id: tp.id, player: tp.player, ruolo: tp.ruolo_preferito, n_valutazioni: 0, media: null, trend: null, media_mensile: [], partite: [] });
+
+      const matchIds = valutazioni.map(v => v.partita_id).filter(Boolean);
+
+      // fetch match separato
+      const { data: matches } = await supabase.from('match')
+        .select('id, data_ora, avversario, tipo_competizione, gol_casa, gol_ospite')
+        .in('id', matchIds);
+      const matchMap = {};
+      (matches || []).forEach(m => { matchMap[m.id] = m; });
+
+      // minuti_giocati da match_statistics
+      const { data: statsRows } = await supabase.from('match_statistics')
+        .select('match_id, minuti_giocati').eq('team_player_id', tp.id).in('match_id', matchIds);
+      const minutiPerMatch = {};
+      (statsRows || []).forEach(s => { minutiPerMatch[s.match_id] = s.minuti_giocati || 0; });
+
+      // eventi
+      const { data: eventi } = await supabase.from('match_event')
+        .select('tipo_evento, match_id').eq('player_id', playerId).in('match_id', matchIds);
+      const eventiPerMatch = {};
+      (eventi || []).forEach(e => {
+        if (!eventiPerMatch[e.match_id]) eventiPerMatch[e.match_id] = [];
+        eventiPerMatch[e.match_id].push(e.tipo_evento);
+      });
+
+      const voti = valutazioni.map(v => parseFloat(v.voto)).filter(v => !isNaN(v));
+      const media = voti.length > 0 ? Math.round((voti.reduce((a, b) => a + b, 0) / voti.length) * 100) / 100 : null;
+
+      let trend = null, mediaUltimi5 = null, mediaPrec = null;
+      if (voti.length >= 5) {
+        const u5 = voti.slice(-5), prec = voti.slice(0, -5);
+        mediaUltimi5 = Math.round((u5.reduce((a, b) => a + b, 0) / u5.length) * 100) / 100;
+        if (prec.length > 0) {
+          mediaPrec = Math.round((prec.reduce((a, b) => a + b, 0) / prec.length) * 100) / 100;
+          trend = (mediaUltimi5 - mediaPrec) > 0.3 ? 'up' : (mediaUltimi5 - mediaPrec) < -0.3 ? 'down' : 'stable';
+        }
+      }
+
+      const perMese = {};
+      valutazioni.forEach(v => {
+        const m = matchMap[v.partita_id];
+        if (!m?.data_ora || isNaN(parseFloat(v.voto))) return;
+        const mese = m.data_ora.substring(0, 7);
+        if (!perMese[mese]) perMese[mese] = [];
+        perMese[mese].push(parseFloat(v.voto));
+      });
+      const media_mensile = Object.entries(perMese).sort().map(([mese, mv]) => ({
+        mese,
+        media: Math.round((mv.reduce((a, b) => a + b, 0) / mv.length) * 100) / 100,
+        n: mv.length
+      }));
+
+      const partite = valutazioni.map(v => {
+        const m = matchMap[v.partita_id] || {};
+        return {
+          match_id: v.partita_id,
+          data: m.data_ora,
+          avversario: m.avversario,
+          tipo_competizione: m.tipo_competizione,
+          gol_casa: m.gol_casa,
+          gol_ospite: m.gol_ospite,
+          voto: v.voto !== null ? parseFloat(v.voto) : null,
+          minuti_giocati: minutiPerMatch[v.partita_id] || 0,
+          nota_allenatore: v.nota_allenatore,
+          eventi: eventiPerMatch[v.partita_id] || []
+        };
+      });
+
+      res.json({
+        tp_id: tp.id, player: tp.player, ruolo: tp.ruolo_preferito,
+        media, trend, media_ultimi5: mediaUltimi5, media_precedenti: mediaPrec,
+        n_valutazioni: voti.length,
+        miglior_voto: voti.length > 0 ? Math.max(...voti) : null,
+        peggior_voto: voti.length > 0 ? Math.min(...voti) : null,
+        media_mensile, partite
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 }
 
