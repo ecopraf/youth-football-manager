@@ -12,9 +12,11 @@
 | `guestGenitore.js` | Home guest tipo `ospite` — solo calendario partite e risultati |
 | `guestFees.js` | Pagina quote per guest `famiglia` — rate, IBAN, upload ricevuta |
 | `absence.js` | Segnalazione assenza allenamento (guest `famiglia`) |
+| `demoExpired.js` | Pagina demo scaduta — mostrata su 403 `DEMO_EXPIRED`. CTA email + WhatsApp (+39 335 105 1147), data scadenza da `sessionStorage('demo_scadenza')` |
+| `workspaceSospeso.js` | Pagina workspace sospeso — mostrata su 403 `WORKSPACE_SUSPENDED`. CTA email + WhatsApp. |
 
 ## Entry point router
-`src/router.js` — rotte: `login`, `guest`, `guestAtleta`, `guestGenitore`, `guestFees`, `absence`
+`src/router.js` — rotte: `login`, `guest`, `guestAtleta`, `guestGenitore`, `guestFees`, `absence`, `demoExpired`, `workspaceSospeso`
 
 **Logica router guest (CRITICA)**:
 - Rotta `dashboard` con sessione guest attiva → redirect automatico a `guestAtleta` (se `guest_tipo === 'famiglia'`) o `guestGenitore` (se `guest_tipo === 'ospite'`)
