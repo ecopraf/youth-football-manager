@@ -285,6 +285,8 @@ export async function openConvocation(mid, readOnly) {
       // Setta flag globale — Match Center lo legge senza ri-fetchare
       if (!window.YFM._convPubblicata) window.YFM._convPubblicata = {};
       window.YFM._convPubblicata[mid] = true;
+      // Notifica matchCenter se la tab formazione è già attiva
+      if (window.YFM._onConvPubblicata) window.YFM._onConvPubblicata(mid);
       // Pallino verde fisso
       const dot = document.getElementById('pubDot');
       if (dot) { dot.style.background = '#27AE60'; dot.style.animation = 'none'; }

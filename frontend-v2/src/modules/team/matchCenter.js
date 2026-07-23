@@ -937,6 +937,18 @@ function bindEvents(mid) {
     });
   });
 
+  // Callback da convocazioni.js: aggiorna tab formazione se già attiva
+  window.YFM._onConvPubblicata = (publishedMid) => {
+    if (publishedMid !== mid) return;
+    convPubblicata = true;
+    const formPanel = document.getElementById('mcBodyFormation');
+    const isFormActive = document.querySelector('.mc-tab[data-tab="formation"]')?.classList.contains('active');
+    if (formPanel && isFormActive) {
+      formPanel.innerHTML = getLiveFormation(mid);
+      bindLiveFormation(mid);
+    }
+  };
+
   // Back button — auto-save before leaving
   document.getElementById('mcBack')?.addEventListener('click', async () => {
     if (!isReadOnly) await saveAll(mid);

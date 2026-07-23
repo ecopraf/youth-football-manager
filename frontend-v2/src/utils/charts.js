@@ -188,6 +188,98 @@ export function drawDonutChart(canvas, data, opts = {}) {
 }
 
 /**
+ * Simple single-line chart
+ * @param {HTMLCanvasElement} canvas
+ * @param {{labels: string[], values: number[]}} data
+ * @param {Object} opts - {min?, max?, color?, fillColor?}
+ */
+export function drawSimpleLineChart(canvas, data, opts = {}) {
+  if (!canvas || !data?.values?.length) return;
+  const { labels = [], values } = data;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || canvas.offsetWidth || 300;
+  const h = canvas.clientHeight || canvas.offsetHeight || 80;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  ctx.scale(dpr, dpr);
+
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, w, h);
+
+  const pad = { top: 12, bottom: 60, left: 28, right: 8 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top - pad.bottom;
+  const minVal = opts.min ?? Math.min(...values) - 0.5;
+  const maxVal = opts.max ?? Math.max(...values) + 0.5;
+  const range = maxVal - minVal || 1;
+
+  const xOf = i => pad.left + (values.length > 1 ? i * cw / (values.length - 1) : cw / 2);
+  const yOf = v => pad.top + ch - ((v - minVal) / range) * ch;
+
+  // Grid lines
+  ctx.strokeStyle = '#f1f5f9';
+  ctx.lineWidth = 1;
+  [minVal, (minVal + maxVal) / 2, maxVal].forEach(v => {
+    const y = yOf(v);
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+    ctx.fillStyle = '#94a3b8'; ctx.font = '9px system-ui'; ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(1), pad.left - 3, y + 3);
+  });
+
+  const color = opts.color || '#667eea';
+
+  // Fill area
+  if (opts.fillColor && values.length > 1) {
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(values[0]));
+    values.forEach((v, i) => { if (i > 0) ctx.lineTo(xOf(i), yOf(v)); });
+    ctx.lineTo(xOf(values.length - 1), pad.top + ch);
+    ctx.lineTo(xOf(0), pad.top + ch);
+    ctx.closePath();
+    ctx.fillStyle = opts.fillColor;
+    ctx.fill();
+  }
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  values.forEach((v, i) => { i === 0 ? ctx.moveTo(xOf(i), yOf(v)) : ctx.lineTo(xOf(i), yOf(v)); });
+  ctx.stroke();
+
+  // Clip all'area canvas per evitare sforamenti label
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, w, h);
+  ctx.clip();
+
+  // Dots + labels
+  const labelEvery = Math.max(1, Math.ceil(values.length / 8));
+  const slotW = values.length > 1 ? cw / (values.length - 1) : cw;
+  const maxChars = Math.max(0, Math.floor(slotW * labelEvery / 5.5));
+  const showLabels = maxChars >= 2;
+
+  values.forEach((v, i) => {
+    const x = xOf(i), y = yOf(v);
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    if (showLabels && labels[i] && i % labelEvery === 0) {
+      const txt = labels[i].substring(0, Math.min(maxChars, 10));
+      ctx.save();
+      ctx.translate(x, pad.top + ch + 4);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = '#64748b'; ctx.font = '9px system-ui'; ctx.textAlign = 'right';
+      ctx.fillText(txt, 0, 0);
+      ctx.restore();
+    }
+  });
+
+  ctx.restore(); // rimuove clip
+}
+
+/**
  * Line chart (dual lines)
  * @param {HTMLCanvasElement} canvas
  * @param {Array} data - [{label, value1, value2}]

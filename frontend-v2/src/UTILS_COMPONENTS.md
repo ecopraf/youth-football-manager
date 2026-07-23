@@ -77,11 +77,18 @@ initSessionGuard()   // chiamato una volta in main.js
 ### `charts.js`
 Chart canvas-based senza dipendenze esterne.
 ```javascript
-drawBarChart(canvas, data, options)
-drawLineChart(canvas, data, options)
-drawPieChart(canvas, data, options)
+drawBarChart(canvas, data, options)          // bar chart verticale — data: [{label, value, color?}]
+drawDonutChart(canvas, data, options)        // donut chart — data: [{label, value, color}]
+drawLineChart(canvas, data, options)         // dual-line chart — data: [{label, value1, value2}] (gol fatti/subiti)
+drawSimpleLineChart(canvas, {labels, values}, options)  // single-line chart — per trend voti giocatore
 ```
-**Usato in**: `performance/stats.js`, `dashboard.js`.
+**Nota critica**: `drawLineChart` e `drawSimpleLineChart` hanno formati input incompatibili:
+- `drawLineChart`: array di oggetti `{label, value1, value2}` (dual line)
+- `drawSimpleLineChart`: oggetto `{labels: string[], values: number[]}` (single line)
+
+`drawSimpleLineChart` options: `{min?, max?, color?, fillColor?}`. Label asse X verticali con `ctx.clip()` (no sforamento). Canvas consigliato: `height=130`, `padding.bottom=60`.
+
+**Usato in**: `performance/stats.js` (bar+donut+line), `dashboard.js` (bar), `performance/playerPerformance.js` (simpleLineChart).
 
 ---
 

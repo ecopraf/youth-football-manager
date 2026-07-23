@@ -6,7 +6,8 @@ let allPlayers = [];
 let activeView = 'rosa'; // 'rosa' | 'giocatore'
 let selectedPlayerId = null;
 let selectedTpId = null;
-let assegnazioniFilter = 'all';
+let activeTipo = 'campionato'; // 'campionato' | 'amichevole' | 'tutte'
+let tipoFallback = false; // true se siamo in fallback automatico
 
 const RUOLI_REPARTO = {
   'Portiere': 'Portieri',
@@ -86,8 +87,21 @@ export default async function loadPlayerPerformance() {
     const teamId = window.YFM?.squadraId;
     if (!teamId) { hideLoading(); document.getElementById('ppContent').innerHTML = '<p style="padding:24px;color:#9ca3af;">Seleziona una squadra per vedere le performance.</p>'; return; }
 
-    const data = await apiFetch(`/squadre/${teamId}/performance-summary`);
+    // Default: campionato. Fallback automatico se <3 partite di campionato
+    activeTipo = 'campionato';
+    tipoFallback = false;
+    let data = await apiFetch(`/squadre/${teamId}/performance-summary?tipo=campionato`);
     if (document.getElementById('pageContent') !== c) return;
+
+    const conVoti = (data || []).filter(p => p.n_valutazioni >= 3);
+    if (conVoti.length < 3) {
+      // Fallback: prova con tutte le partite
+      data = await apiFetch(`/squadre/${teamId}/performance-summary?tipo=tutte`);
+      if (document.getElementById('pageContent') !== c) return;
+      activeTipo = 'tutte';
+      tipoFallback = true;
+    }
+
     allPlayers = data || [];
     hideLoading();
     renderRosa(c);
@@ -106,20 +120,44 @@ function renderRosa(c) {
   const conValutazioni = allPlayers.filter(p => p.n_valutazioni >= 3);
   const insufficienti = conValutazioni.length < 3;
 
+  const tipoLabels = { campionato: '🏆 Campionato', amichevole: '⚽ Amichevoli', tutte: '📋 Tutte' };
+  const filterBar = `
+    <style>.pp-tipo-btn{font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid #e5e7eb;background:#f9fafb;color:#374151;cursor:pointer;}
+    .pp-tipo-btn.active{background:#667eea;color:#fff;border-color:#667eea;}</style>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      ${['campionato','amichevole','tutte'].map(t => `
+        <button class="pp-tipo-btn${activeTipo === t ? ' active' : ''}" data-tipo="${t}">${tipoLabels[t]}</button>
+      `).join('')}
+    </div>
+    ${tipoFallback ? `<div style="font-size:11px;color:#F39C12;margin-top:4px;">⚠️ Pochi dati campionato — mostro tutte le partite</div>` : ''}
+  `;
+
   if (insufficienti) {
+    const msgInsuff = activeTipo === 'campionato'
+      ? 'Nessuna partita di campionato con valutazioni. Prova a selezionare \'Tutte\'.'
+      : activeTipo === 'amichevole'
+      ? 'Nessuna amichevole con valutazioni inserite.'
+      : 'Servono almeno 3 giocatori con valutazioni inserite.<br>Inserisci le valutazioni dal Match Center dopo ogni partita.';
     container.innerHTML = `
+      <div class="pp-header">
+        <div style="font-size:18px;font-weight:800;color:#1f2937;">⭐ Performance Center</div>
+        <div>${filterBar}</div>
+      </div>
       <div class="pp-card" style="text-align:center;padding:40px;">
         <div style="font-size:48px;margin-bottom:12px;">📊</div>
         <div style="font-size:16px;font-weight:700;color:#374151;margin-bottom:8px;">Dati insufficienti</div>
-        <div style="font-size:13px;color:#6b7280;">Servono almeno 3 giocatori con valutazioni inserite.<br>Inserisci le valutazioni dal Match Center dopo ogni partita.</div>
+        <div style="font-size:13px;color:#6b7280;">${msgInsuff}</div>
       </div>`;
+    container.querySelectorAll('.pp-tipo-btn').forEach(btn => btn.addEventListener('click', () => reloadTipo(c, btn.dataset.tipo)));
     return;
   }
 
   container.innerHTML = `
     <div class="pp-header">
       <div style="font-size:18px;font-weight:800;color:#1f2937;">⭐ Performance Center</div>
-      <div style="font-size:12px;color:#9ca3af;">${conValutazioni.length} giocatori valutati</div>
+      <div>
+        ${filterBar}
+      </div>
     </div>
     ${renderTopPerformer(conValutazioni)}
     ${renderAnalisiReparto(conValutazioni)}
@@ -127,7 +165,7 @@ function renderRosa(c) {
     ${renderSenzaValutazioni()}
   `;
 
-  // Click su giocatore → vista dettaglio
+  container.querySelectorAll('.pp-tipo-btn').forEach(btn => btn.addEventListener('click', () => reloadTipo(c, btn.dataset.tipo)));
   container.querySelectorAll('[data-player-id]').forEach(el => {
     el.addEventListener('click', () => {
       selectedPlayerId = el.dataset.playerId;
@@ -135,6 +173,23 @@ function renderRosa(c) {
       renderGiocatore(c);
     });
   });
+}
+
+async function reloadTipo(c, tipo) {
+  const teamId = window.YFM?.squadraId;
+  if (!teamId) return;
+  activeTipo = tipo;
+  tipoFallback = false;
+  showLoading('Caricamento...');
+  try {
+    const data = await apiFetch(`/squadre/${teamId}/performance-summary?tipo=${tipo}`);
+    if (document.getElementById('pageContent') !== c) return;
+    allPlayers = data || [];
+    hideLoading();
+    renderRosa(c);
+  } catch (e) {
+    hideLoading();
+  }
 }
 
 function renderTopPerformer(players) {
@@ -264,7 +319,7 @@ async function renderGiocatore(c) {
   container.innerHTML = `<div style="padding:24px;text-align:center;color:#9ca3af;">Caricamento...</div>`;
 
   try {
-    const detail = await apiFetch(`/calciatori/${selectedPlayerId}/performance-detail?team_id=${teamId}`);
+    const detail = await apiFetch(`/calciatori/${selectedPlayerId}/performance-detail?team_id=${teamId}&tipo=${activeTipo}`);
     if (document.getElementById('pageContent') !== c) return;
 
     const p = allPlayers.find(x => x.player_id === selectedPlayerId) || {};
@@ -301,8 +356,8 @@ async function renderGiocatore(c) {
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-top:14px;">
           ${[
-            ['Media ultimi 5', detail.media_ultimi5?.toFixed(2) ?? '—'],
-            ['Media precedenti', detail.media_precedenti?.toFixed(2) ?? '—'],
+            ['Ultimi ' + Math.floor(detail.n_valutazioni / 2) + ' voti', detail.media_ultimi5?.toFixed(2) ?? '—'],
+            ['Primi ' + Math.ceil(detail.n_valutazioni / 2) + ' voti', detail.media_precedenti?.toFixed(2) ?? '—'],
             ['Miglior voto', detail.miglior_voto?.toFixed(1) ?? '—'],
             ['Peggior voto', detail.peggior_voto?.toFixed(1) ?? '—'],
           ].map(([label, val]) => `
@@ -316,7 +371,7 @@ async function renderGiocatore(c) {
 
       <div class="pp-card">
         <div class="pp-section-title">📈 Trend voti (ultime partite)</div>
-        <canvas id="ppTrendChart" height="80" style="width:100%;"></canvas>
+        <canvas id="ppTrendChart" height="130" style="width:100%;"></canvas>
       </div>
 
       ${renderMediaMensile(detail.media_mensile)}
@@ -328,12 +383,18 @@ async function renderGiocatore(c) {
     // Disegna grafico trend
     const canvas = document.getElementById('ppTrendChart');
     if (canvas && detail.partite?.length > 0) {
-      const { drawLineChart } = await import('../../utils/charts.js');
-      const votiConData = detail.partite.filter(p => p.voto !== null);
-      drawLineChart(canvas, {
-        labels: votiConData.map(p => p.avversario?.substring(0, 8) || ''),
-        values: votiConData.map(p => p.voto)
-      }, { min: 4, max: 10, color: '#667eea', fillColor: 'rgba(102,126,234,0.1)' });
+      const { drawSimpleLineChart } = await import('../../utils/charts.js');
+      const votiConData = detail.partite
+        .filter(p => p.voto !== null && p.data)
+        .sort((a, b) => a.data.localeCompare(b.data));
+      if (votiConData.length > 0) {
+        requestAnimationFrame(() => {
+          drawSimpleLineChart(canvas, {
+            labels: votiConData.map(p => p.avversario?.substring(0, 8) || ''),
+            values: votiConData.map(p => p.voto)
+          }, { min: 4, max: 10, color: '#667eea', fillColor: 'rgba(102,126,234,0.1)' });
+        });
+      }
     }
 
     // Click su riga partita → noop (futuro: apri match detail)

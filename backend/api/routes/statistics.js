@@ -618,10 +618,20 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const playerIds = tps.map(tp => tp.player_id);
       const tpIds = tps.map(tp => tp.id);
 
-      // valutazioni: calciatore_id = player_id (query separata, no join FK)
+      // fetch partite del team PRIMA — filtra valutazioni per team/stagione
+      let matchQuery = supabase.from('match')
+        .select('id').eq('team_id', teamId).or('stato.eq.Terminata,archiviata.eq.true');
+      const tipo = req.query.tipo; // 'campionato' | 'amichevole' | 'tutte' | undefined
+      if (tipo === 'campionato') matchQuery = matchQuery.eq('tipo_competizione', 'Campionato');
+      else if (tipo === 'amichevole') matchQuery = matchQuery.or('tipo_competizione.is.null,and(tipo_competizione.neq.Campionato,tipo_competizione.neq.Coppa)');
+      const { data: teamMatches } = await matchQuery;
+      const teamMatchIds = (teamMatches || []).map(m => m.id);
+
+      // valutazioni: calciatore_id = player_id, filtrate per partite di questo team
       const { data: valutazioni } = await supabase.from('valutazione_partita')
         .select('calciatore_id, voto, partita_id')
-        .in('calciatore_id', playerIds);
+        .in('calciatore_id', playerIds)
+        .in('partita_id', teamMatchIds.length > 0 ? teamMatchIds : ['00000000-0000-0000-0000-000000000000']);
 
       const matchIds = [...new Set((valutazioni || []).map(v => v.partita_id).filter(Boolean))];
 
@@ -657,10 +667,12 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         const voti = vals.map(v => parseFloat(v.voto)).filter(v => !isNaN(v));
         const media = voti.length > 0 ? Math.round((voti.reduce((a, b) => a + b, 0) / voti.length) * 100) / 100 : null;
         let trend = null;
-        if (voti.length >= 5) {
-          const u5 = voti.slice(-5), prec = voti.slice(0, -5);
-          if (prec.length > 0) {
-            const delta = (u5.reduce((a, b) => a + b, 0) / u5.length) - (prec.reduce((a, b) => a + b, 0) / prec.length);
+        if (voti.length >= 2) {
+          const half = Math.ceil(voti.length / 2);
+          const prima = voti.slice(0, half);
+          const seconda = voti.slice(half);
+          if (seconda.length > 0 && prima.length > 0) {
+            const delta = (seconda.reduce((a, b) => a + b, 0) / seconda.length) - (prima.reduce((a, b) => a + b, 0) / prima.length);
             trend = delta > 0.3 ? 'up' : delta < -0.3 ? 'down' : 'stable';
           }
         }
@@ -701,23 +713,30 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         .eq('player_id', playerId).eq('team_id', team_id).single();
       if (!tp) return res.status(404).json({ error: 'Giocatore non trovato in questa squadra' });
 
-      // valutazioni senza join FK
+      // fetch match del team PRIMA — filtra valutazioni per team/stagione
+      let matchQuery = supabase.from('match')
+        .select('id, data_ora, avversario, tipo_competizione, gol_casa, gol_ospite')
+        .eq('team_id', team_id).or('stato.eq.Terminata,archiviata.eq.true');
+      const tipo = req.query.tipo;
+      if (tipo === 'campionato') matchQuery = matchQuery.eq('tipo_competizione', 'Campionato');
+      else if (tipo === 'amichevole') matchQuery = matchQuery.or('tipo_competizione.is.null,and(tipo_competizione.neq.Campionato,tipo_competizione.neq.Coppa)');
+      const { data: teamMatches } = await matchQuery;
+      const teamMatchIds = (teamMatches || []).map(m => m.id);
+      if (teamMatchIds.length === 0)
+        return res.json({ tp_id: tp.id, player: tp.player, ruolo: tp.ruolo_preferito, n_valutazioni: 0, media: null, trend: null, media_mensile: [], partite: [] });
+
+      // valutazioni filtrate per partite di questo team
       const { data: valutazioni } = await supabase.from('valutazione_partita')
         .select('voto, nota_allenatore, partita_id')
         .eq('calciatore_id', playerId)
-        .order('partita_id');
+        .in('partita_id', teamMatchIds);
 
       if (!valutazioni || valutazioni.length === 0)
         return res.json({ tp_id: tp.id, player: tp.player, ruolo: tp.ruolo_preferito, n_valutazioni: 0, media: null, trend: null, media_mensile: [], partite: [] });
 
       const matchIds = valutazioni.map(v => v.partita_id).filter(Boolean);
-
-      // fetch match separato
-      const { data: matches } = await supabase.from('match')
-        .select('id, data_ora, avversario, tipo_competizione, gol_casa, gol_ospite')
-        .in('id', matchIds);
       const matchMap = {};
-      (matches || []).forEach(m => { matchMap[m.id] = m; });
+      (teamMatches || []).forEach(m => { matchMap[m.id] = m; });
 
       // minuti_giocati da match_statistics
       const { data: statsRows } = await supabase.from('match_statistics')
@@ -734,15 +753,23 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         eventiPerMatch[e.match_id].push(e.tipo_evento);
       });
 
+      // Ordina valutazioni per data partita (cronologico) prima di calcolare trend
+      valutazioni.sort((a, b) => {
+        const da = matchMap[a.partita_id]?.data_ora || '';
+        const db = matchMap[b.partita_id]?.data_ora || '';
+        return da.localeCompare(db);
+      });
+
       const voti = valutazioni.map(v => parseFloat(v.voto)).filter(v => !isNaN(v));
       const media = voti.length > 0 ? Math.round((voti.reduce((a, b) => a + b, 0) / voti.length) * 100) / 100 : null;
 
       let trend = null, mediaUltimi5 = null, mediaPrec = null;
-      if (voti.length >= 5) {
-        const u5 = voti.slice(-5), prec = voti.slice(0, -5);
-        mediaUltimi5 = Math.round((u5.reduce((a, b) => a + b, 0) / u5.length) * 100) / 100;
-        if (prec.length > 0) {
-          mediaPrec = Math.round((prec.reduce((a, b) => a + b, 0) / prec.length) * 100) / 100;
+      if (voti.length >= 2) {
+        const half = Math.ceil(voti.length / 2);
+        const prima = voti.slice(0, half), seconda = voti.slice(half);
+        if (seconda.length > 0) {
+          mediaPrec = Math.round((prima.reduce((a, b) => a + b, 0) / prima.length) * 100) / 100;
+          mediaUltimi5 = Math.round((seconda.reduce((a, b) => a + b, 0) / seconda.length) * 100) / 100;
           trend = (mediaUltimi5 - mediaPrec) > 0.3 ? 'up' : (mediaUltimi5 - mediaPrec) < -0.3 ? 'down' : 'stable';
         }
       }
@@ -804,23 +831,30 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         .eq('player_id', playerId).eq('team_id', team_id).single();
       if (!tp) return res.status(404).json({ error: 'Giocatore non trovato in questa squadra' });
 
-      // valutazioni senza join FK
+      // fetch match del team PRIMA — filtra valutazioni per team/stagione
+      let matchQuery = supabase.from('match')
+        .select('id, data_ora, avversario, tipo_competizione, gol_casa, gol_ospite')
+        .eq('team_id', team_id).or('stato.eq.Terminata,archiviata.eq.true');
+      const tipo = req.query.tipo;
+      if (tipo === 'campionato') matchQuery = matchQuery.eq('tipo_competizione', 'Campionato');
+      else if (tipo === 'amichevole') matchQuery = matchQuery.or('tipo_competizione.is.null,and(tipo_competizione.neq.Campionato,tipo_competizione.neq.Coppa)');
+      const { data: teamMatches } = await matchQuery;
+      const teamMatchIds = (teamMatches || []).map(m => m.id);
+      if (teamMatchIds.length === 0)
+        return res.json({ tp_id: tp.id, player: tp.player, ruolo: tp.ruolo_preferito, n_valutazioni: 0, media: null, trend: null, media_mensile: [], partite: [] });
+
+      // valutazioni filtrate per partite di questo team
       const { data: valutazioni } = await supabase.from('valutazione_partita')
         .select('voto, nota_allenatore, partita_id')
         .eq('calciatore_id', playerId)
-        .order('partita_id');
+        .in('partita_id', teamMatchIds);
 
       if (!valutazioni || valutazioni.length === 0)
         return res.json({ tp_id: tp.id, player: tp.player, ruolo: tp.ruolo_preferito, n_valutazioni: 0, media: null, trend: null, media_mensile: [], partite: [] });
 
       const matchIds = valutazioni.map(v => v.partita_id).filter(Boolean);
-
-      // fetch match separato
-      const { data: matches } = await supabase.from('match')
-        .select('id, data_ora, avversario, tipo_competizione, gol_casa, gol_ospite')
-        .in('id', matchIds);
       const matchMap = {};
-      (matches || []).forEach(m => { matchMap[m.id] = m; });
+      (teamMatches || []).forEach(m => { matchMap[m.id] = m; });
 
       // minuti_giocati da match_statistics
       const { data: statsRows } = await supabase.from('match_statistics')
@@ -837,15 +871,23 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         eventiPerMatch[e.match_id].push(e.tipo_evento);
       });
 
+      // Ordina valutazioni per data partita (cronologico) prima di calcolare trend
+      valutazioni.sort((a, b) => {
+        const da = matchMap[a.partita_id]?.data_ora || '';
+        const db = matchMap[b.partita_id]?.data_ora || '';
+        return da.localeCompare(db);
+      });
+
       const voti = valutazioni.map(v => parseFloat(v.voto)).filter(v => !isNaN(v));
       const media = voti.length > 0 ? Math.round((voti.reduce((a, b) => a + b, 0) / voti.length) * 100) / 100 : null;
 
       let trend = null, mediaUltimi5 = null, mediaPrec = null;
-      if (voti.length >= 5) {
-        const u5 = voti.slice(-5), prec = voti.slice(0, -5);
-        mediaUltimi5 = Math.round((u5.reduce((a, b) => a + b, 0) / u5.length) * 100) / 100;
-        if (prec.length > 0) {
-          mediaPrec = Math.round((prec.reduce((a, b) => a + b, 0) / prec.length) * 100) / 100;
+      if (voti.length >= 2) {
+        const half = Math.ceil(voti.length / 2);
+        const prima = voti.slice(0, half), seconda = voti.slice(half);
+        if (seconda.length > 0) {
+          mediaPrec = Math.round((prima.reduce((a, b) => a + b, 0) / prima.length) * 100) / 100;
+          mediaUltimi5 = Math.round((seconda.reduce((a, b) => a + b, 0) / seconda.length) * 100) / 100;
           trend = (mediaUltimi5 - mediaPrec) > 0.3 ? 'up' : (mediaUltimi5 - mediaPrec) < -0.3 ? 'down' : 'stable';
         }
       }
