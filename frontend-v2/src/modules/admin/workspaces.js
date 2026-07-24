@@ -590,6 +590,13 @@ async function renderTabInfoEdit() {
           <div class="form-group"><label>Colori Sociali</label><input id="infoColori" value="${ws.colori_sociali || ''}"></div>
           <div class="form-group"><label>Sponsor Tecnico</label><input id="infoSponsor" value="${ws.sponsor_tecnico || ''}"></div>
         </div>
+        <div class="form-group">
+          <label>🗺️ Regione <small style="color:#888;font-weight:400">(per ricerca loghi avversari)</small></label>
+          <select id="infoRegione" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;">
+            <option value="">— Non impostata —</option>
+            ${['abruzzo','altoadige','basilicata','calabria','campania','emiliaromagna','friuliveneziaguilia','lazio','liguria','lombardia','marche','molise','nazionali','piemonte','puglia','sardegna','sicilia','toscana','trentino','umbria','veneto'].map(r => `<option value="${r}" ${ws.regione===r?'selected':''}>${r.charAt(0).toUpperCase()+r.slice(1)}</option>`).join('')}
+          </select>
+        </div>
         <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:20px;">
           <button type="button" class="btn btn-secondary" id="btnInfoCancel">Annulla</button>
           <button type="submit" class="btn btn-primary">💾 Salva</button>
@@ -653,7 +660,8 @@ async function handleInfoSave(e) {
     nome_breve: document.getElementById('infoNomeBreve').value.trim() || null,
     logo_url: document.getElementById('infoLogoUrl').value || null,
     colori_sociali: document.getElementById('infoColori').value.trim() || null,
-    sponsor_tecnico: document.getElementById('infoSponsor').value.trim() || null
+    sponsor_tecnico: document.getElementById('infoSponsor').value.trim() || null,
+    regione: document.getElementById('infoRegione').value || null
   };
   if (!body.nome) return;
 

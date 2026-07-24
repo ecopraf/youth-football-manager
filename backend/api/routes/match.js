@@ -2,35 +2,43 @@
  * Match Routes - partite CRUD, archivia/sblocca, convocazioni, formazione, eventi, distinta
  */
 const express = require('express');
-const { coreTeamName, findLogoFromList } = require('../helpers/importUtils');
+const { findLogoFromList } = require('../helpers/importUtils');
 
 module.exports = function createMatchRouter({ supabase, authMiddleware, requirePermission }) {
   const router = express.Router();
 
-  // ── LOGO CACHE (TTL 2min) ──
-  let _logosCache = null;
+  // Cache loghi per regione (TTL 2min)
+  const _logosCache = {};
   let _logosCacheTs = 0;
   const LOGOS_TTL = 120000;
 
-  async function getLogos() {
+  async function getLogos(teamId) {
     const now = Date.now();
-    if (_logosCache && (now - _logosCacheTs) < LOGOS_TTL) return _logosCache;
-    const { data } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
-    _logosCache = data || [];
+    let regione = null;
+    try {
+      const { data: team } = await supabase.from('team').select('season_id, season:season_id(workspace_id, workspace:workspace_id(regione))').eq('id', teamId).single();
+      regione = team?.season?.workspace?.regione || null;
+    } catch {}
+    const cacheKey = regione || '__all__';
+    if (_logosCache[cacheKey] && (now - _logosCacheTs) < LOGOS_TTL) return _logosCache[cacheKey];
+    let query = supabase.from('team_logo').select('nome, nome_normalizzato, logo_path, aliases').limit(10000);
+    if (regione) query = query.eq('regione', regione);
+    const { data } = await query;
+    _logosCache[cacheKey] = data || [];
     _logosCacheTs = now;
-    return _logosCache;
+    return data || [];
   }
 
-  const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-  function findLogo(avv, logos) { return findLogoFromList(avv, logos); }
+  function findLogo(avv, logos) {
+    return findLogoFromList(avv, logos);
+  }
 
   // ── PARTITE CRUD ──
   router.get('/api/squadre/:squadraId/partite', authMiddleware, async (req, res) => {
     try {
       const [{ data }, logos] = await Promise.all([
         supabase.from('match').select('*').eq('team_id', req.params.squadraId).order('data_ora', { ascending: false }),
-        getLogos()
+        getLogos(req.params.squadraId)
       ]);
       const result = (data || []).map(m => ({ ...m, competizione: m.tipo_competizione || null, logo: findLogo(m.avversario, logos) }));
       res.json(result);
@@ -43,7 +51,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
       const [{ data }, logos] = await Promise.all([
         supabase.from('match').select('*').eq('team_id', req.params.squadraId).gte('data_ora', todayStart).order('data_ora', { ascending: true }).limit(5),
-        getLogos()
+        getLogos(req.params.squadraId)
       ]);
       const result = (data || []).map(m => ({ ...m, competizione: m.tipo_competizione || null, tipoCompetizione: m.tipo_competizione || null, logo: findLogo(m.avversario, logos) }));
       res.json(result);
@@ -393,14 +401,8 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
       // Logo avversario
       let logoAvv = null;
       if (matchData?.avversario) {
-        const logos = await getLogos();
+        const logos = await getLogos(matchData.team_id);
         logoAvv = findLogo(matchData.avversario, logos);
-        if (!logoAvv) {
-          const coreAvv = coreTeamName(matchData.avversario);
-          for (const l of logos) {
-            if (coreAvv && coreTeamName(l.nome) === coreAvv) { logoAvv = l.logo_path; break; }
-          }
-        }
       }
       res.json({ formazione: result, meta, partita: matchData ? { ...matchData, logo: logoAvv } : null });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -476,21 +478,11 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
 
   router.get('/api/partite/:matchId/dettaglio', authMiddleware, async (req, res) => {
     try {
-      const [{ data: match }, logos] = await Promise.all([
-        supabase.from('match').select('*').eq('id', req.params.matchId).single(),
-        getLogos()
-      ]);
+      const { data: match } = await supabase.from('match').select('*').eq('id', req.params.matchId).single();
+      const logos = await getLogos(match?.team_id);
       if (match) {
         match.competizione = match.tipo_competizione || null;
         match.logo = findLogo(match.avversario, logos);
-        // Pass 3: core name fallback
-        if (!match.logo && match.avversario) {
-          const coreAvv = coreTeamName(match.avversario);
-          for (const l of logos) {
-            const coreLogo = coreTeamName(l.nome);
-            if (coreAvv && coreLogo && coreAvv === coreLogo) { match.logo = l.logo_path; break; }
-          }
-        }
       }
       const { data: eventi } = await supabase.from('match_event').select('*, player:player_id(nome, cognome), player_secondary:player_id_secondario(nome, cognome)').eq('match_id', req.params.matchId).order('minuto');
       const eventiMapped = (eventi || []).map(e => ({

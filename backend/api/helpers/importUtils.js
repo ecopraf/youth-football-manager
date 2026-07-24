@@ -243,26 +243,42 @@ function normalizeLogoName(name) {
     .replace(/^-|-$/g, '');
 }
 
-// Lookup logo da lista team_logo — priorità: match esatto nome → fuzzy compact
+// Lookup logo da lista team_logo — priorità: match esatto nome → fuzzy word-level
 function findLogoFromList(avversario, logos) {
   if (!avversario || !logos || logos.length === 0) return null;
-  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, '').trim();
   const compact = norm(avversario);
+  // 0. Match alias espliciti
+  for (const l of logos) {
+    if (!l.aliases || !l.aliases.length) continue;
+    if (l.aliases.some(a => norm(a) === compact)) return l.logo_path;
+  }
   // 1. Match esatto nome
   for (const l of logos) {
     if (norm(l.nome) === compact) return l.logo_path;
   }
-  // 2. Match esatto nome_normalizzato (già senza accenti)
+  // 2. Match esatto nome_normalizzato
   for (const l of logos) {
     if (norm(l.nome_normalizzato || '') === compact) return l.logo_path;
   }
-  // 3. Fuzzy: uno contiene l'altro (prende il match più lungo)
+  // 3. Fuzzy word-level: tutte le parole del più corto devono essere nel più lungo
+  // Escludi parole generiche che causano false positive
+  const GENERIC = new Set(['virtus','atletico','atletica','real','sporting','polisportiva','accademia','academy','dinamo','olimpia','calcio','football','club','asd','ssd','ac','fc','sc','sq','2000','1908','1926','1927','1928','1930','1945','1946','1948','1960','1970','1980','1984','1986','1990']);
+  const words = s => norm(s).split(' ').filter(w => w.length >= 3 && !GENERIC.has(w));
+  const wa = words(avversario);
+  if (wa.length === 0) return null;
   let best = null, bestLen = 0;
   for (const l of logos) {
-    const lc = norm(l.nome_normalizzato || '');
-    if (lc.length < 4) continue; // evita match su nomi troppo corti
-    if (compact.includes(lc) || lc.includes(compact)) {
-      if (lc.length > bestLen) { best = l.logo_path; bestLen = lc.length; }
+    const wb = words(l.nome_normalizzato || l.nome || '');
+    if (wb.length === 0) continue;
+    const [shorter, longer] = wa.length <= wb.length ? [wa, wb] : [wb, wa];
+    // Richiede almeno 2 parole significative in comune, o match completo se shorter ha 1 sola parola
+    if (shorter.length === 0) continue;
+    const matching = shorter.filter(w => longer.includes(w));
+    const needed = shorter.length === 1 ? 1 : Math.ceil(shorter.length * 0.8);
+    if (matching.length >= needed && matching.length >= Math.min(2, shorter.length)) {
+      const len = (l.nome_normalizzato || l.nome || '').length;
+      if (len > bestLen) { best = l.logo_path; bestLen = len; }
     }
   }
   return best;

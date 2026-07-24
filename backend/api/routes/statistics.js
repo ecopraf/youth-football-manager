@@ -34,20 +34,15 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
 
       // Fetch only logos matching actual opponents (not all 777+)
       const avversari = [...new Set((partite || []).map(p => p.avversario).filter(Boolean))];
-      let logoMap = {};
+      let logos = [];
       if (avversari.length > 0) {
-        // Build normalized search terms
-        const searchTerms = avversari.map(a => a.toLowerCase().trim());
-        const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
-        if (logos) {
-          for (const logo of logos) {
-            logoMap[logo.nome.toLowerCase()] = logo.logo_path;
-            if (logo.nome_normalizzato) logoMap[logo.nome_normalizzato] = logo.logo_path;
-          }
-        }
+        const { data: logosData } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path, aliases');
+        logos = logosData || [];
       }
 
-      function findLogo(avversario) { return findLogoFromList(avversario, logos || []); }
+      function findLogo(avversario) {
+        return findLogoFromList(avversario, logos);
+      }
 
       partite.forEach(p => {
         const gc = p.gol_casa || 0, go = p.gol_ospite || 0;
@@ -363,10 +358,10 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const { data: partite } = await supabase.from('match').select('id, gol_casa, gol_ospite, data_ora, avversario, luogo, giornata, tipo_competizione').eq('team_id', teamId).or('stato.eq.Terminata,archiviata.eq.true').order('data_ora');
 
       // Loghi avversari
-      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
-      const logoMap = {};
-      (logos || []).forEach(l => { logoMap[l.nome.toLowerCase()] = l.logo_path; if (l.nome_normalizzato) logoMap[l.nome_normalizzato] = l.logo_path; });
-      function findLogo(avv) { return findLogoFromList(avv, logos || []); }
+      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path, aliases');
+      function findLogo(avv) {
+        return findLogoFromList(avv, logos || []);
+      }
 
       let v = 0, p = 0, s = 0, gf = 0, gs = 0;
       let vUff = 0, pUff = 0, sUff = 0, gfUff = 0, gsUff = 0;

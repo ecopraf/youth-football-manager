@@ -2,7 +2,7 @@
  * Dashboard routes — endpoint aggregato per ridurre round-trip
  */
 const express = require('express');
-const { coreTeamName } = require('../helpers/importUtils');
+const { findLogoFromList } = require('../helpers/importUtils');
 
 function createDashboardRouter({ supabase, authMiddleware }) {
   const router = express.Router();
@@ -15,6 +15,12 @@ function createDashboardRouter({ supabase, authMiddleware }) {
       const tipo = req.query.tipo || 'campionato';
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      // Recupera regione workspace per filtrare loghi
+      let _regione = null;
+      try {
+        const { data: _t } = await supabase.from('team').select('season_id, season:season_id(workspace_id, workspace:workspace_id(regione))').eq('id', teamId).single();
+        _regione = _t?.season?.workspace?.regione || null;
+      } catch {}
 
       // ── PARALLEL FETCH: tutti i dati indipendenti in una sola volta ──
       const [
@@ -38,39 +44,11 @@ function createDashboardRouter({ supabase, authMiddleware }) {
           .eq('team_id', teamId),
         supabase.from('injury').select('id, player_id, tipo, data_inizio, data_rientro_prevista, note, player:player_id(nome, cognome)')
           .eq('team_id', teamId).is('data_rientro_effettiva', null),
-        supabase.from('team_logo').select('nome, nome_normalizzato, logo_path')
+        (_regione ? supabase.from('team_logo').select('nome, nome_normalizzato, logo_path, aliases').eq('regione', _regione).limit(10000) : supabase.from('team_logo').select('nome, nome_normalizzato, logo_path, aliases').limit(10000))
       ]);
 
-      // ── LOGO MATCHING (riusato per stats + partite future) ──
-      const logoMap = {};
-      (logos || []).forEach(l => {
-        logoMap[l.nome.toLowerCase()] = l.logo_path;
-        if (l.nome_normalizzato) logoMap[l.nome_normalizzato] = l.logo_path;
-      });
-
       function findLogo(avversario) {
-        if (!avversario) return null;
-        const lower = avversario.toLowerCase().trim();
-        if (logoMap[lower]) return logoMap[lower];
-        const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-        if (logoMap[norm]) return logoMap[norm];
-        const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
-        for (const [key, path] of Object.entries(logoMap)) {
-          const keyCompact = stripAccents(key).replace(/[^a-z0-9]/g, '');
-          if (compact === keyCompact || compact.includes(keyCompact) || keyCompact.includes(compact)) return path;
-        }
-        for (const [key, path] of Object.entries(logoMap)) {
-          if (lower.includes(key) || key.includes(lower)) return path;
-        }
-        const coreAvv = coreTeamName(avversario);
-        if (coreAvv) {
-          for (const [key, path] of Object.entries(logoMap)) {
-            const coreKey = coreTeamName(key);
-            if (coreKey && (coreAvv === coreKey || coreAvv.includes(coreKey) || coreKey.includes(coreAvv))) return path;
-          }
-        }
-        return null;
+        return findLogoFromList(avversario, logos || []);
       }
 
       // ── 1. STATISTICHE COMPLETE (filtrate per tipo) ──

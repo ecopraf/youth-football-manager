@@ -607,16 +607,18 @@ Questo perché un giocatore può essere in più team (aggregato) e serve sapere 
 | id | uuid | NO | gen_random_uuid() | PK |
 | nome | text | NO | | Nome originale UTF-8 (es. "Città di Ciampino") |
 | nome_normalizzato | text | NO | | Lowercase senza accenti per fuzzy match (es. "citta di ciampino") |
+| aliases | jsonb | SI | '[]' | Array di alias espliciti (es. ["DF Academy", "Dreaming Football"]) — nomi alternativi GR/SGS |
 | logo_path | text | NO | | URL Supabase Storage (nuovi) o path locale `/logos/xxx.png` (legacy) |
 | tc_team_id | text | SI | | UNIQUE — ID Tuttocampo estratto dal filename (`{teamId}_Nome.png`) |
-| regione | text | SI | | Regione TC (es. "lazio", "campania", "nazionali") — null per record legacy |
+| regione | text | SI | | Regione geografica del club (es. "lazio", "campania", "nazionali") — tutti i workspace hanno regione valorizzata |
 | created_at | timestamp | SI | now() | |
 
 **Supabase Storage bucket**: `club-logos` (public) — path `{regione}/{teamId}_NomeAscii.png`
 **URL pubblico**: `https://csxdlxbhcnyfppojwwzy.supabase.co/storage/v1/object/public/club-logos/{regione}/{filename}`
 **Totale record**: ~6100 (21 regioni + nazionali, da Tuttocampo)
 **Constraint**: UNIQUE su `tc_team_id` (partial — solo dove NOT NULL). Nessun UNIQUE su `nome_normalizzato` (stessa società esiste in più regioni).
-**Lookup priorità**: 1) `tc_team_id` esatto → 2) `nome_normalizzato` fuzzy ILIKE
+**Lookup priorità**: 1) alias da `team_logo.aliases[]` → 2) `nome_normalizzato` esatto → 3) fuzzy word-level
+**Aggiungere alias**: `UPDATE team_logo SET aliases = aliases || '["nuovo alias"]' WHERE nome = '...'`
 
 ---
 
@@ -947,7 +949,7 @@ users.id
 | Bucket | Visibilità | Max size | MIME consentiti | Uso |
 |--------|-----------|----------|-----------------|-----|
 | `ricevute` | Privato | 5MB | image/jpeg, image/png, image/webp, application/pdf | Ricevute bonifico caricate dai genitori. Path: `{workspace_id}/{season_id}/{player_id}/{installment_id}.{ext}` |
-| `club-logos` | Pubblico | — | image/png | Loghi club da Tuttocampo (21 regioni + nazionali). Path: `{regione}/{teamId}_NomeAscii.png`. ~6100 file. |
+| `club-logos` | Pubblico | — | image/png | Loghi club da Tuttocampo (21 regioni + nazionali). Path: `{regione}/{teamId}_NomeAscii.png`. ~6100 file. Alcuni loghi flat SGS caricati senza `tc_team_id` (es. `lazio/atletico-torre-maura.png`, `lazio/monti-prenestini.png`). |
 
 > Accesso tramite signed URL (validità 1h) generato da `GET /api/fee-installments/:id/ricevuta`.
 

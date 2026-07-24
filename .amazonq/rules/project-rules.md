@@ -801,7 +801,7 @@ Per tabelle con **5+ colonne** o dati misti (testo + numeri), usare il component
 
 **Come aggiungere loghi**:
 - Workspace corrente: `window.YFM.getWorkspaceLogo()`
-- Avversari/altre squadre: endpoint backend con `findLogo()` da tabella `team_logo`
+- Avversari/altre squadre: endpoint backend con `findLogoFromList()` da tabella `team_logo` (campo `aliases JSONB`). Lookup: step 0=alias espliciti da `team_logo.aliases[]`, step 1=match esatto nome, step 2=fuzzy word-level (blacklist parole generiche). Tutti i router filtrano per regione workspace. Per aggiungere alias: `UPDATE team_logo SET aliases = aliases || '["nuovo alias"]' WHERE nome = '...'`.
 - Fallback: emoji 🛡️ (carriera) o nessun logo (partite)
 - **Layout desktop vs mobile diverso**: usare `window.innerWidth >= 900` per rendering condizionale (non solo CSS) quando la struttura HTML deve cambiare radicalmente
 - **Sezioni GR (classifica/calendario/marcatori)**: su desktop card unica con `gr-grid` 2 colonne; su mobile card separate con sfondo sfumato individuale

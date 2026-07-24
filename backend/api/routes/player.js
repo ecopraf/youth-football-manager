@@ -295,7 +295,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       });
 
       // Logo lookup for team names
-      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
+      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path, aliases');
       const findLogo = (nome) => findLogoFromList(nome, logos || []);
 
       const results = Object.values(agg);
@@ -332,7 +332,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
         matchQuery,
         supabase.from('match_event').select('match_id, tipo_evento').eq('player_id', playerId).in('match_id', matchIds),
         supabase.from('match_statistics').select('match_id, minuti_giocati').in('team_player_id', tpIds).in('match_id', matchIds),
-        supabase.from('team_logo').select('nome, nome_normalizzato, logo_path')
+        supabase.from('team_logo').select('nome, nome_normalizzato, logo_path, aliases')
       ]);
 
       const minutiMap = {};
@@ -392,7 +392,7 @@ function createPlayerRouter({ supabase, authMiddleware, requirePermission }) {
       (statsRows || []).forEach(s => { minutiMap[s.match_id] = (minutiMap[s.match_id] || 0) + (s.minuti_giocati || 0); });
 
       // Logo lookup for opponents
-      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
+      const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path, aliases');
       const findLogo = (avv) => findLogoFromList(avv, logos || []);
 
       const result = (matches || []).map(m => {

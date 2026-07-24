@@ -92,7 +92,7 @@ api/
 │   └── supabase.js             — Client Supabase inizializzato
 ├── helpers/
 │   ├── tuttocampo.js           — Login/request Tuttocampo
-│   ├── importUtils.js          — Normalizzazione nomi, parsing eventi, log, scrape loghi
+│   ├── importUtils.js          — Normalizzazione nomi, parsing eventi, log, scrape loghi. `findLogoFromList(avversario, logos)`: step 0=alias da `team_logo.aliases[]` (JSONB array), step 1=match esatto nome, step 2=match esatto nome_normalizzato, step 3=fuzzy word-level (parole significative, blacklist generici: virtus/atletico/real/academy/anni...)
 │   ├── importFormationTC.js    — Import formazioni da Tuttocampo
 │   ├── gazzettaRegionale.js    — Fetch classifica/calendario/marcatori da GR API
 │   ├── dbErrors.js             — Traduzione errori DB (duplicate key → messaggi IT)
@@ -392,7 +392,7 @@ frontend-v2/src/
 | `users` | Utente sistema | workspace_id |
 | `guest_token` | Token guest | utente_id |
 | `import_log` | Storico importazioni | workspace_id, team_id, user_id |
-| `team_logo` | Loghi squadre avversarie | nome, nome_normalizzato, logo_path (URL Supabase o /logos/ locale), tc_team_id UNIQUE, regione (6100+ record da Supabase Storage bucket `club-logos`) |
+| `team_logo` | Loghi squadre avversarie | nome, nome_normalizzato, logo_path (URL Supabase o /logos/ locale), tc_team_id UNIQUE, regione (regione geografica del club, es. "lazio"), `aliases JSONB DEFAULT '[]'` (array di stringhe — nomi alternativi GR/SGS, es. ["DF Academy","Dreaming Football"]). 6100+ record da Supabase Storage bucket `club-logos` |
 | `absence_notification` | Segnalazioni assenza atleti | player_id, team_id, training_id (nullable), data_allenamento, motivo, messaggio, letto |
 | `notification` | Comunicazioni in-app (convocazioni, avvisi) | workspace_id, team_id, tipo, titolo, messaggio, riferimento_id, destinatario_profilo TEXT[], letto |
 

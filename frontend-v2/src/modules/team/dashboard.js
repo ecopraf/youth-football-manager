@@ -153,7 +153,7 @@ export default async function loadDashboard() {
       const rightName = isCasa ? advName : wsName;
       const leftLogoSrc = isCasa ? wsLogo : advLogo;
       const rightLogoSrc = isCasa ? advLogo : wsLogo;
-      const logoImg = (src) => src ? '<img src="' + src + '" style="width:52px;height:52px;border-radius:50%;object-fit:contain;background:rgba(255,255,255,0.1);" class="dash-match-logo" onerror="this.style.display=\'none\'">' : '<div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:24px;" class="dash-match-logo">⚽</div>';
+      const logoImg = (src) => src ? '<img src="' + src + '" style="width:52px;height:52px;border-radius:50%;object-fit:contain;background:white;padding:3px;" class="dash-match-logo" onerror="this.style.display=\'none\'">' : '<div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:24px;" class="dash-match-logo">⚽</div>';
       const liveLabel = isLive ? '<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#ff4444;animation:pulse-live 1s infinite;"></span><span style="font-size:11px;font-weight:700;color:#ff4444;animation:blink-text 1s infinite;">LIVE</span></div>' : '';
       const scoreLeft = isCasa ? (prossimaPartita.gol_casa ?? 0) : (prossimaPartita.gol_ospite ?? 0);
       const scoreRight = isCasa ? (prossimaPartita.gol_ospite ?? 0) : (prossimaPartita.gol_casa ?? 0);

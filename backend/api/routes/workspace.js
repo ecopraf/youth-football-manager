@@ -48,8 +48,10 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
   router.put('/api/workspaces/:id', authMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { nome, nome_breve, logo_url } = req.body;
-      const { data, error } = await supabase.from('workspace').update({ nome, nome_breve, logo_url }).eq('id', id).select().single();
+      const { nome, nome_breve, logo_url, regione } = req.body;
+      const update = { nome, nome_breve, logo_url };
+      if (regione !== undefined) update.regione = regione || null;
+      const { data, error } = await supabase.from('workspace').update(update).eq('id', id).select().single();
       if (error) return res.status(400).json({ error: error.message });
       res.json(data);
     } catch (err) { res.status(500).json({ error: 'Errore server' }); }

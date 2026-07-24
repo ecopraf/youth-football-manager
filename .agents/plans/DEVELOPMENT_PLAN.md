@@ -78,13 +78,24 @@
 | 31.9 | `GET /api/logos` — lettura ricorsiva sottocartelle per sviluppo locale | ✅ | — | backend/api/index.js o routes/logos.js | ~5min |
 | 31.10 | Aggiornare `findLogo()` — centralizzata in `importUtils.js` come `findLogoFromList()`, sostituita in match.js, statistics.js, player.js | ✅ | 31.7 | backend/api/helpers/importUtils.js, routes/match.js, routes/statistics.js, routes/player.js | ~8min |
 
+#### Fase 3b: Qualità match loghi
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 31.19 | Tabella `team_logo_alias` — alias espliciti per nomi SGS→TC (DF Academy→Dreaming Football Academy, Roma TS Queen→Roma Team Sport Queens, ecc.) + RLS deny anon | ✅ | 31.7 | migrazione SQL, backend/api/routes/match.js, statistics.js, player.js, dashboard.js | ~10min |
+| 31.20 | `findLogoFromList` riscritta — fuzzy word-level con blacklist parole generiche (virtus, atletico, real, academy, anni...) per eliminare false positive cross-regione | ✅ | 31.19 | backend/api/helpers/importUtils.js | ~10min |
+| 31.21 | `dashboard.js` — sostituita vecchia `findLogo` aggressiva con `findLogoFromList`+alias, aggiunto filtro regione workspace (era l'unico router senza) | ✅ | 31.20 | backend/api/routes/dashboard.js | ~10min |
+| 31.22 | Fix bug scope `aliasMap is not defined` in `statistics.js` (variabili dichiarate dentro `if` ma usate fuori) | ✅ | 31.19 | backend/api/routes/statistics.js | ~5min |
+| 31.23 | CSS dashboard — sfondo bianco opaco sui loghi card prossima partita (era `rgba(255,255,255,0.1)` → `background:white;padding:3px`) | ✅ | — | frontend-v2/src/modules/team/dashboard.js | ~2min |
+| 31.24 | Fix loghi corrotti/mancanti: Città di Formia (riscaricato TC 200x200 con nome ASCII), Monti Prenestini (flat WEBP→PNG convertito e caricato), Atletico Torre Maura (flat caricato + record DB) | ✅ | 31.7 | bucket club-logos, DB team_logo | ~10min |
+
 #### Fase 3: Regione workspace
 
 | ID | Task | Stato | Dipende da | File | Effort |
 |----|------|-------|------------|------|--------|
-| 31.11 | Migrazione DB: `ALTER TABLE workspace ADD regione TEXT` | ⬜ | — | migrazione SQL | ~2min |
-| 31.12 | Backend: `PUT /api/workspaces/:id` — gestione campo `regione` | ⬜ | 31.11 | routes/workspaces.js | ~3min |
-| 31.13 | Frontend: Impostazioni Workspace — dropdown regione (20 regioni + nazionali) in anagrafica | ⬜ | 31.12 | modules/club/club.js o settings.js | ~5min |
+| 31.11 | Migrazione DB: `ALTER TABLE workspace ADD regione TEXT` | ✅ | — | migrazione SQL | ~2min |
+| 31.12 | Backend: `PUT /api/workspaces/:id` — gestione campo `regione` + `getLogos()` filtrata per regione workspace | ✅ | 31.11 | routes/workspaces.js, routes/match.js | ~3min |
+| 31.13 | Frontend: Impostazioni Workspace — dropdown regione (21 regioni + nazionali) in form info workspace (superadmin) | ✅ | 31.12 | modules/admin/workspaces.js | ~5min |
 
 #### Fase 4: Ricerca avversario nel form partita
 
@@ -95,6 +106,30 @@
 | 31.16 | Frontend: form creazione/modifica partita — ricerca base avversario invariata (fuzzy su loghi esistenti). Aggiungere bottone "🔍 Cerca nel database" che espande pannello con dropdown regione (default = regione workspace) + input nome + risultati con logo | ⬜ | 31.13, 31.15 | modules/team/calendar.js | ~15min |
 | 31.17 | Frontend: selezione avversario dal pannello esteso → pre-compila nome avversario + logo + salva `tc_team_id` su match | ⬜ | 31.16 | modules/team/calendar.js | ~5min |
 | 31.18 | Test build completo + aggiornare docs | ⬜ | 31.17 | DEVELOPMENT_PLAN.md, AGENTS.md | ~5min |
+
+#### Fase 5: Qualità alias e copertura GR
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 31.25 | Migrazione `team_logo_alias` → campo `aliases JSONB DEFAULT '[]'` dentro `team_logo`. Dati migrati, tabella droppata. Backend semplificato: rimosso join `team_logo_alias` da tutti i router (match.js, dashboard.js, statistics.js, player.js). `findLogoFromList` gestisce aliases direttamente (step 0). | ✅ | 31.19 | backend/api/helpers/importUtils.js, routes/match.js, dashboard.js, statistics.js, player.js | ~20min |
+| 31.26 | Fix regioni workspace: 6 workspace con `regione = null` aggiornati (Polisportiva Ciampino, Accademia Atl. Lodigiani, Sapri Soccer→campania, Città di Ciampino, Nuova Tor Tre Teste, Pomezia Calcio 1957→lazio). Ora tutti i workspace hanno regione valorizzata. | ✅ | 31.11 | DB workspace | ~5min |
+| 31.27 | Analisi copertura loghi GR: script check su tutti gli avversari distinti dal DB (161 totali). 153 coperti, 8 senza logo. Identificati falsi positivi fuzzy e alias mancanti. | ✅ | 31.25 | — | ~10min |
+| 31.28 | Aggiunta batch alias GR reali: 20+ alias aggiunti su `team_logo.aliases` (Nuova Tor Tre Teste←N. Tor Tre Teste, Pomezia Calcio 1957←Pomezia, Pro Roma Calcio←Pro Roma, Lvpa Frascati←Lupa Frascati, Real Monterotondo←Monterotondo, Tevere Roma 1959←Tevere Roma, Roma City FC←Roma City, S Paolo Ostiense←San Paolo Ostiense, GS VVF F Sorgini←Vigili del Fuoco, Spes Mundial FC←Spes Mundial, Polisportiva Ciampino←Pol.Ciampino+C. di Ciampino, Jem's Soccer Academy←Jem's, Grifone Calcio←Grifone, Academy Grifone←Ac. Grifone, Alba Roma 1907←Alba Roma, SS Vittoria Roma 1908←Vittoria Roma, San Lorenzo Calcio←San Lorenzo, Latina Calcio 1932←Latina, Club Olimpico Romano←COR). Copertura finale: ~156/161 (97%). | ✅ | 31.27 | DB team_logo | ~15min |
+| 31.29 | Fix logo Savio Roma: sostituito logo TC (sfondo scuro) con versione scaricata dall'utente (webp→png 100x100). Caricato nel bucket `lazio/1035367_Savio.png` con upsert. | ✅ | — | bucket club-logos | ~5min |
+
+#### Fase 6: Import Center — Gestione loghi e GR solo superadmin
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 31.30 | Import Center: limitare tutto il blocco GR (classifica, calendario, marcatori, loghi, wizard) a `is_superadmin` — rimuovere visibilità per allenatori/admin normali | ⬜ | — | modules/import/importCenter.js | ~5min |
+| 31.31 | Import Center: sostituire card "Loghi Squadre (Girone)" e "Scarica loghi squadre (Wizard)" con unica card "🔍 Verifica Loghi Calendario" (solo superadmin) | ⬜ | 31.30 | modules/import/importCenter.js | ~5min |
+| 31.32 | Backend: `GET /api/logos/check?teamId=X` — legge tutte le partite del team, estrae avversari distinti, per ognuno cerca logo con `findLogoFromList` (regione workspace), restituisce lista `{avversario, logo_path, trovato}` | ⬜ | 31.25 | routes/logos.js | ~10min |
+| 31.33 | Frontend: modal "Verifica Loghi" — tab **Tutti** (griglia avversari con logo o placeholder ❌, contatori copertura) + tab **Mancanti** (solo quelli senza logo) | ⬜ | 31.32 | modules/import/importCenter.js | ~15min |
+| 31.34 | Frontend: per ogni avversario mancante — bottone **🔍 Cerca nel DB** (fuzzy su `team_logo` per nome, mostra candidati con logo) → se trovato candidato: bottone **Aggiungi alias** (aggiunge nome avversario a `team_logo.aliases`) | ⬜ | 31.33 | modules/import/importCenter.js | ~15min |
+| 31.35 | Backend: `POST /api/logos/add-alias` — body `{team_logo_id, alias}` → aggiunge alias all'array `team_logo.aliases` (se non già presente) | ⬜ | 31.25 | routes/logos.js | ~5min |
+| 31.36 | Backend: `POST /api/logos/upload` — upload PNG manuale per avversario senza logo → carica su bucket Supabase `{regione}/{nome_normalizzato}.png` + upsert `team_logo` | ⬜ | 31.35 | routes/logos.js | ~10min |
+| 31.37 | Frontend: per ogni avversario mancante senza candidati — bottone **📤 Carica logo** (file picker PNG/JPG/WEBP → upload via 31.36) | ⬜ | 31.34, 31.36 | modules/import/importCenter.js | ~10min |
+| 31.38 | Test build completo + aggiornare docs | ⬜ | 31.37 | DEVELOPMENT_PLAN.md, AGENTS.md | ~5min |
 
 **Effort totale stimato**: ~3h 20min (18 task)
 
@@ -560,6 +595,8 @@ Ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| — | feat: EPIC 31 task 31.25-31.29 — migrazione aliases JSONB (team_logo_alias droppata, campo aliases[] in team_logo), fix regioni workspace (6 workspace con regione=null), analisi copertura GR (156/161 avversari coperti 97%), batch alias GR reali (20+ alias: N. Tor Tre Teste, Pomezia, Pro Roma, Lupa Frascati, Monterotondo, Tevere Roma, Roma City, San Paolo Ostiense, Vigili del Fuoco/Sorgini, Spes Mundial, Pol.Ciampino, Jem's, Grifone, Ac. Grifone, Alba Roma, Vittoria Roma, San Lorenzo, Latina, COR), fix logo Savio Roma (webp→png 100x100 bucket). Backend semplificato: rimosso join team_logo_alias da 4 router. |
+| — | feat: EPIC 31 task 31.19-31.24 — tabella `team_logo_alias` (alias espliciti SGS→TC: DF Academy, Roma TS Queen, ecc.) + RLS. `findLogoFromList` riscritta con fuzzy word-level + blacklist parole generiche (elimina false positive cross-regione). `dashboard.js`: sostituita vecchia findLogo aggressiva con findLogoFromList+alias, aggiunto filtro regione workspace. Fix bug scope `aliasMap` in statistics.js. CSS dashboard: sfondo bianco opaco loghi card prossima partita. Fix loghi: Città di Formia (TC 200x200 ASCII), Monti Prenestini (WEBP→PNG), Atletico Torre Maura (flat+DB). |
 | — | feat: EPIC 31 upload+import loghi — 5970 loghi caricati su Supabase Storage bucket `club-logos` (21 regioni + nazionali), 158 file non-ASCII rinominati con `toAsciiFilename()` e ricaricati. DB: rimosso constraint unique su `nome_normalizzato`, aggiunto constraint unique su `tc_team_id`, colonne `tc_team_id`+`regione` aggiunte a `team_logo`. Import pulito: 769 record SGS vecchi eliminati, 6104 nuovi inseriti + 25 aggiornati. `find_nonascii_logos.js` + meccanismo `--retry` in `upload_logos_supabase.js`. |
 | v3.17.11 | feat: loghi club — batch processing tutti i PNG esistenti (resize 100x100, rimozione sfondo bianco, ottimizzazione pngquant, target <6KB). Aggiunto logo `sapri_soccer_school_cilento.png`. Nuovo script `scripts/process-logos.sh` con 3 modalità (singolo file, --from-staging, batch). Docs: sezione "Gestione Loghi Club" in project-rules.md, riferimento script in AGENTS.md |
 | v3.17.10 | feat: banner pre-scadenza demo (pill floating desktop/mobile, icone ✉️ 💬, pulsante ✕, gradiente 3D, `window._checkDemoBanner` chiamato ad ogni navigazione). feat: sospensione workspace (colonna `sospeso`, guard `WORKSPACE_SUSPENDED`, endpoint `PUT /workspaces/:id/sospendi`, pagina `workspaceSospeso.js`, toggle switch in card superadmin con modal custom). fix: modal demo — rilevamento bottone selezionato via `data-selected` (non `style*`). fix: dashboard — icone mancanti in WIDGET_LABELS (fees/kit/checklist/tesseramento/performance_voti), filtro capabilities per widget, DEFAULT layout per profilo allenatore da screenshot Matteo. |
