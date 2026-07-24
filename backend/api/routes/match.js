@@ -2,7 +2,7 @@
  * Match Routes - partite CRUD, archivia/sblocca, convocazioni, formazione, eventi, distinta
  */
 const express = require('express');
-const { coreTeamName } = require('../helpers/importUtils');
+const { coreTeamName, findLogoFromList } = require('../helpers/importUtils');
 
 module.exports = function createMatchRouter({ supabase, authMiddleware, requirePermission }) {
   const router = express.Router();
@@ -23,23 +23,7 @@ module.exports = function createMatchRouter({ supabase, authMiddleware, requireP
 
   const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-  function findLogo(avv, logos) {
-    if (!avv || !logos || logos.length === 0) return null;
-    const lower = avv.toLowerCase().trim();
-    const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
-    for (const l of logos) {
-      const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
-      if (l.nome.toLowerCase() === lower || compact === lCompact) return l.logo_path;
-    }
-    let best = null, bestLen = 0;
-    for (const l of logos) {
-      const lCompact = stripAccents(l.nome_normalizzato || '').replace(/[^a-z0-9]/g, '');
-      if (compact.includes(lCompact) || lCompact.includes(compact)) {
-        if (lCompact.length > bestLen) { best = l.logo_path; bestLen = lCompact.length; }
-      }
-    }
-    return best;
-  }
+  function findLogo(avv, logos) { return findLogoFromList(avv, logos); }
 
   // ── PARTITE CRUD ──
   router.get('/api/squadre/:squadraId/partite', authMiddleware, async (req, res) => {

@@ -474,6 +474,7 @@ try { token = guestRaw ? JSON.parse(guestRaw).jwt : null; } catch { token = null
   node send_emails.js                        # Lazio (default)
   node send_emails.js societa_campania.csv   # altra regione
   ```
+- **Loghi squadre da TC**: per scaricare loghi da Tuttocampo usare `scrape_logos_campania.js` come template. Richiede `headless: 'new'` + Chrome reale (`/Applications/Google Chrome.app/`) per bypassare AWS WAF. La lista `GIRONI` va costruita manualmente dalla pagina indice TC della regione (es. `https://www.tuttocampo.it/<Regione>/GiovanissimiProvincialiU14`). Output in `docs/commerciale/logos/<regione>/`. Vedi `docs/commerciale/README.md` per workflow completo.
 - **Versione attuale**: v3.17 (frontend e backend allineati)
 
 ## Gestione Loghi Club

@@ -233,8 +233,16 @@ module.exports = function createWorkspaceRouter({ supabase, authMiddleware }) {
     try {
       const logosDir = path.join(__dirname, '../../..', 'frontend-v2/public/logos');
       if (fs.existsSync(logosDir)) {
-        const files = fs.readdirSync(logosDir).filter(f => /\.(png|jpg|jpeg|svg|webp)$/i.test(f));
-        if (files.length) return res.json(files.map(f => '/logos/' + f));
+        const files = [];
+        function scanDir(dir, prefix) {
+          for (const f of fs.readdirSync(dir)) {
+            const full = path.join(dir, f);
+            if (fs.statSync(full).isDirectory()) { scanDir(full, prefix + f + '/'); }
+            else if (/\.(png|jpg|jpeg|svg|webp)$/i.test(f)) files.push('/logos/' + prefix + f);
+          }
+        }
+        scanDir(logosDir, '');
+        if (files.length) return res.json(files);
       }
       // Fallback: leggi da team_logo (produzione Vercel)
       const { data } = await supabase.from('team_logo').select('logo_path');

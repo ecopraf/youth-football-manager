@@ -17,6 +17,10 @@ docs/commerciale/
 ├── golee_results.json          ← output scraper lazio: tutti i club con email trovata
 ├── golee_diff.json             ← diff lazio: nuovi/aggiornamenti rispetto al CSV
 ├── golee_<regione>.json        ← output scraper per altre regioni
+├── scrape_logos_campania.js    ← scraper loghi squadre giovanili da TC (U14→Juniores)
+├── logos/
+│   └── campania/               ← ~1096 loghi PNG squadre giovanili Campania (teamId_NomeSocietà.png)
+│       └── index.json          ← mappa teamId → nome squadra
 ├── run_gironi.js               ← scraper TC: recupera email per girone
 ├── fill_emails.js              ← scraper TC: riempie email mancanti nel CSV
 ├── clean_csv.js                ← pulizia: rimuove fake, duplicati, non laziali
@@ -92,7 +96,45 @@ press-kit/
 > ⚠️ `send_emails.js` accetta il CSV come argomento CLI. Senza argomento usa `societa_lazio.csv` (default).
 > ⚠️ Le province sono mappate internamente in `scrape_golee_regione.js` — non serve passarle manualmente.
 
-### Fonte Tuttocampo (TC)
+### Loghi squadre da Tuttocampo (TC)
+
+Script: `scrape_logos_campania.js` — scarica i loghi PNG delle squadre giovanili (U14→Juniores) da TC.
+
+**Prerequisiti**:
+- Chrome reale installato in `/Applications/Google Chrome.app/`
+- Puppeteer installato (`node_modules/puppeteer`)
+
+**Utilizzo per Campania** (già fatto):
+```bash
+node scrape_logos_campania.js
+# Output: logos/campania/{teamId}_{NomeSocietà}.png
+# Indice: logos/campania/index.json
+```
+
+**Per adattare ad altra regione**:
+1. Copia `scrape_logos_campania.js` → `scrape_logos_<regione>.js`
+2. Cambia `OUT_DIR` → `logos/<regione>`
+3. Sostituisci `Campania` con il nome regione TC negli URL
+4. Aggiorna la lista `GIRONI` con gli URL reali (estrarli dalla pagina indice TC della regione)
+   - Apri `https://www.tuttocampo.it/<Regione>/GiovanissimiProvincialiU14` nel browser
+   - Copia tutti i link ai gironi giovanili
+5. Esegui lo script
+
+**Come funziona**:
+- Usa `headless: 'new'` + Chrome reale per bypassare AWS WAF di TC
+- Prima visita la homepage TC per ottenere i cookie WAF
+- Poi itera su ogni girone estraendo `img[data-src]` con `alt` che inizia per `logo`
+- Deduplica per `teamId` (evita duplicati tra gironi diversi)
+- Salva PNG con nome `{teamId}_{NomeSocietà}.png`
+- Genera `index.json` con mappa `teamId → nome`
+
+**Risultati per regione**:
+| Regione | Loghi | Script | Directory |
+|---|---|---|---|
+| Campania | 1096 | `scrape_logos_campania.js` | `logos/campania/` |
+| Lazio | 1489 | `scrape_logos_lazio.js` | `logos/lazio/` |
+
+### Fonte Tuttocampo (TC) — email
 1. **Scraping email** → `node run_gironi.js` (recupera email da TC per girone)
 2. **Pulizia** → `node clean_csv.js` (rimuove fake, duplicati, non laziali)
 

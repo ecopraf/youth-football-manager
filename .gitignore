@@ -8,3 +8,7 @@ frontend-v2/.build-counter
 .env.local
 backend/tmp_*.js
 .last-release
+
+# Loghi club scrappati da TC (fonte di verità: Supabase Storage)
+docs/commerciale/logos/
+docs/commerciale/failed_uploads.json

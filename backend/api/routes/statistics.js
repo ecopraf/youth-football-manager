@@ -2,7 +2,7 @@
  * Statistics routes — statistiche squadra e giocatori
  */
 const express = require('express');
-const { coreTeamName } = require('../helpers/importUtils');
+const { coreTeamName, findLogoFromList } = require('../helpers/importUtils');
 function createStatisticsRouter({ supabase, authMiddleware }) {
   const router = express.Router();
 
@@ -47,33 +47,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
         }
       }
 
-      function findLogo(avversario) {
-        const lower = avversario.toLowerCase().trim();
-        if (logoMap[lower]) return logoMap[lower];
-        // Normalizzato con trattini
-        const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-        if (logoMap[norm]) return logoMap[norm];
-        // Strip accents + compatto (senza separatori) per acronimi e varianti con accenti
-        const stripAccents = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const compact = stripAccents(lower).replace(/[^a-z0-9]/g, '');
-        for (const [key, path] of Object.entries(logoMap)) {
-          const keyCompact = stripAccents(key).replace(/[^a-z0-9]/g, '');
-          if (compact === keyCompact || compact.includes(keyCompact) || keyCompact.includes(compact)) return path;
-        }
-        // Fuzzy: cerca contenimento
-        for (const [key, path] of Object.entries(logoMap)) {
-          if (lower.includes(key) || key.includes(lower)) return path;
-        }
-        // Core name matching (abbreviazioni GR: Pol., C., Atl.)
-        const coreAvv = coreTeamName(avversario);
-        if (coreAvv) {
-          for (const [key, path] of Object.entries(logoMap)) {
-            const coreKey = coreTeamName(key);
-            if (coreKey && (coreAvv === coreKey || coreAvv.includes(coreKey) || coreKey.includes(coreAvv))) return path;
-          }
-        }
-        return null;
-      }
+      function findLogo(avversario) { return findLogoFromList(avversario, logos || []); }
 
       partite.forEach(p => {
         const gc = p.gol_casa || 0, go = p.gol_ospite || 0;
@@ -392,22 +366,7 @@ function createStatisticsRouter({ supabase, authMiddleware }) {
       const { data: logos } = await supabase.from('team_logo').select('nome, nome_normalizzato, logo_path');
       const logoMap = {};
       (logos || []).forEach(l => { logoMap[l.nome.toLowerCase()] = l.logo_path; if (l.nome_normalizzato) logoMap[l.nome_normalizzato] = l.logo_path; });
-      function findLogo(avv) {
-        const lower = (avv || '').toLowerCase().trim();
-        if (logoMap[lower]) return logoMap[lower];
-        const norm = lower.replace(/[^a-z0-9\u00e0-\u00fa]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-        if (logoMap[norm]) return logoMap[norm];
-        for (const [key, path] of Object.entries(logoMap)) { if (lower.includes(key) || key.includes(lower)) return path; }
-        // Core name matching (abbreviazioni GR)
-        const coreAvv = coreTeamName(avv || '');
-        if (coreAvv) {
-          for (const [key, path] of Object.entries(logoMap)) {
-            const coreKey = coreTeamName(key);
-            if (coreKey && (coreAvv === coreKey || coreAvv.includes(coreKey) || coreKey.includes(coreAvv))) return path;
-          }
-        }
-        return null;
-      }
+      function findLogo(avv) { return findLogoFromList(avv, logos || []); }
 
       let v = 0, p = 0, s = 0, gf = 0, gs = 0;
       let vUff = 0, pUff = 0, sUff = 0, gfUff = 0, gsUff = 0;

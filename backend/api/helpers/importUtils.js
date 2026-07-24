@@ -243,6 +243,31 @@ function normalizeLogoName(name) {
     .replace(/^-|-$/g, '');
 }
 
+// Lookup logo da lista team_logo — priorità: match esatto nome → fuzzy compact
+function findLogoFromList(avversario, logos) {
+  if (!avversario || !logos || logos.length === 0) return null;
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  const compact = norm(avversario);
+  // 1. Match esatto nome
+  for (const l of logos) {
+    if (norm(l.nome) === compact) return l.logo_path;
+  }
+  // 2. Match esatto nome_normalizzato (già senza accenti)
+  for (const l of logos) {
+    if (norm(l.nome_normalizzato || '') === compact) return l.logo_path;
+  }
+  // 3. Fuzzy: uno contiene l'altro (prende il match più lungo)
+  let best = null, bestLen = 0;
+  for (const l of logos) {
+    const lc = norm(l.nome_normalizzato || '');
+    if (lc.length < 4) continue; // evita match su nomi troppo corti
+    if (compact.includes(lc) || lc.includes(compact)) {
+      if (lc.length > bestLen) { best = l.logo_path; bestLen = lc.length; }
+    }
+  }
+  return best;
+}
+
 // Download file da URL HTTPS
 function downloadFile(url) {
   return new Promise((resolve, reject) => {
@@ -313,5 +338,5 @@ async function scrapeLogosFromHtml(html, supabase) {
 module.exports = {
   normalizeTeamName, normalizeForMatch, coreTeamName, matchTeamNameGR, parseMinuto,
   parseDateText, parseEventiFromHtml, parseMatchesFromText, logImport,
-  scrapeLogosFromHtml, normalizeLogoName, downloadFile
+  scrapeLogosFromHtml, normalizeLogoName, downloadFile, findLogoFromList
 };

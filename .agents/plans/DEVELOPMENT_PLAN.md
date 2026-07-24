@@ -54,7 +54,64 @@
 
 > **Epic completati archiviati** in `DEVELOPMENT_PLAN_ARCHIVE.md`: EPIC 1, 2, 3, 6, 8, 9, 10, 11, 12, 16, 18, 20, 21 (Fase 1-6), 24, 25, 27, **14**.
 
-### EPIC 4: Anagrafica Avversari (evoluzione team_logo)
+### EPIC 31: Loghi Club — Scraping, Storage e Import DB
+
+> Raccolta massiva loghi club giovanili da Tuttocampo (tutte le regioni + nazionali), upload su Supabase Storage, import nel DB con lookup diretto via `tc_team_id`. Zero impatto sui 767 loghi esistenti.
+
+> Iniziato: 24 Luglio 2026
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 31.1 | Scraping loghi 200px tutte le regioni + nazionali (Campania, Lazio, Lombardia, Piemonte, Toscana, EmiliaRomagna, Sicilia, Puglia, Calabria, Abruzzo, AltoAdige, Basilicata, FriuliVeneziaGiulia, Liguria, Marche, Molise, Sardegna, Trentino, Umbria, Veneto) | ✅ | — | docs/commerciale/scrape_logos_*.js, scrape_all_regioni.sh | ~60min |
+| 31.2 | Cleanup deduplicazione per regione (keep file più grande, index.json allineato) | ✅ | 31.1 | docs/commerciale/cleanup_logos.js | ~5min |
+| 31.3 | Aggiornare `upload_logos_supabase.js` per uploadare tutte le regioni in sequenza su bucket `club-logos` | ✅ | 31.2 | docs/commerciale/upload_logos_supabase.js | ~10min |
+| 31.4 | Script `import_logos_db.js` — upsert su `team_logo` con `logo_path` = URL Supabase + `tc_team_id` estratto dal nome file | ✅ | 31.3 | docs/commerciale/import_logos_db.js | ~10min |
+| 31.5 | `GET /api/logos` — lettura ricorsiva sottocartelle (per sviluppo locale) | ✅ | — | backend/api/index.js o routes/logos.js | ~5min |
+| 31.6 | `.gitignore` — escludere `docs/commerciale/logos/` dal repo (file troppo grandi, fonte di verità è Supabase) | ✅ | 31.3 | .gitignore | ~2min |
+| 31.7 | Eseguire upload + import DB in produzione, verificare lookup loghi nelle partite | ✅ | 31.4, 31.5 | — | ~10min |
+| 31.8 | Aggiornare AGENTS.md + DATABASE_SCHEMA.md (colonna `tc_team_id` su `team_logo`, bucket `club-logos`) | ✅ | 31.7 | .agents/AGENTS.md, .agents/knowledge/DATABASE_SCHEMA.md | ~5min |
+
+#### Fase 2: Lettura loghi da app
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 31.9 | `GET /api/logos` — lettura ricorsiva sottocartelle per sviluppo locale | ✅ | — | backend/api/index.js o routes/logos.js | ~5min |
+| 31.10 | Aggiornare `findLogo()` — centralizzata in `importUtils.js` come `findLogoFromList()`, sostituita in match.js, statistics.js, player.js | ✅ | 31.7 | backend/api/helpers/importUtils.js, routes/match.js, routes/statistics.js, routes/player.js | ~8min |
+
+#### Fase 3: Regione workspace
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 31.11 | Migrazione DB: `ALTER TABLE workspace ADD regione TEXT` | ⬜ | — | migrazione SQL | ~2min |
+| 31.12 | Backend: `PUT /api/workspaces/:id` — gestione campo `regione` | ⬜ | 31.11 | routes/workspaces.js | ~3min |
+| 31.13 | Frontend: Impostazioni Workspace — dropdown regione (20 regioni + nazionali) in anagrafica | ⬜ | 31.12 | modules/club/club.js o settings.js | ~5min |
+
+#### Fase 4: Ricerca avversario nel form partita
+
+| ID | Task | Stato | Dipende da | File | Effort |
+|----|------|-------|------------|------|--------|
+| 31.14 | Migrazione DB: `ALTER TABLE match ADD tc_team_id TEXT` | ⬜ | — | migrazione SQL | ~2min |
+| 31.15 | Backend: `GET /api/logos/search?regione=X&q=nome` — cerca in `team_logo` per regione + nome (fuzzy, limit 10) | ⬜ | 31.7 | routes/logos.js | ~8min |
+| 31.16 | Frontend: form creazione/modifica partita — ricerca base avversario invariata (fuzzy su loghi esistenti). Aggiungere bottone "🔍 Cerca nel database" che espande pannello con dropdown regione (default = regione workspace) + input nome + risultati con logo | ⬜ | 31.13, 31.15 | modules/team/calendar.js | ~15min |
+| 31.17 | Frontend: selezione avversario dal pannello esteso → pre-compila nome avversario + logo + salva `tc_team_id` su match | ⬜ | 31.16 | modules/team/calendar.js | ~5min |
+| 31.18 | Test build completo + aggiornare docs | ⬜ | 31.17 | DEVELOPMENT_PLAN.md, AGENTS.md | ~5min |
+
+**Effort totale stimato**: ~3h 20min (18 task)
+
+**Note architetturali**:
+- I file restano in `docs/commerciale/logos/` — repository locale, non deployati su Vercel
+- Supabase Storage bucket `club-logos` (già creato, public) — path `{regione}/{teamId}_Nome.png`
+- `logo_path` nel DB per i nuovi loghi = URL Supabase completo (`https://...supabase.co/storage/v1/object/public/club-logos/...`)
+- I 767 loghi esistenti in `frontend-v2/public/logos/` restano invariati con path `/logos/xxx.png`
+- `tc_team_id` estratto dal nome file (`{teamId}_Nome.png` → teamId) — permette lookup esatto invece di fuzzy
+- `GET /api/logos` aggiornato per lettura ricorsiva (sviluppo locale) — Vercel serve già sottocartelle staticamente
+- `workspace.regione` — default per ricerca avversario nel form partita (dropdown modificabile per amichevoli fuori regione)
+- `match.tc_team_id` — salvato alla selezione avversario dal DB loghi, usato per lookup logo diretto (prioritario su fuzzy)
+- Ricerca avversario: base (fuzzy su loghi esistenti, invariata) + estesa (pannello espandibile con regione + nome, opzionale)
+
+---
+
+
 
 > Trasformare `team_logo` in un vero registry avversari con info utili: città, campo con indirizzo, colori maglia, contatti, storico scontri diretti. UI dedicata per consultazione e gestione.
 
@@ -452,6 +509,7 @@
 > Epic 1, 2, 3, 6, 8, 9, 10, 11, 12, 14, 16, 18, 20, 21, 23, 24, 25, 27, 29, 30 archiviati in `DEVELOPMENT_PLAN_ARCHIVE.md`.
 
 ```
+EPIC 31 (Loghi Club) ──→ nessuna dipendenza
 EPIC 4 (Opponent) ──→ nessuna dipendenza
 EPIC 7 (Tornei) ──→ nessuna dipendenza
 EPIC 13 (Preseason) ──→ nessuna dipendenza
@@ -502,6 +560,7 @@ Ordine consigliato per impatto/effort:
 
 | Commit | Descrizione |
 |--------|-------------|
+| — | feat: EPIC 31 upload+import loghi — 5970 loghi caricati su Supabase Storage bucket `club-logos` (21 regioni + nazionali), 158 file non-ASCII rinominati con `toAsciiFilename()` e ricaricati. DB: rimosso constraint unique su `nome_normalizzato`, aggiunto constraint unique su `tc_team_id`, colonne `tc_team_id`+`regione` aggiunte a `team_logo`. Import pulito: 769 record SGS vecchi eliminati, 6104 nuovi inseriti + 25 aggiornati. `find_nonascii_logos.js` + meccanismo `--retry` in `upload_logos_supabase.js`. |
 | v3.17.11 | feat: loghi club — batch processing tutti i PNG esistenti (resize 100x100, rimozione sfondo bianco, ottimizzazione pngquant, target <6KB). Aggiunto logo `sapri_soccer_school_cilento.png`. Nuovo script `scripts/process-logos.sh` con 3 modalità (singolo file, --from-staging, batch). Docs: sezione "Gestione Loghi Club" in project-rules.md, riferimento script in AGENTS.md |
 | v3.17.10 | feat: banner pre-scadenza demo (pill floating desktop/mobile, icone ✉️ 💬, pulsante ✕, gradiente 3D, `window._checkDemoBanner` chiamato ad ogni navigazione). feat: sospensione workspace (colonna `sospeso`, guard `WORKSPACE_SUSPENDED`, endpoint `PUT /workspaces/:id/sospendi`, pagina `workspaceSospeso.js`, toggle switch in card superadmin con modal custom). fix: modal demo — rilevamento bottone selezionato via `data-selected` (non `style*`). fix: dashboard — icone mancanti in WIDGET_LABELS (fees/kit/checklist/tesseramento/performance_voti), filtro capabilities per widget, DEFAULT layout per profilo allenatore da screenshot Matteo. |
 | v3.17.9 | feat: EPIC 29 Demo Mode — colonna `demo_scadenza` su `workspace`, guard in `authMiddleware` (403 DEMO_EXPIRED per workspace scaduti, superadmin escluso), endpoint `PUT /workspaces/:id/demo` (7/15/30gg o null per attivazione definitiva), intercettazione 403 in `api.js` con redirect a `#demo-scaduta`, pagina `demoExpired.js` con CTA email+WhatsApp, pannello superadmin con badge giorni rimanenti + modal gestione demo (Applica/Revoca). |
