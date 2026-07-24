@@ -475,6 +475,44 @@ try { token = guestRaw ? JSON.parse(guestRaw).jwt : null; } catch { token = null
   node send_emails.js societa_campania.csv   # altra regione
   ```
 - **Versione attuale**: v3.17 (frontend e backend allineati)
+
+## Gestione Loghi Club
+
+### Cartella loghi
+- **Destinazione**: `frontend-v2/public/logos/` — tutti i PNG dei loghi club affiliati
+- **Standard**: PNG, fit 100x100px (proporzioni mantenute, NON distorto), sfondo trasparente, <6KB
+- **Staging dir** (cartella di appoggio locale, fuori dal repo): `/Users/Raffaele/Documents/Youth-Foorball-Manager/Loghi Società Affiliate/`
+  - L'utente deposita qui i file originali (JPG, PNG, qualsiasi dimensione) ricevuti dai club
+  - L'agente li processa da lì e li sposta in `logos/`
+
+### Script di processing
+Usare SEMPRE `scripts/process-logos.sh` — MAI processare loghi manualmente con comandi ad-hoc:
+```bash
+# Nuovo logo da staging dir (caso più comune)
+./scripts/process-logos.sh --from-staging
+
+# Singolo file (path assoluto o relativo)
+./scripts/process-logos.sh "/path/to/ASD Sapri Soccer.jpg"
+
+# Batch: riallinea tutti i PNG esistenti non conformi
+./scripts/process-logos.sh
+```
+
+### Naming convention
+- Il nome file viene slugificato automaticamente dallo script: `ASD Sapri Soccer School.jpg` → `asd-sapri-soccer-school.png`
+- Verificare che lo slug corrisponda a come il logo è referenziato nel DB (`team_logo.logo_path`) o nel workspace (`logo_url`)
+
+### Workflow aggiunta nuovo logo club
+1. L'utente mette il file originale in staging dir
+2. `./scripts/process-logos.sh --from-staging`
+3. Verificare visivamente il risultato in `logos/`
+4. Commit: `git add frontend-v2/public/logos/ && git commit -m "feat: aggiungi logo [nome club]"`
+
+### Dipendenze (già installate)
+```bash
+brew install imagemagick pngquant
+```
+
 - **Mai riutilizzare campi esistenti per scopi diversi** — se serve un nuovo dato, creare una colonna/tabella dedicata
 - **Preferire campi JSONB** per dati strutturati che non richiedono query dirette (metadati, configurazioni, layout)
 - **NON pushare senza conferma esplicita dell'utente**

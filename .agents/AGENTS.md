@@ -221,7 +221,21 @@ api/
 backend/scripts/
 ├── import-loghi-gr.js         — Batch download loghi da tutti i gironi GR
 └── scrape-logos.js            — Scraping loghi da Tuttocampo
+
+scripts/                       — Script di manutenzione progetto
+└── process-logos.sh           — Processa loghi club: resize 100x100, rimozione sfondo bianco, ottimizzazione pngquant
 ```
+
+**process-logos.sh** — 3 modalità:
+```bash
+./scripts/process-logos.sh                    # batch: tutti i PNG in logos/ non conformi
+./scripts/process-logos.sh <file.jpg|png>     # singolo file → slug.png in logos/
+./scripts/process-logos.sh --from-staging     # tutti i file in staging dir
+```
+- **Staging dir** (cartella di appoggio per nuovi loghi da affiliati): `/Users/Raffaele/Documents/Youth-Foorball-Manager/Loghi Società Affiliate/`
+- Output: PNG fit 100x100 (proporzioni mantenute), sfondo bianco rimosso (`-fuzz 10% -transparent white`), ottimizzato pngquant, target <6KB
+- Il nome file viene slugificato automaticamente (es. `ASD Sapri Soccer.jpg` → `asd-sapri-soccer.png`)
+- Dipendenze: `brew install imagemagick pngquant`
 
 ### Testing con Puppeteer
 Puppeteer è disponibile via `npx` (cache in `~/.npm/_npx/`) e in `docs/commerciale/node_modules/puppeteer`.
